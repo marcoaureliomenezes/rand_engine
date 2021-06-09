@@ -2,27 +2,23 @@ from numpy.random import randint
 from dateutil import parser
 from datetime import datetime
 
-
 def fake_discrete(size=5, **kwargs):
     if(kwargs.get("distinct") is not None):
         aux = randint(0, len(kwargs["distinct"]), size)
-        return [kwargs["distinct"][i] for i in aux]
+        return [str(kwargs["distinct"][i]) for i in aux]
 
 def fake_num(size=5, **kwargs):
     tam = randint(kwargs["min_size"],kwargs["max_size"]) \
-            if kwargs.get("min_size") is not None and kwargs.get("min_size") is not None else None
+            if kwargs.get("min_size") is not None and kwargs.get("max_size") is not None else None
+    print(tam)
     return [ str(randint(0,10 ** tam)).zfill(tam) for i in range(size) ]
 
-#format # dia mes ano
+
 def fake_date(size=5, **kwargs):
     interval = parser.parse(kwargs["start"]).timestamp(), parser.parse(kwargs["end"]).timestamp() \
         if kwargs.get("start") is not None and kwargs.get("start") is not None else 2
     int_array = randint(interval[0], interval[1], size)
     return [ datetime.fromtimestamp(i).strftime("%m/%d/%Y") for i in int_array ]
-
-# Escrever testes aqui
-# Criar arquivo teste de performance
-
 
 import unittest
 

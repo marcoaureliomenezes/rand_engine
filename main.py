@@ -37,3 +37,29 @@ def create_table(size=6, **kwargs):
     for i in range(len(vect[0])):
         res_data.append((vect[0][i], vect[1][i], vect[2][i]))
     return res_data, kwargs["names"]
+
+
+
+
+
+
+
+
+
+
+
+
+
+# print(
+#     fake_data(null_rate=0.1, null_args=[None], categorical=True),
+#     fake_data(null_rate=0.1, null_args=[None], identif=True),
+#     fake_data(null_rate=0.1, null_args=[None], interval=True)
+#     )
+
+
+    # if kwargs.get("distinct_args") is not None:
+
+    #     data_part = fake_discrete(int(size * (1 - null_prop)), kwargs.get("distinct_args"))
+    # res = np.concatenate((null_part, data_part))
+    # np.random.shuffle(res)
+    # return res
