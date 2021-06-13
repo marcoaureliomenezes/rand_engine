@@ -73,27 +73,24 @@ class TestCoreMethods(unittest.TestCase):
 
     def test_fake_float1(self):
         # print(fake_float_1(size=10, min=200, max=1000, round= 2, string=True, algsize=12))
-        print("######################################################################")
-        fake_float_1(size=1000000)
-        fake_float_1(size=1000000, min=200, max=1000)
-        fake_float_1(size=1000000, min=200, max=1000, round= 2)
+        # fake_float_1(size=1000000)
+        # fake_float_1(size=1000000, min=200, max=1000)
+        # fake_float_1(size=1000000, min=200, max=1000, round= 2)
         fake_float_1(size=1000000, min=200, max=1000, round= 2, string=True, algsize=12)
         self.assertFalse('Foo'.isupper())
 
     def test_fake_float_2(self):
         # print(fake_float_2(size=10, min_size=2, max_size=4, string=True, algsize=12))
-        print("######################################################################")
-        fake_float_1(size=1000000)
-        fake_float_1(size=1000000, min_size=200, max_size=1000)
-        fake_float_1(size=1000000, min_size=200, max_size=1000, round=2)
+        # fake_float_1(size=1000000)
+        # fake_float_1(size=1000000, min_size=200, max_size=1000)
+        # fake_float_1(size=1000000, min_size=200, max_size=1000, round=2)
         fake_float_2(size=1000000, min_size=2, max_size=4, string=True, algsize=12)
         self.assertFalse('Foo'.isupper())
 
     def test_fake_float_normal(self):
         # print(fake_float_normal(size=5, mean=10, std=2, string=True, algsize=12))
-        print("######################################################################")
-        fake_float_normal(size=1000000)
-        fake_float_normal(size=1000000, mean=10, std=2)
+        # fake_float_normal(size=1000000)
+        # fake_float_normal(size=1000000, mean=10, std=2)
         fake_float_normal(size=1000000, mean=10, std=2, string=True, algsize=12)
         self.assertFalse('Foo'.isupper())
 

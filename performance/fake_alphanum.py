@@ -42,22 +42,6 @@ import unittest
 
 class TestCoreMethods(unittest.TestCase):
 
-    # def test_fake_num_1(self):
-    #     print(fake_num_1(size=3, min_size=5, max_size=6))
-    #     fake_num_1(size=100000, min_size=5, max_size=10)
-    #     self.assertFalse('Foo'.isupper())
-
-
-    # def test_fake_num_2(self):
-    #     print(fake_num_2(size=5, min_size=5, max_size=6))
-    #     fake_num_2(size=100000, min_size=5, max_size=10)
-    #     self.assertFalse('Foo'.isupper())
-
-    # def test_fake_num_3(self):
-    #     print(fake_num_3(size=5, min_size=5, max_size=6))
-    #     fake_num_3(size=100000, min_size=5, max_size=10)
-    #     self.assertFalse('Foo'.isupper())
-
     def test_fake_alphanum_1(self):
         print(fake_alphanum_1(size=4, format="abc123"))
         fake_alphanum_1(size=1000000)
