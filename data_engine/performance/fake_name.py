@@ -9,8 +9,8 @@ from perform import performance
 @performance
 def fake_name(size=5, **kwargs):
     if kwargs["names"] and len(kwargs["names"]) > 0:
-        result = [[ arg[j] for j in randint(0, len(arg), size)] for arg in kwargs["names"]]
-        return [reduce(lambda a, b: f"{a} {b}",fullname) for fullname in list(zip(*result))]
+        result = [[arg[j] for j in randint(0, len(arg), size)] for arg in kwargs["names"]]
+        return [reduce(lambda a, b: f"{a} {b}", fullname) for fullname in list(zip(*result))]
     return ["" for i in range(size)]
 
 @performance

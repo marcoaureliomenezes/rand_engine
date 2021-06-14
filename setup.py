@@ -7,7 +7,7 @@ with open(file="README.md", mode="r") as readme_handle:
 
 setup(
 
-    name="data_engine",
+    name="data_engine2",
     author = "Marco Menezes",
     author_email = "marcoaurelioreislima@gmail.com",
 

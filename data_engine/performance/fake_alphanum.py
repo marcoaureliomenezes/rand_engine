@@ -3,8 +3,7 @@ import numpy as np
 from numpy import array, concatenate
 from functools import reduce
 from numpy.random import randint
-from perform import performance 
-
+from perform import performance
 @performance
 def fake_alphanum_1(size=5, **kwargs):
     """
