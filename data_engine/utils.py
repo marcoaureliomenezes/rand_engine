@@ -1,10 +1,7 @@
-# Funções de parser de data
+from performance.perform import performance
 
-# Funções de regex
+@performance
+def sum(a, b):
+    return [a + b]
 
-def normalize_prop(num):
-    return 0  if num < 0 else ( 1 if num > 1 else num)
-
-
-if __name__ == '__main__':
-    pass
+print(sum(2,3))

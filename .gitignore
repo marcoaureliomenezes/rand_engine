@@ -1,4 +1,6 @@
-__pycache__/*
+**.cpython-37.pyc
 **.egg-info/
 dist
 **.pyc
+.idea
+venv

@@ -1,4 +1,4 @@
-from core import *
+from data_engine.core import *
 
 import numpy as np
 

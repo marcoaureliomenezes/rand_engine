@@ -7,11 +7,11 @@ with open(file="README.md", mode="r") as readme_handle:
 
 setup(
 
-    name="data_engine2",
+    name="data_engine",
     author = "Marco Menezes",
     author_email = "marcoaurelioreislima@gmail.com",
 
-    version = "1.0.0",
+    version = "1.0.1",
     description = "Engine to create random data with different formats, to use with spark and others.",
     long_description = long_description,
     url = "https://github.com/marcoaureliomenezes/data-engine",
