@@ -6,14 +6,14 @@ def normalize_prop(num):
     return 0  if num < 0 else ( 1 if num > 1 else num)
 
 
-def fake_data2(size, **kwargs):
+def fake_data(size, **kwargs):
     null_rate = normalize_prop(kwargs["null_rate"]) if kwargs["null_rate"] is not None \
                 else 0
     null_size = int(size * null_rate)
     data_size = size - null_size
     methods_dict = {"fake_discrete": fake_discrete, "fake_int": fake_int, "fake_float": fake_float,
                     "fake_float_normal": fake_float_normal, "fake_alphanum": fake_alphanum,
-                    "fake_date": fake_date, "fake_name": fake_name, "fake_unique_name": fake_unique_name}
+                    "fake_date": fake_date }
 
     null_part = fake_discrete(size=null_size, distinct=kwargs.get("null_args")) \
         if kwargs.get("null_args") is not None else []
@@ -28,7 +28,7 @@ def fake_data2(size, **kwargs):
 def create_table(size=5, **kwargs):
     vect = []
     for i in range(len(kwargs["data"])):
-        result = [str(item) for item in fake_data2(size=size, **kwargs["data"][i])]
+        result = [str(item) for item in fake_data(size=size, **kwargs["data"][i])]
         vect.append(result)
     res_data = list(zip(*vect))
     return res_data, kwargs["names"]
@@ -50,11 +50,7 @@ class TestTableMethods(unittest.TestCase):
     metadata2 = dict(
         names=["fake_alphanum", "fake_name", "fake_unique_name"],
         data=[
-            dict(null_rate=0.2, null_args=[None], method="fake_alphanum", format="aa22cc"),
-            dict(null_rate=0.2, null_args=[None], method="fake_name",
-                 names=[["marco", "paulo", "jose"], ["reis", "santos", "lopes"]]),
-            dict(null_rate=0.2, null_args=[None], method="fake_unique_name",
-                 names=[["marco", "paulo", "jose"], ["reis", "santos", "lopes"]])
+            dict(null_rate=0.2, null_args=[None], method="fake_alphanum", format="aa22cc")
         ]
     )
 
@@ -72,7 +68,7 @@ class TestTableMethods(unittest.TestCase):
         vect = [self.metadata1, self.metadata2, self.metadata3]
         for i in vect:
             for j in i["data"]:
-                print(fake_data2(size=10, **j))
+                print(fake_data(size=10, **j))
         self.assertEqual('foo'.upper(), 'FOO')
 
     # def test_create_table(self):

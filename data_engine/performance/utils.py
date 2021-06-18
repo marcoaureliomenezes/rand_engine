@@ -4,9 +4,8 @@ import random, unittest
 # it's perfect to random data.
 def replace_duplicate(lista, replace):
     result = list(set(lista))
-    result.extend([replace for i in range(len(lista)-len(list(set(lista))))])
+    result.extend([replace for i in range(len(lista)-len(result))])
     random.shuffle(result)
-    print(result)
     return result
 
 if __name__ == '__main__':
