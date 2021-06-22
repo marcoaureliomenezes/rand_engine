@@ -33,16 +33,16 @@ class TestCoreMethods(unittest.TestCase):
 
     def test_fake_date1(self):
         print("\n\nResults for FAKE_DATE with different parameters")
-        fake_date1(size=1000000, start="01/20/2021", end="12-20-2021")
+        # fake_date1(size=1000000, start="01/20/2021", end="12-20-2021")
         fake_date1(size=1000000, start="01/20/2021", end="12-20-2021", format="%d/%m/%Y")
-        fake_date1(size=1000000, start="01/20/2021", end="12-20-2021",format=["%d-%m-%Y", "%d/%m/%Y", "%d %m %Y"])
+        # fake_date1(size=1000000, start="01/20/2021", end="12-20-2021",format=["%d-%m-%Y", "%d/%m/%Y", "%d %m %Y"])
         self.assertFalse('Foo'.isupper())
 
     def test_fake_date2(self):
         print("\n\nResults for FAKE_DATE with different parameters")
-        fake_date2(size=1000000, start="01/20/2021", end="12-20-2021")
+        # fake_date2(size=1000000, start="01/20/2021", end="12-20-2021")
         fake_date2(size=1000000, start="01/20/2021", end="12-20-2021", format="%d/%m/%Y")
-        fake_date2(size=1000000, start="01/20/2021", end="12-20-2021",format=["%d-%m-%Y", "%d/%m/%Y", "%d %m %Y"])
+        # fake_date2(size=1000000, start="01/20/2021", end="12-20-2021",format=["%d-%m-%Y", "%d/%m/%Y", "%d %m %Y"])
         self.assertFalse('Foo'.isupper())
 
 
