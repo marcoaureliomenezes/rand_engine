@@ -2,13 +2,24 @@ import random, unittest
 import numpy as np
 from numpy.random import randint
 from functools import reduce
+from datetime import datetime
+
+def sort_array(array_input):
+        array_input.sort()
+        return array_input
 
 
-# Remove all duplicated items, but the replacement is not in the same position.
-# it's perfect to random data.
-def replace_duplicate(lista, replace):
-    result = list(set(lista))
-    result.extend([replace for i in range(len(lista)-len(list(set(lista))))])
+def concat_arrays(*args):
+    result = []
+    [result.extend(arr)for arr in args]
+    return result
+
+def fake_concat(sep="", *args):
+    return [reduce(lambda a, b: f"{a}{sep}{b}", i) for i in list(zip(*args))]
+
+def replace_duplicate(array_input, replace):
+    result = list(set(array_input))
+    result.extend([replace for i in range(len(array_input)-len(list(set(array_input))))])
     random.shuffle(result)
     return result
 
@@ -18,53 +29,60 @@ def lottery(array_input):
         i * 1000 if round(random.random(),2) < 0.01 else i \
         for i in array_input]
 
+def zfilling(array_input, num_zeros):
+    num = len(str(array_input[0]).split(".")[1]) + 1 if type(array_input[1]) == float  else 0
+    return [str(valor).zfill(num_zeros + num) for valor in array_input]
 
-def default_array(array_input, parser):
-    return [parser(valor) for valor in array_input]
+def handle_num_format(array_input, **kwargs):
+    result = lottery(array_input) if kwargs.get("outlier")==True else array_input
+    result = zfilling(result, kwargs["algsize"]) \
+                                        if type(kwargs.get("algsize")) is int else result
+    return result
 
-def change_case(array_input, **kwargs):
-    return [kwargs["method"](valor) for valor in array_input]
+def handle_string_format(array_input, **kwargs):
+    return replace_duplicate(array_input, np.nan) \
+                if kwargs.get("rm_dupl") else array_input
+    
+def get_interval(start, end, date_format):
+    return datetime.timestamp(datetime.strptime(start, date_format)), \
+            datetime.timestamp(datetime.strptime(end, date_format))
 
-def zfilling(lista, qtd):
-    return [str(valor).zfill(qtd) for valor in lista]
+def expand_array(size=10, base_array=[]):
+    return [base_array[int(i % len(base_array))] for i in range(size)]
 
-def round_array(lista, by):
-    return [round(valor, by) for valor in lista]
+def reduce_array(size=10, base_array=[]):
+    int_array = [int(i) for i in np.linspace(0, size-1, len(base_array))]
+    reduced = [int_array.index(i) for i in range(size)]
+    result = [base_array[i] for i in reduced]
+    return result
 
-######################################################################################################
+def format_date_array(date_array, format):
+    return [datetime.fromtimestamp(i).strftime(format) for i in date_array]
 
-# CORE
-def random_float(size, **kwargs):
-    return [kwargs["min"] + random.random() * (kwargs["max"] - kwargs["min"]) for i in range(size)]
+def spaced_array(interval, num_part=2):
+    return list(np.linspace(interval[0], interval[1], num_part))
 
-def random_float10(size, **kwargs):
-    return [random.random() * (10 ** random.randint(kwargs.get("min"), (kwargs.get("max")))) for i in range(size)]
+def handle_format(format):
+    return format[randint(0, len(format))] if format == list else \
+            format if format == str else "%d-%m-%Y"
+    
+# This method receives an list of names and a list of dicts. Its goal is to concatenate
+# values inside 
+def concat_dict_arrays(arr_names, dicts):
+    res = {i: [] for i in arr_names}
+    for i in dicts:
+        [ res[j].extend(i[j]) for j in res]
+    return res
 
-def random_int(size, **kwargs):
-    return list(np.random.randint(kwargs["min"], kwargs["max"] + 1, size))
+def normalize_param(dic, arg, tipo, default): 
+    return dic[arg] if type(dic.get(arg)) is tipo else default
 
-def random_int10(size, **kwargs):
-    return [int(random.random() * (10 ** random.randint(kwargs.get("min"), (kwargs.get("max")))))
-                for i in range(size)]
+class TestCoreMethods(unittest.TestCase):
 
-def random_float_normal(size, **kwargs):
-    return [np.random.normal(kwargs["mean"], kwargs["std"]) for valor in range(size)] \
-        if (kwargs.get("mean") and kwargs.get("std")) else [0. for valor in range(size)]
-
-
-def random_single_word(size, values):
-    return list(map(lambda x: values[x], randint(0, len(values), size)))
-
-def random_multi_word(size, values):
-    result_array = [[arg[j] for j in randint(0, len(arg), size)] for arg in values]
-    return [reduce(lambda a, b: f"{a} {b}", fullname) for fullname in list(zip(*result_array))]
+    def sort_array(self, array_input):
+        array_input.sort()
+        return array_input
 
 
-def random_alphanum(size, format):
-    return reduce(lambda a, b: [a[i] + b[i] for i in range(len(b))], 
-    np.array([np.array([chr(i) for i in randint(97,123, size)]
-                if i.isalpha() else [chr(i) for i in randint(48,57, size)]) 
-                for i in format], dtype=object))
-                
 if __name__ == '__main__':
     unittest.main()
