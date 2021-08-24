@@ -85,12 +85,17 @@ class TestTableMethods(unittest.TestCase):
         ]
     )
 
-    def test_table_pandas(self):
+    def test_table_pandas_int(self):
         table_pandas = create_table(size=10000, **self.metadata1)
-
         print(table_pandas)
-        print(table_pandas.dtypes)
 
+    def test_table_pandas_float(self):
+        table_pandas = create_table(size=10000, **self.metadata2)
+        print(table_pandas)
+
+    def test_table_pandas_discrete(self):
+        table_pandas = create_table(size=10000, **self.metadata3)
+        print(table_pandas)
     # def test_table(self):
     #     from pyspark.sql import SparkSession
     #     spark = SparkSession.builder.appName("SparkSQL").getOrCreate()

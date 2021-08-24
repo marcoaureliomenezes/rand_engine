@@ -3,8 +3,19 @@ from performance import loop_complexity
 from names import *
 
 def test_core_method_performance(size):
-    loop_complexity(fake_int, min=0, max=10, size=size)
-    loop_complexity(fake_int, min=0, max=1000000, size=size)
+
+    def test_random_simple_int(self):
+        def random_simple_int_output(size):
+            loop_complexity(fake_int, min=0, max=10, size=size)
+            loop_complexity(fake_int, min=0, max=1000000, size=size)
+        random_simple_int_output(self.size)
+
+    def test_random_simple_int(self):
+        def random_simple_int_output(size):
+            loop_complexity(fake_int, min=3, max=6, algnum=True, size=size)
+            loop_complexity(fake_int, min=3, max=12, algnum=True, size=size)
+            loop_complexity(fake_int, min=3, max=24, algnum=True, size=size)
+        random_simple_int_output(self.size)
 
     loop_complexity(fake_int, min=3, max=6, algnum=True, size=size)
     loop_complexity(fake_int, min=3, max=12, algnum=True, size=size)
@@ -35,4 +46,22 @@ def test_core_method_performance(size):
     loop_complexity(fake_alphanum, format="aaaaaaa2222222", size=size)
     loop_complexity(fake_alphanum, format="aaaaaaaaaaaaaaa2222222222222222", size=size)
 
-test_core_method_performance(1000000)
+
+    loop_complexity(fake_date, size=size)
+    loop_complexity(fake_date, start="05/07/2021", end="10/08/2021", format="%d/%m/%Y",
+            size=size)
+
+    loop_complexity(fake_partition, size=size)
+    loop_complexity(fake_partition, start="05/07/2021", end="10/08/2021", format="%d/%m/%Y",
+    num_part=3, size=size)
+
+
+
+    # def test_random_partition(self):
+    #     def random_partition_output(size):
+    #         transform_assign(fake_partition, size=size)
+    #         transform_assign(fake_partition, start="05/07/2021", end="10/08/2021", format="%d/%m/%Y",
+    #         num_part=3, size=size)
+    #     random_partition_output(self.size)
+
+test_core_method_performance(100000)
