@@ -109,8 +109,19 @@ class TestTableMethods(unittest.TestCase):
 if __name__ == '__main__':
     unittest.main()
 
+# TODO:
 
-# Chamada que cria os dados realmente, usando o dicionario metadata descrito acima.
-#Retorna uma tupla, onde o primeiro valor tabela_para_spark[1] são os nomes das colunas e
-# tabela_para_spark[0] são os dados
+#   Criar testes para table no modelo de fake methods
+#   Mudar testes de performance para fora do pacote
+#   
+#   criar maneira de passar tipos e outras configurações para dados pelo pandas
+#   varios metodos para emagrecer utils e handlers (num and something).
+
+#   Criar metodo que calcula numero de linhas criadas por segundo de determinada configuração
+#   de tabela para alimentar spark em tempo
+#   começar a cuspir esses dados por segundo
+
+#   Começar a criar modulo que lê amostra de tamanho de uma tabela e traduz dados em metadados
+
+
  
