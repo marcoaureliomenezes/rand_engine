@@ -32,10 +32,12 @@ def random_multi_word(size, values):
     return [reduce(lambda a, b: f"{a} {b}", fullname) for fullname in list(zip(*result_array))]
 
 def random_alphanum(size, format):
-    return reduce(lambda a, b: [a[i] + b[i] for i in range(len(b))], 
-    np.array([np.array([chr(i) for i in randint(97,123, size)]
-                if i.isalpha() else [chr(i) for i in randint(48,57, size)]) 
-                for i in format], dtype=object))
+    def aux_method(format):
+        ra = randint(0, len(format))
+        res = chr(randint(48,57)) if format[ra].isdigit() else chr(randint(97, 123)) \
+            if format[ra].isalpha() else format[ra]
+        return format[0:ra] + res + format[ra+1:]
+    return  [aux_method(format) for i in range(size)]
 
 
 from performance import transform_assign 

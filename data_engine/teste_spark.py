@@ -3,7 +3,7 @@ import pyspark
 from .table import create_table
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import lit, first, avg, sum, col
-
+# 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
 def multiple_columns_append(df, **kwargs):
     for i in kwargs:
         df = df.withColumn(i, lit(kwargs[i])).alias(i)

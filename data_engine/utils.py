@@ -77,6 +77,9 @@ def concat_dict_arrays(arr_names, dicts):
 def normalize_param(dic, arg, tipo, default): 
     return dic[arg] if type(dic.get(arg)) is tipo else default
 
+def normalize_all_params(dic, *args):
+    return [normalize_param(dic, *i) for i in args]
+    
 class TestCoreMethods(unittest.TestCase):
 
     def sort_array(self, array_input):
