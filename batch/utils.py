@@ -1,13 +1,8 @@
-import random, unittest
+import random, unittest, time
 import numpy as np
 from numpy.random import randint
 from functools import reduce
 from datetime import datetime
-
-def sort_array(array_input):
-        array_input.sort()
-        return array_input
-
 
 def concat_arrays(*args):
     result = []
@@ -74,6 +69,7 @@ def concat_dict_arrays(arr_names, dicts):
         [ res[j].extend(i[j]) for j in res]
     return res
 
+
 def normalize_param(dic, arg, tipo, default): 
     return dic[arg] if type(dic.get(arg)) is tipo else default
 
@@ -85,6 +81,19 @@ class TestCoreMethods(unittest.TestCase):
     def sort_array(self, array_input):
         array_input.sort()
         return array_input
+
+
+
+def loop_complexity(method, *args, **kwargs):
+    start = time.time()
+    res = method(*args, **kwargs)
+    time_elapsed= time.time() - start
+    print(f"Time_elapsed  for method {method.__name__}: {time_elapsed}")
+    return time_elapsed, len(res)
+
+def transform_assign(method, *args, **kwargs):
+    print(f"\nMethod {method.__name__}\n\t{method(*args, **kwargs)}")
+
 
 
 if __name__ == '__main__':
