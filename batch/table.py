@@ -1,5 +1,4 @@
-
-from batch.fake_gen import *
+from fake_gen import *
 import pandas as pd
 
 

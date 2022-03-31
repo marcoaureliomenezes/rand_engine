@@ -1,11 +1,17 @@
-from performance import transform_assign 
-from utils.names import *
-from batch.fake_gen import *
-import unittest
+from utils import transform_assign
+from fake_gen import *
+import unittest, csv
 
 class TestFakeMethodsMethods(unittest.TestCase):
 
     size = 10
+    with open('/home/dadaia/workspace/data_engineering/rand_engine/utils/names.csv') as f:
+        csvreader = csv.reader(f)
+        names = [row[0].split(";")[0] for row in csvreader] 
+    with open('/home/dadaia/workspace/data_engineering/rand_engine/utils/sobrenomes.csv') as f:
+        csvreader = csv.reader(f)
+        sobrenomes = [row[0].split(";")[0] for row in csvreader] 
+
     def test_fake_int(self):
         def fake_int_output(size):
             transform_assign(fake_int, min=0, max=10, size=size)
@@ -29,8 +35,8 @@ class TestFakeMethodsMethods(unittest.TestCase):
         def fake_discrete_output(size):
             transform_assign(fake_discrete, size=size)
             transform_assign(fake_discrete, distinct=["value_1","value_2","value_3"], size=size)
-            transform_assign(fake_discrete, distinct=names, size=size)
-            transform_assign(fake_discrete, distinct=[names, last_names], size=size)
+            transform_assign(fake_discrete, distinct=self.names, size=size)
+            transform_assign(fake_discrete, distinct=[self.names, self.sobrenomes], size=size)
         fake_discrete_output(self.size)
 
     def test_random_alphanum(self):

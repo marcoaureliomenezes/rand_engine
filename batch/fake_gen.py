@@ -1,7 +1,7 @@
 from numpy.random import randint
 from functools import reduce
 from core import *
-from batch.utils import *
+from utils import *
 
 
 def fake_int(size=5, **kwargs):
@@ -21,12 +21,25 @@ def fake_float(size=5, **kwargs):
 
 
 def fake_discrete(size=5, **kwargs):
-    distinct, = normalize_all_params(kwargs, ("distinct", list, [None]))
+    params = kwargs.get("params")
+    distinct,format, key = normalize_all_params(kwargs,
+    ("distinct", list, [None]),
+    ("format", str, None), ("key", str, "x"))
     distinct_elem = distinct[0]
-    result = random_multi_word(size, distinct) if len(distinct) > 0 and type(distinct_elem) is list \
-            else random_single_word(size, distinct)
-    return handle_string_format(result, **kwargs)
+    if (params and format):
+        return fake_discrete_format(size, params, format, key)
+    else:
+        return random_multi_word(size, distinct) if len(distinct) > 0 and type(distinct_elem) is list \
+                else random_single_word(size, distinct)
 
+def fake_discrete_format(size, params, formato, key):
+    methods = {'fake_discrete': fake_discrete, 'fake_int': fake_int, 'fake_float': fake_float}
+    df, counter = (pd.DataFrame(), 0)
+    aux_param = params.copy()
+    for counter in range(len(formato)):
+        df[counter], _ = (methods[aux_param[0]["how"]](size, **aux_param[0]), aux_param.pop(0)) if \
+        formato[counter] == key else (np.array([formato[counter] for i in range(size)]), None)
+    return reduce(lambda a, b: a+b, [df[i] for i in df.columns]).values
 
 def fake_alphanum(size=5, **kwargs):
     format, distinct, sep = normalize_all_params(kwargs,
