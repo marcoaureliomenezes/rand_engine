@@ -7,20 +7,21 @@ with open(file="README.md", mode="r") as readme_handle:
 
 setup(
 
-    name="data_engine",
+    name="rand_engine",
     author = "Marco Menezes",
     author_email = "marcoaurelioreislima@gmail.com",
 
-    version = "1.0.1",
+    version = "1.0.2",
     description = "Engine to create random data with different formats, to use with spark and others.",
     long_description = long_description,
     url = "https://github.com/marcoaureliomenezes/data-engine",
 
     install_requires = [
-        "numpy==1.20.3"
+        "numpy==1.20.3",
+        "pandas==1.4.1"
     ],
 
-    keywords = ["data-engine, data creation, tabular data for bigdata"],
+    keywords = ["random-data, data creation, random data, random data for data engineers"],
 
     packages = find_packages(),
 

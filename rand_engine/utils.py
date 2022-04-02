@@ -1,3 +1,4 @@
+import csv, time, sys
 import random, unittest, time
 import numpy as np
 from numpy.random import randint
@@ -83,7 +84,6 @@ class TestCoreMethods(unittest.TestCase):
         return array_input
 
 
-
 def loop_complexity(method, *args, **kwargs):
     start = time.time()
     res = method(*args, **kwargs)
@@ -93,6 +93,23 @@ def loop_complexity(method, *args, **kwargs):
 
 def transform_assign(method, *args, **kwargs):
     print(f"\nMethod {method.__name__}\n\t{method(*args, **kwargs)}")
+
+
+def read_column_csv(path, sep, index_col):
+    with open(path) as f:
+        csvreader = csv.reader(f)
+        return [row[0].split(sep)[index_col] for row in csvreader]
+
+
+def performance(original_function):
+    def wrapper_function(*args, **kwargs):
+        start = time.time()
+        result = original_function(*args, **kwargs)
+        print(f"length: {len(result)}")
+        print(f"size in bytes: {sys.getsizeof(result)}")
+        print(f"time spent: {time.time() - start}")
+        return result
+    return wrapper_function
 
 
 

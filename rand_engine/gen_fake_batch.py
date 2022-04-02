@@ -1,7 +1,8 @@
 from numpy.random import randint
 from functools import reduce
-from core import *
-from utils import *
+from .core_batch import *
+from .utils import normalize_all_params, handle_num_format, fake_concat, handle_string_format, get_interval, format_date_array
+import pandas as pd
 
 
 def fake_int(size=5, **kwargs):
@@ -56,14 +57,18 @@ def fake_date(size=5, **kwargs):
     int_array = randint(interval[0], interval[1], size)
     return format_date_array(int_array, format)
 
-def fake_partition(size=5, **kwargs):
-    start, end, format, num_part = normalize_all_params(kwargs, ("start", str, "01-01-2020"), ("end", str, "31-12-2020"), ("format", str, "%d-%m-%Y"), ("num_part", int, 2))
-    interval = get_interval(start, end, format)  
-    times = spaced_array(interval, num_part)
-    result = reduce_array(size, base_array=times) if num_part >= size \
-        else expand_array(size=size, base_array=times)
-    result.sort()
-    return format_date_array(result, format)
+
+##################################################################################################
+
+def fake_data(size, **kwargs):
+    return globals()[kwargs["method"]](size=size, **kwargs) \
+        if kwargs.get("method") else [None for i in range(size)]
+
+# This method creates a pandas random dataframe as you pass metadata to it.
+def create_table(size=5, **kwargs):
+    names, data = (kwargs["names"], kwargs["data"])
+    return pd.DataFrame({names[i]: fake_data(size, **data[i]) for i in range(len(data))})
+
 
 
 if __name__ == '__main__':
