@@ -5,6 +5,4 @@ dist
 .idea
 venv
 **.vscode/
-lixo.py
 **__pycache__
-**/tests
