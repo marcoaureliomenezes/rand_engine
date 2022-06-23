@@ -1,6 +1,7 @@
-import csv, time, sys
+import csv, time, sys, builtins
 import random, unittest, time
 import numpy as np
+
 from numpy.random import randint
 from functools import reduce
 from datetime import datetime
@@ -31,11 +32,18 @@ def zfilling(array_input, num_zeros):
 
 def handle_num_format(array_input, **kwargs):
     result = lottery(array_input) if kwargs.get("outlier")==True else array_input
+    result = [i * kwargs.get("factor", 1)  for i in result]
     result = zfilling(result, kwargs["algsize"]) \
                                         if type(kwargs.get("algsize")) is int else result
     return result
 
-def handle_string_format(array_input, **kwargs):
+def handle_datatype_format(array_input, **kwargs):
+    if kwargs.get("data_type") in ['str', 'int', 'float'] :
+        array_input = [getattr(builtins, kwargs.get("data_type"))(i) for i in array_input]
+    return array_input
+
+
+def handle_string_format(array_input, **kwargs): 
     return replace_duplicate(array_input, np.nan) \
                 if kwargs.get("rm_dupl") else array_input
     
@@ -76,12 +84,6 @@ def normalize_param(dic, arg, tipo, default):
 
 def normalize_all_params(dic, *args):
     return [normalize_param(dic, *i) for i in args]
-    
-class TestCoreMethods(unittest.TestCase):
-
-    def sort_array(self, array_input):
-        array_input.sort()
-        return array_input
 
 
 def loop_complexity(method, *args, **kwargs):

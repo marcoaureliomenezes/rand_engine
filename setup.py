@@ -11,10 +11,10 @@ setup(
     author = "Marco Menezes",
     author_email = "marcoaurelioreislima@gmail.com",
 
-    version = "1.0.2",
+    version = "0.0.2",
     description = "Engine to create random data with different formats, to use with spark and others.",
     long_description = long_description,
-    url = "https://github.com/marcoaureliomenezes/data-engine",
+    url = "https://github.com/marcoaureliomenezes/rand_engine",
 
     install_requires = [
         "numpy==1.20.3",
