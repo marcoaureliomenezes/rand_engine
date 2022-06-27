@@ -1,6 +1,7 @@
+from sqlalchemy import distinct
 from core_batch import *
 from templates import *
-from utils import loop_complexity
+from utils import distinct_proportion
 import unittest
 
 
@@ -81,25 +82,27 @@ class TestCoreMethods(unittest.TestCase):
 
 
     def test_create_table(self):
-        metadata_1 = {
-                "nomes": dict(method="fake_discrete", formato="x x", key="x", 
-                    params=[
-                        {'how': "fake_discrete", 'distinct': nomes},
-                        {'how': "fake_discrete", 'distinct': sobrenomes}
-                ]),
-                "email": template_batch('email'),
-                "cpf": template_batch('cpf'),
-                "endereco": template_batch('endereco'),
-                'idade': dict(method='fake_ints', min=0, max=100),
-                'multi_idade': dict(method='fake_ints', min=0, max=100, factor = 10),
-                "saldo": dict(method='fake_floats', min=0, max=100),
-                "saldo_inicial": dict(method='fake_floats', min=0, max=100, factor = 100),
-                "data_entrada": dict(method='fake_dates', start="01-01-2010", end="31-12-2020", formato="%d-%m-%Y")
-        }
-        table = create_table(10, metadata_1)
-        print(table)
-       
-        loop_complexity(create_table, size=10**6, metadata=metadata_1)
+        metadata = dict(
+            nome = dict(method="fake_discrete", formato="x x", key="x", 
+                params=[
+                    {'how': "fake_discrete", 'distinct': ["marco", "jose", "ruth"]},
+                    {'how': "fake_discrete", 'distinct': ["pereira", "cardoso", "souza"]}
+            ]),
+            cpf= dict(formato="x.x.x-x", sep="x", 
+                params=[
+                    {"how": "gen_str_num", 'params': {"length": 3}},
+                    {"how": "gen_str_num", 'params': {"length": 3}},
+                    {"how": "gen_str_num", 'params': {"length": 3}},
+                    {"how": "gen_str_num", 'params': {"length": 2}}
+            ]),
+            possui_conta_corrente =  dict(method="fake_discrete", distinct=distinct_proportion(prop_false=0, prop_true=1)),
+            possui_poupanca =  dict(method="fake_discrete", distinct=distinct_proportion(prop_false=3, prop_true=2)),
+            idade = dict(method='fake_ints', min=0, max=100),
+            saldo = dict(method='fake_floats', min=0, max=100),
+            data_entrada = dict(method='fake_dates', start="01-01-2010",end="31-12-2020", formato="%d-%m-%Y")
+        )
+
+        table_data = create_table(10**6, metadata=metadata)
 
 if __name__ == '__main__':
     unittest.main()

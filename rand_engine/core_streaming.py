@@ -2,6 +2,7 @@ from random import randint
 from datetime import timedelta, datetime as dt
 import time, random
 import numpy as np
+from templates import template_streaming
 
 
 
@@ -69,4 +70,11 @@ def create_message(**kwargs):
 
 
 if __name__ == '__main__':
-    pass
+    for i in range(10):
+        msg = dict(
+            email = gen_discrete(**template_streaming('email')),
+            cpf = gen_discrete(**template_streaming('cpf')),
+            endereco = gen_discrete(**template_streaming('endereco')),
+            idade = gen_int(18, 100),
+        )
+        print(msg)

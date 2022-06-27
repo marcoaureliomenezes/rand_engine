@@ -62,6 +62,5 @@ class TestCoreMethods(unittest.TestCase):
         real_result = gen_int(min=expected_min, max=expected_max)
 
 
-
 if __name__ == '__main__':
     unittest.main()

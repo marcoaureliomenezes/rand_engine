@@ -1,11 +1,10 @@
 import numpy as np
+import time
 from numpy.random import randint
 from functools import reduce
-from rand_engine.templates import template_batch, nomes, sobrenomes
 from rand_engine.utils import (
                     normalize_all_params,
                     handle_num_format,
-                    fake_concat,
                     handle_datatype_format,
                     get_interval,
                     format_date_array
@@ -14,6 +13,9 @@ from rand_engine.utils import (
 import pandas as pd
 
 #################################   INT METHODS    ###########################################
+def distinct_proportion(prop_false, prop_true):
+    return [False for i in range(prop_false)] + [True for i in range(prop_true)]
+
 
 def gen_ints(min, max, size):
     return list(np.random.randint(min, max + 1, size))
@@ -113,19 +115,28 @@ def create_table(size, metadata):
 ##################################################################################################
 
 if __name__ == '__main__':
-    metadata_1 = {
-            "nomes": dict(method="fake_discrete", formato="x x", key="x", 
-                params=[
-                    {'how': "fake_discrete", 'distinct': nomes},
-                    {'how': "fake_discrete", 'distinct': sobrenomes}
-            ]),
-            "email": template_batch('email'),
-            "cpf": template_batch('cpf'),
-            "endereco": template_batch('endereco'),
-            'idade': dict(method='fake_ints', min=0, max=100),
-            'multi_idade': dict(method='fake_ints', min=0, max=100, factor = 10),
-            "saldo": dict(method='fake_floats', min=0, max=100),
-            "saldo_inicial": dict(method='fake_floats', min=0, max=100, round=0, factor = 100),
-            "data_entrada": dict(method='fake_dates', start="01-01-2010", end="31-12-2020", formato="%d-%m-%Y")
-    }
-    print(create_table(5, metadata_1))
+
+    metadata = dict(
+        nome = dict(method="fake_discrete", formato="x x", key="x", 
+            params=[
+                {'how': "fake_discrete", 'distinct': ["marco", "jose", "pedro" "ruth", "marta", "rosa"]},
+                {'how': "fake_discrete", 'distinct': ["pereira", "cardoso", "souza"]}
+        ]),
+        cpf = dict(method="fake_discrete", formato="x.x.x-x", key="x",
+            params=[
+                {"how": "fake_ints", "min": 0, "max": 999, "algsize": 3},
+                {"how": "fake_ints", "min": 0, "max": 999, "algsize": 3},
+                {"how": "fake_ints", "min": 0, "max": 999, "algsize": 3},
+                {"how": "fake_ints", "min": 0, "max": 99, "algsize": 2}
+        ]),
+        possui_conta_corrente =  dict(method="fake_discrete", distinct=distinct_proportion(prop_false=0, prop_true=1)),
+        possui_poupanca =  dict(method="fake_discrete", distinct=distinct_proportion(prop_false=3, prop_true=2)),
+        idade = dict(method='fake_ints', min=0, max=100),
+        saldo = dict(method='fake_floats', min=0, max=100),
+        data_entrada = dict(method='fake_dates', start="01-01-2010",end="31-12-2020", formato="%d-%m-%Y")
+    )
+    start = time.time()
+    table_data = create_table(10**6, metadata=metadata)
+    elapsed_time = time.time() - start
+    print(table_data)
+    print(f"time spent: {elapsed_time}")

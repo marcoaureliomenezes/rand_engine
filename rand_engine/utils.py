@@ -103,16 +103,6 @@ def read_column_csv(path, sep, index_col):
         return [row[0].split(sep)[index_col] for row in csvreader]
 
 
-def performance(original_function):
-    def wrapper_function(*args, **kwargs):
-        start = time.time()
-        result = original_function(*args, **kwargs)
-        print(f"length: {len(result)}")
-        print(f"size in bytes: {sys.getsizeof(result)}")
-        print(f"time spent: {time.time() - start}")
-        return result
-    return wrapper_function
-
 
 
 if __name__ == '__main__':

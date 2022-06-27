@@ -68,6 +68,15 @@ def template_streaming(tipo):
                 {"how": "gen_str_num", 'params': {"length": 4}},
                 {"how": "gen_distinct", 'params': {"distinct": email_providers}}
             ])
+    endereco = dict(formato="x x, nº x. Bairro x, x", sep="x",
+            params=[
+                {"how": "gen_distinct", 'params': {"distinct": enderecos["tipos_logradouro"]}},
+                {"how": "gen_distinct", 'params': {"distinct": enderecos["nomes_logradouro"]}},
+                {"how": "gen_str_num", 'params': {"length": 4}},
+                {"how": "gen_distinct", 'params': {"distinct": enderecos["bairros"]}},
+                {"how": "gen_distinct", 'params': {"distinct": enderecos["cidades"]}}
+    ])
+        
     return locals().get(tipo)
 
 
