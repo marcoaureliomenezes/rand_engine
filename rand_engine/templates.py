@@ -33,48 +33,44 @@ enderecos = dict(
     bairros = ["milagres", "esperança", "centro", "jardim europa", "jardim primavera",
     "boa vista", "piedade", "consolação", "vila pelicano", "bela vista", "jardim dos prazeres"],
 
-    cidades = ["teixeiras - MG", "inhauma - MG", "cachoeira da prata - MG", "unaí - MG",
-        "fortuna de minas - MG", "paraopeba - MG", "caetanopolis - MG", "pequi - MG"
-        "sete lagoas - MG", "betim - MG", "são carlos - SP", "araraquara - SP",
-        "rio claro - SP", "sertãozinho - SP", "guarapari - ES", "salvador - BA",
+    cidades = ["salvador - BA", "belo horizonte - MG", 
         "são paulo - SP", "recife - PE", "rio de janeiro - RJ", "cabo frio - RJ",
         "cascavél - PR", "curitiba - PR", "florianópolis - SC", "porto alegre - RS",
-        "pelotas - RS", "londrina - PR", "maringá - PR", "campinas - SP", "ibaté - SP"]
+        "campinas - SP", "ibaté - SP"]
 )
 
 
 ######################################    TEMPLATE STREAMING    ########################################
 
 def template_streaming(tipo):
-    cpf = dict(formato="x.x.x-x", sep="x", 
-            params=[
-                {"how": "gen_str_num", 'params': {"length": 3}},
-                {"how": "gen_str_num", 'params': {"length": 3}},
-                {"how": "gen_str_num", 'params': {"length": 3}},
-                {"how": "gen_str_num", 'params': {"length": 2}}])
+    cpf = dict(formato="x.x.x-x", key="x", 
+            parms=[
+                {"how": "gen_str_num", 'parms': {"length": 3}},
+                {"how": "gen_str_num", 'parms': {"length": 3}},
+                {"how": "gen_str_num", 'parms': {"length": 3}},
+                {"how": "gen_str_num", 'parms': {"length": 2}}])
 
-    cnpj = dict(formato="x.x.x/0001-x", sep="x", 
-            params=[
-                {"how": "gen_str_num", 'params': {"length": 2}},
-                {"how": "gen_str_num", 'params': {"length": 3}},
-                {"how": "gen_str_num", 'params': {"length": 3}},
-                {"how": "gen_str_num", 'params': {"length": 2}}])
+    cnpj = dict(formato="x.x.x/0001-x", key="x", 
+            parms=[
+                {"how": "gen_str_num", 'parms': {"length": 2}},
+                {"how": "gen_str_num", 'parms': {"length": 3}},
+                {"how": "gen_str_num", 'parms': {"length": 3}},
+                {"how": "gen_str_num", 'parms': {"length": 2}}])
 
 
-    email = dict(formato="x_xx@x", sep="x", 
-            params=[
-                {"how": "gen_distinct", 'params': {"distinct": nomes}},
-                {"how": "gen_distinct", 'params': {"distinct": sobrenomes}},
-                {"how": "gen_str_num", 'params': {"length": 4}},
-                {"how": "gen_distinct", 'params': {"distinct": email_providers}}
+    email = dict(formato="_x@x", key="x", 
+            parms=[
+                {"how": "gen_str_num", 'parms': {"length": 4}},
+                {"how": "gen_distinct", 'parms': {"distinct": email_providers}}
             ])
-    endereco = dict(formato="x x, nº x. Bairro x, x", sep="x",
-            params=[
-                {"how": "gen_distinct", 'params': {"distinct": enderecos["tipos_logradouro"]}},
-                {"how": "gen_distinct", 'params': {"distinct": enderecos["nomes_logradouro"]}},
-                {"how": "gen_str_num", 'params': {"length": 4}},
-                {"how": "gen_distinct", 'params': {"distinct": enderecos["bairros"]}},
-                {"how": "gen_distinct", 'params': {"distinct": enderecos["cidades"]}}
+
+    endereco = dict(formato="x x, nº x. Bairro x, x", key="x",
+            parms=[
+                {"how": "gen_distinct", 'parms': {"distinct": enderecos["tipos_logradouro"]}},
+                {"how": "gen_distinct", 'parms': {"distinct": enderecos["nomes_logradouro"]}},
+                {"how": "gen_str_num", 'parms': {"length": 4}},
+                {"how": "gen_distinct", 'parms': {"distinct": enderecos["bairros"]}},
+                {"how": "gen_distinct", 'parms': {"distinct": enderecos["cidades"]}}
     ])
         
     return locals().get(tipo)
@@ -82,32 +78,32 @@ def template_streaming(tipo):
 
 def template_batch(tipo):
     email = dict(method="fake_discrete", formato="x_xx@x", key="x", 
-            params=[
+            parms=[
                 {'how': "fake_discrete", 'distinct': nomes},
                 {'how': "fake_discrete", 'distinct': sobrenomes},
-                {'how': "fake_ints", 'min': 12, 'max':2000, 'algsize': 4},
+                {'how': "fake_ints", 'min': 12, 'max':2000, 'zfill': 4},
                 {'how':  "fake_discrete", 'distinct': email_providers}
             ]
     )
     
     cpf = dict(method="fake_discrete", formato="x.x.x-x", key="x",
-            params=[
-                {"how": "fake_ints", "min": 0, "max": 999, "algsize": 3},
-                {"how": "fake_ints", "min": 0, "max": 999, "algsize": 3},
-                {"how": "fake_ints", "min": 0, "max": 999, "algsize": 3},
-                {"how": "fake_ints", "min": 0, "max": 99, "algsize": 2}
+            parms=[
+                {"how": "fake_ints", "min": 0, "max": 999, "zfill": 3},
+                {"how": "fake_ints", "min": 0, "max": 999, "zfill": 3},
+                {"how": "fake_ints", "min": 0, "max": 999, "zfill": 3},
+                {"how": "fake_ints", "min": 0, "max": 99, "zfill": 2}
     ])
 
     cnpj = dict(method="fake_discrete", formato="x.x.x/0001-x", key="x",
-            params=[
-                {"how": "fake_ints", "min": 0, "max": 99, "algsize": 2},
-                {"how": "fake_ints", "min": 0, "max": 999, "algsize": 3},
-                {"how": "fake_ints", "min": 0, "max": 999, "algsize": 3},
-                {"how": "fake_ints", "min": 0, "max": 99, "algsize": 2},
+            parms=[
+                {"how": "fake_ints", "min": 0, "max": 99, "zfill": 2},
+                {"how": "fake_ints", "min": 0, "max": 999, "zfill": 3},
+                {"how": "fake_ints", "min": 0, "max": 999, "zfill": 3},
+                {"how": "fake_ints", "min": 0, "max": 99, "zfill": 2},
     ])
 
     endereco = dict(method="fake_discrete", formato="x x, nº x. Bairro x, x", key="x", 
-            params=[
+            parms=[
                 {'how': "fake_discrete", 'distinct': enderecos["tipos_logradouro"]},
                 {'how': "fake_discrete", 'distinct': enderecos["nomes_logradouro"]},
                 {'how': "fake_ints", 'min': 1, 'max':2000, 'data_type': "str"},
@@ -115,6 +111,14 @@ def template_batch(tipo):
                 {'how': "fake_discrete", 'distinct': enderecos["cidades"]},
             ]
     )
+
+    email = dict(method="fake_discrete", formato="x@x", key="x", 
+            parms=[
+                {'how': "fake_discrete", 'distinct': enderecos["tipos_logradouro"]},
+                {'how': "fake_discrete", 'distinct': enderecos["nomes_logradouro"]},
+            ]
+    )
+
     return locals().get(tipo)
 
 

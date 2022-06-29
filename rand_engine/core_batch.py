@@ -2,13 +2,9 @@ import numpy as np
 import time
 from numpy.random import randint
 from functools import reduce
-from rand_engine.utils import (
-                    normalize_all_params,
-                    handle_num_format,
-                    handle_datatype_format,
-                    get_interval,
-                    format_date_array
-)
+from templates import template_batch
+from utils import normalize_all_params, handle_num_format, handle_datatype_format, \
+                                                    get_interval, format_date_array
 
 import pandas as pd
 
@@ -28,15 +24,10 @@ def gen_ints10(min, max, size):
 
 
 def fake_ints(size=5, **kwargs):
-    min, max, algnum = normalize_all_params(kwargs,
-                    ("min", int, 0), ("max", int, 10), ("algnum", bool, False))
+    min, max, algnum, zfill = (kwargs.get(arg) for arg in ("min", "max", "algnum", "zfill"))
     result = gen_ints(min, max, size) if not algnum else gen_ints10(min, max, size)
-    result = handle_datatype_format(result, **kwargs)
-    min, max, round, algnum = normalize_all_params(kwargs,
-        ("min", int, 0), ("max", int, 10),
-        ("round", int, 2), ("algnum", bool, False))
-
-    return handle_num_format(result, **kwargs)
+    return [str(valor).zfill(zfill) for valor in result] if zfill else result
+    
 
 
     # print(min(real_result), max(real_result), len(real_result))
@@ -62,23 +53,36 @@ def fake_floats(size=5, **kwargs):
     return handle_num_format(result, **kwargs)
 
 
-#################################    FLOAT METHODS    ###########################################
-
-
+###############################    DISCRETE METHODS    ####################################
 def gen_distincts(size, distinct):
     return list(map(lambda x: distinct[x], randint(0, len(distinct), size)))
 
 
+def handle_proportions(distinct_prop, precision):
+    return [ key for key, value in distinct_prop.items() for i in range(value * precision)]
+
+
+def handle_relationships(distincts, sep=""):
+    return [f"{j}{sep}{i}" for j in distincts for i in distincts[j]]
+
+
+def handle_distinct(distincts, sep, precision):
+    cond_dict, cond_list = (type(distincts) == dict, type(distincts) == list)
+    if cond_dict:
+        cond_value = type(list(distincts.values())[0])
+        if cond_value == list: return handle_relationships(distincts, sep)
+        elif cond_value == int: return handle_proportions(distincts, precision)
+        else: return [None]
+    elif cond_list: return distincts
+    else: return [None]
+
+
 def fake_discrete(size=5, **kwargs):
-    params, formato = (kwargs.get("params"), kwargs.get("formato"))
-    distinct,format, key = normalize_all_params(kwargs, 
-                                ("distinct", list, [None]),
-                                ("formato", str, None),
-                                ("key", str, "x"))
-    if (params and formato):
-        return fake_discrete_format(size, params, format, key)
-    else:
-        return gen_distincts(size, distinct)
+    parms, formato, key, distincts = [kwargs.get(parm) for parm in ('parms','formato','key','distinct')]
+    distincts = handle_distinct(distincts, sep=kwargs.get("sep", ""), precision=kwargs.get("precision",1))
+    if (parms and formato and key): return fake_discrete_format(size, parms, formato, key)
+    else: return gen_distincts(size, distincts)
+ 
 
 def fake_discrete_format(size, params, formato, key):
     df, counter = (pd.DataFrame(), 0)
@@ -114,29 +118,24 @@ def create_table(size, metadata):
 
 ##################################################################################################
 
+
 if __name__ == '__main__':
 
+ 
     metadata = dict(
-        nome = dict(method="fake_discrete", formato="x x", key="x", 
-            params=[
-                {'how': "fake_discrete", 'distinct': ["marco", "jose", "pedro" "ruth", "marta", "rosa"]},
-                {'how': "fake_discrete", 'distinct': ["pereira", "cardoso", "souza"]}
-        ]),
-        cpf = dict(method="fake_discrete", formato="x.x.x-x", key="x",
-            params=[
-                {"how": "fake_ints", "min": 0, "max": 999, "algsize": 3},
-                {"how": "fake_ints", "min": 0, "max": 999, "algsize": 3},
-                {"how": "fake_ints", "min": 0, "max": 999, "algsize": 3},
-                {"how": "fake_ints", "min": 0, "max": 99, "algsize": 2}
-        ]),
-        possui_conta_corrente =  dict(method="fake_discrete", distinct=distinct_proportion(prop_false=0, prop_true=1)),
-        possui_poupanca =  dict(method="fake_discrete", distinct=distinct_proportion(prop_false=3, prop_true=2)),
-        idade = dict(method='fake_ints', min=0, max=100),
-        saldo = dict(method='fake_floats', min=0, max=100),
-        data_entrada = dict(method='fake_dates', start="01-01-2010",end="31-12-2020", formato="%d-%m-%Y")
-    )
+        nome = dict(method="fake_discrete", distinct=["OPC", "SWP"]),
+        cnpj= template_batch("cnpj"),
+        tipo_emp = dict(method="fake_discrete", distinct={"MEI": 100,"ME":23, "EPP": 12, "EMP": 13, "EGP": 1}),
+        agencia = dict(method="fake_ints", min=0, max=10**7, zfill=8),
+        # tipo_categoria = dict(
+        #     method = "fake_discrete", sep="@@@",
+        #     distinct={"OPC": ["C_OPC","V_OPC"], "SWP": ["C_SWP", "V_SWP"]}
+        # ),
+        
+        )
+           
     start = time.time()
-    table_data = create_table(10**6, metadata=metadata)
+    table_data = create_table(10, metadata=metadata)
     elapsed_time = time.time() - start
     print(table_data)
     print(f"time spent: {elapsed_time}")
