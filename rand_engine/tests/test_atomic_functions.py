@@ -1,7 +1,7 @@
-import numpy as np
 import pytest
-import time
-from rand_engine.bulk.atomic_functions import gen_ints, gen_ints10, gen_distincts_typed, gen_distinct_untyped_baseline, gen_distincts_untyped, fake_dates
+import numpy as np
+
+from rand_engine.bulk.atomic_functions import gen_ints, gen_ints10, fake_dates
 from datetime import datetime as dt
 
 
@@ -64,30 +64,3 @@ def test_gen_dates():
   assert min(real_result) >= dt.strptime(kwargs["start"], kwargs["format"])
   assert max(real_result) <= dt.strptime(kwargs["end"], kwargs["format"])
   assert type(real_result) == np.ndarray
-
-
-def test_gen_distincts():
-  kwargs = dict(size=10**7, distinct=["value1", "value2", True, 1, 1.0])
-  
-  start_time = time.time()
-  real_result = gen_distinct_untyped_baseline(**kwargs)
-  elapsed_time = time.time() - start_time
-  del real_result
-  print(f"Elapsed time Baseline: {elapsed_time}")
-  start_time = time.time()
-  real_result = gen_distincts_untyped(**kwargs)
-  elapsed_time = time.time() - start_time
-  print(f"Elapsed time Benchmark: {elapsed_time}")
-
-
-def test_gen_distincts_same_type():
-  kwargs = dict(size=10**7, distinct=["value1", "value2"])
-  start_time = time.time()
-  real_result = gen_distinct_untyped_baseline(**kwargs)
-  elapsed_time = time.time() - start_time
-  del real_result
-  print(f"Elapsed time Baseline: {elapsed_time}")
-  start_time = time.time()
-  real_result = gen_distincts_untyped(**kwargs)
-  elapsed_time = time.time() - start_time
-  print(f"Elapsed time Benchmark: {elapsed_time}")

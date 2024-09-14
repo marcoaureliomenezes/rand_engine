@@ -30,10 +30,10 @@ def gen_floats10(min, max, size, round=2):
 def gen_distincts_untyped(size, distinct):
     return list(map(lambda x: distinct[x], np.random.randint(0, len(distinct), size)))
 
-def gen_distinct_untyped_baseline(size, distinct):
+def gen_distincts_untyped_baseline(size, distinct):
     return [random.choice(distinct) for i in range(size)]
 
-def gen_distinct_typed(size, distinct):
+def gen_distincts_typed(size, distinct):
     return np.vectorize(lambda x: distinct[x])(np.random.randint(0, len(distinct), size))
 
 def gen_distincts_typed_baseline(size, distinct):
