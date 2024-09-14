@@ -9,39 +9,16 @@ from utils import normalize_all_params, handle_num_format, handle_datatype_forma
 import pandas as pd
 
 #################################   INT METHODS    ###########################################
-def distinct_proportion(prop_false, prop_true):
-    return [False for i in range(prop_false)] + [True for i in range(prop_true)]
 
-
-def gen_ints(min, max, size):
-    return list(np.random.randint(min, max + 1, size))
-
-
-def gen_ints10(min, max, size):
-    size_arr = np.random.randint(min, max, size)
-    rand_floats = np.random.uniform(low=0, high=10, size=size)
-    return np.multiply(rand_floats, 10**size_arr).astype("int")
-
-
-def fake_ints(size=5, **kwargs):
-    min, max, algnum, zfill = (kwargs.get(arg) for arg in ("min", "max", "algnum", "zfill"))
-    result = gen_ints(min, max, size) if not algnum else gen_ints10(min, max, size)
-    return [str(valor).zfill(zfill) for valor in result] if zfill else result
     
 
 
     # print(min(real_result), max(real_result), len(real_result))
 #################################    FLOAT METHODS    ###########################################
-
-def gen_floats(min, max, size, round=2):
-    sig_part = np.random.randint(min, max, size)
-    decimal = np.random.randint(0, 10 ** round, size)
-    return sig_part + (decimal / 10 ** round) if round > 0 else sig_part
-
-def gen_floats10(min, max, size, round=2):
-    sig_part = gen_ints10(min, max, size)
-    decimal = np.random.randint(0, 10 ** round, size)
-    return sig_part + (decimal / 10 ** round) if round > 0 else sig_part
+def fake_ints(size=5, **kwargs):
+    min, max, algnum, zfill = (kwargs.get(arg) for arg in ("min", "max", "algnum", "zfill"))
+    result = gen_ints(min, max, size) if not algnum else gen_ints10(min, max, size)
+    return [str(valor).zfill(zfill) for valor in result] if zfill else result
 
 
 def fake_floats(size=5, **kwargs):
