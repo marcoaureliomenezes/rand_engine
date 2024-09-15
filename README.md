@@ -1,5 +1,8 @@
 # Pacote Rand-Engine
 
+
+
+
 Esse projeto visa a construção e uma ferramenta para geração de dados aleatórios, a partir de um schema e parâmetros de entrada. Sua aplicabilidade é voltada para geração de dados para estudo e testes de performance para ferramentas de Engenharia de Dados e Bigdata, auxiliando desenvolvedores em testes de funcionalidades ou regra de transformações de ETL com dados mocados.
  
 Em sua construção foram adotadas as melhores práticas, de modo a reduzir complexidades e aumentar a velocidade na geração dos dados aleatórios.

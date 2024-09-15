@@ -1,7 +1,7 @@
 import time
 
 
-from rand_engine.bulk.atomic_functions import (
+from rand_engine.bulk.core_numeric import (
     gen_distincts_untyped,
     gen_distincts_typed,
     gen_distincts_untyped_baseline,

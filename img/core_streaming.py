@@ -2,7 +2,7 @@ from random import randint
 from datetime import timedelta, datetime as dt
 import time, random
 import numpy as np
-from templates import template_streaming
+from rand_engine.bulk.templates import template_streaming
 
 
 
