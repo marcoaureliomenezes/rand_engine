@@ -16,7 +16,7 @@ class CoreDistincts:
     
   @classmethod
   def gen_distincts_untyped(self, size: int, distinct: List[Any]) -> Iterator:
-    return map(lambda x: distinct[x], np.random.randint(0, len(distinct), size))
+    return list(map(lambda x: distinct[x], np.random.randint(0, len(distinct), size)))
   
   @classmethod
   def gen_complex_distincts(self, size: int, pattern="x.x.x-x", replacement="x", templates=[]):
@@ -28,7 +28,7 @@ class CoreDistincts:
         counter += 1
       else:
         list_of_lists.append(np.array([pattern[replacer_cursor] for i in range(size)]))
-    return reduce(lambda a, b: a+b, list_of_lists)
+    return reduce(lambda a, b: a.astype('str') + b.astype('str'), list_of_lists)
   
 
   
