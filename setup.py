@@ -17,8 +17,9 @@ setup(
     url = "https://github.com/marcoaureliomenezes/rand_engine",
 
     install_requires = [
-        "numpy==1.20.3",
-        "pandas==1.4.1"
+        "numpy==2.1.1",
+        "pandas==2.2.2",
+        "faker==28.4.1"
     ],
 
     keywords = ["random-data, data creation, random data, random data for data engineers"],
