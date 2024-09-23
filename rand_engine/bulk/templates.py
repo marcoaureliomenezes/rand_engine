@@ -1,5 +1,5 @@
-from core_distincts import CoreDistincts
-from core_numeric import CoreNumeric
+from rand_engine.bulk.core_distincts import CoreDistincts
+from rand_engine.bulk.core_numeric import CoreNumeric
 
 
 class RandEngineTemplates:
@@ -105,13 +105,3 @@ if __name__ == '__main__':
   from faker import Faker
   fake = Faker(locale="pt_BR")
   rand_engine = RandEngineTemplates(fake)
-  print(rand_engine.gen_first_names(10))
-  print(rand_engine.gen_last_names(10))
-  #print(rand_engine.gen_email_providers(10))
-
-  print(fake.company())
-  print(fake.currency())
-  print(fake.cellphone_number())
-  print(fake.domain_name())
-  print(fake.city())
-  print(fake.state_abbr())

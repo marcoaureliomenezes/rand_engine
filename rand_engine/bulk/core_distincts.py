@@ -1,13 +1,9 @@
-import random
 from functools import reduce
-from typing import List, Any, Generator, Iterator
-from core_numeric import CoreNumeric
+from typing import List, Any, Iterator
 import numpy as np
-import pandas as pd
 
 
 class CoreDistincts:
-    
     
   @classmethod
   def gen_distincts_typed(self, size: int, distinct: List[Any]) -> np.ndarray:
@@ -33,52 +29,14 @@ class CoreDistincts:
 
   
 if __name__ == '__main__':
-  res = CoreDistincts.gen_complex_distincts(
-    size=10**1, 
-    pattern="x.x.x-x", 
-    replacement="x", 
-    templates=[
-      {"method": CoreNumeric.gen_ints_zfilled, "parms": dict(length=3)},
-      {"method": CoreNumeric.gen_ints_zfilled, "parms": dict(length=3)},
-      {"method": CoreNumeric.gen_ints_zfilled, "parms": dict(length=3)},
-      {"method": CoreNumeric.gen_ints_zfilled, "parms": dict(length=2)}
-    ])
+  pass
 
-  res_2 = CoreDistincts.gen_complex_distincts(
-    size=10**1,
-    pattern="x.x.x/0001-x",
-    replacement="x",
-    templates=[
-      {"method": CoreNumeric.gen_ints_zfilled, "parms": dict(length=2)},
-      {"method": CoreNumeric.gen_ints_zfilled, "parms": dict(length=3)},
-      {"method": CoreNumeric.gen_ints_zfilled, "parms": dict(length=3)},
-      {"method": CoreNumeric.gen_ints_zfilled, "parms": dict(length=2)}
-    ])
+# def replace_duplicate(array_input, replace):
+#     result = list(set(array_input))
+#     result.extend([replace for i in range(len(array_input)-len(list(set(array_input))))])
+#     random.shuffle(result)
+#     return result
 
-
-  print(res_2)
-
-  # @classmethod
-  # def gen_distincts_untyped_baseline_1(self, size: int, distinct: List[Any]) -> Generator:
-  #   return (random.choice(distinct) for i in range(size))
-  
-  # @classmethod
-  # def gen_distincts_untyped_baseline_2(self, size: int, distinct: List[Any]) -> List[Any]:
-  #   return map(lambda x: distinct[x], [random.randint(0, len(distinct)-1) for _ in range(size)])
-  
-  
-  # @classmethod
-  # def gen_distincts_typed_baseline_1(self, size: int, distinct: List[Any]) -> List[Any]:
-  #   return [distinct[i] for i in np.random.randint(0, len(distinct), size)]
-  
-
-  # @classmethod
-  # def gen_distincts_typed_baseline_2(self, size: int, distinct: List[Any]) -> np.ndarray:
-  #   return np.vectorize(lambda x: random.choice(distinct))(np.arange(size))
-  
-  
-  # @classmethod
-  # def gen_distincts_typed_baseline_3(self, size: int, distinct: List[Any]) -> np.ndarray:
-  #   return np.vectorize(lambda x: distinct[x])(np.random.randint(0, len(distinct), size))
-  
-
+# def handle_string_format(array_input, **kwargs): 
+#     return replace_duplicate(array_input, np.nan) \
+#                 if kwargs.get("rm_dupl") else array_input

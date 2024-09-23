@@ -1,27 +1,19 @@
 import numpy as np
-import random
-from datetime import datetime as dt, timedelta
 
 
 class CoreNumeric:
 
-  @classmethod
-  def gen_booleans(self, prop_false, prop_true):
-    return [False for i in range(prop_false)] + [True for i in range(prop_true)]
 
   @classmethod
   def gen_ints(self, size: int, min: int, max: int):
     return np.random.randint(min, max + 1, size)
 
-  @classmethod
-  def gen_ints_zfilled(self, size: int, length: int) -> np.ndarray:
-    return np.array([str(random.randint(0, 10**length - 1)).zfill(length) for _ in range(size)])
 
   @classmethod
-  def gen_ints10(self, size: int, min: int, max: int):
-    size_arr = np.random.randint(min, max, size)
-    rand_floats = np.random.uniform(low=0, high=10, size=size)
-    return np.multiply(rand_floats, 10**size_arr).astype("int")
+  def gen_ints_zfilled(self, size: int, length: int) -> np.ndarray:
+    str_arr = np.random.randint(0, 10**length, size).astype('str')
+    return np.strings.zfill(str_arr, length)
+  
 
   @classmethod
   def gen_floats(self, size: int, min: int, max: int, round: int = 2):
@@ -29,9 +21,11 @@ class CoreNumeric:
     decimal = np.random.randint(0, 10 ** round, size)
     return sig_part + (decimal / 10 ** round) if round > 0 else sig_part
 
+
   @classmethod
   def gen_floats_normal(self, size: int, mean: int, std: int, round: int = 2):
     return np.round(np.random.normal(mean, std, size), round)
+
 
   @classmethod
   def gen_floats10(self, size: int, min: int, max: int, round: int = 2):
@@ -39,25 +33,40 @@ class CoreNumeric:
     decimal = np.random.randint(0, 10 ** round, size)
     return sig_part + (decimal / 10 ** round) if round > 0 else sig_part
 
-  @classmethod
-  def gen_datetimes(self, size: int, start: str, end: str, format: str):
-    dt_start, dt_end = dt.strptime(start, format), dt.strptime(end, format)
-    timestamp_start, timestamp_end = dt_start.timestamp(), dt_end.timestamp()
-    int_array = np.random.randint(timestamp_start, timestamp_end, size)
-    date_array = np.vectorize(lambda x: dt.fromtimestamp(x))(int_array)
-    return date_array
 
-  @classmethod
-  def gen_dates(self, size: int, start: str, end: str, format: str):
-    dt_start, dt_end = dt.strptime(start, format), dt.strptime(end, format)
-    possible_dates = [dt.strftime(dt_start + timedelta(days=i), format)for i in range((dt_end - dt_start).days)]
-    return np.random.choice(possible_dates, size)
 
 if __name__ == '__main__':
   
+  import time
   start_date = '01-01-1020'
   end_date = '01-01-2021'
   format_date = '%d-%m-%Y'
-  size = 10**1
-  result = CoreNumeric.gen_dates(size, start_date, end_date, format_date)
-  print(result)
+
+  print(f"TESTE 1. Vendo os dados")
+  print(CoreNumeric.gen_ints_zfilled(size=5*10**0, length=10))
+
+  #### BENCHMARK PARMS
+  benchmark_parms = {"size": 10**6,"length": 10}
+  print(f"TESTE 1. Benchmark para parâmetros {benchmark_parms}")
+  start_time = time.time()
+  result = CoreNumeric.gen_ints_zfilled(**benchmark_parms)
+  elapsed_time = time.time() - start_time
+  print(f"Elapsed time teste 1: {elapsed_time} seconds")
+
+  print(f"TESTE 2. Vendo os dados")
+  print(CoreNumeric.gen_ints_zfilled(size=5*10**0, length=10))
+  print(f"TESTE 2. Benchmark para parâmetros {benchmark_parms}")
+  start_time = time.time()
+  result = CoreNumeric.gen_ints_zfilled_2(**benchmark_parms)
+  elapsed_time = time.time() - start_time
+  print(f"Elapsed time: {elapsed_time} seconds")
+
+  # print(result)
+
+  
+
+# def lottery(array_input):
+#     return [i * 10 if round(random.random(),2) < 0.2 else \
+#         i * 100 if round(random.random(),2) < 0.09 else \
+#         i * 1000 if round(random.random(),2) < 0.01 else i \
+#         for i in array_input]
