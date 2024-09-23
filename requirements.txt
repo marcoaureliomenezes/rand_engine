@@ -2,3 +2,4 @@ numpy==2.1.1
 pandas==2.2.2
 faker==28.4.1
 pytest==8.3.3
+pyspark==3.2.0
