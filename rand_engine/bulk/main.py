@@ -23,8 +23,7 @@ if __name__ == '__main__':
     "campo_categorico_com_peso": dict(
       method=CoreDistincts.gen_distincts_typed,
       parms=dict(distinct=bulk_rand_engine.handle_distincts_proportions({"MEI": 100,"ME":23, "EPP": 12, "EMP": 13, "EGP": 1}, 1))
-    ),
-  
+    )
   }
 
 
