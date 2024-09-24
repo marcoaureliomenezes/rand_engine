@@ -30,7 +30,6 @@ if __name__ == '__main__':
 # def handle_format(format):
 #     return format[randint(0, len(format))] if format == list else \
 #             format if format == str else "%d-%m-%Y"
-    
 # def get_interval(start, end, date_format):
 #     return datetime.timestamp(datetime.strptime(start, date_format)), \
 #             datetime.timestamp(datetime.strptime(end, date_format))

@@ -26,10 +26,11 @@ class CoreDistincts:
         list_of_lists.append(np.array([pattern[replacer_cursor] for i in range(size)]))
     return reduce(lambda a, b: a.astype('str') + b.astype('str'), list_of_lists)
   
-
   
 if __name__ == '__main__':
   pass
+
+
 
 # def replace_duplicate(array_input, replace):
 #     result = list(set(array_input))
