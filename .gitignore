@@ -9,3 +9,5 @@ venv
 .pytest_cache
 
 trash.py
+
+test_outputs/

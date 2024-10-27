@@ -74,7 +74,6 @@ def metadata_cases_variable_complex():
   return metadata
 
 
-
 @pytest.fixture(scope="function")
 def metadata_case_web_log_server():
   metadata = {

@@ -8,7 +8,6 @@ class DatetimeCore:
   @classmethod
   def gen_unix_timestamps(self, size: int, start: str, end: str, format: str):
     dt_start, dt_end = dt.strptime(start, format), dt.strptime(end, format)
-    print(dt_start, dt_end)
     if dt_start < dt(1970, 1, 1): dt_start = dt(1970, 1, 1)
     timestamp_start, timestamp_end = dt_start.timestamp(), dt_end.timestamp()
     int_array = np.random.randint(timestamp_start, timestamp_end, size)
