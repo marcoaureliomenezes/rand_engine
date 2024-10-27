@@ -1,0 +1,2 @@
+from fixtures.fixtures_integrations import dataframe_size
+

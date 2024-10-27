@@ -1,5 +1,5 @@
-from rand_engine.bulk.core_distincts import CoreDistincts
-from rand_engine.bulk.core_numeric import CoreNumeric
+from rand_engine.core.distinct_core import CoreDistincts
+from rand_engine.core.numeric_core import CoreNumeric
 
 
 class RandEngineTemplates:

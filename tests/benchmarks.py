@@ -106,4 +106,5 @@ class Benchmark:
 
 if __name__ == '__main__':
 
-  Benchmark().run()
+  #Benchmark().run()
+  pass

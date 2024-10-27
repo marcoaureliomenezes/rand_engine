@@ -1,8 +1,11 @@
 from datetime import datetime as dt
 import pytest
 
+
+
 def get_benchmark_size():
     return 5
+
 
 @pytest.fixture(scope="function")
 def get_default_benchmark_distinct_parms_untyped():
