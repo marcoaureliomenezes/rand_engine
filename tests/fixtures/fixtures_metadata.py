@@ -1,23 +1,16 @@
-import pytest
-
 from datetime import datetime as dt
-import numpy as np
+import pytest
 import faker
+import numpy as np
 
 from rand_engine.core.distinct_core import DistinctCore
 from rand_engine.core.numeric_core import NumericCore
 from rand_engine.core.datetime_core import DatetimeCore
-
 from rand_engine.core.distinct_utils import DistinctUtils
 
 
-
 @pytest.fixture(scope="function")
-def dataframe_size():
-    return 5
-
-@pytest.fixture(scope="function")
-def metadata_case_constant():
+def metadata_case_0():
   metadata = {
     "campo_string": dict(method=lambda size, distinct:    np.random.choice(distinct, size), parms=dict(distinct=["valor_fixo"])),
     "campo_int": dict(method=lambda size, distinct:       np.random.choice(distinct, size), parms=dict(distinct=[420])),
@@ -29,7 +22,7 @@ def metadata_case_constant():
 
 
 @pytest.fixture(scope="function")
-def metadata_cases_variable_simple():
+def metadata_case_1():
   fake = faker.Faker(locale="pt_BR")
   metadata = {
     "campo_cont":           dict(method=lambda size, value: [value for _ in range(size)], parms=dict(value="valor_fixo")),
@@ -44,8 +37,9 @@ def metadata_cases_variable_simple():
   return metadata
 
 
+
 @pytest.fixture(scope="function")
-def metadata_cases_variable_complex():
+def metadata_case_2():
   metadata = {
     "campo_simples_proporcional": {
       "method": DistinctCore.gen_distincts_typed,
@@ -75,7 +69,7 @@ def metadata_cases_variable_complex():
 
 
 @pytest.fixture(scope="function")
-def metadata_case_web_log_server():
+def metadata_case_wsl():
   metadata = {
     "ip_address": dict(
       method=DistinctCore.gen_complex_distincts,

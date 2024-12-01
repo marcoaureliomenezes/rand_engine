@@ -23,3 +23,17 @@ def test_handle_distincts_lvl_3():
     result = DistinctUtils.handle_distincts_lvl_3(distinct_2, sep=";")
     print(result)
     assert len(result) == 20
+
+
+def test_handle_distincts_lvl_4():
+    distinct = {"OPC": [["C_OPC","V_OPC"], ["PF", "PJ"]], "SWP": (["C_SWP", "V_SWP"], [None])}
+    result = DistinctUtils.handle_distincts_lvl_4(distinct, sep=";")
+    print(result)
+    assert len(result) == 20
+
+
+def test_handle_distincts_lvl_5():
+    distinct = {"OPC": [{"C_OPC": ["PF", "PJ"]}, {"V_OPC": ["NA"]}], "SWP": ({"C_SWP": ["AP"]}, {"V_SWP": ["MA", "ME"]})}
+    result = DistinctUtils.handle_distincts_lvl_5(distinct, sep=";")
+    print(result)
+    assert len(result) == 20
