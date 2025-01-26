@@ -54,4 +54,4 @@ jobs:
         env:
           POETRY_PYPI_TOKEN_rand_Engine_git: ${{ github.pypi.secrets.PYPI_TOKEN }}
         run: |
-          poetry publish --build --username __token__ --password $POETRY_PYPI_TOKEN_rand_Engine_git
+          poetry publish --build --username __token__
