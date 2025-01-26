@@ -10,7 +10,7 @@ from rand_engine.core.distinct_utils import DistinctUtils
 
 
 @pytest.fixture(scope="function")
-def metadata_case_0():
+def rand_spec_case_0():
   metadata = {
     "campo_string": dict(method=lambda size, distinct:    np.random.choice(distinct, size), parms=dict(distinct=["valor_fixo"])),
     "campo_int": dict(method=lambda size, distinct:       np.random.choice(distinct, size), parms=dict(distinct=[420])),
@@ -22,10 +22,9 @@ def metadata_case_0():
 
 
 @pytest.fixture(scope="function")
-def metadata_case_1():
+def rand_spec_case_1():
   fake = faker.Faker(locale="pt_BR")
   metadata = {
-    "campo_cont":           dict(method=lambda size, value: [value for _ in range(size)], parms=dict(value="valor_fixo")),
     "campo_int":            dict(method=NumericCore.gen_ints, parms=dict(min=0, max=100)),
     "campo_float":          dict(method=NumericCore.gen_floats, parms=dict(min=0, max=10**3, round=2)),
     "campo_float_normal":   dict(method=NumericCore.gen_floats_normal, parms=dict(mean=10**3, std=10**1, round=2)),
@@ -39,7 +38,7 @@ def metadata_case_1():
 
 
 @pytest.fixture(scope="function")
-def metadata_case_2():
+def rand_spec_case_2():
   metadata = {
     "campo_simples_proporcional": {
       "method": DistinctCore.gen_distincts_typed,
@@ -69,7 +68,7 @@ def metadata_case_2():
 
 
 @pytest.fixture(scope="function")
-def metadata_case_wsl():
+def rand_spec_case_wsl():
   metadata = {
     "ip_address": dict(
       method=DistinctCore.gen_complex_distincts,

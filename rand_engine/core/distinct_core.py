@@ -7,15 +7,36 @@ class DistinctCore:
     
   @classmethod
   def gen_distincts_typed(self, size: int, distinct: List[Any]) -> np.ndarray:
+    """
+    This method generates an array of random distinct values.
+    :param size: int: Number of elements to be generated.
+    :param distinct: List[Any]: List of distinct values to be generated.
+    :return: np.ndarray: Array of random distinct values.
+    """
     assert len(list(set([type(x) for x in distinct]))) == 1
     return np.random.choice(distinct, size)
     
+
   @classmethod
-  def gen_distincts_untyped(self, size: int, distinct: List[Any]) -> Iterator:
+  def gen_distincts_untyped(self, size: int, distinct: List[Any]) -> List[Any]:
+    """
+    This method generates an array of random distinct values.
+    :param size: int: Number of elements to be generated.
+    :param distinct: List[Any]: List of distinct values to be generated.
+    :return: Iterator: Iterator of random distinct values.
+    """
     return list(map(lambda x: distinct[x], np.random.randint(0, len(distinct), size)))
   
   @classmethod
   def gen_complex_distincts(self, size: int, pattern="x.x.x-x", replacement="x", templates=[]):
+    """
+    This method generates an array of random distinct values.
+    :param size: int: Number of elements to be generated.
+    :param pattern: str: Pattern to be replaced.
+    :param replacement: str: Replacement of the pattern.
+    :param templates: List[Dict]: List of dictionaries containing the method and parameters to be used in the replacement.
+    :return: np.ndarray: Array of random distinct values.
+    """
     assert pattern.count(replacement) == len(templates)
     list_of_lists, counter = [], 0
     for replacer_cursor in range(len(pattern)):
@@ -25,6 +46,7 @@ class DistinctCore:
       else:
         list_of_lists.append(np.array([pattern[replacer_cursor] for i in range(size)]))
     return reduce(lambda a, b: a.astype('str') + b.astype('str'), list_of_lists)
+  
   
   
 if __name__ == '__main__':

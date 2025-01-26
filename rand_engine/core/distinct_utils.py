@@ -6,10 +6,19 @@ class DistinctUtils:
 
   @classmethod
   def handle_distincts_lvl_1(self, distinct_prop, precision):
+    """
+    This method generates a list of distinct values based on a dictionary of distinct values and their respective frequencies.
+    :param distinct_prop: dict: Dictionary containing the distinct values and their respective frequencies.
+    :param precision: int: Precision of the distinct values.
+    :return: List: List of distinct values.
+    """
     return [ key for key, value in distinct_prop.items() for i in range(value * precision )]
 
   @classmethod
   def handle_distincts_lvl_2(self, distincts, sep=";"):
+    """
+    This method generates a list of distinct values based on a dictionary of distinct values and their respective frequencies.
+    :param distincts: dict: Dictionary containing the distinct values and their respective frequencies."""
     data_flatted = [f"{j}{sep}{i}" for j in distincts for i in distincts[j]]
     return data_flatted
 
@@ -39,16 +48,12 @@ if __name__ == '__main__':
   distinct_2 = {"OPC": [{"C_OPC": ["PF", "PJ"]}, {"V_OPC": ["NA"]}], "SWP": [{"C_SWP": ["AP"]}, {"V_SWP": ["MA", "ME"]}]}
   #print(DistinctUtils.handle_distincts_lvl_5(distinct_2)[]
 
-
   def rec(structure):
     if isinstance(structure, list):
       return [rec(i) for i in structure]
     if isinstance(structure, dict):
       return [[[k], rec(v)] for k, v in structure.items()]
     return structure
-
   import numpy as np
-
   result = rec(distinct_2)
-
   combinations = np.array(list(itertools.product(*result)))

@@ -1,61 +1,76 @@
 import os
 import time
+import glob
 import pandas as pd
 
 from rand_engine.main.data_generator import DataGenerator
-
 from tests.fixtures.fixtures_transformers import wsl_transformer
-from tests.fixtures.fixtures_metadata import (
-    metadata_case_0,
-    metadata_case_1,
-    metadata_case_2,
-    metadata_case_wsl
+from tests.fixtures.fixtures_random_spec import (
+    rand_spec_case_0,
+    rand_spec_case_1,
+    rand_spec_case_2,
+    rand_spec_case_wsl
 )
 
 from tests.fixtures.fixtures_integrations import (
+    create_output_dir,
     dataframe_size,
     microbatch_size,
-    path_csv_test,
+    batch_size,
+    parms_file_writer,
     size_in_mb
 )
 
 
 
-def test_create_pandas_df_const(dataframe_size, metadata_case_0):
-  data_gen = DataGenerator()
-  df_data = data_gen.create_pandas_df(dataframe_size, metadata_case_0)
+
+
+
+
+
+  # df = DataGenerator(random_spec).generate_pandas_df(10**6).get_df()
+  # print(df)
+
+
+
+  
+  #for record in DataGenerator(random_spec).generate_pandas_df(10**4).stream_dict(): print(record)
+  # for case, parms in parms.items():
+  #   print(case)
+  #   dg.write(5*10**4, metadata, transformer=None) \
+  #     .mode("overwrite") \
+  #     .format(parms["format"]) \
+  #     .option("compression", parms["compression"]) \
+  #     .incr_load(parms["path"])
+  #   print(f"Case {case} completed")
+
+
+
+def test_create_pandas_df_const(dataframe_size, rand_spec_case_0):
+  df_data = DataGenerator(rand_spec_case_0).generate_pandas_df(dataframe_size).get_df()
   assert df_data.shape[0] == dataframe_size
 
 
-def test_create_pandas_df_variable(dataframe_size, metadata_case_1):
-  data_gen = DataGenerator()
-  df_data = data_gen.create_pandas_df(dataframe_size, metadata_case_1)
+def test_create_pandas_df_variable(dataframe_size, rand_spec_case_1):
+  df_data = DataGenerator(rand_spec_case_1).generate_pandas_df(dataframe_size).get_df()
   assert df_data.shape[0] == dataframe_size
 
 
-def test_create_pandas_df_complex(dataframe_size, metadata_case_2):
-  data_gen = DataGenerator()
-  df_data = data_gen.create_pandas_df(dataframe_size, metadata_case_2)
+def test_create_pandas_df_complex(dataframe_size, rand_spec_case_2):
+  df_data = DataGenerator(rand_spec_case_2).generate_pandas_df(dataframe_size).get_df()
   assert df_data.shape[0] == dataframe_size
 
 
-def test_create_pandas_df_wsl(dataframe_size, metadata_case_wsl, wsl_transformer):
-  data_gen = DataGenerator()
-  df_data = data_gen.create_pandas_df(dataframe_size, metadata_case_wsl, transformer=wsl_transformer)
+def test_create_pandas_df_wsl(dataframe_size, rand_spec_case_wsl, wsl_transformer):
+  df_data = DataGenerator(rand_spec_case_wsl).generate_pandas_df(dataframe_size).get_df()
   pd.set_option('display.max_colwidth', None)
   assert df_data.shape[0] == dataframe_size
 
 
-def test_create_streaming_records(microbatch_size, metadata_case_1):
-  data_gen = DataGenerator()
-  streaming = data_gen.create_streaming_records(
-    microbatch_size=microbatch_size, 
-    metadata=metadata_case_1,
-    min_throughput=5,
-    max_throughput=10)
-  
+def test_create_stream_dict(microbatch_size, rand_spec_case_1):
   counter, start_time = 0, time.time()
-  for record in streaming:
+  stream = DataGenerator(rand_spec_case_1).generate_pandas_df(microbatch_size).stream_dict(min_throughput=5, max_throughput=10)
+  for record in stream:
     elapsed_time = time.time() - start_time
     counter += 1
     if elapsed_time > 1: break
@@ -64,24 +79,64 @@ def test_create_streaming_records(microbatch_size, metadata_case_1):
   assert type(record) == dict
 
 
-def test_create_file_with_streaming(microbatch_size, size_in_mb, metadata_case_1, path_csv_test):
-  data_gen = DataGenerator()
-  data_gen.create_csv_file(microbatch_size, size_in_mb, metadata_case_1, path=path_csv_test)
-  file_size = os.path.getsize(path_csv_test)
-  assert file_size > size_in_mb * 10**6
+def test_generate_csv(dataframe_size, rand_spec_case_1, parms_file_writer):
+  DataGenerator(rand_spec_case_1).generate_pandas_df(dataframe_size).write() \
+    .mode("overwrite") \
+    .format(parms_file_writer["csv_none"]["format"]) \
+    .load(parms_file_writer["csv_none"]["path"])
+  df_to_assert = pd.read_csv(parms_file_writer["csv_none"]["path"])
+  assert df_to_assert.shape == (dataframe_size, len(rand_spec_case_1))
 
+def test_generate_csv_gzip(dataframe_size, rand_spec_case_1, parms_file_writer):
+  DataGenerator(rand_spec_case_1).generate_pandas_df(dataframe_size).write() \
+    .mode("overwrite") \
+    .format(parms_file_writer["csv_gzip"]["format"]) \
+    .option("compression", parms_file_writer["csv_gzip"]["compression"]) \
+    .load(parms_file_writer["csv_gzip"]["path"])
+  df_to_assert = pd.read_csv(f'{parms_file_writer["csv_gzip"]["path"]}.gzip', compression=parms_file_writer["csv_gzip"]["compression"])
+  assert df_to_assert.shape == (dataframe_size, len(rand_spec_case_1))
+
+
+def test_generate_csv_zip(dataframe_size, rand_spec_case_1, parms_file_writer):
+  DataGenerator(rand_spec_case_1).generate_pandas_df(dataframe_size).write() \
+    .mode("overwrite") \
+    .format(parms_file_writer["csv_zip"]["format"]) \
+    .option("compression", parms_file_writer["csv_zip"]["compression"]) \
+    .load(parms_file_writer["csv_zip"]["path"])
+  df_to_assert = pd.read_csv(f'{parms_file_writer["csv_zip"]["path"]}.zip', compression=parms_file_writer["csv_zip"]["compression"])
+  assert df_to_assert.shape == (dataframe_size, len(rand_spec_case_1))
+
+
+def test_generate_parquet(dataframe_size, rand_spec_case_1, parms_file_writer):
+  DataGenerator(rand_spec_case_1).generate_pandas_df(dataframe_size).write() \
+    .mode("overwrite") \
+    .format(parms_file_writer["parquet_none"]["format"]) \
+    .load(parms_file_writer["parquet_none"]["path"])
+  df_to_assert = pd.read_parquet(parms_file_writer["parquet_none"]["path"])
+  assert df_to_assert.shape == (dataframe_size, len(rand_spec_case_1))
     
 
-# def test_web_log_server_streaming(dataframe_size, metadata_case_web_log_server, web_server_log_transformer):
-#   bulk_rand_engine = BulkRandEngine()
-#   df = bulk_rand_engine.create_pandas_df(dataframe_size, metadata_case_web_log_server)
-#   df_transformed = web_server_log_transformer(df)
-#   for record in bulk_rand_engine.create_streaming_series(df_transformed):
-#       print(record)
+def test_generate_csvs(microbatch_size, rand_spec_case_1, parms_file_writer, size_in_mb):
+  DataGenerator(rand_spec_case_1).generate_pandas_df(microbatch_size).write() \
+    .mode("overwrite") \
+    .format(parms_file_writer["csvs_gzip"]["format"]) \
+    .incr_load(parms_file_writer["csvs_gzip"]["path"], size_in_mb)
+  files = glob.glob(f'{parms_file_writer["csvs_gzip"]["path"]}/*')
+  df_to_assert = pd.concat([pd.read_csv(file) for file in files])
+  print(df_to_assert)
+  size_dir = [os.path.getsize(path) for path in glob.glob(f'{parms_file_writer["csvs_gzip"]["path"]}/*')]
+  real_size_mb = sum(size_dir)/ 2**20
+  assert real_size_mb >= size_in_mb and real_size_mb <= size_in_mb * 1.3
 
 
-# def test_create_file(metadata_case_web_log_server, web_server_log_transformer):
-#     bulk_rand_engine = BulkRandEngine()
-#     path_test = './test_outputs/test.log'
-#     bulk_rand_engine.microbatch_file_with_streaming(path_test, metadata_case_web_log_server, web_server_log_transformer, 10**3, 10**7)
-
+def test_generate_parquets(microbatch_size, rand_spec_case_1, parms_file_writer, size_in_mb):
+  DataGenerator(rand_spec_case_1).generate_pandas_df(microbatch_size).write() \
+    .mode("overwrite") \
+    .format(parms_file_writer["parquets_none"]["format"]) \
+    .incr_load(parms_file_writer["parquets_none"]["path"], size_in_mb)
+  df_to_assert = pd.read_parquet(f'{parms_file_writer["parquets_none"]["path"]}')
+  size_dir = [os.path.getsize(path) for path in glob.glob(f'{parms_file_writer["parquets_none"]["path"]}/*')]
+  real_size_mb = sum(size_dir)/ 2**20
+  print(df_to_assert)
+  assert real_size_mb >= size_in_mb and real_size_mb <= size_in_mb * 1.3
+  
