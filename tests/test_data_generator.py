@@ -22,30 +22,6 @@ from tests.fixtures.fixtures_integrations import (
 )
 
 
-
-
-
-
-
-
-  # df = DataGenerator(random_spec).generate_pandas_df(10**6).get_df()
-  # print(df)
-
-
-
-  
-  #for record in DataGenerator(random_spec).generate_pandas_df(10**4).stream_dict(): print(record)
-  # for case, parms in parms.items():
-  #   print(case)
-  #   dg.write(5*10**4, metadata, transformer=None) \
-  #     .mode("overwrite") \
-  #     .format(parms["format"]) \
-  #     .option("compression", parms["compression"]) \
-  #     .incr_load(parms["path"])
-  #   print(f"Case {case} completed")
-
-
-
 def test_create_pandas_df_const(dataframe_size, rand_spec_case_0):
   df_data = DataGenerator(rand_spec_case_0).generate_pandas_df(dataframe_size).get_df()
   assert df_data.shape[0] == dataframe_size
