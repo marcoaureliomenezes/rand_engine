@@ -48,7 +48,7 @@ class DataGenerator:
     :param transformer: Optional[Callable]: Function to transform the generated data."""
     def second_level():
       self.generate_pandas_df(size=size, transformer=transformer)
-      df_spark = spark.createDataFrame(self.actual_dataframe)
+      df_spark = spark.createDataFrame(self.actual_dataframe())
       return df_spark
     self.actual_dataframe = second_level
     return self
