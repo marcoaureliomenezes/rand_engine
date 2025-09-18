@@ -34,7 +34,7 @@ class DataGenerator:
       dict_data = {key: value["method"](size, **value["parms"]) for key, value in self.random_spec.items()}
       df_pandas = pd.DataFrame(dict_data)
       df_pandas = self.handle_splitable(self.random_spec, df_pandas)
-      if transformer: df_pandas = transformer(df_pandas)
+      if transformer: return transformer(df_pandas)
       return df_pandas
     self.actual_dataframe = first_level
     return self

@@ -1,6 +1,7 @@
+import json
 import os
 from typing import Callable
-
+from pandas import DataFrame as PDDataFrame
 
 class FileWriter:
 
@@ -99,8 +100,10 @@ class FileWriter:
     """
     if self.write_options.get("compression"):
       full_path= full_path.replace("json", f"json.{self.write_options['compression']}")
-    #writer = lambda: dataframe().to_json(full_path, index=False, **self.write_options)
-    writer = lambda: dataframe().to_json(full_path, orient='records', **self.write_options)
+    def writer():
+      list_dict = dataframe().to_dict(orient='records')
+      with open(full_path, 'w', encoding=self.write_options.get("encoding", "utf-8")) as f:
+        json.dump(list_dict, f, ensure_ascii=False, indent=4)
     return writer
 
   def to_parquet(self, dataframe, full_path):
