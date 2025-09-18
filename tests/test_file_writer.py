@@ -85,9 +85,16 @@ from tests.fixtures.fixtures_integrations import (
   
 
 def test_generate_json(dataframe_size, rand_spec_case_1, parms_file_writer):
-  DataGenerator(rand_spec_case_1).generate_pandas_df(dataframe_size).write() \
+  def transformer(df):
+    # transform all pandas columns of type Timestamp to string in the format 'YYYY-MM-DDTHH:MM:SS'
+    for col in df.select_dtypes(include=['datetime64[ns]', 'datetime64[ns, UTC]']).columns:
+      df[col] = df[col].dt.strftime('%Y-%m-%dT%H:%M:%S')
+    return df
+  DataGenerator(rand_spec_case_1).generate_pandas_df(dataframe_size, transformer=transformer).write() \
     .mode("overwrite") \
     .format(parms_file_writer["json_none"]["format"]) \
+    .option("encoding", "utf-8") \
+    .option("orient", "records") \
     .load(parms_file_writer["json_none"]["path"])
   df_to_assert = pd.read_json(parms_file_writer["json_none"]["path"])
   assert df_to_assert.shape == (dataframe_size, len(rand_spec_case_1))
