@@ -24,6 +24,6 @@ CoreDistinct().randint(0, 100, 10)
 
 ```
 
-git tag 0.0.1
+git tag  0.3.8
 
 git push origin --tags
