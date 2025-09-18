@@ -93,9 +93,7 @@ def test_generate_json(dataframe_size, rand_spec_case_1, parms_file_writer):
   DataGenerator(rand_spec_case_1).generate_pandas_df(dataframe_size, transformer=transformer).write() \
     .mode("overwrite") \
     .format(parms_file_writer["json_none"]["format"]) \
-    .option("encoding", "utf-8") \
-    .option("orient", "records") \
     .load(parms_file_writer["json_none"]["path"])
-  df_to_assert = pd.read_json(parms_file_writer["json_none"]["path"])
+  df_to_assert = pd.read_json(parms_file_writer["json_none"]["path"], lines=True)
   assert df_to_assert.shape == (dataframe_size, len(rand_spec_case_1))
   time.sleep(100)
