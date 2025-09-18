@@ -9,9 +9,9 @@ on:
       - "[0-9]+.[0-9]+.[0-9]+rc[0-9]+"
 
 env:
-  PACKAGE_NAME: "<PACKAGE_NAME>"
-  OWNER: "<OWNER>"
-  TAP_NAME: "<TAP_NAME>"
+  PACKAGE_NAME: "rand-engine"
+  OWNER: "marcoaureliomenezes"
+  TAP_NAME: "homebrew-tap"
 
 jobs:
   details:
@@ -144,9 +144,10 @@ jobs:
           gh release create ${{ needs.details.outputs.tag_name }} dist/* --title ${{ needs.details.outputs.tag_name }} --generate-notes
 
   bump_homebrew_formula:
-    name: Dispatch event to Repo B
+    name: Dispatch event to Homebrew Tap
     needs: [details, github_release, pypi_publish]
     runs-on: ubuntu-latest
+    if: ${{ secrets.BREW_TAP_TOKEN != '' }}
     environment:
       name: release
     steps:
@@ -154,15 +155,15 @@ jobs:
         uses: peter-evans/repository-dispatch@v2
         with:
           token: ${{ secrets.BREW_TAP_TOKEN }}
-          repository: ${{ env.OWNER }}/{{ env.TAP_NAME }}
+          repository: ${{ env.OWNER }}/${{ env.TAP_NAME }}
           event-type: "update-formula"
           client-payload: |-
             { 
-              "formula_version": "${{env.FORMULA_VERSION}}", 
+              "formula_version": "${{ env.FORMULA_VERSION }}", 
               "formula_url": "${{ env.FORMULA_URL }}", 
               "formula_name": "${{ env.FORMULA_NAME }}"
             }
         env:
           FORMULA_VERSION: ${{ needs.details.outputs.new_version }}
           FORMULA_NAME: ${{ env.PACKAGE_NAME }}
-          FORMULA_URL: https://github.com/${{env.OWNER}}/${{env.PACKAGE_NAME}}/releases/download/${{ needs.details.outputs.new_version }}/${{env.PACKAGE_NAME}}-${{ needs.details.outputs.new_version }}.tar.gz
+          FORMULA_URL: https://github.com/${{ env.OWNER }}/${{ env.PACKAGE_NAME }}/releases/download/${{ needs.details.outputs.new_version }}/${{ env.PACKAGE_NAME }}-${{ needs.details.outputs.new_version }}.tar.gz
