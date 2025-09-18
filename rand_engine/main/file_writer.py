@@ -12,7 +12,8 @@ class FileWriter:
     self.write_options = {}
     self.dict_format = {
         "csv": self.to_csv,
-        "parquet": self.to_parquet
+        "parquet": self.to_parquet,
+        "json": self.to_json
     }
 
   def __handle_fs(self, path, flag=True) -> None:
@@ -89,6 +90,17 @@ class FileWriter:
     writer = lambda: dataframe().to_csv(full_path, index=False, **self.write_options)
     return writer
   
+  def to_json(self, dataframe, full_path) -> Callable:
+    """
+    This method writes a pandas DataFrame to a json file.
+    :param dataframe: pd.DataFrame: DataFrame to be written.
+    :param full_path: str: Full path of the file to be written.
+    :return: Callable: Function to write the Pandas DataFrame to a json file.
+    """
+    if self.write_options.get("compression"):
+      full_path= full_path.replace("json", f"json.{self.write_options['compression']}")
+    writer = lambda: dataframe().to_json(full_path, index=False, **self.write_options)
+    return writer
 
   def to_parquet(self, dataframe, full_path):
     """
@@ -110,6 +122,7 @@ class FileWriter:
     """
     self.__handle_fs(path)
     dataframe = self.microbatch_def()
+    print(dataframe)
     self.dict_format[self.write_format](dataframe, path)()
 
 

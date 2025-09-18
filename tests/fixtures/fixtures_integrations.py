@@ -46,6 +46,8 @@ def parms_file_writer():
     "csv_gzip": {"path": f"{output_dir}/arquivo.csv", "format": "csv", "compression": "gzip"},
     "csvs_gzip": {"path": f"{output_dir}/csvs_gzip", "format": "csv", "compression": "gzip"},
     "csv_zip": {"path": f"{output_dir}/arquivo.csv", "format": "csv", "compression": "zip"},
+    "json_none": {"path": f"{output_dir}/arquivo.json", "format": "json", "compression": None},
+    "json_gzip": {"path": f"{output_dir}/arquivo.json", "format": "json", "compression": "gzip"},
     "parquet_none": {"path": f"{output_dir}/arquivo_parquet_none", "format": "parquet", "compression": None},
     "parquets_none": {"path": f"{output_dir}/arquivo_parquets", "format": "parquet", "compression": None},
     "parquet_gzip": {"path": f"{output_dir}/arquivo_parquet_gzip", "format": "parquet", "compression": "gzip"},
