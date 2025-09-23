@@ -129,9 +129,9 @@ class DBFSUtils(FSUtils):
             raise Exception(f"Failed to create directory {path}: {str(e)}")
     
 
-    def rm(self, path: str) -> None:
+    def rm(self, path: str, recursive: bool = False) -> None:
         try:
-            result = self.dbutils.fs.rm(path, recurse=False)
+            result = self.dbutils.fs.rm(path, recurse=recursive)
             if not result:
                 raise Exception(f"Failed to delete file {path}")
         except Exception as e:
