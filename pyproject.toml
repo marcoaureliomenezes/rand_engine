@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "rand-engine"
-version = "0.4.0"
+version = "0.4.1"
 description = "Rand Engine v2. Package with some methods to generate random data in different formats. Great to mock data while testing or developing."
 authors = ["marcoaureliomenezes <marcoaurelioreislima@gmail.com>"]
 repository = "https://github.com/marcoaureliomenezes/rand_engine"

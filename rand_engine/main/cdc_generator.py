@@ -44,7 +44,7 @@ class FilesGenerator:
 
   def list_files(self):
     assert self.base_path, "Base path not configured. Run the method setup_output."
-    self.fs_utils.mkdir(self.base_path)
+    return self.fs_utils.ls(self.base_path)
     
 
   def delete_files(self):
@@ -77,6 +77,7 @@ class CDCGenerator(FilesGenerator):
 
   def __init__(self,  footprint: IRandomSpec, pk_cols: List=[], fs_utils: FSUtils=DBFSUtils(), ):
     self.footprint = footprint
+    self.fs_utils = fs_utils
     self.pk_cols = pk_cols
     self.cdc_props = self.default_cdc_properties()
 
@@ -106,6 +107,7 @@ class CDCGenerator(FilesGenerator):
     # Read and concatenate all files
     df_list = []
     for file_info in files:
+        print(f"Reading file: {file_info.path}")
         if file_info.name.endswith(f".{self.ext}"):
             if self.ext == "json":
                 df_temp = pd.read_json(file_info.path, lines=True)
@@ -133,7 +135,7 @@ class CDCGenerator(FilesGenerator):
 
 
   def generate_changes(self, sample, const_cols, null_rate):
-    df_pks_to_change = self.calculate_rows_to_change(sample=sample)
+    df_pks_to_change = self.calculate_rows_to_change_pandas(sample=sample)
     metadata = self.footprint.metadata()
     size = df_pks_to_change.shape[0]
     transformer = self.footprint.transformer_cdc_update(null_rate=null_rate, **const_cols)
@@ -147,10 +149,8 @@ class CDCGenerator(FilesGenerator):
 
 
   def generate_inserts(self):
-    operation="INSERT"
     const_cols={"operation": "INSERT", "updated_at": dt.now().strftime("%Y-%m-%dT%H:%M:%S")}
     insert_conf = self.cdc_props["INSERT"]
-    file_path = self._get_file_path()
     rand_size = randint(insert_conf["min_size"], insert_conf["max_size"])
     self.write_file(size=rand_size, const_cols=const_cols)
 

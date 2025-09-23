@@ -111,7 +111,14 @@ class DBFSUtils(FSUtils):
             raise ImportError(f"DBUtils not available. Are you running in Databricks? Error: {str(e)}")
     
     def ls(self, base_path: str) -> List[FSFileInfo]:
-        try: return self.dbutils.fs.ls(base_path)
+        try: 
+            data = self.dbutils.fs.ls(base_path)
+            return [FSFileInfo(
+                path=item.path.replace("dbfs:", ""),
+                name=item.name,
+                size=item.size,
+                modificationTime=item.modificationTime
+            ) for item in data]
         except Exception as e:
             return []
     
