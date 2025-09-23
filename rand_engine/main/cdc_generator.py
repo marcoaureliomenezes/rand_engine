@@ -49,7 +49,7 @@ class FilesGenerator:
 
   def delete_files(self):
     assert self.base_path, "Base path not configured. Run the method setup_output."
-    self.fs_utils.rm(self.base_path)
+    self.fs_utils.rm(self.base_path, recursive=True)
 
  
   def write_file(self, size: int=100, const_cols={}):
