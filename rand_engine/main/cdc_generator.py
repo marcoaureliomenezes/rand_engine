@@ -75,7 +75,8 @@ class FilesGenerator:
 
 class CDCGenerator(FilesGenerator):
 
-  def __init__(self,  footprint: IRandomSpec, pk_cols: List=[], fs_utils: FSUtils=DBFSUtils(), ):
+  def __init__(self, spark, footprint: IRandomSpec, pk_cols: List=[], fs_utils: FSUtils=DBFSUtils(), ):
+    self.spark = spark
     self.footprint = footprint
     self.fs_utils = fs_utils
     self.pk_cols = pk_cols
@@ -94,7 +95,7 @@ class CDCGenerator(FilesGenerator):
 
 
   def calculate_rows_to_change(self, sample):
-    df = spark.read.format(self.ext).load(self.base_path).filter(coalesce(*self.pk_cols).isNotNull())
+    df = self.spark.read.format(self.ext).load(self.base_path).filter(coalesce(*self.pk_cols).isNotNull())
     df_ids_inserted = df.select(*self.pk_cols).filter("operation = 'INSERT'").distinct()
     df_ids_deleted = df.select(*self.pk_cols).filter("operation = 'DELETE'").distinct()
     df_pks_to_change = df_ids_inserted.join(df_ids_deleted, on=self.pk_cols, how="leftanti")
@@ -102,40 +103,8 @@ class CDCGenerator(FilesGenerator):
     return df_pks_to_change
 
 
-  def calculate_rows_to_change_pandas(self, sample):
-    files = self.fs_utils.ls(self.base_path)
-    # Read and concatenate all files
-    df_list = []
-    for file_info in files:
-        print(f"Reading file: {file_info.path}")
-        if file_info.name.endswith(f".{self.ext}"):
-            if self.ext == "json":
-                df_temp = pd.read_json(file_info.path, lines=True)
-            elif self.ext == "csv":
-                df_temp = pd.read_csv(file_info.path)
-            elif self.ext == "parquet":
-                df_temp = pd.read_parquet(file_info.path)
-            else:
-                continue
-            df_list.append(df_temp)
-    if not df_list:
-        return pd.DataFrame(columns=self.pk_cols)
-    df = pd.concat(df_list, ignore_index=True)
-    df = df.dropna(subset=self.pk_cols)
-    df_ids_inserted = df[df['operation'] == 'INSERT'][self.pk_cols].drop_duplicates()
-    df_ids_deleted = df[df['operation'] == 'DELETE'][self.pk_cols].drop_duplicates()
-    df_pks_to_change = df_ids_inserted.merge(df_ids_deleted, on=self.pk_cols, how='left', indicator=True)
-    # Keep only records that exist only in left (inserted but not deleted)
-    df_pks_to_change = df_pks_to_change[df_pks_to_change['_merge'] == 'left_only']
-    df_pks_to_change = df_pks_to_change.drop('_merge', axis=1)
-    if sample < 1.0 and len(df_pks_to_change) > 0:
-        df_pks_to_change = df_pks_to_change.sample(frac=sample)
-    
-    return df_pks_to_change
-
-
   def generate_changes(self, sample, const_cols, null_rate):
-    df_pks_to_change = self.calculate_rows_to_change_pandas(sample=sample)
+    df_pks_to_change = self.calculate_rows_to_change(sample=sample)
     metadata = self.footprint.metadata()
     size = df_pks_to_change.shape[0]
     transformer = self.footprint.transformer_cdc_update(null_rate=null_rate, **const_cols)
@@ -166,7 +135,7 @@ class CDCGenerator(FilesGenerator):
     df_changes = pd.concat([df_update, df_delete], ignore_index=True)
     file_path = self._get_file_path()
     df_changes.to_json(file_path, orient="records", lines=True)
-
+    print(f"File {file_path} created with {df_changes.shape[0]} records.")
 
   def generate_cdc_stream(self, period=5, rounds=15):
     for i in range(rounds):
