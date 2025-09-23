@@ -99,13 +99,8 @@ class FileWriter:
     """
     if self.write_options.get("compression"):
       full_path= full_path.replace("json", f"json.{self.write_options['compression']}")
-    #writer = lambda: dataframe().to_json(full_path, index=False, **self.write_options)
     def writer():
-      data = dataframe().to_dict(orient='records')
-      import json
-      with open(full_path, 'w', encoding='utf-8') as f:
-        for record in data:
-          f.write(json.dumps(record, ensure_ascii=False) + '\n')
+      dataframe().to_json(full_path, orient='records', lines=True)
     return writer
 
   def to_parquet(self, dataframe, full_path):
@@ -128,7 +123,6 @@ class FileWriter:
     """
     self.__handle_fs(path)
     dataframe = self.microbatch_def()
-    print(dataframe, path)
     self.dict_format[self.write_format](dataframe, path)()
 
 

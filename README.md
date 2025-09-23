@@ -29,8 +29,7 @@ CoreDistinct().randint(0, 100, 10)
 To create a new release, simply create and push a git tag with semantic versioning:
 
 ```bash
-git tag 0.3.11
-git push origin --tags
+git tag 0.3.13 && git push origin --tags
 ```
 
 The GitHub Actions workflow will automatically:
