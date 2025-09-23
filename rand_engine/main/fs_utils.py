@@ -131,7 +131,7 @@ class DBFSUtils(FSUtils):
 
     def rm(self, path: str, recursive: bool = False) -> None:
         try:
-            result = self.dbutils.fs.rm(path, recurse=recursive)
+            result = self.dbutils.fs.rm(path, recursive)
             if not result:
                 raise Exception(f"Failed to delete file {path}")
         except Exception as e:
