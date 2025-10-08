@@ -8,7 +8,7 @@ import pandas as pd
 from pandas import DataFrame as PandasDF
 
 from rand_engine.main.i_random_spec import IRandomSpec
-from rand_engine.main.data_generator import DataGenerator
+from rand_engine.main import DataGenerator
 from rand_engine.main.fs_utils import FSUtils, DBFSUtils
 
 from pyspark.sql.functions import coalesce
@@ -34,7 +34,7 @@ class FilesGenerator:
   def _get_file_path(self) -> str:
     return f"{self.base_path}/{self.file_name}_{str(uuid4())[:8]}.{self.ext}"
   
-
+  
   def generate_sample(self, size: int=100) -> PandasDF:
     return (
       DataGenerator(self.footprint.metadata())

@@ -2,7 +2,7 @@ import random
 import time
 import pandas as pd
 
-class StreamHandle:
+class StreamHandler:
   
   @staticmethod
   def convert_dt_to_str(dataframe: pd.DataFrame) -> pd.DataFrame:

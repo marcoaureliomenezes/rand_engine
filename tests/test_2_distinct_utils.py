@@ -1,4 +1,5 @@
-from rand_engine.core.distinct_utils import DistinctUtils
+from rand_engine.utils.distincts import DistinctUtils
+
 
 
 def test_handle_distincts_lvl_1():

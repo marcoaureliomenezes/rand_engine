@@ -1,15 +1,18 @@
 import os
 import time
 import pandas as pd
+import numpy as np
 from typing import List, Dict, Optional, Generator, Callable, Any
-from rand_engine.main.file_writer import FileWriter
-from rand_engine.main.stream_handle import StreamHandle
+from rand_engine.utils.file_writer import FileWriter
+from rand_engine.utils.stream_handler import StreamHandler
 
 class DataGenerator:
       
-  def __init__(self, random_spec):
+  def __init__(self, random_spec, seed: Optional[int]=None):
     self.random_spec = random_spec
     self.actual_dataframe = None
+    if seed is not None:
+      np.random.seed(seed)
 
 
   def handle_splitable(self, metadata, df):
@@ -21,8 +24,21 @@ class DataGenerator:
         df.drop(columns=[key], inplace=True)
     return df
 
+  def apply_embedded_transformers(self, metadata, df):
+    cols_with_transformers = {key: value["transformers"] for key, value in metadata.items() if value.get("transformers")}
+    for col, transformers in cols_with_transformers.items():
+      for transformer in transformers:
+        df[col] = df[col].apply(transformer)
+    return df
+  
+  def apply_global_transformers(self, df, transformers: List[Optional[Callable]]):
+    if transformers:
+      if len(transformers) > 0: 
+        for transformer in transformers:
+          df = transformer(df)
+    return df
 
-  def generate_pandas_df(self, size: int, transformer: Optional[Callable]=None) -> pd.DataFrame:
+  def generate_pandas_df(self, size: int, transformers: List[Optional[Callable]] = []) -> pd.DataFrame:
     """
     This method generates a pandas DataFrame based on random data specified in the metadata parameter.
     :param size: int: Number of rows to be generated.
@@ -34,7 +50,12 @@ class DataGenerator:
       dict_data = {key: value["method"](size, **value["parms"]) for key, value in self.random_spec.items()}
       df_pandas = pd.DataFrame(dict_data)
       df_pandas = self.handle_splitable(self.random_spec, df_pandas)
-      if transformer: return transformer(df_pandas)
+      df_pandas = self.apply_embedded_transformers(self.random_spec, df_pandas)
+      df_pandas = self.apply_global_transformers(df_pandas, transformers)
+    #   if transformers:
+    #     if len(transformers) > 0: 
+    #       for transformer in transformers:
+    #         df_pandas = transformer(df_pandas)
       return df_pandas
     self.actual_dataframe = first_level
     return self

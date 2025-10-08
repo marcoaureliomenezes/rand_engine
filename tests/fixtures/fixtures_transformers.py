@@ -1,5 +1,8 @@
 import pytest
+import numpy as np
+from random import randint
 
+from rand_engine.utils.update import Changer
 
 @pytest.fixture(scope="function")
 def wsl_transformer():
@@ -8,3 +11,7 @@ def wsl_transformer():
 
 
 
+@pytest.fixture(scope="function")
+def update_transformer():
+  transformer = Changer(cols_to_change=["campo_float", "campo_int"]).updater
+  return transformer

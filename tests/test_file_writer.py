@@ -3,9 +3,9 @@ import time
 import glob
 import pandas as pd
 
-from rand_engine.main.data_generator import DataGenerator
+from rand_engine.main import DataGenerator
 from tests.fixtures.fixtures_transformers import wsl_transformer
-from tests.fixtures.fixtures_random_spec import (
+from tests.fixtures.fixtures import (
     rand_spec_case_0,
     rand_spec_case_1,
     rand_spec_case_2,
