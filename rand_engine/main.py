@@ -6,26 +6,29 @@ from typing import List, Dict, Optional, Generator, Callable, Any
 from rand_engine.utils.file_writer import FileWriter
 from rand_engine.utils.stream_handler import StreamHandler
 
+
 class DataGenerator:
-      
-  def __init__(self, random_spec, seed: Optional[int]=None):
+
+
+  def __init__(self, random_spec):
     self.random_spec = random_spec
-    self.actual_dataframe = None
-    if seed is not None:
-      np.random.seed(seed)
 
 
-  def handle_splitable(self, metadata, df):
-    for key, value in metadata.items():
-      if value.get("splitable"):
-        sep = value.get("sep", ";")
-        cols = value.get("cols")
-        df[cols] = df[key].str.split(sep, expand=True)
-        df.drop(columns=[key], inplace=True)
-    return df
+  def generate_first_level(self, size: int):
+    dict_data = {}
+    for k, v in self.random_spec.items():
+      try:
+        if "args" in v: dict_data[k] = v["method"](size , *v["args"]) 
+        else: dict_data[k] = v["method"](size , **v.get("kwargs", {}))
+      except Exception as e:
+        raise Exception(f"Error generating data for column '{k}': {e}")
+    df_pandas = pd.DataFrame(dict_data)
+    return df_pandas
 
-  def apply_embedded_transformers(self, metadata, df):
-    cols_with_transformers = {key: value["transformers"] for key, value in metadata.items() if value.get("transformers")}
+
+  def apply_embedded_transformers(self, df):
+
+    cols_with_transformers = {key: value["transformers"] for key, value in self.random_spec.items() if value.get("transformers")}
     for col, transformers in cols_with_transformers.items():
       for transformer in transformers:
         df[col] = df[col].apply(transformer)
@@ -37,7 +40,28 @@ class DataGenerator:
         for transformer in transformers:
           df = transformer(df)
     return df
+ 
+  def handle_splitable(self, df):
+    for key, value in self.random_spec.items():
+      if value.get("splitable"):
+        sep = value.get("sep", ";")   
+        cols = value.get("cols")
+        df[cols] = df[key].str.split(sep, expand=True)
+        df.drop(columns=[key], inplace=True)
+    return df
+  
 
+
+class RandEngine:
+      
+  def __init__(self, random_spec, seed: bool = False):
+    self.actual_dataframe = None
+    np.random.seed(42) if seed else np.random.seed(None)
+    self.data_generator = DataGenerator(random_spec)
+
+
+
+ 
   def generate_pandas_df(self, size: int, transformers: List[Optional[Callable]] = []) -> pd.DataFrame:
     """
     This method generates a pandas DataFrame based on random data specified in the metadata parameter.
@@ -45,17 +69,11 @@ class DataGenerator:
     :param transformer: Optional[Callable]: Function to transform the generated data.
     :return: pd.DataFrame: DataFrame with the generated data.
     """
-    assert type(self.random_spec) is dict, "You need to pass a random_spec parameter to generate the random data."
     def first_level():
-      dict_data = {key: value["method"](size, **value["parms"]) for key, value in self.random_spec.items()}
-      df_pandas = pd.DataFrame(dict_data)
-      df_pandas = self.handle_splitable(self.random_spec, df_pandas)
-      df_pandas = self.apply_embedded_transformers(self.random_spec, df_pandas)
-      df_pandas = self.apply_global_transformers(df_pandas, transformers)
-    #   if transformers:
-    #     if len(transformers) > 0: 
-    #       for transformer in transformers:
-    #         df_pandas = transformer(df_pandas)
+      df_pandas = self.data_generator.generate_first_level(size=size)
+      df_pandas = self.data_generator.handle_splitable(df_pandas)
+      df_pandas = self.data_generator.apply_embedded_transformers(df_pandas)
+      df_pandas = self.data_generator.apply_global_transformers(df_pandas, transformers)
       return df_pandas
     self.actual_dataframe = first_level
     return self

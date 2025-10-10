@@ -4,15 +4,15 @@ import glob
 import pandas as pd
 
 from rand_engine.main import DataGenerator
-from tests.fixtures.fixtures_transformers import wsl_transformer
-from tests.fixtures.fixtures import (
+from tests.fixtures.f2_templates import wsl_transformer
+from tests.fixtures.f1_general import (
     rand_spec_case_0,
     rand_spec_case_1,
     rand_spec_case_2,
     rand_spec_case_wsl
 )
 
-from tests.fixtures.fixtures_integrations import (
+from tests.fixtures.f3_integrations import (
     create_output_dir,
     dataframe_size,
     microbatch_size,

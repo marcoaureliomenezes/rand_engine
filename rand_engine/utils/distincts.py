@@ -5,7 +5,7 @@ import itertools
 class DistinctUtils:
 
   @classmethod
-  def handle_distincts_lvl_1(self, distinct_prop, precision):
+  def handle_distincts_lvl_1(self, distinct_prop, precision=1):
     """
     This method generates a list of distinct values based on a dictionary of distinct values and their respective frequencies.
     :param distinct_prop: dict: Dictionary containing the distinct values and their respective frequencies.
@@ -22,6 +22,13 @@ class DistinctUtils:
     data_flatted = [f"{j}{sep}{i}" for j in distincts for i in distincts[j]]
     return data_flatted
 
+  @classmethod
+  def handle_distincts_lvl_22(self, distincts):
+    """
+    This method generates a list of distinct values based on a dictionary of distinct values and their respective frequencies.
+    :param distincts: dict: Dictionary containing the distinct values and their respective frequencies."""
+    data_flatted = [(j, i) for j in distincts for i in distincts[j]]
+    return data_flatted
 
   @classmethod
   def handle_distincts_lvl_3(self, distincts, sep=";"):

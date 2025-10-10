@@ -9,7 +9,7 @@ from functools import reduce
 class Core:
     
   @classmethod
-  def gen_distincts_typed(self, size: int, distinct: List[Any]) -> np.ndarray:
+  def gen_distincts(self, size: int, distinct: List[Any]) -> np.ndarray:
     assert len(list(set([type(x) for x in distinct]))) == 1
     return np.random.choice(distinct, size)
   
@@ -65,12 +65,14 @@ class Core:
   
 
   @classmethod
-  def gen_unique_identifiers(self, size: int, method="uuid4") -> np.ndarray:
+  def gen_unique_identifiers(self, size: int, strategy="zint", length=12) -> np.ndarray:
     import uuid
-    if method == "uuid4":
+    if strategy == "uuid4":
       return np.array([str(uuid.uuid4()) for _ in range(size)])
-    elif method == "uuid1":
+    elif strategy == "uuid1":
       return np.array([str(uuid.uuid1()) for _ in range(size)])
+    elif strategy == "zint":
+      return self.gen_ints_zfilled(size, length)
     else:
       raise ValueError("Method not recognized. Use 'uuid4', 'uuid1', 'shortuuid' or 'random'.")
   # @classmethod

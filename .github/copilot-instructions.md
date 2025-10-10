@@ -27,7 +27,7 @@ When multiple columns are correlated, generate as single string then split:
 ```python
 {
     "campos_correlacionados": {
-        "method": DistinctCore.gen_distincts_typed,
+        "method": DistinctCore.gen_distincts,
         "splitable": True,                    # Enables splitting
         "cols": ["category", "type"],         # Target column names
         "sep": ";",                           # Delimiter
@@ -125,7 +125,7 @@ Use `gen_complex_distincts()` with template replacement:
         "pattern": "x.x.x.x",
         "replacement": "x",
         "templates": [
-            {"method": DistinctCore.gen_distincts_typed, "parms": {"distinct": ["172", "192"]}},
+            {"method": DistinctCore.gen_distincts, "parms": {"distinct": ["172", "192"]}},
             {"method": NumericCore.gen_ints, "parms": {"min": 0, "max": 255}},
             # ... one template per 'x'
         ]

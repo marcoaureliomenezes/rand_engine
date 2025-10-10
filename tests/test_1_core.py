@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from rand_engine.core import Core
-from tests.fixtures.fixtures import default_size
+from tests.fixtures.f1_general import default_size
 
 
 
@@ -50,15 +50,15 @@ def test_gen_floats_normal(default_size):
   assert len(real_result) == kwargs["size"]
   assert type(real_result) == np.ndarray
 
-def test_gen_distincts_typed_low_cardinality(default_size):
+def test_gen_distincts_low_cardinality(default_size):
   distincts = ["value1", "value2", "value3"]
-  result = Core.gen_distincts_typed(size=default_size, distinct=distincts)
+  result = Core.gen_distincts(size=default_size, distinct=distincts)
   assert len(result) == default_size
   assert all(isinstance(item, str) for item in result)
 
-def test_gen_distincts_typed_high_cardinality(default_size):
+def test_gen_distincts_high_cardinality(default_size):
   distincts = [f"value{i}" for i in range(default_size)]
-  result = Core.gen_distincts_typed(size=default_size, distinct=distincts)
+  result = Core.gen_distincts(size=default_size, distinct=distincts)
   assert len(result) == default_size
   assert all(isinstance(item, str) for item in result)
 

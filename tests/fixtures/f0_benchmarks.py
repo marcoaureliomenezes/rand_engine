@@ -23,8 +23,8 @@ class DistinctBenchmark:
 
 
   @time_measure
-  def gen_distincts_typed(self, size: int, distinct: List[Any]) -> np.ndarray:
-    return self.core_distinct.gen_distincts_typed(size, distinct)
+  def gen_distincts(self, size: int, distinct: List[Any]) -> np.ndarray:
+    return self.core_distinct.gen_distincts(size, distinct)
   
   @time_measure
   def gen_distincts_untyped(self, size: int, distinct: List[Any]) -> Iterator:
@@ -101,7 +101,7 @@ class Benchmark:
     datetime_benchmark.gen_unix_timestamps(**parms_datetime)
     datetime_benchmark.gen_timestamps(**parms_datetime)
 
-    distinct_benchmark.gen_distincts_typed(**parms_distinct_typed)
+    distinct_benchmark.gen_distincts(**parms_distinct_typed)
     distinct_benchmark.gen_distincts_untyped(**parms_distinct_untyped)
 
 if __name__ == '__main__':
