@@ -70,7 +70,10 @@ def rand_engine_splitable_benchmark():
   return {
     "id":        dict(method=Core.gen_unique_identifiers, args=["zint"]),
     "plan":       dict(method=Core.gen_distincts, args=[["free", "standard", "premium"]]),
-    "frequency": dict(method=Core.gen_distincts, args=[DistinctUtils.handle_distincts_lvl_1(spec_handle_1)]),
+    "frequency": dict(
+      method=Core.gen_distincts, 
+      args=[DistinctUtils.handle_distincts_lvl_1(spec_handle_1)] 
+    ),
     "device_os": dict(
       method=     Core.gen_distincts,
       splitable=  True,

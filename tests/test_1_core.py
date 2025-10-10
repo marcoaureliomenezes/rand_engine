@@ -76,6 +76,6 @@ def test_gen_unix_timestamps(default_size):
 
 
 def test_gen_unique_ids_zfilled(default_size):
-  result = Core.gen_unique_identifiers(default_size, method="uuid4")
+  result = Core.gen_unique_identifiers(default_size, strategy="uuid4")
   assert len(result) == default_size
   assert len(set(result)) == default_size
