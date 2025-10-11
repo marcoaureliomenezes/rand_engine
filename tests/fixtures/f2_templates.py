@@ -1,5 +1,5 @@
 import pytest
-import numpy as np
+from datetime import datetime as dt
 from random import randint
 
 from rand_engine.utils.update import Changer
@@ -34,10 +34,10 @@ class WebServerLog(IRandomSpec):
       )),
     "identificador": dict(method=Core.gen_distincts, kwargs=dict(distinct=["-"])),
     "user": dict(method=Core.gen_distincts, kwargs=dict(distinct=["-"])),
-    # "datetime": dict(
-    #   method=Core.gen_datetimes,
-    #   parms=dict(start='2024-07-05', end='2024-07-06', format_in="%Y-%m-%d", format_out="%d/%b/%Y:%H:%M:%S")
-    # ),
+    "datetime": dict(
+      method=Core.gen_unix_timestamps, args=['2024-07-05', '2024-07-06', "%Y-%m-%d"],
+      transformers=[lambda ts: dt.fromtimestamp(ts).strftime("%d/%b/%Y:%H:%M:%S")]
+    ),
     "http_version": dict(
       method=Core.gen_distincts,
       kwargs=dict(distinct=DistinctUtils.handle_distincts_lvl_1({"HTTP/1.1": 7, "HTTP/1.0": 3}, 1))
@@ -58,23 +58,22 @@ class WebServerLog(IRandomSpec):
   }
 
 
-  def transformer(self, df):
-    df['wsl'] = df['ip_address'] + ' ' + df['identificador'] + ' ' + df['user'] + ' [' + df['datetime'] + ' -0700] "' + \
-                        df['http_request'] + ' ' + df['http_version'] + '" ' + ' ' + df['http_status'] + ' ' + df['object_size'].astype(str)
+  def transformer(self):
+    _transformers = [
+      lambda df: df['ip_address'] + ' ' + df['identificador'] + ' ' + \
+        df['user'] + ' [' + df['datetime'] + ' -0700] "' + \
+        df['http_request'] + ' ' + df['http_version'] + '" ' + \
+        df['http_status'] + ' ' + df['object_size'].astype(str),
+    ]
+    return _transformers
 
 
 @pytest.fixture(scope="module")
 def web_server_log():
   return WebServerLog()
 
-# @pytest.fixture(scope="function")
-# def wsl_transformer():
-#   return lambda df: df['ip_address'] + ' ' + df['identificador'] + ' ' + df['user'] + ' [' + df['datetime'] + ' -0700] "' + \
-#                         df['http_request'] + ' ' + df['http_version'] + '" ' + df['http_status'] + ' ' + df['object_size'].astype(str)
 
-
-
-# @pytest.fixture(scope="function")
-# def update_transformer():
-#   transformer = Changer(cols_to_change=["campo_float", "campo_int"]).updater
-#   return transformer
+@pytest.fixture(scope="function")
+def update_transformer():
+  transformer = Changer(cols_to_change=["campo_float", "campo_int"]).updater
+  return transformer

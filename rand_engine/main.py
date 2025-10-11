@@ -85,7 +85,8 @@ class RandEngine:
         StreamHandler.sleep_to_contro_throughput(min_throughput, max_throughput)
   
 
-  def write(self):
+  def write(self, size):
+    self.generate_pandas_df(size=size)
     microbatch_def = lambda: self.actual_dataframe
     return FileWriter(microbatch_def)
    

@@ -86,7 +86,8 @@ class FileWriter:
     :return: Callable: Function to write the Pandas DataFrame to a csv file.
     """
     if self.write_options.get("compression"):
-      full_path= full_path.replace("csv", f"csv.{self.write_options['compression']}")
+      # Add compression extension to the end of the filename
+      full_path = f"{full_path}.{self.write_options['compression']}"
     writer = lambda: dataframe().to_csv(full_path, index=False, **self.write_options)
     return writer
   
@@ -98,7 +99,8 @@ class FileWriter:
     :return: Callable: Function to write the Pandas DataFrame to a json file.
     """
     if self.write_options.get("compression"):
-      full_path= full_path.replace("json", f"json.{self.write_options['compression']}")
+      # Add compression extension to the end of the filename
+      full_path = f"{full_path}.{self.write_options['compression']}"
     def writer():
       dataframe().to_json(full_path, orient='records', lines=True)
     return writer
@@ -132,13 +134,13 @@ class FileWriter:
     :param path: str: Path of the file to be written.
     :param size_in_mb: int: Size in MB of the file to be written.
     """
-    self.__handle_fs(path, flag=False)
+    self.__handle_fs(path, flag=True)
     counter = 0
     while True:
       full_path = f"{path}/part-{str(counter).zfill(6)}.{self.write_format}"
       dataframe = self.microbatch_def()
       self.dict_format[self.write_format](dataframe, full_path)()
       size_bytes = self.__get_dir_size(path)
-      if counter % 100 == 0: print(f"Size: {size_bytes/2**20:.2f} MB")
+      #if counter % 100 == 0: print(f"Size: {size_bytes/2**20:.2f} MB")
       if self.__get_dir_size(path) >= size_in_mb*2**20: break
       counter += 1

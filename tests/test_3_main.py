@@ -11,12 +11,9 @@ from tests.fixtures.f1_general import (
 )
 
 from tests.fixtures.f3_integrations import (
-    create_output_dir,
     dataframe_size,
     microbatch_size,
     batch_size,
-    parms_file_writer,
-    size_in_mb
 )
 
 

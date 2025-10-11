@@ -11,7 +11,6 @@ from tests.fixtures.f3_integrations import (
     dataframe_size,
     microbatch_size,
     batch_size,
-    parms_file_writer,
     size_in_mb
 )
 
@@ -19,5 +18,13 @@ from tests.fixtures.f3_integrations import (
 def test_pandas_df_kwargs(dataframe_size, web_server_log):
   metadata = web_server_log.metadata()
   df_data = RandEngine(metadata).get_df(dataframe_size)
+  print(df_data.head(5))
+  assert df_data.shape[0] == dataframe_size
+
+
+def test_pandas_df_kwargs(dataframe_size, web_server_log):
+  metadata = web_server_log.metadata()
+  transformers = web_server_log.transformer()
+  df_data = RandEngine(metadata).transformers(transformers).get_df(dataframe_size)
   print(df_data.head(5))
   assert df_data.shape[0] == dataframe_size
