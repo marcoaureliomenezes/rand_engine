@@ -75,6 +75,8 @@ class Core:
       return self.gen_ints_zfilled(size, length)
     else:
       raise ValueError("Method not recognized. Use 'uuid4', 'uuid1', 'shortuuid' or 'random'.")
+
+
   # @classmethod
   # def gen_timestamps(self, size: int, start: str, end: str, format: str) -> np.ndarray:
   #   """

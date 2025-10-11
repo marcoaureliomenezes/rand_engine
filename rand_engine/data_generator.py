@@ -3,17 +3,17 @@ import time
 import pandas as pd
 import numpy as np
 from typing import List, Dict, Optional, Generator, Callable, Any
-from rand_engine.rand_generator import RandGenerator
-from rand_engine.file_writer import FileWriter
+from rand_engine.main.rand_generator import RandGenerator
+from rand_engine.main.file_writer import FileWriter
 from rand_engine.utils.stream_handler import StreamHandler
 
   
 
 
-class RandEngine:
+class DataGenerator:
       
-  def __init__(self, random_spec, seed: bool = False):
-    np.random.seed(42) if seed else np.random.seed(None)
+  def __init__(self, random_spec, seed: int = None):
+    np.random.seed(seed)
     self.actual_dataframe: Optional[Callable[[], pd.DataFrame]] = None
     self.data_generator = RandGenerator(random_spec)
     self._mode = "pandas"

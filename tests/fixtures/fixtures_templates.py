@@ -79,7 +79,7 @@ class RSCustomer(IRandomSpec):
 # from rand_engine.core.numeric_core import CoreNumeric
 
 
-# class RandEngineTemplates:
+# class DataGeneratorTemplates:
   
 #  def __init__(self, faker):
 #   self.faker = faker
@@ -181,4 +181,4 @@ class RSCustomer(IRandomSpec):
 
 #   from faker import Faker
 #   fake = Faker(locale="pt_BR")
-#   rand_engine = RandEngineTemplates(fake)
+#   rand_engine = DataGeneratorTemplates(fake)

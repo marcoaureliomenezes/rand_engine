@@ -1,6 +1,6 @@
 import time
 
-from rand_engine.main import RandEngine
+from rand_engine.data_generator import DataGenerator
 from tests.fixtures.f2_templates import (
     web_server_log
 )
@@ -17,7 +17,7 @@ from tests.fixtures.f3_integrations import (
 
 def test_pandas_df_kwargs(df_size, web_server_log):
   metadata = web_server_log.metadata()
-  df_data = RandEngine(metadata).get_df(df_size)
+  df_data = DataGenerator(metadata).get_df(df_size)
   print(df_data.head(5))
   assert df_data.shape[0] == df_size
 
@@ -25,6 +25,6 @@ def test_pandas_df_kwargs(df_size, web_server_log):
 def test_pandas_df_kwargs(df_size, web_server_log):
   metadata = web_server_log.metadata()
   transformers = web_server_log.transformer()
-  df_data = RandEngine(metadata).transformers(transformers).get_df(df_size)
+  df_data = DataGenerator(metadata).transformers(transformers).get_df(df_size)
   print(df_data.head(5))
   assert df_data.shape[0] == df_size

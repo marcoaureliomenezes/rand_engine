@@ -4,7 +4,7 @@ import pandas as pd
 import glob
 import time
 
-from rand_engine.main import RandEngine
+from rand_engine.data_generator import DataGenerator
 from tests.fixtures.f1_general import (
     rand_spec_case_1,
     rand_spec_case_2,
@@ -44,7 +44,7 @@ def test_pandas_df_kwargs(
 ):
   path = f"{base_path_files_test}/{format_type}/{file_name}"
   _ = (
-    RandEngine(rand_spec_case_1)
+    DataGenerator(rand_spec_case_1)
       .write(size=df_size)
       .format(format_type)
       .option("compression", compression)
@@ -73,7 +73,7 @@ def test_generate_csvs(
   file_name):
   path = f"{base_path_files_test}/{format_type}/{compression if compression else 'none'}/"
   _ = (
-    RandEngine(rand_spec_case_1)
+    DataGenerator(rand_spec_case_1)
     .write(size=microbatch_size)
     .option("compression", compression)
     .mode("overwrite")
