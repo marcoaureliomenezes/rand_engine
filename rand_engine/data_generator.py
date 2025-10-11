@@ -6,16 +6,37 @@ from typing import List, Dict, Optional, Generator, Callable, Any
 from rand_engine.main.rand_generator import RandGenerator
 from rand_engine.main.file_writer import FileWriter
 from rand_engine.utils.stream_handler import StreamHandler
+from rand_engine.validators.spec_validator import SpecValidator
+from rand_engine.exceptions import SpecValidationError
 
   
 
 
 class DataGenerator:
       
-  def __init__(self, random_spec, seed: int = None):
+  def __init__(self, random_spec, seed: int = None, validate: bool = True):
+    """
+    Inicializa o gerador de dados.
+    
+    Args:
+        random_spec: Especificação de dados (dict)
+        seed: Seed para reprodutibilidade (opcional)
+        validate: Se True, valida a spec antes de inicializar (padrão: True)
+    
+    Raises:
+        SpecValidationError: Se a spec for inválida e validate=True
+    
+    Examples:
+        >>> spec = {"age": {"method": Core.gen_ints, "kwargs": {"min": 18, "max": 65}}}
+        >>> engine = DataGenerator(spec, seed=42)
+        >>> df = engine.mode("pandas").size(1000).get_df()
+    """
+    if validate:
+      SpecValidator.validate_and_raise(random_spec)
+    
     np.random.seed(seed)
     self.actual_dataframe: Optional[Callable[[], pd.DataFrame]] = None
-    self.data_generator = RandGenerator(random_spec)
+    self.data_generator = RandGenerator(random_spec, validate=False)  # Já validado
     self._mode = "pandas"
     self._size = 1000
     self._transformers: List[Optional[Callable]] = []
