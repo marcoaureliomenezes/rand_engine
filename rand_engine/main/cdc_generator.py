@@ -8,7 +8,7 @@ import pandas as pd
 from pandas import DataFrame as PandasDF
 
 from rand_engine.main.i_random_spec import IRandomSpec
-from rand_engine.main import DataGenerator
+from rand_engine.main import RandGenerator
 from rand_engine.main.fs_utils import FSUtils, DBFSUtils
 
 from pyspark.sql.functions import coalesce
@@ -37,7 +37,7 @@ class FilesGenerator:
   
   def generate_sample(self, size: int=100) -> PandasDF:
     return (
-      DataGenerator(self.footprint.metadata())
+      RandGenerator(self.footprint.metadata())
         .generate_pandas_df(size, transformer=self.footprint.transformer())
         .get_df()
     )
@@ -55,7 +55,7 @@ class FilesGenerator:
   def write_file(self, size: int=100, const_cols={}):
     file_path = self._get_file_path()
     _ = (
-      DataGenerator(self.footprint.metadata()) \
+      RandGenerator(self.footprint.metadata()) \
         .generate_pandas_df(size, transformer=self.footprint.transformer(**const_cols))
         .write() \
         .mode("overwrite") \
@@ -108,7 +108,7 @@ class CDCGenerator(FilesGenerator):
     metadata = self.footprint.metadata()
     size = df_pks_to_change.shape[0]
     transformer = self.footprint.transformer_cdc_update(null_rate=null_rate, **const_cols)
-    df_data = DataGenerator(metadata).generate_pandas_df(size, transformer).get_df()
+    df_data = RandGenerator(metadata).generate_pandas_df(size, transformer).get_df()
     for coluna in self.pk_cols: df_data[coluna] = df_pks_to_change[coluna]
     if null_rate != 1: 
       cols_to_check = [col for col in df_data.columns if col not in self.pk_cols + list(const_cols.keys())]

@@ -7,7 +7,7 @@
 
 ### 1. Three-Layer Design
 - **Core Layer** (`rand_engine/core/`): Stateless generator classes - `NumericCore`, `DistinctCore`, `DatetimeCore`. ALL methods are `@classmethod` and use numpy for performance.
-- **Main Layer** (`rand_engine/main/`): Orchestration - `DataGenerator` (spec → DataFrame), `FileWriter` (fluent API for exports), `StreamHandle` (generator for streaming).
+- **Main Layer** (`rand_engine/main/`): Orchestration - `RandGenerator` (spec → DataFrame), `FileWriter` (fluent API for exports), `StreamHandle` (generator for streaming).
 - **Integration Layer** (`rand_engine/spark/`): Optional PySpark extensions (lazy imports to avoid hard dependency).
 
 ### 2. Random Spec Pattern
@@ -35,13 +35,13 @@ When multiple columns are correlated, generate as single string then split:
     }
 }
 ```
-See `DataGenerator.handle_splitable()` for implementation.
+See `RandGenerator.handle_splitable()` for implementation.
 
 ## Code Conventions
 
 ### Naming Patterns
 - Core classes: `{Purpose}Core` (NumericCore, DatetimeCore)
-- Generators: `{Purpose}Generator` (DataGenerator, CDCGenerator)
+- Generators: `{Purpose}Generator` (RandGenerator, CDCGenerator)
 - Handlers: `{Purpose}Handler` (LocalFSHandler, DBFSHandler)
 - Utils: `{Purpose}Utils` (DistinctUtils, FSUtils)
 
@@ -51,9 +51,9 @@ See `DataGenerator.handle_splitable()` for implementation.
 - Use type hints consistently: `Optional[Callable]`, `List[str]`, `Dict[str, Any]`
 
 ### Seed Management
-Seeds are applied at the `DataGenerator` level, NOT in Core classes:
+Seeds are applied at the `RandGenerator` level, NOT in Core classes:
 ```python
-generator = DataGenerator(spec, seed=42)  # ✓ Correct
+generator = RandGenerator(spec, seed=42)  # ✓ Correct
 np.random.seed(42)                        # For direct Core usage
 ```
 
@@ -92,7 +92,7 @@ generator.write()
 
 ### PySpark (Optional Dependency)
 - Import PySpark types only when needed (lazy imports)
-- `DataGenerator.generate_spark_df()` wraps pandas generation
+- `RandGenerator.generate_spark_df()` wraps pandas generation
 - Spark extensions in `rand_engine/spark/` use monkey patching
 
 ### File Formats
@@ -151,7 +151,7 @@ for record in generator.stream_dict(min_throughput=1, max_throughput=10):
 - Use fixtures in `tests/fixtures/` for complex specs
 - Tests validate output shape, types, and ranges, NOT exact values (randomness)
 - Seed tests when reproducibility is required
-- Core tests in `tests/test_1_core.py` are unit-level; integration tests use `DataGenerator`
+- Core tests in `tests/test_1_core.py` are unit-level; integration tests use `RandGenerator`
 
 ## Avoid Common Pitfalls
 - ❌ Don't instantiate Core classes (they're all classmethods)

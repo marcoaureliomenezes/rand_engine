@@ -8,23 +8,23 @@ from tests.fixtures.f2_templates import (
 
 from tests.fixtures.f3_integrations import (
     create_output_dir,
-    dataframe_size,
+    df_size,
     microbatch_size,
     batch_size,
     size_in_mb
 )
 
 
-def test_pandas_df_kwargs(dataframe_size, web_server_log):
+def test_pandas_df_kwargs(df_size, web_server_log):
   metadata = web_server_log.metadata()
-  df_data = RandEngine(metadata).get_df(dataframe_size)
+  df_data = RandEngine(metadata).get_df(df_size)
   print(df_data.head(5))
-  assert df_data.shape[0] == dataframe_size
+  assert df_data.shape[0] == df_size
 
 
-def test_pandas_df_kwargs(dataframe_size, web_server_log):
+def test_pandas_df_kwargs(df_size, web_server_log):
   metadata = web_server_log.metadata()
   transformers = web_server_log.transformer()
-  df_data = RandEngine(metadata).transformers(transformers).get_df(dataframe_size)
+  df_data = RandEngine(metadata).transformers(transformers).get_df(df_size)
   print(df_data.head(5))
-  assert df_data.shape[0] == dataframe_size
+  assert df_data.shape[0] == df_size

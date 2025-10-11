@@ -2,7 +2,7 @@ from typing import List, Optional, Callable
 import pandas as pd
 
 
-class DataGenerator:
+class RandGenerator:
 
 
   def __init__(self, random_spec):

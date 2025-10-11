@@ -3,7 +3,7 @@ import os
 
 
 @pytest.fixture(scope="function")
-def dataframe_size():
+def df_size():
     return 5
 
 @pytest.fixture(scope="function")

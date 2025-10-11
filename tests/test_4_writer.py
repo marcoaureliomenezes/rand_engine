@@ -16,7 +16,7 @@ from tests.fixtures.f1_general import (
 
 from tests.fixtures.f3_integrations import (
     create_output_dir,
-    dataframe_size,
+    df_size,
     microbatch_size,
     batch_size,
     base_path_files_test,
@@ -35,7 +35,7 @@ from tests.fixtures.f3_integrations import (
     ("parquet", "snappy", "arquivo.parquet")
 ])
 def test_pandas_df_kwargs(
-  dataframe_size,
+  df_size,
   rand_spec_case_1,
   base_path_files_test,
   format_type,
@@ -45,7 +45,7 @@ def test_pandas_df_kwargs(
   path = f"{base_path_files_test}/{format_type}/{file_name}"
   _ = (
     RandEngine(rand_spec_case_1)
-      .write(size=dataframe_size)
+      .write(size=df_size)
       .format(format_type)
       .option("compression", compression)
       .mode("overwrite")
@@ -54,9 +54,6 @@ def test_pandas_df_kwargs(
   assert True
  
 
-
-  #   "parquets_none": {"path": f"{output_dir}/arquivo_parquets", "format": "parquet", "compression": None},
-  #   "csvs_gzip": {"path": f"{output_dir}/csvs_gzip", "format": "csv", "compression": "gzip"},
 
 @pytest.mark.parametrize("format_type,compression,file_name", [
     ("csv", None, "arquivo.csv"),
@@ -89,28 +86,3 @@ def test_generate_csvs(
   assert real_size_mb >= size_in_mb and real_size_mb <= size_in_mb * 1.5
 
 
-# def test_generate_parquets(microbatch_size, rand_spec_case_1, parms_file_writer, size_in_mb):
-#   DataGenerator(rand_spec_case_1).generate_pandas_df(microbatch_size).write() \
-#     .mode("overwrite") \
-#     .format(parms_file_writer["parquets_none"]["format"]) \
-#     .incr_load(parms_file_writer["parquets_none"]["path"], size_in_mb)
-#   df_to_assert = pd.read_parquet(f'{parms_file_writer["parquets_none"]["path"]}')
-#   size_dir = [os.path.getsize(path) for path in glob.glob(f'{parms_file_writer["parquets_none"]["path"]}/*')]
-#   real_size_mb = sum(size_dir)/ 2**20
-#   print(df_to_assert)
-#   assert real_size_mb >= size_in_mb and real_size_mb <= size_in_mb * 1.3
-  
-
-# def test_generate_json(dataframe_size, rand_spec_case_1, parms_file_writer):
-#   def transformer(df):
-#     # transform all pandas columns of type Timestamp to string in the format 'YYYY-MM-DDTHH:MM:SS'
-#     for col in df.select_dtypes(include=['datetime64[ns]', 'datetime64[ns, UTC]']).columns:
-#       df[col] = df[col].dt.strftime('%Y-%m-%dT%H:%M:%S')
-#     return df
-#   DataGenerator(rand_spec_case_1).generate_pandas_df(dataframe_size, transformer=transformer).write() \
-#     .mode("overwrite") \
-#     .format(parms_file_writer["json_none"]["format"]) \
-#     .load(parms_file_writer["json_none"]["path"])
-#   df_to_assert = pd.read_json(parms_file_writer["json_none"]["path"], lines=True)
-#   assert df_to_assert.shape == (dataframe_size, len(rand_spec_case_1))
-#   time.sleep(100)

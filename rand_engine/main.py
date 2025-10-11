@@ -3,7 +3,7 @@ import time
 import pandas as pd
 import numpy as np
 from typing import List, Dict, Optional, Generator, Callable, Any
-from rand_engine.data_generator import DataGenerator
+from rand_engine.rand_generator import RandGenerator
 from rand_engine.file_writer import FileWriter
 from rand_engine.utils.stream_handler import StreamHandler
 
@@ -15,8 +15,9 @@ class RandEngine:
   def __init__(self, random_spec, seed: bool = False):
     np.random.seed(42) if seed else np.random.seed(None)
     self.actual_dataframe: Optional[Callable[[], pd.DataFrame]] = None
-    self.data_generator = DataGenerator(random_spec)
+    self.data_generator = RandGenerator(random_spec)
     self._mode = "pandas"
+    self._size = 1000
     self._transformers: List[Optional[Callable]] = []
 
  
@@ -57,12 +58,15 @@ class RandEngine:
     self._mode = mode
     return self
 
+  def size(self, size: int):
+    self._size = size
+    return self
 
-  def get_df(self, size, spark=None):
+  def get_df(self, spark=None):
     if self._mode == "pandas":
-      self.generate_pandas_df(size=size)
+      self.generate_pandas_df(size=self._size)
     elif self._mode == "spark":
-      self.generate_spark_df(spark=spark, size=size)
+      self.generate_spark_df(spark=spark, size=self._size)
     assert self.actual_dataframe is not None, "You need to generate a DataFrame first."
     return self.actual_dataframe()
 
@@ -74,6 +78,7 @@ class RandEngine:
     :param max_throughput: int: Maximum throughput to be generated.
     :return: Generator: Generator of records.
     """
+    self.generate_pandas_df(size=self._size)
     assert self.actual_dataframe is not None, "You need to generate a DataFrame first."
     while True:
       df_data_microbatch = self.actual_dataframe()
