@@ -43,7 +43,14 @@ jobs:
             ${{ runner.os }}-poetry-${{ matrix.python-version }}-
       
       - name: Install dependencies
-        run: poetry install --with test --no-interaction
+        run: |
+          poetry install --with test --no-interaction --sync
+      
+      - name: Verify pytest-cov installation
+        run: |
+          poetry run python -c "import pytest_cov; print(f'✅ pytest-cov version: {pytest_cov.__version__}')"
+          poetry run pytest --version
+          echo "✅ Testing environment ready"
       
       - name: Run tests with coverage
         run: |
