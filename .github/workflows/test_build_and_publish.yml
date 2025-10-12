@@ -183,10 +183,11 @@ jobs:
           # Testar import
           python -c "
           import rand_engine
-          from rand_engine.data_generator import DataGenerator
-          from rand_engine.core import Core
+          from rand_engine.main.data_generator import DataGenerator
+          from rand_engine.core.core import Core
+          from rand_engine.core.spark_core import CoreSpark
           print('✅ Package imported successfully')
-          print(f'   Modules: data_generator, core')
+          print(f'   Modules: data_generator, core, spark_core')
           "
           
           echo "✅ Package installation test passed"
