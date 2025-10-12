@@ -1,8 +1,7 @@
-import os
 import time
 import pandas as pd
 import numpy as np
-from typing import List, Dict, Optional, Generator, Callable, Any
+from typing import List, Optional, Generator, Callable, Any
 from rand_engine.main.rand_generator import RandGenerator
 from rand_engine.file_handlers.writer_batch import FileBatchWriter
 from rand_engine.file_handlers.writer_stream import FileStreamWriter
@@ -123,6 +122,29 @@ class DataGenerator:
     df_callable = lambda size: self.generate_pandas_df(size=size)
     microbatch_def = lambda: self.actual_dataframe
     return FileStreamWriter(df_callable, microbatch_def)
+
+
+
+class SparkGenerator:
+
+  def __init__(self, spark, F, metadata):
+    self.spark = spark
+    self.F = F
+    self.metadata = metadata
+    _size = 0
+
+
+  def size(self, size):
+    self._size = size
+    return self
+
+
+  def get_df(self):
+    dataframe = self.spark.range(self._size)
+    for k, v in self.metadata.items():
+      dataframe = v["method"](self.spark, F=self.F, df=dataframe, col_name=k, **v["kwargs"])
+    return dataframe
+  
 
 if __name__ == '__main__':
 
