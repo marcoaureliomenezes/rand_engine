@@ -300,7 +300,7 @@ class TestDataGeneratorValidation:
     
     def test_data_generator_valid_spec(self):
         """Testa que DataGenerator aceita spec válida."""
-        from rand_engine.data_generator import DataGenerator
+        from rand_engine.main.data_generator import DataGenerator
         
         spec = {
             "age": {
@@ -314,7 +314,7 @@ class TestDataGeneratorValidation:
     
     def test_data_generator_invalid_spec(self):
         """Testa que DataGenerator rejeita spec inválida."""
-        from rand_engine.data_generator import DataGenerator
+        from rand_engine.main.data_generator import DataGenerator
         
         spec = {
             "age": {
@@ -326,7 +326,7 @@ class TestDataGeneratorValidation:
     
     def test_data_generator_skip_validation(self):
         """Testa que validação pode ser desabilitada."""
-        from rand_engine.data_generator import DataGenerator
+        from rand_engine.main.data_generator import DataGenerator
         
         spec = {
             "age": {

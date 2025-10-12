@@ -1,6 +1,6 @@
 import time
 
-from rand_engine.data_generator import DataGenerator
+from rand_engine.main.data_generator import DataGenerator
 from tests.fixtures.f2_templates import (
     web_server_logs,
     update_transformer

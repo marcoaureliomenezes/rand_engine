@@ -1,5 +1,5 @@
 from typing import Any, Callable, Self
-from rand_engine.main.file_handler import FileHandler
+from rand_engine.file_handlers.file_handler import FileHandler
 
 
 class FileWriter:

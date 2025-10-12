@@ -4,8 +4,8 @@ import pandas as pd
 import numpy as np
 from typing import List, Dict, Optional, Generator, Callable, Any
 from rand_engine.main.rand_generator import RandGenerator
-from rand_engine.main.writer_batch import FileBatchWriter
-from rand_engine.main.writer_stream import FileStreamWriter
+from rand_engine.file_handlers.writer_batch import FileBatchWriter
+from rand_engine.file_handlers.writer_stream import FileStreamWriter
 from rand_engine.utils.stream_handler import StreamHandler
 from rand_engine.validators.spec_validator import SpecValidator
 from rand_engine.validators.exceptions import SpecValidationError

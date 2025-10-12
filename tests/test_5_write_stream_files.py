@@ -5,7 +5,7 @@ import time
 import threading
 import pytest
 
-from rand_engine.data_generator import DataGenerator
+from rand_engine.main.data_generator import DataGenerator
 from tests.fixtures.f1_general import (
     rand_spec_case_1,
     rand_spec_case_2,

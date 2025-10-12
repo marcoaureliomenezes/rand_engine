@@ -2,8 +2,8 @@ import os
 import time
 from typing import Generator
 import uuid
-from rand_engine.main.file_handler import FileHandler
-from rand_engine.main.writer import FileWriter
+from rand_engine.file_handlers.file_handler import FileHandler
+from rand_engine.file_handlers.writer import FileWriter
 
 
 class FileStreamWriter(FileWriter):

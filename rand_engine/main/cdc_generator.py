@@ -8,7 +8,7 @@ import pandas as pd
 from pandas import DataFrame as PandasDF
 
 from rand_engine.main.i_random_spec import IRandomSpec
-from rand_engine.data_generator import RandGenerator
+from rand_engine.main.data_generator import RandGenerator
 from rand_engine.main.fs_utils import FSUtils, DBFSUtils
 
 from pyspark.sql.functions import coalesce
