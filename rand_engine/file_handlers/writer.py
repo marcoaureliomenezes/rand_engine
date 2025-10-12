@@ -1,6 +1,5 @@
-from typing import Any, Callable, Self
+from typing import Any, Callable
 from rand_engine.file_handlers.file_handler import FileHandler
-
 
 class FileWriter:
   """
@@ -39,7 +38,7 @@ class FileWriter:
     return self
 
 
-  def format(self, format: str) -> Self:
+  def format(self, format: str) :
     """Set the output file format (csv, parquet, json)."""
     self.write_format = format
     return self
