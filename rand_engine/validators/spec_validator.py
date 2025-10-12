@@ -6,7 +6,7 @@ permitindo detectar erros de configuração e fornecer feedback útil ao usuári
 """
 
 from typing import Dict, List, Any, Optional
-from rand_engine.exceptions import SpecValidationError
+from rand_engine.validators.exceptions import SpecValidationError
 
 
 class SpecValidator:

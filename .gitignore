@@ -11,3 +11,4 @@ venv
 trash.py
 
 test_outputs/
+z_ignore/

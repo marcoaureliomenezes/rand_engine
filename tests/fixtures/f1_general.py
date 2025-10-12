@@ -3,7 +3,7 @@ import pytest
 import faker
 import numpy as np
 
-from rand_engine.core import Core
+from rand_engine.core.core import Core
 from rand_engine.utils.distincts import DistinctUtils
 
 

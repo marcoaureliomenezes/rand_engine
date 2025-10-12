@@ -1,6 +1,6 @@
 
 from abc import ABC, abstractmethod
-from typing import Dict, Callable, Any
+from typing import Dict, Callable, Any, List
 
 
 class IRandomSpec(ABC):
@@ -10,11 +10,8 @@ class IRandomSpec(ABC):
     pass
 
   @abstractmethod
-  def transformer(self) -> Callable:
+  def transformers(self) -> List[Callable]:
     pass
 
-  @abstractmethod
-  def debugger(self) -> Any:
-    pass
 
 

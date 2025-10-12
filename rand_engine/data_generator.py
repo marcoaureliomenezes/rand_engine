@@ -4,14 +4,13 @@ import pandas as pd
 import numpy as np
 from typing import List, Dict, Optional, Generator, Callable, Any
 from rand_engine.main.rand_generator import RandGenerator
-from rand_engine.main.file_writer import FileWriter
+from rand_engine.main.writer_batch import FileBatchWriter
+from rand_engine.main.writer_stream import FileStreamWriter
 from rand_engine.utils.stream_handler import StreamHandler
 from rand_engine.validators.spec_validator import SpecValidator
-from rand_engine.exceptions import SpecValidationError
+from rand_engine.validators.exceptions import SpecValidationError
 
   
-
-
 class DataGenerator:
       
   def __init__(self, random_spec, seed: int = None, validate: bool = True):
@@ -39,6 +38,8 @@ class DataGenerator:
     self.data_generator = RandGenerator(random_spec, validate=False)  # Já validado
     self._mode = "pandas"
     self._size = 1000
+    self.write = self._writer()
+    self.writeStream = self._stream_writer()
     self._transformers: List[Optional[Callable]] = []
 
  
@@ -61,6 +62,7 @@ class DataGenerator:
   def transformers(self, transformers: List[Optional[Callable]]):
     self._transformers = transformers
     return self
+  
 
   def generate_spark_df(self, spark, size: int) -> Any:
     """
@@ -111,12 +113,16 @@ class DataGenerator:
         StreamHandler.sleep_to_contro_throughput(min_throughput, max_throughput)
   
 
-  def write(self, size):
-    self.generate_pandas_df(size=size)
+  def _writer(self):
+    df_callable = lambda size: self.generate_pandas_df(size=size)
     microbatch_def = lambda: self.actual_dataframe
-    return FileWriter(microbatch_def)
+    return FileBatchWriter(df_callable, microbatch_def)
    
 
+  def _stream_writer(self):
+    df_callable = lambda size: self.generate_pandas_df(size=size)
+    microbatch_def = lambda: self.actual_dataframe
+    return FileStreamWriter(df_callable, microbatch_def)
 
 if __name__ == '__main__':
 

@@ -1,7 +1,7 @@
 from typing import List, Optional, Callable
 import pandas as pd
 from rand_engine.validators.spec_validator import SpecValidator
-from rand_engine.exceptions import ColumnGenerationError, TransformerError
+from rand_engine.validators.exceptions import ColumnGenerationError, TransformerError
 
 
 class RandGenerator:

@@ -4,8 +4,8 @@ Testes para o módulo de validação de specs.
 
 import pytest
 from rand_engine.validators.spec_validator import SpecValidator
-from rand_engine.exceptions import SpecValidationError
-from rand_engine.core import Core
+from rand_engine.validators.exceptions import SpecValidationError
+from rand_engine.core.core import Core
 
 
 class TestSpecValidator:

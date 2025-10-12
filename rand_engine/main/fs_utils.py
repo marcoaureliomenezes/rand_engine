@@ -137,3 +137,34 @@ class DBFSUtils(FSUtils):
         except Exception as e:
             raise Exception(f"Failed to delete file {path}: {str(e)}")
 
+
+
+    def __get_dir_size(self, folder_path: str) -> int:
+        """
+        This method calculates the size in bytes of a directory.
+        :param folder_path: str: Path of the directory.
+        :return: int: Size of the directory in bytes.
+        """
+        total_size = 0
+        for dirpath, dirnames, filenames in os.walk(folder_path):
+            for filename in filenames:
+                file_path = os.path.join(dirpath, filename)
+                if not os.path.islink(file_path):
+                    total_size += os.path.getsize(file_path)
+        return total_size
+  
+
+# def __handle_fs(self, path, flag=True) -> None:
+#   """
+#   This method handles the file system operations.
+#   :param path: str: Path of the file to be written.
+#   """
+#   if self.write_mode == "overwrite":
+#     try:
+#       if os.path.exists(path):
+#         for file in os.listdir(path):
+#           os.remove(os.path.join(path, file))
+#     except Exception as e: pass
+#   if flag == True: to_create = os.path.dirname(path)
+#   else: to_create = path
+#   os.makedirs(to_create, exist_ok=True)
