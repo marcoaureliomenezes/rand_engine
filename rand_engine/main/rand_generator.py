@@ -1,5 +1,6 @@
-from typing import List, Optional, Callable
+from typing import Dict, List, Optional, Callable
 import pandas as pd
+from rand_engine.integrations.duckdb_handler import DuckDBHandler
 from rand_engine.validators.spec_validator import SpecValidator
 from rand_engine.validators.exceptions import ColumnGenerationError, TransformerError
 
@@ -24,30 +25,34 @@ class RandGenerator:
 
 
   def generate_first_level(self, size: int):
-    """
-    Gera dados para todas as colunas conforme especificação.
-    
-    Args:
-        size: Número de linhas a serem geradas
-    
-    Returns:
-        DataFrame pandas com os dados gerados
-    
-    Raises:
-        ColumnGenerationError: Se houver erro ao gerar dados para alguma coluna
-    """
     dict_data = {}
     for k, v in self.random_spec.items():
       try:
-        if "args" in v: dict_data[k] = v["method"](size , *v["args"]) 
+        if "args" in v: dict_data[k] = v["method"](size , *v["args"])
         else: dict_data[k] = v["method"](size , **v.get("kwargs", {}))
       except Exception as e:
         raise ColumnGenerationError(
           f"Error generating column '{k}': {type(e).__name__}: {str(e)}"
         ) from e
     df_pandas = pd.DataFrame(dict_data)
+    self.write_pks(df_pandas)
     return df_pandas
 
+
+  def write_pks(self, dataframe, db_path="clientes_ddb.db"):
+    pk_cols = []
+    for k, v in self.random_spec.items():
+      if v.get("pk"): pk_cols.append((v["pk"]["name"], k, v["pk"]["datatype"]))
+    if pk_cols:
+      table = pk_cols[0][0]
+      pk_fields = {y: z for _, y, z in pk_cols}
+      db = DuckDBHandler(db_path=db_path)
+      db.drop_table(f"checkpoint_{table}")
+      pk_def = ", ".join([f"{k} {v}" for k, v in pk_fields.items()])
+      db.create_table(f"checkpoint_{table}", pk_def=pk_def)
+      db.insert_df(f"checkpoint_{table}", dataframe, pk_cols=[*pk_fields.keys()])
+    return True
+  
 
   def apply_embedded_transformers(self, df):
     """

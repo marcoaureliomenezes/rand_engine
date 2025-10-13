@@ -1,5 +1,8 @@
 
 import itertools
+from typing import Dict
+
+from rand_engine.integrations.duckdb_handler import DuckDBHandler
 
 
 class DistinctUtils:
@@ -47,20 +50,27 @@ class DistinctUtils:
     return result
   
 
+  @classmethod
+  def handle_foreign_keys(self, table, pk_fields, db_path="clientes_ddb.db"):
+    db = DuckDBHandler(db_path=db_path)
+    df = db.select_all(f"checkpoint_{table}", pk_fields)
+    cat_ids = df[pk_fields[0]].to_list()
+    return cat_ids
+  
+
 
 if __name__ == '__main__':
-  distincts = {"OPC": ["C_OPC","V_OPC"], "SWP": ["C_SWP", "V_SWP"]}
-
-  distinct_1 = {"OPC": [["C_OPC","V_OPC"], ["PF", "PJ"], ["IN"]], "SWP": [["C_SWP", "V_SWP"], ["AF", "ME"], ["NULL"]]}
-  distinct_2 = {"OPC": [{"C_OPC": ["PF", "PJ"]}, {"V_OPC": ["NA"]}], "SWP": [{"C_SWP": ["AP"]}, {"V_SWP": ["MA", "ME"]}]}
-  #print(DistinctUtils.handle_distincts_lvl_5(distinct_2)[]
-
-  def rec(structure):
-    if isinstance(structure, list):
-      return [rec(i) for i in structure]
-    if isinstance(structure, dict):
-      return [[[k], rec(v)] for k, v in structure.items()]
-    return structure
-  import numpy as np
-  result = rec(distinct_2)
-  combinations = np.array(list(itertools.product(*result)))
+  pass
+  # distincts = {"OPC": ["C_OPC","V_OPC"], "SWP": ["C_SWP", "V_SWP"]}
+  # distinct_1 = {"OPC": [["C_OPC","V_OPC"], ["PF", "PJ"], ["IN"]], "SWP": [["C_SWP", "V_SWP"], ["AF", "ME"], ["NULL"]]}
+  # distinct_2 = {"OPC": [{"C_OPC": ["PF", "PJ"]}, {"V_OPC": ["NA"]}], "SWP": [{"C_SWP": ["AP"]}, {"V_SWP": ["MA", "ME"]}]}
+  # #print(DistinctUtils.handle_distincts_lvl_5(distinct_2)[]
+  # def rec(structure):
+  #   if isinstance(structure, list):
+  #     return [rec(i) for i in structure]
+  #   if isinstance(structure, dict):
+  #     return [[[k], rec(v)] for k, v in structure.items()]
+  #   return structure
+  # import numpy as np
+  # result = rec(distinct_2)
+  # combinations = np.array(list(itertools.product(*result)))
