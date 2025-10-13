@@ -42,10 +42,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-poetry-${{ matrix.python-version }}-
       
-      - name: Verify and update lock file if needed
+      - name: Update lock file
         run: |
-          poetry check
-          poetry lock --check || poetry lock
+          poetry lock
       
       - name: Install dependencies
         run: |
