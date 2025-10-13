@@ -6,3 +6,4 @@ pyarrow==19.0.0
 poetry==2.0.1
 fastparquet==2024.11.0
 fastavro==1.10.0
+duckdb==1.4.1
