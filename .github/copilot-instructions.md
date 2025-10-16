@@ -43,7 +43,7 @@ See `RandGenerator.handle_splitable()` for implementation.
 - Core classes: `{Purpose}Core` (NumericCore, DatetimeCore)
 - Generators: `{Purpose}Generator` (RandGenerator, CDCGenerator)
 - Handlers: `{Purpose}Handler` (LocalFSHandler, DBFSHandler)
-- Utils: `{Purpose}Utils` (DistinctUtils, FSUtils)
+- Utils: `{Purpose}Utils` (DistinctsUtils, FSUtils)
 
 ### Method Signatures
 - Core methods: Return `np.ndarray`, accept `size: int` as first param
@@ -111,7 +111,7 @@ jobs = [fake.job() for _ in range(100)]
 ## Common Patterns
 
 ### Proportional Distributions
-Use `DistinctUtils.handle_distincts_lvl_1()` for weighted sampling:
+Use `DistinctsUtils.handle_distincts_lvl_1()` for weighted sampling:
 ```python
 {"Junior": 70, "Pleno": 35, "Senior": 12}  # Weights, not exact counts
 ```

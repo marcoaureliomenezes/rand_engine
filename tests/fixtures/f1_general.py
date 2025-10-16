@@ -4,7 +4,7 @@ import faker
 import numpy as np
 
 from rand_engine.core.core import Core
-from rand_engine.utils.distincts import DistinctUtils
+from rand_engine.utils.distincts_utils import DistinctsUtils
 
 
 @pytest.fixture(scope="function")
@@ -72,28 +72,28 @@ def rand_engine_splitable_benchmark():
     "plan":       dict(method=Core.gen_distincts, args=[["free", "standard", "premium"]]),
     "frequency": dict(
       method=Core.gen_distincts, 
-      args=[DistinctUtils.handle_distincts_lvl_1(spec_handle_1)] 
+      args=[DistinctsUtils.handle_distincts_lvl_1(spec_handle_1)] 
     ),
     "device_os": dict(
       method=     Core.gen_distincts,
       splitable=  True,
       cols=       ["device", "platform"],
       sep=        ";",
-      kwargs=      dict(distinct=DistinctUtils.handle_distincts_lvl_2(spec_handle_2))
+      kwargs=      dict(distinct=DistinctsUtils.handle_distincts_lvl_2(spec_handle_2))
     ),
     "http_request_http_status": dict(
       method=       Core.gen_distincts,
       splitable=    True,
       cols=         ["http_request", "http_status"],
       sep=          ";",
-      kwargs=        dict(distinct=DistinctUtils.handle_distincts_lvl_3(spec_handle_3))
+      kwargs=        dict(distinct=DistinctsUtils.handle_distincts_lvl_3(spec_handle_3))
     ),
   }
 
 @pytest.fixture(scope="function")
 def rand_engine_splitable_benchmark():
   spec_handle_2 = {"mobile": ["IOS","Android"], "Desktop": ["Windows", "MacOS", "Linux"]}
-  distincts = DistinctUtils.handle_distincts_lvl_2(spec_handle_2)
+  distincts = DistinctsUtils.handle_distincts_lvl_2(spec_handle_2)
   return {
     "id":        dict(method=Core.gen_unique_identifiers, args=["zint"]),
     "device_os": dict(
@@ -108,7 +108,7 @@ def rand_engine_splitable_benchmark():
     #   splitable=    True,
     #   cols=         ["http_request", "http_status"],
     #   sep=          ";",
-    #   kwargs=        dict(distinct=DistinctUtils.handle_distincts_lvl_3(spec_handle_3))
+    #   kwargs=        dict(distinct=DistinctsUtils.handle_distincts_lvl_3(spec_handle_3))
     # ),
   }
 
@@ -130,21 +130,21 @@ def rand_spec_case_21():
   metadata = {
     "campo_simples_proporcional": {
       "method": Core.gen_distincts,
-      "parms": dict(distinct=DistinctUtils.handle_distincts_lvl_1(spec_handle_1, 1))
+      "parms": dict(distinct=DistinctsUtils.handle_distincts_lvl_1(spec_handle_1, 1))
     },
     "campos_correlacionados": {
       "method":     Core.gen_distincts,
       "splitable":  True,
       "cols":       ["categoria_produto", "tipo_produto"],
       "sep":        ";",
-      "parms":      dict(distinct=DistinctUtils.handle_distincts_lvl_2(spec_handle_2, sep=";"))
+      "parms":      dict(distinct=DistinctsUtils.handle_distincts_lvl_2(spec_handle_2, sep=";"))
     },
     "campos_correlacionados_proporcionais": dict(
       method=       Core.gen_distincts,
       splitable=    True,
       cols=         ["http_request", "http_status"],
       sep=          ";",
-      parms=        dict(distinct=DistinctUtils.handle_distincts_lvl_3(spec_handle_3))
+      parms=        dict(distinct=DistinctsUtils.handle_distincts_lvl_3(spec_handle_3))
     )
   }
   return metadata
@@ -172,14 +172,14 @@ def rand_spec_case_wsl():
     ),
     "http_version": dict(
       method=Core.gen_distincts,
-      parms=dict(distinct=DistinctUtils.handle_distincts_lvl_1({"HTTP/1.1": 7, "HTTP/1.0": 3}, 1))
+      parms=dict(distinct=DistinctsUtils.handle_distincts_lvl_1({"HTTP/1.1": 7, "HTTP/1.0": 3}, 1))
     ),
     "campos_correlacionados_proporcionais": dict(
       method=       Core.gen_distincts,
       splitable=    True,
       cols=         ["http_request", "http_status"],
       sep=          ";",
-      parms=        dict(distinct=DistinctUtils.handle_distincts_lvl_3({
+      parms=        dict(distinct=DistinctsUtils.handle_distincts_lvl_3({
                         "GET /home": [("200", 7),("400", 2), ("500", 1)],
                         "GET /login": [("200", 5),("400", 3), ("500", 1)],
                         "POST /login": [("201", 4),("404", 2), ("500", 1)],

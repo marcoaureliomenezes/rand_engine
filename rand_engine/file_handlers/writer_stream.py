@@ -9,8 +9,8 @@ from rand_engine.file_handlers.writer import FileWriter
 class FileStreamWriter(FileWriter):
 
 
-  def __init__(self, df_callable, microbatch_def):
-    super().__init__(df_callable, microbatch_def)
+  def __init__(self, microbatch_def):
+    super().__init__(microbatch_def)
   
 
   def trigger(self, frequency: int):
@@ -23,8 +23,7 @@ class FileStreamWriter(FileWriter):
       yield f"{path}/part-{str(uuid.uuid4())}.{self.write_format}"
 
   def __generate_file(self, path):
-    self.df_callable(self._size)
-    dataframe = self.microbatch_def()
+    dataframe = self.microbatch_def(self._size)
     self.writer_method[self.write_format](dataframe, path, self.write_options)()
     
 

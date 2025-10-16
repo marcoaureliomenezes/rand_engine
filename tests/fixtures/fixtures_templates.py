@@ -1,6 +1,6 @@
 from rand_engine.core.core import Core
 from rand_engine.interfaces.i_random_spec import IRandomSpec
-from rand_engine.utils.distincts import DistinctUtils
+from rand_engine.utils.distincts_utils import DistinctsUtils
 import faker
 import numpy as np
 from typing import Callable
@@ -20,7 +20,7 @@ class RSCustomer(IRandomSpec):
     },
     "user_type": {   
       "method": Core.gen_distincts_untyped,
-      "parms": dict(distinct=DistinctUtils.handle_distincts_lvl_1({"standard": 80,"premium":15, "gold": 5, None: 7}, 1))
+      "parms": dict(distinct=DistinctsUtils.handle_distincts_lvl_1({"standard": 80,"premium":15, "gold": 5, None: 7}, 1))
     },
     "first_name": {
       "method": Core.gen_distincts,

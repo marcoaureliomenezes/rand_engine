@@ -34,7 +34,6 @@ def test_create_stream_dict(microbatch_size, rand_spec_case_1):
   counter, start_time = 0, time.time()
   stream = DataGenerator(rand_spec_case_1).size(microbatch_size).stream_dict(min_throughput=5, max_throughput=10)
   for record in stream:
-    print(record)
     elapsed_time = time.time() - start_time
     counter += 1
     if elapsed_time > 1: break

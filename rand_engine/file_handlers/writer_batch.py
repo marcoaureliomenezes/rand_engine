@@ -7,8 +7,8 @@ from rand_engine.file_handlers.writer import FileWriter
 class FileBatchWriter(FileWriter):
 
 
-  def __init__(self, df_callable, microbatch_def):
-    super().__init__(df_callable, microbatch_def)
+  def __init__(self, microbatch_def):
+    super().__init__(microbatch_def)
   
 
   def __handle_filenames(self, path: str, size: int) -> List[str]:
@@ -16,8 +16,7 @@ class FileBatchWriter(FileWriter):
 
 
   def __generate_file(self, path):
-    self.df_callable(self._size)
-    dataframe = self.microbatch_def()
+    dataframe = self.microbatch_def(self._size)
     self.writer_method[self.write_format](dataframe, path, self.write_options)()
 
   def save(self, path: str) -> None:

@@ -141,7 +141,7 @@ def gen_ints(cls, size: int, min: int, max: int) -> np.ndarray:
 - [ ] Adicionar docstrings em `DataGenerator`
 - [ ] Adicionar docstrings em `RandGenerator`
 - [ ] Adicionar docstrings em `FileWriter`
-- [ ] Adicionar docstrings em `DistinctUtils`
+- [ ] Adicionar docstrings em `DistinctsUtils`
 - [ ] Usar formato Google Style ou NumPy Style (consistente)
 
 ---
@@ -164,7 +164,7 @@ def gen_ints(cls, size: int, min: int, max: int):
 
 **Tarefas:**
 - [ ] Substituir `self` por `cls` em todos os `@classmethod` de `Core`
-- [ ] Substituir `self` por `cls` em todos os `@classmethod` de `DistinctUtils`
+- [ ] Substituir `self` por `cls` em todos os `@classmethod` de `DistinctsUtils`
 - [ ] Executar testes para garantir que nada quebrou
 
 **Arquivos:** `rand_engine/core.py`, `rand_engine/utils/distincts.py`

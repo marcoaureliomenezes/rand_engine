@@ -7,8 +7,7 @@ class FileWriter:
   Contains common attributes and methods shared by FileBatchWriter and FileStreamWriter.
   """
 
-  def __init__(self, df_callable, microbatch_def):
-    self.df_callable = df_callable
+  def __init__(self, microbatch_def):
     self.microbatch_def = microbatch_def
     self.write_format = "csv"
     self.write_mode = "overwrite"

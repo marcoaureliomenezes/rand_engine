@@ -12,11 +12,7 @@ class Core:
   def gen_distincts(self, size: int, distinct: List[Any]) -> np.ndarray:
     assert len(list(set([type(x) for x in distinct]))) == 1
     return np.random.choice(distinct, size)
-  
-  @classmethod
-  def gen_distincts_2(self, size: int, distinct: List[Any]) -> np.ndarray:
-    assert len(list(set([type(x) for x in distinct]))) == 1
-    return np.random.choice(distinct, size)
+
 
   @classmethod
   def gen_distincts_untyped(self, size: int, distinct: List[Any]) -> List[Any]:

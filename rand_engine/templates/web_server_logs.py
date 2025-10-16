@@ -5,7 +5,7 @@ from random import randint
 from rand_engine.utils.update import Changer
 from rand_engine.templates.i_random_spec import IRandomSpec
 from rand_engine.core.core import Core
-from rand_engine.utils.distincts import DistinctUtils
+from rand_engine.utils.distincts_utils import DistinctsUtils
 
 
 
@@ -40,14 +40,14 @@ class WebServerLogs(IRandomSpec):
     ),
     "http_version": dict(
       method=Core.gen_distincts,
-      kwargs=dict(distinct=DistinctUtils.handle_distincts_lvl_1({"HTTP/1.1": 7, "HTTP/1.0": 3}, 1))
+      kwargs=dict(distinct=DistinctsUtils.handle_distincts_lvl_1({"HTTP/1.1": 7, "HTTP/1.0": 3}, 1))
     ),
     "campos_correlacionados_proporcionais": dict(
       method=       Core.gen_distincts,
       splitable=    True,
       cols=         ["http_request", "http_status"],
       sep=          ";",
-      kwargs=        dict(distinct=DistinctUtils.handle_distincts_lvl_3({
+      kwargs=        dict(distinct=DistinctsUtils.handle_distincts_lvl_3({
                         "GET /home": [("200", 7),("400", 2), ("500", 1)],
                         "GET /login": [("200", 5),("400", 3), ("500", 1)],
                         "POST /login": [("201", 4),("404", 2), ("500", 1)],

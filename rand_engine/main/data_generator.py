@@ -12,37 +12,32 @@ from rand_engine.validators.exceptions import SpecValidationError
   
 class DataGenerator:
       
-  def __init__(self, random_spec, seed: int = None, validate: bool = True):
-    """
-    Inicializa o gerador de dados.
-    
-    Args:
-        random_spec: Especificação de dados (dict)
-        seed: Seed para reprodutibilidade (opcional)
-        validate: Se True, valida a spec antes de inicializar (padrão: True)
-    
-    Raises:
-        SpecValidationError: Se a spec for inválida e validate=True
-    
-    Examples:
-        >>> spec = {"age": {"method": Core.gen_ints, "kwargs": {"min": 18, "max": 65}}}
-        >>> engine = DataGenerator(spec, seed=42)
-        >>> df = engine.mode("pandas").size(1000).get_df()
-    """
-    if validate:
-      SpecValidator.validate_and_raise(random_spec)
-    
+  def __init__(self, random_spec: Callable[[], dict] | dict, seed: int = None, validate: bool = True):
+    # Avalia a spec se for callable
+
     np.random.seed(seed)
-    self.actual_dataframe: Optional[Callable[[], pd.DataFrame]] = None
-    self.data_generator = RandGenerator(random_spec, validate=False)  # Já validado
-    self._mode = "pandas"
+    self.lazy_random_spec = random_spec
+    self.lazy_dataframe: Optional[Callable[[], pd.DataFrame]] = None
+    # Passa a spec avaliada como callable para manter compatibilidade
     self._size = 1000
     self.write = self._writer()
     self.writeStream = self._stream_writer()
     self._transformers: List[Optional[Callable]] = []
-
+    self.__validate_spec() if validate else None
  
-  def generate_pandas_df(self, size: int) -> pd.DataFrame:
+
+  def __evaluate_spec(self):
+    if callable(self.lazy_random_spec): 
+      return self.lazy_random_spec()
+    return self.lazy_random_spec
+  
+  
+  def __validate_spec(self):
+    evaluated_spec = self.__evaluate_spec()
+    SpecValidator.validate_and_raise(evaluated_spec)
+
+  
+  def wrapped_df_generator(self, size: int) -> pd.DataFrame:
     """
     This method generates a pandas DataFrame based on random data specified in the metadata parameter.
     :param size: int: Number of rows to be generated.
@@ -50,12 +45,14 @@ class DataGenerator:
     :return: pd.DataFrame: DataFrame with the generated data.
     """
     def wrapped_lazy_dataframe():
-      df_pandas = self.data_generator.generate_first_level(size=size)
-      df_pandas = self.data_generator.handle_splitable(df_pandas)
-      df_pandas = self.data_generator.apply_embedded_transformers(df_pandas)
-      df_pandas = self.data_generator.apply_global_transformers(df_pandas, self._transformers)
+      evaluated_spec = self.__evaluate_spec()
+      rand_generator = RandGenerator(evaluated_spec)
+      df_pandas = rand_generator.generate_first_level(size=size)
+      df_pandas = rand_generator.handle_splitable(df_pandas)
+      df_pandas = rand_generator.apply_embedded_transformers(df_pandas)
+      df_pandas = rand_generator.apply_global_transformers(df_pandas, self._transformers)
       return df_pandas
-    self.actual_dataframe = wrapped_lazy_dataframe
+    return wrapped_lazy_dataframe
   
 
   def transformers(self, transformers: List[Optional[Callable]]):
@@ -63,47 +60,22 @@ class DataGenerator:
     return self
   
 
-  def generate_spark_df(self, spark, size: int) -> Any:
-    """
-    This method generates a Spark DataFrame based on random data specified in the random_spec parameter.
-    :param spark: SparkSession: SparkSession object.
-    :param size: int: Number of rows to be generated.
-    :param transformer: Optional[Callable]: Function to transform the generated data."""
-    def wrapped_lazy_dataframe():
-      self.generate_pandas_df(size=size)
-      df_spark = spark.createDataFrame(self.actual_dataframe())
-      return df_spark
-    self.actual_dataframe = wrapped_lazy_dataframe
-
-  def mode(self, mode: str):
-    assert mode in ["pandas", "spark"], "Mode not recognized. Use 'pandas' or 'spark'."
-    self._mode = mode
-    return self
-
   def size(self, size: int):
     self._size = size
     return self
+  
 
-  def get_df(self, spark=None):
-    if self._mode == "pandas":
-      self.generate_pandas_df(size=self._size)
-    elif self._mode == "spark":
-      self.generate_spark_df(spark=spark, size=self._size)
-    assert self.actual_dataframe is not None, "You need to generate a DataFrame first."
-    return self.actual_dataframe()
+  def get_df(self):
+    lazy_dataframe = self.wrapped_df_generator(size=self._size)
+    assert lazy_dataframe is not None, "You need to generate a DataFrame first."
+    return lazy_dataframe()
 
 
   def stream_dict(self, min_throughput: int=1, max_throughput: int = 10) -> Generator:
-    """
-    This method creates a generator of records to be used in a streaming context.
-    :param min_throughput: int: Minimum throughput to be generated.
-    :param max_throughput: int: Maximum throughput to be generated.
-    :return: Generator: Generator of records.
-    """
-    self.generate_pandas_df(size=self._size)
-    assert self.actual_dataframe is not None, "You need to generate a DataFrame first."
+    lazy_dataframe = self.wrapped_df_generator(size=self._size)
+    assert lazy_dataframe is not None, "You need to generate a DataFrame first."
     while True:
-      df_data_microbatch = self.actual_dataframe()
+      df_data_microbatch = lazy_dataframe()
       df_data_parsed = StreamHandler.convert_dt_to_str(df_data_microbatch)
       list_of_records = df_data_parsed.to_dict('records')
       for record in list_of_records:
@@ -113,15 +85,14 @@ class DataGenerator:
   
 
   def _writer(self):
-    df_callable = lambda size: self.generate_pandas_df(size=size)
-    microbatch_def = lambda: self.actual_dataframe
-    return FileBatchWriter(df_callable, microbatch_def)
+    microbatch_def = lambda size: self.wrapped_df_generator(size=size)
+    return FileBatchWriter(microbatch_def)
    
 
   def _stream_writer(self):
-    df_callable = lambda size: self.generate_pandas_df(size=size)
-    microbatch_def = lambda: self.actual_dataframe
-    return FileStreamWriter(df_callable, microbatch_def)
+    microbatch_def = lambda size: self.wrapped_df_generator(size=size)
+    return FileStreamWriter(microbatch_def)
+
 
 
 

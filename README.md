@@ -115,7 +115,7 @@ for record in engine.stream_dict(min_throughput=10, max_throughput=50):
 
 ```python
 from rand_engine.core import Core
-from rand_engine.utils.distincts import DistinctUtils
+from rand_engine.utils.distincts import DistinctsUtils
 
 # Gerar dados onde colunas estão correlacionadas
 spec = {
@@ -141,14 +141,14 @@ spec = {
 
 ```python
 from rand_engine.core import Core
-from rand_engine.utils.distincts import DistinctUtils
+from rand_engine.utils.distincts import DistinctsUtils
 
 # Gerar dados com distribuições ponderadas
 spec = {
     "nivel": {
         "method": Core.gen_distincts,
         "kwargs": {
-            "distinct": DistinctUtils.handle_distincts_lvl_1({
+            "distinct": DistinctsUtils.handle_distincts_lvl_1({
                 "Junior": 70,   # 70% dos registros
                 "Pleno": 20,    # 20% dos registros
                 "Senior": 10    # 10% dos registros

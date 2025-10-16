@@ -3,7 +3,7 @@ import faker
 
 from rand_engine.templates.i_random_spec import IRandomSpec
 from rand_engine.core.core import Core
-from rand_engine.utils.distincts import DistinctUtils
+from rand_engine.utils.distincts_utils import DistinctsUtils
 
 
 class CustomersGenerator(IRandomSpec):
@@ -40,7 +40,7 @@ class CustomersGenerator(IRandomSpec):
                 splitable=True,
                 cols=["city", "state", "country"],
                 sep=";",
-                kwargs=dict(distinct=DistinctUtils.handle_distincts_lvl_2({
+                kwargs=dict(distinct=DistinctsUtils.handle_distincts_lvl_2({
                     "Brasil": ["São Paulo;SP", "Rio de Janeiro;RJ", "Brasília;DF", "Belo Horizonte;MG"],
                     "Estados Unidos": ["New York;NY", "Los Angeles;CA", "Chicago;IL"],
                     "Portugal": ["Lisboa;Lisboa", "Porto;Porto", "Coimbra;Coimbra"]
@@ -48,7 +48,7 @@ class CustomersGenerator(IRandomSpec):
             ),
             "customer_tier": dict(
                 method=Core.gen_distincts,
-                kwargs=dict(distinct=DistinctUtils.handle_distincts_lvl_1({
+                kwargs=dict(distinct=DistinctsUtils.handle_distincts_lvl_1({
                     "Bronze": 60,
                     "Silver": 30,
                     "Gold": 8,
@@ -61,7 +61,7 @@ class CustomersGenerator(IRandomSpec):
             ),
             "is_active": dict(
                 method=Core.gen_distincts,
-                kwargs=dict(distinct=DistinctUtils.handle_distincts_lvl_1({
+                kwargs=dict(distinct=DistinctsUtils.handle_distincts_lvl_1({
                     True: 85,
                     False: 15
                 }))
@@ -114,7 +114,7 @@ class ProductsGenerator(IRandomSpec):
                 splitable=True,
                 cols=["category", "subcategory"],
                 sep=";",
-                kwargs=dict(distinct=DistinctUtils.handle_distincts_lvl_2({
+                kwargs=dict(distinct=DistinctsUtils.handle_distincts_lvl_2({
                     "Eletrônicos": ["Computadores", "Periféricos", "Smartphones", "Tablets"],
                     "Móveis": ["Escritório", "Gaming", "Decoração"],
                     "Acessórios": ["Audio", "Carregamento", "Conectividade"]
@@ -130,7 +130,7 @@ class ProductsGenerator(IRandomSpec):
             ),
             "supplier": dict(
                 method=Core.gen_distincts,
-                kwargs=dict(distinct=DistinctUtils.handle_distincts_lvl_1({
+                kwargs=dict(distinct=DistinctsUtils.handle_distincts_lvl_1({
                     "Fornecedor A": 40,
                     "Fornecedor B": 30,
                     "Fornecedor C": 20,
@@ -139,7 +139,7 @@ class ProductsGenerator(IRandomSpec):
             ),
             "is_available": dict(
                 method=Core.gen_distincts,
-                kwargs=dict(distinct=DistinctUtils.handle_distincts_lvl_1({
+                kwargs=dict(distinct=DistinctsUtils.handle_distincts_lvl_1({
                     True: 90,
                     False: 10
                 }))
@@ -202,7 +202,7 @@ class OrdersGenerator(IRandomSpec):
                 splitable=True,
                 cols=["payment_method", "status"],
                 sep=";",
-                kwargs=dict(distinct=DistinctUtils.handle_distincts_lvl_3({
+                kwargs=dict(distinct=DistinctsUtils.handle_distincts_lvl_3({
                     "credit_card": [("completed", 8), ("pending", 1), ("failed", 1)],
                     "debit_card": [("completed", 9), ("pending", 1)],
                     "pix": [("completed", 9), ("failed", 1)],

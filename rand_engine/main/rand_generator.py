@@ -8,19 +8,8 @@ from rand_engine.validators.exceptions import ColumnGenerationError, Transformer
 class RandGenerator:
 
 
-  def __init__(self, random_spec, validate: bool = True):
-    """
-    Inicializa o gerador de dados randômicos.
-    
-    Args:
-        random_spec: Dicionário de especificação de dados
-        validate: Se True, valida a spec antes de inicializar (padrão: True)
-    
-    Raises:
-        SpecValidationError: Se a spec for inválida e validate=True
-    """
-    if validate:
-      SpecValidator.validate_and_raise(random_spec)
+  def __init__(self, random_spec: Callable[[], Dict], validate: bool = True):
+    # Avalia a spec usando lazy evaluation
     self.random_spec = random_spec
 
 
@@ -39,15 +28,15 @@ class RandGenerator:
     return df_pandas
 
 
-  def write_pks(self, dataframe, db_path="clientes_ddb.db"):
+  def write_pks(self, dataframe):
     pk_cols = []
     for k, v in self.random_spec.items():
-      if v.get("pk"): pk_cols.append((v["pk"]["name"], k, v["pk"]["datatype"]))
+      if v.get("pk"): pk_cols.append((v["pk"]["name"], k, v["pk"]["datatype"], v["pk"].get("checkpoint", ":memory:")))
     if pk_cols:
       table = pk_cols[0][0]
-      pk_fields = {y: z for _, y, z in pk_cols}
-      db = DuckDBHandler(db_path=db_path)
-      db.drop_table(f"checkpoint_{table}")
+      pk_fields = {y: z for _, y, z, _ in pk_cols}
+      db = DuckDBHandler(db_path=pk_cols[0][3])
+      #db.drop_table(f"checkpoint_{table}")
       pk_def = ", ".join([f"{k} {v}" for k, v in pk_fields.items()])
       db.create_table(f"checkpoint_{table}", pk_def=pk_def)
       db.insert_df(f"checkpoint_{table}", dataframe, pk_cols=[*pk_fields.keys()])

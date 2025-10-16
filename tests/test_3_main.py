@@ -33,7 +33,6 @@ def test_pandas_df_args(df_size, rand_spec_case_2):
   using positional arguments.
   """
   df_data = DataGenerator(rand_spec_case_2).size(df_size).get_df()
-  print(df_data)
   assert df_data.shape[0] == df_size
 
 

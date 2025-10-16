@@ -16,16 +16,14 @@ from tests.fixtures.f3_integrations import (
 )
 
 
-def test_pandas_df_kwargs(df_size, web_server_logs):
+def test_generate_template_webserver_logs(df_size, web_server_logs):
   metadata = web_server_logs.metadata()
   df_data = DataGenerator(metadata).size(df_size).get_df()
-  print(df_data.head(5))
   assert df_data.shape[0] == df_size
 
 
-def test_pandas_df_kwargs_2(df_size, web_server_logs):
+def test_generate_template_webserver_logs_with_transformers(df_size, web_server_logs):
   metadata = web_server_logs.metadata()
   transformers = web_server_logs.transformers()
   df_data = DataGenerator(metadata).transformers(transformers).size(df_size).get_df()
-  print(df_data.head(5))
   assert df_data.shape[0] == df_size

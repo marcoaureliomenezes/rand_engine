@@ -1,40 +1,64 @@
 """
-DuckDB POC - Proof of Concept
-Demonstrates basic CRUD operations with DuckDB database.
+DuckDB Handler - Database operations with connection pooling
+Maintains shared connections to avoid losing state in :memory: databases.
 """
 import pandas as pd
 import duckdb
-from typing import List, Tuple
+from typing import Dict, Optional
 
 
 class DuckDBHandler:
     """
-    Simple POC for DuckDB operations.
-    Demonstrates CREATE, INSERT, SELECT, UPDATE, DELETE operations.
+    DuckDB Handler with connection pooling.
+    Maintains shared connections per db_path to preserve state.
+    
+    For :memory: databases, all instances share the same connection.
+    For file-based databases, connections are reused per path.
     """
+    
+    # Class-level connection pool
+    _connections: Dict[str, duckdb.DuckDBPyConnection] = {}
 
     def __init__(self, db_path: str = ":memory:"):
-
+        """
+        Initialize DuckDB handler with connection pooling.
+        
+        Args:
+            db_path: Path to database file. Use ':memory:' for in-memory database.
+                     All handlers with the same db_path share the same connection.
+        """
         self.db_path = db_path
-        self.conn = duckdb.connect(db_path)
-        print(f"✓ Connected to DuckDB database: {db_path}")
+        
+        # Reutiliza conexão existente ou cria nova
+        if db_path not in self._connections:
+            self._connections[db_path] = duckdb.connect(db_path)
+            print(f"✓ Created new connection to DuckDB database: {db_path}")
+        else:
+            print(f"✓ Reusing existing connection to DuckDB database: {db_path}")
+        
+        self.conn = self._connections[db_path]
 
 
     def create_table(self, table_name, pk_def):
+        """Create table with primary key definition. Creates if not exists."""
         query = f"""
         CREATE TABLE IF NOT EXISTS {table_name} (
             {pk_def} PRIMARY KEY)"""
         self.conn.execute(query)
-        print(f"✓ Table '{table_name}' created successfully")
 
 
     def insert_df(self, table_name, df, pk_cols):
-        # DuckDB pode ler diretamente de DataFrames pandas
-        # INSERT OR IGNORE automaticamente ignora duplicatas
+        """
+        Insert DataFrame into table, ignoring duplicate primary keys.
+        
+        Args:
+            table_name: Target table name
+            df: Pandas DataFrame to insert
+            pk_cols: List of primary key column names
+        """
         columns = ", ".join(pk_cols)
         query = f"INSERT OR IGNORE INTO {table_name} SELECT {columns} FROM df"
         self.conn.execute(query)
-        print(f"✓ Inserted DataFrame into '{table_name}' (duplicates ignored)")
 
 
 
@@ -47,55 +71,36 @@ class DuckDBHandler:
         
         # DuckDB pode retornar diretamente um pandas DataFrame
         df = self.conn.execute(query).df()
-        print(df)
         return df
 
 
     def close(self):
-        """Close database connection."""
-        self.conn.close()
-        print("✓ Database connection closed")
+        """
+        Close database connection and remove from pool.
+        Note: This closes the connection for ALL handlers using the same db_path.
+        """
+        if self.db_path in self._connections:
+            self._connections[self.db_path].close()
+            del self._connections[self.db_path]
+            print(f"✓ Database connection closed and removed from pool: {self.db_path}")
+
+
+    @classmethod
+    def close_all(cls):
+        """Close all pooled connections. Useful for cleanup in tests."""
+        for db_path, conn in cls._connections.items():
+            conn.close()
+            print(f"✓ Closed connection: {db_path}")
+        cls._connections.clear()
+        print("✓ All connections closed")
 
 
     def drop_table(self, table_name):
+        """Drop table if exists."""
         query = f"DROP TABLE IF EXISTS {table_name}"
         self.conn.execute(query)
-        print(f"✓ Table '{table_name}' dropped successfully")
-
-def run_poc():
-  """Run the complete DuckDB POC demonstration."""
-  # Initialize database
-  db = DuckDBHandler(db_path="clientes_ddb.db")
-
-  table_name = "checkpoint_category_ids"
-  col_id_name = "category_ids"
-  
-  try:
-      # 1. Create table
-      print("1. Creating table...")
-      db.create_table(table_name, pk_def="category_ids VARCHAR(16)")
-      print()
-
-      # 2. Insert usando DataFrame (primeira vez)
-      print("2. Inserting DataFrame (first batch - 5 records)...")
-      df1 = pd.DataFrame({
-          col_id_name: ["cat_1", "cat_2", "cat_3", "cat_4", "cat_576"]
-      })
-      db.insert_df(table_name, df1, [col_id_name])
-      print()
-
-      # 3. Select all records
-      print("3. Selecting all records after first insert...")
-      df = db.select_all(table_name, [col_id_name])
-      print(df)
 
 
-  except Exception as e:
-      print(f"Error: {e}")
-      import traceback
-      traceback.print_exc()
-  finally:
-      db.close()
 
 if __name__ == "__main__":
-    run_poc()
+    pass
