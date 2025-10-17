@@ -54,12 +54,12 @@ Este diretório contém os workflows do GitHub Actions para automação completa
 ---
 
 ### 4. `auto_tag_publish_development.yml` - Auto Tag e Publish (Pre-Release)
-**Trigger:** Push/Merge em `development`
+**Trigger:** Pull Request **merged** em `development`
 
 **Fluxo:**
 1. **Extrai versão** do `pyproject.toml` (ex: `0.4.6`)
 2. **Determina tipo de pre-release:**
-   - Se não existem tags: cria `0.4.6a1` (alpha 1)
+   - Se não existem tags válidas: cria `0.4.6a1` (alpha 1)
    - Se existe `0.4.6a1`: cria `0.4.6a2` (alpha 2)
    - Se existe alpha: pode evoluir para `0.4.6b1` (beta 1)
    - Se existe beta: pode evoluir para `0.4.6rc1` (release candidate 1)
@@ -68,18 +68,25 @@ Este diretório contém os workflows do GitHub Actions para automação completa
 5. **Publica no PyPI** como pre-release
 6. **Cria GitHub Pre-Release** com informações detalhadas
 
+**Formato de tags válidas:**
+- `X.Y.Za[0-9]+` - Alpha (ex: 0.4.6a1, 0.4.6a2)
+- `X.Y.Zb[0-9]+` - Beta (ex: 0.4.6b1, 0.4.6b2)
+- `X.Y.Zrc[0-9]+` - Release Candidate (ex: 0.4.6rc1, 0.4.6rc2)
+
+**⚠️ Importante:** Tags com formato inválido são ignoradas
+
 **Exemplo de sequência de tags:**
 ```
 0.4.6a1 → 0.4.6a2 → 0.4.6a3 → 0.4.6b1 → 0.4.6b2 → 0.4.6rc1 → 0.4.6rc2
 ```
 
 **Quando usar:**
-- Automaticamente após merge de PRs em `development`
+- Automaticamente após **merge de PR** em `development`
 
 ---
 
 ### 5. `auto_tag_publish_master.yml` - Auto Tag e Publish (Stable)
-**Trigger:** Push/Merge em `master`
+**Trigger:** Pull Request **merged** em `master`
 
 **Fluxo:**
 1. **Extrai versão** do `pyproject.toml` (ex: `0.4.6`)
@@ -90,7 +97,7 @@ Este diretório contém os workflows do GitHub Actions para automação completa
 6. **Cria GitHub Release** com changelog desde último pre-release
 
 **Quando usar:**
-- Automaticamente após merge de `development` em `master`
+- Automaticamente após **merge de PR** de `development` em `master`
 
 ---
 
@@ -110,9 +117,9 @@ git push origin feature/minha-feature
 # 3. Criar PR para development
 # → Trigger: pr_to_development.yml (validação completa)
 
-# 4. Merge do PR em development
-# → Trigger: auto_tag_publish_development.yml
-# → Resultado: Tag 0.4.6a1 criada, publicada no PyPI
+# 4. Aprovar e fazer MERGE do PR
+# → Trigger: auto_tag_publish_development.yml (após merge!)
+# → Resultado: Tag 0.4.6a1 criada automaticamente, publicada no PyPI
 ```
 
 ### Cenário 2: Release Estável
@@ -120,18 +127,18 @@ git push origin feature/minha-feature
 # 1. Criar PR de development para master
 # → Trigger: pr_to_master.yml (validação strict)
 
-# 2. Merge do PR em master
-# → Trigger: auto_tag_publish_master.yml
-# → Resultado: Tag 0.4.6 criada, publicada no PyPI como stable
+# 2. Aprovar e fazer MERGE do PR
+# → Trigger: auto_tag_publish_master.yml (após merge!)
+# → Resultado: Tag 0.4.6 criada automaticamente, publicada no PyPI como stable
 ```
 
 ### Cenário 3: Múltiplas Pre-Releases
 ```bash
-# Merge 1 em development → 0.4.6a1
-# Merge 2 em development → 0.4.6a2
-# Merge 3 em development → 0.4.6a3
+# PR 1 mergeado em development → 0.4.6a1
+# PR 2 mergeado em development → 0.4.6a2
+# PR 3 mergeado em development → 0.4.6a3
 # ... até estar pronto para release estável
-# Merge em master → 0.4.6
+# PR mergeado de development em master → 0.4.6
 ```
 
 ---
@@ -204,9 +211,10 @@ git push
    - Em `master`: Cria tag `0.4.7` estável
 
 ### ⚠️ IMPORTANTE
-- **NUNCA** crie tags manualmente
-- **SEMPRE** atualize versão no `pyproject.toml`
-- **WORKFLOWS** gerenciam tags automaticamente
+- **NUNCA** crie tags manualmente (tags são criadas automaticamente após merge)
+- **SEMPRE** atualize versão no `pyproject.toml` antes de criar PR
+- **WORKFLOWS** gerenciam tags automaticamente após merge de PRs
+- **Apenas PRs mergeados** disparam criação de tags e publicação
 
 ---
 

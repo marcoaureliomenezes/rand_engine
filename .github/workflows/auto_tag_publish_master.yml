@@ -1,13 +1,16 @@
 name: Master - Auto Tag and Publish
 
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches:
       - master
 
 jobs:
   auto_tag_and_publish:
     name: Create Stable Tag and Publish
+    # Only run if PR was merged (not just closed)
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -22,7 +25,11 @@ jobs:
       - name: Extract version from pyproject.toml
         id: extract_version
         run: |
-          VERSION=$(grep "^version = " pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          VERSION=$(grep -E '^version = "[0-9]+\.[0-9]+\.[0-9]+"' pyproject.toml | sed -E 's/version = "(.*)"/\1/')
+          if [ -z "$VERSION" ]; then
+            echo "❌ Failed to extract version from pyproject.toml"
+            exit 1
+          fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "📦 Version from pyproject.toml: $VERSION"
       

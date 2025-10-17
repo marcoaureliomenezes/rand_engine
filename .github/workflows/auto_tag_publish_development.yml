@@ -1,13 +1,16 @@
 name: Development - Auto Tag and Publish
 
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches:
       - development
 
 jobs:
   auto_tag_and_publish:
     name: Create Pre-Release Tag and Publish
+    # Only run if PR was merged (not just closed)
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -22,7 +25,11 @@ jobs:
       - name: Extract version from pyproject.toml
         id: extract_version
         run: |
-          VERSION=$(grep "^version = " pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          VERSION=$(grep -E '^version = "[0-9]+\.[0-9]+\.[0-9]+"' pyproject.toml | sed -E 's/version = "(.*)"/\1/')
+          if [ -z "$VERSION" ]; then
+            echo "❌ Failed to extract version from pyproject.toml"
+            exit 1
+          fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "📦 Version from pyproject.toml: $VERSION"
       
@@ -31,45 +38,60 @@ jobs:
         run: |
           VERSION="${{ steps.extract_version.outputs.version }}"
           
-          # Get all existing tags for this version
-          EXISTING_TAGS=$(git tag -l "${VERSION}*" || echo "")
+          if [ -z "$VERSION" ]; then
+            echo "❌ VERSION is empty!"
+            exit 1
+          fi
+          
+          echo "🔍 Checking existing tags for version: $VERSION"
+          
+          # Get all existing tags for this version with valid pre-release format
+          # Valid formats: X.Y.Za[0-9]+, X.Y.Zb[0-9]+, X.Y.Zrc[0-9]+
+          ALL_TAGS=$(git tag -l "${VERSION}*" || echo "")
+          
+          # Filter only valid pre-release tags
+          ALPHA_TAGS=$(echo "$ALL_TAGS" | grep -E "^${VERSION}a[0-9]+$" || echo "")
+          BETA_TAGS=$(echo "$ALL_TAGS" | grep -E "^${VERSION}b[0-9]+$" || echo "")
+          RC_TAGS=$(echo "$ALL_TAGS" | grep -E "^${VERSION}rc[0-9]+$" || echo "")
+          
+          echo "📋 Valid pre-release tags found:"
+          [ -n "$ALPHA_TAGS" ] && echo "  Alpha: $(echo $ALPHA_TAGS | tr '\n' ' ')"
+          [ -n "$BETA_TAGS" ] && echo "  Beta: $(echo $BETA_TAGS | tr '\n' ' ')"
+          [ -n "$RC_TAGS" ] && echo "  RC: $(echo $RC_TAGS | tr '\n' ' ')"
           
           # Determine next pre-release type and number
           # Priority: alpha (a) -> beta (b) -> release candidate (rc)
           
-          if echo "$EXISTING_TAGS" | grep -q "${VERSION}rc"; then
+          if [ -n "$RC_TAGS" ]; then
             # If rc exists, increment rc
-            LATEST_RC=$(echo "$EXISTING_TAGS" | grep "${VERSION}rc" | sort -V | tail -1)
-            if [ -z "$LATEST_RC" ]; then
-              TAG="${VERSION}rc1"
-            else
-              RC_NUM=$(echo "$LATEST_RC" | sed "s/${VERSION}rc//")
-              NEXT_RC=$((RC_NUM + 1))
-              TAG="${VERSION}rc${NEXT_RC}"
-            fi
+            LATEST_RC=$(echo "$RC_TAGS" | sort -V | tail -1)
+            RC_NUM=$(echo "$LATEST_RC" | sed -E "s/^${VERSION}rc([0-9]+)$/\1/")
+            NEXT_RC=$((RC_NUM + 1))
+            TAG="${VERSION}rc${NEXT_RC}"
             PRERELEASE_TYPE="rc"
-          elif echo "$EXISTING_TAGS" | grep -q "${VERSION}b"; then
+          elif [ -n "$BETA_TAGS" ]; then
             # If beta exists but no rc, increment beta
-            LATEST_BETA=$(echo "$EXISTING_TAGS" | grep "${VERSION}b" | grep -v "${VERSION}bc" | sort -V | tail -1)
-            if [ -z "$LATEST_BETA" ]; then
-              TAG="${VERSION}b1"
-            else
-              BETA_NUM=$(echo "$LATEST_BETA" | sed "s/${VERSION}b//")
-              NEXT_BETA=$((BETA_NUM + 1))
-              TAG="${VERSION}b${NEXT_BETA}"
-            fi
+            LATEST_BETA=$(echo "$BETA_TAGS" | sort -V | tail -1)
+            BETA_NUM=$(echo "$LATEST_BETA" | sed -E "s/^${VERSION}b([0-9]+)$/\1/")
+            NEXT_BETA=$((BETA_NUM + 1))
+            TAG="${VERSION}b${NEXT_BETA}"
             PRERELEASE_TYPE="beta"
-          else
-            # Start with alpha or increment alpha
-            LATEST_ALPHA=$(echo "$EXISTING_TAGS" | grep "${VERSION}a" | grep -v "${VERSION}ab" | sort -V | tail -1)
-            if [ -z "$LATEST_ALPHA" ]; then
-              TAG="${VERSION}a1"
-            else
-              ALPHA_NUM=$(echo "$LATEST_ALPHA" | sed "s/${VERSION}a//")
-              NEXT_ALPHA=$((ALPHA_NUM + 1))
-              TAG="${VERSION}a${NEXT_ALPHA}"
-            fi
+          elif [ -n "$ALPHA_TAGS" ]; then
+            # If alpha exists, increment alpha
+            LATEST_ALPHA=$(echo "$ALPHA_TAGS" | sort -V | tail -1)
+            ALPHA_NUM=$(echo "$LATEST_ALPHA" | sed -E "s/^${VERSION}a([0-9]+)$/\1/")
+            NEXT_ALPHA=$((ALPHA_NUM + 1))
+            TAG="${VERSION}a${NEXT_ALPHA}"
             PRERELEASE_TYPE="alpha"
+          else
+            # No pre-release tags, start with alpha 1
+            TAG="${VERSION}a1"
+            PRERELEASE_TYPE="alpha"
+          fi
+          
+          if [ -z "$TAG" ]; then
+            echo "❌ Failed to determine TAG!"
+            exit 1
           fi
           
           echo "tag=$TAG" >> $GITHUB_OUTPUT
