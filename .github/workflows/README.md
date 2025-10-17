@@ -144,10 +144,15 @@ git push origin feature/minha-feature
 - **Como obter:** https://codecov.io
 
 ### PyPI Trusted Publishing (OIDC)
-- **Configuração:** https://pypi.org/manage/account/publishing/
-- **Publisher:** `github.com/<owner>/<repo>`
-- **Workflow:** `auto_tag_publish_development.yml` e `auto_tag_publish_master.yml`
-- **Environment:** (opcional, usar se configurado)
+**⚠️ IMPORTANTE:** Siga o guia completo em [PYPI_TRUSTED_PUBLISHING_SETUP.md](../PYPI_TRUSTED_PUBLISHING_SETUP.md)
+
+**Resumo:**
+- **URL:** https://pypi.org/manage/project/rand-engine/settings/publishing/
+- **Publisher 1:** `marcoaureliomenezes/rand_engine` + `auto_tag_publish_development.yml`
+- **Publisher 2:** `marcoaureliomenezes/rand_engine` + `auto_tag_publish_master.yml`
+- **Environment:** (deixe em branco)
+
+> 💡 **Troubleshooting:** Se encontrar erro `invalid-publisher`, o workflow name no PyPI está incorreto. Consulte o guia de setup.
 
 ---
 
