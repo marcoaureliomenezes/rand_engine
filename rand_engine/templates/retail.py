@@ -1,7 +1,6 @@
 import faker
 from datetime import datetime as dt, timedelta
 import random
-from rand_engine.core.core import Core
 from rand_engine.integrations.duckdb_handler import DuckDBHandler
 from rand_engine.main.data_generator import DataGenerator
 from rand_engine.utils.distincts_utils import DistinctsUtils
@@ -15,7 +14,7 @@ class Ecommerce:
   def metadata_category(self):
     return lambda: {
       "category_id":  dict(
-        method=Core.gen_unique_identifiers,
+        method="unique_ids",
         kwargs=dict(strategy="zint", length=4),
         pk=dict(name="categories", datatype="VARCHAR(4)", checkpoint=":memory:")), 
     }
@@ -32,19 +31,19 @@ class Ecommerce:
   def metadata_client(self):
     return lambda: {
       "client_id":  dict(
-        method=Core.gen_unique_identifiers,
+        method="unique_ids",
         kwargs=dict(strategy="zint", length=8),
         pk=dict(name="clients", datatype="VARCHAR(8)", checkpoint=":memory:")), 
     }
   
   def metadata_products(self, **kwargs):
     return lambda: {
-      "product_id":       dict(method=Core.gen_unique_identifiers, kwargs=dict(strategy="zint", length=8)),
-      "price":            dict(method=Core.gen_floats_normal, kwargs=dict(mean=50, std=10**1, round=2)),
+      "product_id":       dict(method="unique_ids", kwargs=dict(strategy="zint", length=8)),
+      "price":            dict(method="floats_normal", kwargs=dict(mean=50, std=10**1, round=2)),
       "category_id":      dict(
-        method=Core.gen_distincts,
-        kwargs=dict(distinct=DistinctsUtils.handle_foreign_keys(table="categories", pk_fields=["category_id"], db_path=":memory:"))),
+        method="distincts",
+        kwargs=dict(distincts=DistinctsUtils.handle_foreign_keys(table="categories", pk_fields=["category_id"], db_path=":memory:"))),
       "client_id":      dict(
-        method=Core.gen_distincts,
-        kwargs=dict(distinct=DistinctsUtils.handle_foreign_keys(table="clients", pk_fields=["client_id"], db_path=":memory:")))
+        method="distincts",
+        kwargs=dict(distincts=DistinctsUtils.handle_foreign_keys(table="clients", pk_fields=["client_id"], db_path=":memory:")))
       }

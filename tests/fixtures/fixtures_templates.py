@@ -1,4 +1,4 @@
-from rand_engine.core.core import Core
+from rand_engine.core.np_core import Core
 from rand_engine.interfaces.i_random_spec import IRandomSpec
 from rand_engine.utils.distincts_utils import DistinctsUtils
 import faker
@@ -20,15 +20,15 @@ class RSCustomer(IRandomSpec):
     },
     "user_type": {   
       "method": Core.gen_distincts_untyped,
-      "parms": dict(distinct=DistinctsUtils.handle_distincts_lvl_1({"standard": 80,"premium":15, "gold": 5, None: 7}, 1))
+      "parms": dict(distincts=DistinctsUtils.handle_distincts_lvl_1({"standard": 80,"premium":15, "gold": 5, None: 7}, 1))
     },
     "first_name": {
       "method": Core.gen_distincts,
-      "parms": dict(distinct=[self.faker.first_name() for _ in range(1000)])
+      "parms": dict(distincts=[self.faker.first_name() for _ in range(1000)])
     },
     "last_name": {
       "method": Core.gen_distincts,
-      "parms": dict(distinct=[f"{self.faker.last_name()} {self.faker.last_name()}" for _ in range(10000)])
+      "parms": dict(distincts=[f"{self.faker.last_name()} {self.faker.last_name()}" for _ in range(10000)])
     },
     "income": {
       "method": Core.gen_floats_normal,
@@ -40,7 +40,7 @@ class RSCustomer(IRandomSpec):
     },
     "profession": {
       "method": Core.gen_distincts,
-      "parms": dict(distinct=[self.faker.job() for _ in range(100)])
+      "parms": dict(distincts=[self.faker.job() for _ in range(100)])
     },
     "birth_date": dict(
       method=Core.gen_datetimes,
@@ -150,10 +150,10 @@ class RSCustomer(IRandomSpec):
 #         pattern="x, x, x - x",
 #         replacement="x",
 #         templates=[
-#           {"method": CoreDistincts.gen_distincts, "parms": dict(distinct=self.gen_street_names(10))},
-#           {"method": CoreDistincts.gen_distincts, "parms": dict(distinct=self.gen_neighborhoods(10))},
-#           {"method": CoreDistincts.gen_distincts, "parms": dict(distinct=self.gen_city_names(10))},
-#           {"method": CoreDistincts.gen_distincts, "parms": dict(distinct=self.gen_states(10))}
+#           {"method": CoreDistincts.gen_distincts, "parms": dict(distincts=self.gen_street_names(10))},
+#           {"method": CoreDistincts.gen_distincts, "parms": dict(distincts=self.gen_neighborhoods(10))},
+#           {"method": CoreDistincts.gen_distincts, "parms": dict(distincts=self.gen_city_names(10))},
+#           {"method": CoreDistincts.gen_distincts, "parms": dict(distincts=self.gen_states(10))}
 
 #         ]
 #       )
@@ -167,8 +167,8 @@ class RSCustomer(IRandomSpec):
 #         pattern="(x) 9xx-x",
 #         replacement="x",
 #         templates=[
-#           {"method": CoreDistincts.gen_distincts, "parms": dict(distinct=[11, 12, 13, 14, 15, 16, 17, 18, 19])},
-#           {"method": CoreDistincts.gen_distincts, "parms": dict(distinct=[5, 6, 7, 8, 9])},
+#           {"method": CoreDistincts.gen_distincts, "parms": dict(distincts=[11, 12, 13, 14, 15, 16, 17, 18, 19])},
+#           {"method": CoreDistincts.gen_distincts, "parms": dict(distincts=[5, 6, 7, 8, 9])},
 #           {"method": CoreNumeric.gen_ints_zfilled, "parms": dict(length=3)},
 #           {"method": CoreNumeric.gen_ints_zfilled, "parms": dict(length=4)}
 #         ]

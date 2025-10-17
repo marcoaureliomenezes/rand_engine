@@ -2,7 +2,6 @@ from datetime import datetime as dt
 import faker
 
 from rand_engine.templates.i_random_spec import IRandomSpec
-from rand_engine.core.core import Core
 from rand_engine.utils.distincts_utils import DistinctsUtils
 
 
@@ -20,35 +19,35 @@ class CustomersGenerator(IRandomSpec):
         """Define os campos e métodos de geração para clientes."""
         return {
             "customer_id": dict(
-                method=Core.gen_unique_identifiers, 
+                method="unique_ids", 
                 kwargs=dict(strategy="zint")
             ),
             "name": dict(
-                method=Core.gen_distincts,
-                kwargs=dict(distinct=[self.fake.name() for _ in range(200)])
+                method="distincts",
+                kwargs=dict(distincts=[self.fake.name() for _ in range(200)])
             ),
             "email": dict(
-                method=Core.gen_distincts,
-                kwargs=dict(distinct=[self.fake.email() for _ in range(200)])
+                method="distincts",
+                kwargs=dict(distincts=[self.fake.email() for _ in range(200)])
             ),
             "phone": dict(
-                method=Core.gen_distincts,
-                kwargs=dict(distinct=[self.fake.phone_number() for _ in range(200)])
+                method="distincts",
+                kwargs=dict(distincts=[self.fake.phone_number() for _ in range(200)])
             ),
             "location": dict(
-                method=Core.gen_distincts,
+                method="distincts",
                 splitable=True,
                 cols=["city", "state", "country"],
                 sep=";",
-                kwargs=dict(distinct=DistinctsUtils.handle_distincts_lvl_2({
+                kwargs=dict(distincts=DistinctsUtils.handle_distincts_lvl_2({
                     "Brasil": ["São Paulo;SP", "Rio de Janeiro;RJ", "Brasília;DF", "Belo Horizonte;MG"],
                     "Estados Unidos": ["New York;NY", "Los Angeles;CA", "Chicago;IL"],
                     "Portugal": ["Lisboa;Lisboa", "Porto;Porto", "Coimbra;Coimbra"]
                 }, sep=";"))
             ),
             "customer_tier": dict(
-                method=Core.gen_distincts,
-                kwargs=dict(distinct=DistinctsUtils.handle_distincts_lvl_1({
+                method="distincts",
+                kwargs=dict(distincts=DistinctsUtils.handle_distincts_lvl_1({
                     "Bronze": 60,
                     "Silver": 30,
                     "Gold": 8,
@@ -56,12 +55,12 @@ class CustomersGenerator(IRandomSpec):
                 }))
             ),
             "created_at": dict(
-                method=Core.gen_unix_timestamps,
+                method="unix_timestamps",
                 kwargs=dict(start="01-01-2020", end="31-12-2024", format="%d-%m-%Y")
             ),
             "is_active": dict(
-                method=Core.gen_distincts,
-                kwargs=dict(distinct=DistinctsUtils.handle_distincts_lvl_1({
+                method="distincts",
+                kwargs=dict(distincts=DistinctsUtils.handle_distincts_lvl_1({
                     True: 85,
                     False: 15
                 }))
@@ -97,8 +96,8 @@ class ProductsGenerator(IRandomSpec):
                 kwargs=dict(strategy="zint")
             ),
             "product_name": dict(
-                method=Core.gen_distincts,
-                kwargs=dict(distinct=[
+                method="distincts",
+                kwargs=dict(distincts=[
                     "Notebook Dell Inspiron", "Mouse Logitech MX Master",
                     "Teclado Mecânico Keychron", "Monitor LG 27 polegadas",
                     "Webcam Logitech C920", "Headset HyperX Cloud",
@@ -110,11 +109,11 @@ class ProductsGenerator(IRandomSpec):
                 ])
             ),
             "category_subcategory": dict(
-                method=Core.gen_distincts,
+                method="distincts",
                 splitable=True,
                 cols=["category", "subcategory"],
                 sep=";",
-                kwargs=dict(distinct=DistinctsUtils.handle_distincts_lvl_2({
+                kwargs=dict(distincts=DistinctsUtils.handle_distincts_lvl_2({
                     "Eletrônicos": ["Computadores", "Periféricos", "Smartphones", "Tablets"],
                     "Móveis": ["Escritório", "Gaming", "Decoração"],
                     "Acessórios": ["Audio", "Carregamento", "Conectividade"]
@@ -129,8 +128,8 @@ class ProductsGenerator(IRandomSpec):
                 kwargs=dict(min=0, max=500)
             ),
             "supplier": dict(
-                method=Core.gen_distincts,
-                kwargs=dict(distinct=DistinctsUtils.handle_distincts_lvl_1({
+                method="distincts",
+                kwargs=dict(distincts=DistinctsUtils.handle_distincts_lvl_1({
                     "Fornecedor A": 40,
                     "Fornecedor B": 30,
                     "Fornecedor C": 20,
@@ -138,8 +137,8 @@ class ProductsGenerator(IRandomSpec):
                 }))
             ),
             "is_available": dict(
-                method=Core.gen_distincts,
-                kwargs=dict(distinct=DistinctsUtils.handle_distincts_lvl_1({
+                method="distincts",
+                kwargs=dict(distincts=DistinctsUtils.handle_distincts_lvl_1({
                     True: 90,
                     False: 10
                 }))
@@ -178,11 +177,11 @@ class OrdersGenerator(IRandomSpec):
                 kwargs=dict(strategy="zint")
             ),
             "customer_id": dict(
-                method=Core.gen_distincts,
+                method="distincts",
                 kwargs=dict(distinct=self.customer_ids)
             ),
             "product_id": dict(
-                method=Core.gen_distincts,
+                method="distincts",
                 kwargs=dict(distinct=self.product_ids)
             ),
             "quantity": dict(
@@ -198,11 +197,11 @@ class OrdersGenerator(IRandomSpec):
                 kwargs=dict(min=0.0, max=30.0, round=2)
             ),
             "payment_status": dict(
-                method=Core.gen_distincts,
+                method="distincts",
                 splitable=True,
                 cols=["payment_method", "status"],
                 sep=";",
-                kwargs=dict(distinct=DistinctsUtils.handle_distincts_lvl_3({
+                kwargs=dict(distincts=DistinctsUtils.handle_distincts_lvl_3({
                     "credit_card": [("completed", 8), ("pending", 1), ("failed", 1)],
                     "debit_card": [("completed", 9), ("pending", 1)],
                     "pix": [("completed", 9), ("failed", 1)],
@@ -210,7 +209,7 @@ class OrdersGenerator(IRandomSpec):
                 }))
             ),
             "sale_date": dict(
-                method=Core.gen_unix_timestamps,
+                method="unix_timestamps",
                 kwargs=dict(start="01-01-2023", end="31-12-2024", format="%d-%m-%Y")
             ),
         }
