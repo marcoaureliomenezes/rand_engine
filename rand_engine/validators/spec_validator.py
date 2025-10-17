@@ -17,19 +17,32 @@ class SpecValidator:
     da geração de dados, prevenindo erros em runtime e fornecendo
     mensagens descritivas sobre problemas encontrados.
     
+    Suporta dois formatos para o campo 'method':
+    - Callable direto: Core.gen_ints (formato antigo)
+    - String identifier: "int" (formato novo, recomendado)
+    
     Examples:
+        >>> # Formato antigo (ainda suportado)
         >>> spec = {"age": {"method": Core.gen_ints, "kwargs": {"min": 0, "max": 100}}}
         >>> errors = SpecValidator.validate(spec)
-        >>> if errors:
-        ...     print("\\n".join(errors))
         
-        >>> # Ou levantar exceção se houver erros
+        >>> # Formato novo (recomendado)
+        >>> spec = {"age": {"method": "int", "kwargs": {"min": 0, "max": 100}}}
+        >>> errors = SpecValidator.validate(spec)
+        
+        >>> # Levantar exceção se houver erros
         >>> SpecValidator.validate_and_raise(spec)
     """
     
     REQUIRED_KEYS = ["method"]
-    OPTIONAL_KEYS = ["kwargs", "args", "transformers", "splitable", "cols", "sep"]
+    OPTIONAL_KEYS = ["kwargs", "args", "transformers", "splitable", "cols", "sep", "pk"]
     MUTUALLY_EXCLUSIVE = [("kwargs", "args")]
+    
+    # Métodos válidos (identificadores string)
+    VALID_METHOD_IDENTIFIERS = {
+        "integers", "int_zfilled", "floats", "floats_normal",
+        "distincts", "complex_distincts", "unix_timestamps", "unique_ids", "booleans"
+    }
     
     @staticmethod
     def validate(spec: Dict[str, Dict[str, Any]]) -> List[str]:
@@ -100,11 +113,22 @@ class SpecValidator:
         if "method" not in col_config:
             return errors
         
-        # Validar que method é callable
-        if not callable(col_config["method"]):
+        # Validar que method é callable OU string válida
+        method_value = col_config["method"]
+        
+        if isinstance(method_value, str):
+            # Formato novo: validar string identifier
+            if method_value not in SpecValidator.VALID_METHOD_IDENTIFIERS:
+                valid_methods = ", ".join(f"'{m}'" for m in sorted(SpecValidator.VALID_METHOD_IDENTIFIERS))
+                errors.append(
+                    f"Column '{col_name}': invalid method identifier '{method_value}'. "
+                    f"Valid identifiers are: {valid_methods}"
+                )
+        elif not callable(method_value):
+            # Não é string nem callable
             errors.append(
-                f"Column '{col_name}': 'method' must be callable, "
-                f"got {type(col_config['method']).__name__}"
+                f"Column '{col_name}': 'method' must be a valid string identifier or callable, "
+                f"got {type(method_value).__name__}"
             )
         
         # Validar kwargs vs args (mutuamente exclusivos)

@@ -1,0 +1,194 @@
+name: Master - Auto Tag and Publish
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - master
+
+env:
+  PYTHON_VERSION: "3.12"
+  PACKAGE_NAME: "rand-engine"
+
+jobs:
+  # Job 1: Prepare production release
+  prepare:
+    name: Prepare Production Release
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract_version.outputs.version }}
+      tag_exists: ${{ steps.check_tag.outputs.tag_exists }}
+      latest_rc: ${{ steps.find_rc.outputs.latest_rc }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Extract version from pyproject.toml
+        id: extract_version
+        run: |
+          VERSION=$(grep -E '^version = "[0-9]+\.[0-9]+\.[0-9]+"' pyproject.toml | sed -E 's/version = "(.*)"/\1/')
+          if [ -z "$VERSION" ]; then
+            echo "❌ Failed to extract version from pyproject.toml"
+            exit 1
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Production version: $VERSION"
+      
+      - name: Check if tag already exists
+        id: check_tag
+        run: |
+          VERSION="${{ steps.extract_version.outputs.version }}"
+          if git rev-parse "$VERSION" >/dev/null 2>&1; then
+            echo "tag_exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️  Tag $VERSION already exists - will skip deployment"
+          else
+            echo "tag_exists=false" >> $GITHUB_OUTPUT
+            echo "✅ Tag $VERSION does not exist yet"
+          fi
+      
+      - name: Find latest RC tag
+        id: find_rc
+        run: |
+          VERSION="${{ steps.extract_version.outputs.version }}"
+          LATEST_RC=$(git tag -l "${VERSION}rc*" | grep -E "^${VERSION}rc[0-9]+$" | sort -V | tail -1 || echo "")
+          if [ -n "$LATEST_RC" ]; then
+            echo "latest_rc=$LATEST_RC" >> $GITHUB_OUTPUT
+            echo "📋 Latest RC tag found: $LATEST_RC"
+          else
+            echo "latest_rc=" >> $GITHUB_OUTPUT
+            echo "📋 No RC tags found for version $VERSION"
+          fi
+
+  # Job 2: Run tests
+  test:
+    name: Run Tests (Python ${{ matrix.python-version }})
+    needs: prepare
+    if: needs.prepare.outputs.tag_exists == 'false'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Install dependencies
+        run: poetry install --with test --no-interaction
+      - name: Run tests
+        run: poetry run pytest tests/ -v
+
+  # Job 3: Build and validate
+  build:
+    name: Build Production Package
+    needs: [prepare, test]
+    if: needs.prepare.outputs.tag_exists == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Verify version (no RC suffix)
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          if echo "$VERSION" | grep -q "rc"; then
+            echo "❌ Production version should not contain 'rc' suffix!"
+            exit 1
+          fi
+          echo "✅ Production version: $VERSION"
+      - name: Build package
+        run: poetry build
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-production-${{ needs.prepare.outputs.version }}
+          path: dist/
+
+  # Job 4: Create production tag
+  create_tag:
+    name: Create Production Tag
+    needs: [prepare, build]
+    if: needs.prepare.outputs.tag_exists == 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Create and push tag
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$VERSION" -m "Production Release $VERSION"
+          git push origin "$VERSION"
+
+  # Job 5: Publish to PyPI
+  publish_pypi:
+    name: Publish to PyPI (Production)
+    needs: [prepare, build, create_tag]
+    if: needs.prepare.outputs.tag_exists == 'false'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist-production-${{ needs.prepare.outputs.version }}
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          verbose: true
+
+  # Job 6: Create GitHub Release
+  create_github_release:
+    name: Create GitHub Release
+    needs: [prepare, build, create_tag, publish_pypi]
+    if: needs.prepare.outputs.tag_exists == 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist-production-${{ needs.prepare.outputs.version }}
+          path: dist/
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          LATEST_RC="${{ needs.prepare.outputs.latest_rc }}"
+          
+          NOTES="## 🚀 Production Release v$VERSION"
+          if [ -n "$LATEST_RC" ]; then
+            NOTES="$NOTES
+
+          Promoted from Release Candidate: **$LATEST_RC**"
+          fi
+          
+          gh release create "$VERSION" dist/* \
+            --title "🚀 Release v$VERSION" \
+            --notes "$NOTES" \
+            --latest

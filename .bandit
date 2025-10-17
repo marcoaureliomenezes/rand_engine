@@ -1,0 +1,41 @@
+# Bandit Security Configuration for rand-engine
+# https://bandit.readthedocs.io/en/latest/config.html
+#
+# Context: This is a library for GENERATING MOCK/TEST DATA, not production data.
+# Many "security" warnings are false positives in this context.
+
+[bandit]
+# Paths to exclude from scanning
+exclude_dirs = [
+    '/tests/',
+    '/venv/',
+    '/.venv/',
+    '/build/',
+    '/dist/',
+    '/.tox/',
+    '/__pycache__/'
+]
+
+# Test IDs to skip (comma-separated)
+# 
+# B101: assert_used
+#   Reason: Asserts are used for internal invariants/preconditions.
+#   Not a security issue for a data generation library.
+#
+# B311: random
+#   Reason: Using random.* for generating test data, NOT cryptographic keys.
+#   This is the PURPOSE of the library. secrets.* is overkill here.
+#
+# B324: hashlib without usedforsecurity
+#   Reason: If we hash data, it's for deduplication, not security.
+#
+skips = B101,B311,B324
+
+# Confidence level (LOW, MEDIUM, HIGH)
+# Only report issues with at least MEDIUM confidence
+# LOW confidence = too many false positives
+confidence = MEDIUM
+
+# Severity level (LOW, MEDIUM, HIGH)
+# Report MEDIUM and HIGH severity issues only
+severity = MEDIUM

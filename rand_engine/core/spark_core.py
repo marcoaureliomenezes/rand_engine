@@ -2,7 +2,7 @@ from datetime import datetime as dt
 import pandas as pd
 
 
-class CoreSpark:
+class SparkCore:
 
     @staticmethod
     def gen_ints(spark, F, df, col_name, min=0, max=10):

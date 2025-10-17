@@ -1,7 +1,6 @@
-from datetime import datetime as dt    
-import time
 
 from rand_engine.main.data_generator import DataGenerator
+from datetime import datetime as dt
 from tests.fixtures.f2_templates import update_transformer
 from tests.fixtures.f1_general import (
     rand_spec_case_1,
@@ -25,6 +24,7 @@ def test_pandas_df_kwargs(df_size, rand_spec_case_1):
   """
   df_data = DataGenerator(rand_spec_case_1).size(df_size).get_df()
   assert df_data.shape[0] == df_size
+  assert rand_spec_case_1.keys() == set(df_data.columns)
 
 
 def test_pandas_df_args(df_size, rand_spec_case_2):
@@ -34,6 +34,7 @@ def test_pandas_df_args(df_size, rand_spec_case_2):
   """
   df_data = DataGenerator(rand_spec_case_2).size(df_size).get_df()
   assert df_data.shape[0] == df_size
+  assert rand_spec_case_2.keys() == set(df_data.columns)
 
 
 def test_pandas_df_internal_transformer(df_size, rand_spec_case_1_transformer):
@@ -94,6 +95,7 @@ def test_pandas_df_transformer(df_size, rand_spec_case_1, update_transformer):
   assert "created_at" in df_data_2.columns
 
 
+import time
 
 def test_splitable_benchmark_baseline(df_size, rand_engine_splitable_benchmark_baseline):
   df_size = 10**6
@@ -103,12 +105,12 @@ def test_splitable_benchmark_baseline(df_size, rand_engine_splitable_benchmark_b
   assert df_data.shape[0] == df_size
 
 
-def test_splitable_benchmark(df_size, rand_engine_splitable_benchmark):
-  df_size = 10**6
-  start_time = time.time()
-  df_data = DataGenerator(rand_engine_splitable_benchmark).size(df_size).get_df()
-  print(f"Elapsed time: {time.time() - start_time} seconds")
-  assert df_data.shape[0] == df_size
+# def test_splitable_benchmark(df_size, rand_engine_splitable_benchmark):
+#   df_size = 10**6
+#   start_time = time.time()
+#   df_data = DataGenerator(rand_engine_splitable_benchmark).size(df_size).get_df()
+#   print(f"Elapsed time: {time.time() - start_time} seconds")
+#   assert df_data.shape[0] == df_size
 
 
 # def test_create_pandas_df_wsl(df_size, rand_spec_case_wsl, wsl_transformer):

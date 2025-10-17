@@ -4,7 +4,6 @@ from random import randint
 
 from rand_engine.utils.update import Changer
 from rand_engine.templates.i_random_spec import IRandomSpec
-from rand_engine.core.core import Core
 from rand_engine.utils.distincts_utils import DistinctsUtils
 
 
@@ -22,39 +21,40 @@ class WebServerLogs(IRandomSpec):
   def metadata(self):
     return {
     "ip_address": dict(
-      method=Core.gen_complex_distincts,
+      method="complex_distincts",
       kwargs=dict(
         pattern="x.x.x.x",  replacement="x", 
         templates=[
-          {"method": Core.gen_distincts, "parms": dict(distinct=["172", "192", "10"])},
-          {"method": Core.gen_ints, "parms": dict(min=0, max=255)},
-          {"method": Core.gen_ints, "parms": dict(min=0, max=255)},
-          {"method": Core.gen_ints, "parms": dict(min=0, max=128)}
+          {"method": "distincts", "parms": dict(distincts=["172", "192", "10"])},
+          {"method": "integers", "parms": dict(min=0, max=255)},
+          {"method": "integers", "parms": dict(min=0, max=255)},
+          {"method": "integers", "parms": dict(min=0, max=128)}
         ]
       )),
-    "identificador": dict(method=Core.gen_distincts, kwargs=dict(distinct=["-"])),
-    "user": dict(method=Core.gen_distincts, kwargs=dict(distinct=["-"])),
+    "identificador": dict(method="distincts", args=[["-"]]),
+    "user": dict(method="distincts", args=[["-"]]),
     "datetime": dict(
-      method=Core.gen_unix_timestamps, args=['2024-07-05', '2024-07-06', "%Y-%m-%d"],
+      method="unix_timestamps",
+      args=['2024-07-05', '2024-07-06', "%Y-%m-%d"],
       transformers=[lambda ts: dt.fromtimestamp(ts).strftime("%d/%b/%Y:%H:%M:%S")]
     ),
     "http_version": dict(
-      method=Core.gen_distincts,
-      kwargs=dict(distinct=DistinctsUtils.handle_distincts_lvl_1({"HTTP/1.1": 7, "HTTP/1.0": 3}, 1))
+      method="distincts",
+      args=[DistinctsUtils.handle_distincts_lvl_1({"HTTP/1.1": 7, "HTTP/1.0": 3}, 1)]
     ),
     "campos_correlacionados_proporcionais": dict(
-      method=       Core.gen_distincts,
+      method=       "distincts",
       splitable=    True,
       cols=         ["http_request", "http_status"],
       sep=          ";",
-      kwargs=        dict(distinct=DistinctsUtils.handle_distincts_lvl_3({
+      kwargs=        dict(distincts=DistinctsUtils.handle_distincts_lvl_3({
                         "GET /home": [("200", 7),("400", 2), ("500", 1)],
                         "GET /login": [("200", 5),("400", 3), ("500", 1)],
                         "POST /login": [("201", 4),("404", 2), ("500", 1)],
                         "GET /logout": [("200", 3),("400", 1), ("400", 1)]
         }))
     ),
-    "object_size": dict(method=Core.gen_ints, kwargs=dict(min=0, max=10000)),
+    "object_size": dict(method="integers", kwargs=dict(min=0, max=10000)),
   }
 
 

@@ -1,0 +1,241 @@
+name: PR to Development - Security & Validation
+
+on:
+  pull_request:
+    branches:
+      - development
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+
+jobs:
+  validate_source:
+    name: Validate PR Source
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify source is not master
+        run: |
+          SOURCE_BRANCH="${{ github.head_ref }}"
+          if [ "$SOURCE_BRANCH" == "master" ]; then
+            echo "❌ Cannot create PR to development from master!"
+            exit 1
+          fi
+          echo "✅ PR source: $SOURCE_BRANCH"
+
+  # Security Analysis - Static Application Security Testing (SAST)
+  security_sast:
+    name: Security - SAST (Bandit + Semgrep)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install security tools
+        run: |
+          pip install bandit[toml] semgrep
+      
+      - name: Run Bandit (Python Security Scanner)
+        run: |
+          echo "🔍 Running Bandit security analysis..."
+          bandit -r rand_engine/ -f json -o bandit-report.json || true
+          echo "📊 Bandit findings (Medium+ severity):"
+          bandit -r rand_engine/ -f screen || true
+        continue-on-error: true
+      
+      - name: Run Semgrep
+        run: |
+          echo "🔍 Running Semgrep security analysis..."
+          semgrep --config=auto rand_engine/ --json --output=semgrep-report.json || true
+          echo "📊 Semgrep findings (ERROR severity):"
+          semgrep --config=auto rand_engine/ --severity=ERROR || true
+        continue-on-error: true
+      
+      - name: Upload security reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-sast-reports
+          path: |
+            bandit-report.json
+            semgrep-report.json
+          retention-days: 30
+
+  # Security Analysis - Dependency Scanning
+  security_dependencies:
+    name: Security - Dependency Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      
+      - name: Install Poetry Export Plugin
+        run: |
+          poetry self add poetry-plugin-export
+      
+      - name: Export requirements
+        run: |
+          poetry export -f requirements.txt --output requirements.txt --without-hashes
+      
+      - name: Run Safety (Dependency Vulnerability Scanner)
+        run: |
+          pip install safety
+          echo "🔍 Checking for known vulnerabilities in dependencies..."
+          safety check --file=requirements.txt --json --output safety-report.json || true
+          echo "📊 Safety findings:"
+          safety check --file=requirements.txt || true
+        continue-on-error: true
+      
+      - name: Run Trivy (Comprehensive Vulnerability Scanner)
+        uses: aquasecurity/trivy-action@master
+        continue-on-error: true
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+      
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        continue-on-error: true
+        with:
+          sarif_file: 'trivy-results.sarif'
+      
+      - name: Upload dependency reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-dependency-reports
+          path: |
+            safety-report.json
+            trivy-results.sarif
+          retention-days: 30
+
+  # CodeQL Analysis (GitHub Advanced Security)
+  security_codeql:
+    name: Security - CodeQL Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          queries: security-extended,security-and-quality
+      
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python"
+
+  test:
+    name: Run Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+      fail-fast: false
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-${{ matrix.python-version }}-
+      
+      - name: Install dependencies
+        run: |
+          poetry install --with test --no-interaction
+      
+      - name: Run tests with coverage
+        run: |
+          poetry run pytest tests/ -v --cov=rand_engine --cov-report=xml --cov-report=term-missing --cov-fail-under=60
+      
+      - name: Check coverage threshold
+        if: always()
+        run: |
+          COVERAGE=$(poetry run coverage report | grep TOTAL | awk '{print $4}' | sed 's/%//')
+          echo "📊 Coverage: ${COVERAGE}%"
+          if (( $(echo "$COVERAGE < 60" | bc -l) )); then
+            echo "❌ Coverage ${COVERAGE}% is below minimum 60%"
+            exit 1
+          else
+            echo "✅ Coverage ${COVERAGE}% meets minimum requirement"
+          fi
+      
+      - name: Upload coverage
+        if: matrix.python-version == '3.12'
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  summary:
+    name: PR Validation Summary
+    needs: [validate_source, security_sast, security_dependencies, security_codeql, test]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check all results
+        run: |
+          echo "### 🔍 Security & Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Source Validation | ${{ needs.validate_source.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| SAST Analysis | ${{ needs.security_sast.result == 'success' && '✅ Passed' || '⚠️ Review Required' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dependency Scan | ${{ needs.security_dependencies.result == 'success' && '✅ Passed' || '⚠️ Review Required' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| CodeQL Analysis | ${{ needs.security_codeql.result == 'success' && '✅ Passed' || '⚠️ Review Required' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests (Coverage ≥60%) | ${{ needs.test.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.validate_source.result }}" == "success" ] && [ "${{ needs.test.result }}" == "success" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **All critical checks passed - PR ready to merge**" >> $GITHUB_STEP_SUMMARY
+            
+            # Security checks are warnings, not blockers
+            if [ "${{ needs.security_sast.result }}" != "success" ] || \
+               [ "${{ needs.security_dependencies.result }}" != "success" ] || \
+               [ "${{ needs.security_codeql.result }}" != "success" ]; then
+              echo "⚠️  **Note:** Review security findings before merging" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **Critical checks failed - Cannot merge**" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi

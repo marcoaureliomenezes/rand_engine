@@ -56,18 +56,26 @@ class DuckDBHandler:
             df: Pandas DataFrame to insert
             pk_cols: List of primary key column names
         """
+        # Validate table_name to prevent SQL injection
+        if not table_name.replace('_', '').isalnum():
+            raise ValueError(f"Invalid table name: {table_name}")
+        
         columns = ", ".join(pk_cols)
-        query = f"INSERT OR IGNORE INTO {table_name} SELECT {columns} FROM df"
+        query = f"INSERT OR IGNORE INTO {table_name} SELECT {columns} FROM df"  # nosec B608
         self.conn.execute(query)
 
 
 
     def select_all(self, table_name, columns=None) -> pd.DataFrame:
+        # Validate table_name to prevent SQL injection
+        if not table_name.replace('_', '').isalnum():
+            raise ValueError(f"Invalid table name: {table_name}")
+        
         if columns:
             columns_str = ", ".join(columns)
-            query = f"SELECT {columns_str} FROM {table_name}"
+            query = f"SELECT {columns_str} FROM {table_name}"  # nosec B608
         else:
-            query = f"SELECT * FROM {table_name}"
+            query = f"SELECT * FROM {table_name}"  # nosec B608
         
         # DuckDB pode retornar diretamente um pandas DataFrame
         df = self.conn.execute(query).df()

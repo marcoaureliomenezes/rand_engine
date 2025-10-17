@@ -1,0 +1,74 @@
+name: Tests on Push
+
+on:
+  push:
+    branches-ignore:
+      - master
+      - development
+
+jobs:
+  # Skip if PR exists (will run in pr_to_development.yml instead)
+  check_pr:
+    name: Check if PR exists
+    runs-on: ubuntu-latest
+    outputs:
+      has_pr: ${{ steps.check.outputs.has_pr }}
+    steps:
+      - name: Check for open PR
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_COUNT=$(gh pr list --repo ${{ github.repository }} --head ${{ github.ref_name }} --json number --jq length)
+          if [ "$PR_COUNT" -gt 0 ]; then
+            echo "has_pr=true" >> $GITHUB_OUTPUT
+            echo "⏭️  Skipping - PR exists for this branch"
+          else
+            echo "has_pr=false" >> $GITHUB_OUTPUT
+            echo "✅ No PR - running tests"
+          fi
+
+  test:
+    name: Run Tests (Python ${{ matrix.python-version }})
+    needs: check_pr
+    if: needs.check_pr.outputs.has_pr == 'false'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+      fail-fast: false
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-${{ matrix.python-version }}-
+      
+      - name: Install dependencies
+        run: |
+          poetry install --with test --no-interaction
+      
+      - name: Run tests
+        run: |
+          poetry run pytest tests/ -v --cov=rand_engine --cov-report=term-missing
+      
+      - name: Test summary
+        if: always()
+        run: |
+          echo "✅ Tests completed for Python ${{ matrix.python-version }}"

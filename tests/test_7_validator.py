@@ -5,7 +5,7 @@ Testes para o módulo de validação de specs.
 import pytest
 from rand_engine.validators.spec_validator import SpecValidator
 from rand_engine.validators.exceptions import SpecValidationError
-from rand_engine.core.core import Core
+from rand_engine.core.np_core import NPCore
 
 
 class TestSpecValidator:
@@ -15,7 +15,7 @@ class TestSpecValidator:
         """Testa validação de spec válida com kwargs."""
         spec = {
             "age": {
-                "method": Core.gen_ints,
+                "method": NPCore.gen_ints,
                 "kwargs": {"min": 0, "max": 100}
             }
         }
@@ -26,7 +26,7 @@ class TestSpecValidator:
         """Testa validação de spec válida com args."""
         spec = {
             "age": {
-                "method": Core.gen_ints,
+                "method": NPCore.gen_ints,
                 "args": [0, 100]
             }
         }
@@ -37,7 +37,7 @@ class TestSpecValidator:
         """Testa validação de spec válida com transformers."""
         spec = {
             "age": {
-                "method": Core.gen_ints,
+                "method": NPCore.gen_ints,
                 "kwargs": {"min": 0, "max": 100},
                 "transformers": [lambda x: x * 2]
             }
@@ -49,7 +49,7 @@ class TestSpecValidator:
         """Testa validação de spec válida com splitable."""
         spec = {
             "device_os": {
-                "method": Core.gen_distincts,
+                "method": NPCore.gen_distincts,
                 "kwargs": {"distinct": ["mobile;iOS", "desktop;Windows"]},
                 "splitable": True,
                 "cols": ["device", "os"],
@@ -72,7 +72,7 @@ class TestSpecValidator:
         assert "'age'" in errors[0]
     
     def test_method_not_callable(self):
-        """Testa erro quando 'method' não é callable."""
+        """Testa erro quando 'method' não é callable nem string válida."""
         spec = {
             "age": {
                 "method": "not_callable",
@@ -81,14 +81,14 @@ class TestSpecValidator:
         }
         errors = SpecValidator.validate(spec)
         assert len(errors) == 1
-        assert "'method' must be callable" in errors[0]
+        assert "invalid method identifier 'not_callable'" in errors[0]
         assert "'age'" in errors[0]
     
     def test_kwargs_and_args_together(self):
         """Testa erro quando kwargs e args são usados juntos."""
         spec = {
             "age": {
-                "method": Core.gen_ints,
+                "method": NPCore.gen_ints,
                 "kwargs": {"min": 0, "max": 100},
                 "args": [0, 100]
             }
@@ -101,7 +101,7 @@ class TestSpecValidator:
         """Testa erro quando kwargs não é dict."""
         spec = {
             "age": {
-                "method": Core.gen_ints,
+                "method": NPCore.gen_ints,
                 "kwargs": [0, 100]  # Deveria ser dict
             }
         }
@@ -113,7 +113,7 @@ class TestSpecValidator:
         """Testa erro quando args não é list/tuple."""
         spec = {
             "age": {
-                "method": Core.gen_ints,
+                "method": NPCore.gen_ints,
                 "args": {"min": 0, "max": 100}  # Deveria ser list
             }
         }
@@ -125,7 +125,7 @@ class TestSpecValidator:
         """Testa erro quando transformers não é list."""
         spec = {
             "age": {
-                "method": Core.gen_ints,
+                "method": NPCore.gen_ints,
                 "kwargs": {"min": 0, "max": 100},
                 "transformers": lambda x: x * 2  # Deveria ser list
             }
@@ -138,7 +138,7 @@ class TestSpecValidator:
         """Testa erro quando transformer não é callable."""
         spec = {
             "age": {
-                "method": Core.gen_ints,
+                "method": NPCore.gen_ints,
                 "kwargs": {"min": 0, "max": 100},
                 "transformers": ["not_callable"]
             }
@@ -151,7 +151,7 @@ class TestSpecValidator:
         """Testa erro quando splitable=True mas falta 'cols'."""
         spec = {
             "device_os": {
-                "method": Core.gen_distincts,
+                "method": NPCore.gen_distincts,
                 "kwargs": {"distinct": ["mobile;iOS"]},
                 "splitable": True
             }
@@ -164,7 +164,7 @@ class TestSpecValidator:
         """Testa erro quando 'cols' não é list."""
         spec = {
             "device_os": {
-                "method": Core.gen_distincts,
+                "method": NPCore.gen_distincts,
                 "kwargs": {"distinct": ["mobile;iOS"]},
                 "splitable": True,
                 "cols": "device,os"  # Deveria ser list
@@ -178,7 +178,7 @@ class TestSpecValidator:
         """Testa erro quando 'cols' está vazio."""
         spec = {
             "device_os": {
-                "method": Core.gen_distincts,
+                "method": NPCore.gen_distincts,
                 "kwargs": {"distinct": ["mobile;iOS"]},
                 "splitable": True,
                 "cols": []
@@ -192,7 +192,7 @@ class TestSpecValidator:
         """Testa erro quando 'sep' não é string."""
         spec = {
             "device_os": {
-                "method": Core.gen_distincts,
+                "method": NPCore.gen_distincts,
                 "kwargs": {"distinct": ["mobile;iOS"]},
                 "splitable": True,
                 "cols": ["device", "os"],
@@ -246,7 +246,7 @@ class TestSpecValidator:
         """Testa que validate_and_raise não levanta exceção para spec válida."""
         spec = {
             "age": {
-                "method": Core.gen_ints,
+                "method": NPCore.gen_ints,
                 "kwargs": {"min": 0, "max": 100}
             }
         }
@@ -264,13 +264,13 @@ class TestSpecValidator:
             SpecValidator.validate_and_raise(spec)
         
         assert "Spec validation failed" in str(exc_info.value)
-        assert "'method' must be callable" in str(exc_info.value)
+        assert "invalid method identifier 'not_callable'" in str(exc_info.value)
     
     def test_validate_with_warnings_valid(self, capsys):
         """Testa validate_with_warnings com spec válida."""
         spec = {
             "age": {
-                "method": Core.gen_ints,
+                "method": NPCore.gen_ints,
                 "kwargs": {"min": 0, "max": 100}
             }
         }
@@ -292,7 +292,7 @@ class TestSpecValidator:
         
         captured = capsys.readouterr()
         assert "❌ Spec validation errors" in captured.out
-        assert "'method' must be callable" in captured.out
+        assert "invalid method identifier 'not_callable'" in captured.out
 
 
 class TestDataGeneratorValidation:
@@ -304,7 +304,7 @@ class TestDataGeneratorValidation:
         
         spec = {
             "age": {
-                "method": Core.gen_ints,
+                "method": NPCore.gen_ints,
                 "kwargs": {"min": 18, "max": 65}
             }
         }

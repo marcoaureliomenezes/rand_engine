@@ -1,15 +1,4 @@
-import sqlite3
-from typing import Dict, List, Tuple
-from datetime import datetime as dt    
-
 from rand_engine.main.data_generator import DataGenerator
-from rand_engine.utils.distincts_utils import DistinctsUtils
-
-from rand_engine.core.core import Core
-import faker
-import random
-from datetime import datetime as dt, timedelta
-from rand_engine.integrations.duckdb_handler import DuckDBHandler
 from rand_engine.templates.retail import Ecommerce
 
 
