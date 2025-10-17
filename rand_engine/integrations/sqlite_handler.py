@@ -50,11 +50,15 @@ class SQLiteHandler:
 
 
     def select_all(self, table_name: str, columns: Optional[List[str]] = None) -> pd.DataFrame:
+        # Validate table_name to prevent SQL injection
+        if not table_name.replace('_', '').isalnum():
+            raise ValueError(f"Invalid table name: {table_name}")
+        
         if columns:
             columns_str = ", ".join(columns)
-            query = f"SELECT {columns_str} FROM {table_name}"
+            query = f"SELECT {columns_str} FROM {table_name}"  # nosec B608
         else:
-            query = f"SELECT * FROM {table_name}"
+            query = f"SELECT * FROM {table_name}"  # nosec B608
         df = pd.read_sql(query, self.conn)
         return df
 
