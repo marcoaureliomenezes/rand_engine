@@ -536,6 +536,7 @@ O projeto é open source e aceita contribuições:
 
 Se você:
 
+
 - ✅ Testa pipelines de dados regularmente
 - ✅ Precisa criar demos sem expor dados reais
 - ✅ Quer popular ambientes de desenvolvimento rapidamente
