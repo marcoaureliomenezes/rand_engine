@@ -1,0 +1,130 @@
+name: Master - Auto Tag and Publish
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  auto_tag_and_publish:
+    name: Create Stable Tag and Publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Extract version from pyproject.toml
+        id: extract_version
+        run: |
+          VERSION=$(grep "^version = " pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Version from pyproject.toml: $VERSION"
+      
+      - name: Check if tag already exists
+        id: check_tag
+        run: |
+          VERSION="${{ steps.extract_version.outputs.version }}"
+          if git rev-parse "$VERSION" >/dev/null 2>&1; then
+            echo "tag_exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️  Tag $VERSION already exists"
+          else
+            echo "tag_exists=false" >> $GITHUB_OUTPUT
+            echo "✅ Tag $VERSION does not exist yet"
+          fi
+      
+      - name: Create and push stable tag
+        if: steps.check_tag.outputs.tag_exists == 'false'
+        run: |
+          VERSION="${{ steps.extract_version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$VERSION" -m "Release $VERSION"
+          git push origin "$VERSION"
+          echo "✅ Stable tag $VERSION created and pushed"
+      
+      - name: Set up Python
+        if: steps.check_tag.outputs.tag_exists == 'false'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install Poetry
+        if: steps.check_tag.outputs.tag_exists == 'false'
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      
+      - name: Build package
+        if: steps.check_tag.outputs.tag_exists == 'false'
+        run: |
+          poetry build
+          echo "📦 Package built successfully"
+      
+      - name: Publish to PyPI
+        if: steps.check_tag.outputs.tag_exists == 'false'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          verbose: true
+      
+      - name: Get latest pre-release tag
+        if: steps.check_tag.outputs.tag_exists == 'false'
+        id: latest_prerelease
+        run: |
+          VERSION="${{ steps.extract_version.outputs.version }}"
+          LATEST_PRERELEASE=$(git tag -l "${VERSION}*" | grep -E "${VERSION}(a|b|rc)[0-9]+" | sort -V | tail -1 || echo "")
+          if [ -n "$LATEST_PRERELEASE" ]; then
+            echo "latest=$LATEST_PRERELEASE" >> $GITHUB_OUTPUT
+            echo "📋 Latest pre-release: $LATEST_PRERELEASE"
+          else
+            echo "latest=" >> $GITHUB_OUTPUT
+            echo "📋 No pre-releases found"
+          fi
+      
+      - name: Get commits since last pre-release
+        if: steps.check_tag.outputs.tag_exists == 'false' && steps.latest_prerelease.outputs.latest != ''
+        id: commits
+        run: |
+          LATEST_PRERELEASE="${{ steps.latest_prerelease.outputs.latest }}"
+          COMMITS=$(git log ${LATEST_PRERELEASE}..HEAD --pretty=format:"- %s (%h)" || echo "")
+          echo "list<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMITS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Create GitHub Release
+        if: steps.check_tag.outputs.tag_exists == 'false'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.extract_version.outputs.version }}
+          name: "Release ${{ steps.extract_version.outputs.version }}"
+          body: |
+            ## 🚀 Release ${{ steps.extract_version.outputs.version }}
+            
+            **Branch:** master
+            **Commit:** ${{ github.sha }}
+            
+            ### 📦 Installation
+            ```bash
+            pip install rand-engine==${{ steps.extract_version.outputs.version }}
+            ```
+            
+            ### 🔗 Links
+            - [PyPI Package](https://pypi.org/project/rand-engine/${{ steps.extract_version.outputs.version }}/)
+            - [Documentation](https://github.com/${{ github.repository }})
+            - [Full Changelog](https://github.com/${{ github.repository }}/blob/master/TODOs.md)
+            
+            ${{ steps.latest_prerelease.outputs.latest != '' && format('### 📝 Changes Since {0}', steps.latest_prerelease.outputs.latest) || '### 📝 Changes' }}
+            ${{ steps.commits.outputs.list || 'See full changelog for details.' }}
+          prerelease: false
+          draft: false
+      
+      - name: Skip - Tag already exists
+        if: steps.check_tag.outputs.tag_exists == 'true'
+        run: |
+          echo "⏭️  Tag ${{ steps.extract_version.outputs.version }} already exists. Skipping release."

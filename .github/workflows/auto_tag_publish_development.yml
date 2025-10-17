@@ -1,0 +1,134 @@
+name: Development - Auto Tag and Publish
+
+on:
+  push:
+    branches:
+      - development
+
+jobs:
+  auto_tag_and_publish:
+    name: Create Pre-Release Tag and Publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Extract version from pyproject.toml
+        id: extract_version
+        run: |
+          VERSION=$(grep "^version = " pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Version from pyproject.toml: $VERSION"
+      
+      - name: Determine pre-release type and increment
+        id: prerelease
+        run: |
+          VERSION="${{ steps.extract_version.outputs.version }}"
+          
+          # Get all existing tags for this version
+          EXISTING_TAGS=$(git tag -l "${VERSION}*" || echo "")
+          
+          # Determine next pre-release type and number
+          # Priority: alpha (a) -> beta (b) -> release candidate (rc)
+          
+          if echo "$EXISTING_TAGS" | grep -q "${VERSION}rc"; then
+            # If rc exists, increment rc
+            LATEST_RC=$(echo "$EXISTING_TAGS" | grep "${VERSION}rc" | sort -V | tail -1)
+            if [ -z "$LATEST_RC" ]; then
+              TAG="${VERSION}rc1"
+            else
+              RC_NUM=$(echo "$LATEST_RC" | sed "s/${VERSION}rc//")
+              NEXT_RC=$((RC_NUM + 1))
+              TAG="${VERSION}rc${NEXT_RC}"
+            fi
+            PRERELEASE_TYPE="rc"
+          elif echo "$EXISTING_TAGS" | grep -q "${VERSION}b"; then
+            # If beta exists but no rc, increment beta
+            LATEST_BETA=$(echo "$EXISTING_TAGS" | grep "${VERSION}b" | grep -v "${VERSION}bc" | sort -V | tail -1)
+            if [ -z "$LATEST_BETA" ]; then
+              TAG="${VERSION}b1"
+            else
+              BETA_NUM=$(echo "$LATEST_BETA" | sed "s/${VERSION}b//")
+              NEXT_BETA=$((BETA_NUM + 1))
+              TAG="${VERSION}b${NEXT_BETA}"
+            fi
+            PRERELEASE_TYPE="beta"
+          else
+            # Start with alpha or increment alpha
+            LATEST_ALPHA=$(echo "$EXISTING_TAGS" | grep "${VERSION}a" | grep -v "${VERSION}ab" | sort -V | tail -1)
+            if [ -z "$LATEST_ALPHA" ]; then
+              TAG="${VERSION}a1"
+            else
+              ALPHA_NUM=$(echo "$LATEST_ALPHA" | sed "s/${VERSION}a//")
+              NEXT_ALPHA=$((ALPHA_NUM + 1))
+              TAG="${VERSION}a${NEXT_ALPHA}"
+            fi
+            PRERELEASE_TYPE="alpha"
+          fi
+          
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "prerelease_type=$PRERELEASE_TYPE" >> $GITHUB_OUTPUT
+          echo "🏷️  New tag: $TAG (type: $PRERELEASE_TYPE)"
+      
+      - name: Create and push tag
+        run: |
+          TAG="${{ steps.prerelease.outputs.tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Pre-release $TAG"
+          git push origin "$TAG"
+          echo "✅ Tag $TAG created and pushed"
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      
+      - name: Build package
+        run: |
+          poetry build
+          echo "📦 Package built successfully"
+      
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          verbose: true
+      
+      - name: Create GitHub Pre-Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.prerelease.outputs.tag }}
+          name: "Pre-Release ${{ steps.prerelease.outputs.tag }}"
+          body: |
+            ## 🚧 Pre-Release ${{ steps.prerelease.outputs.tag }}
+            
+            **Type:** ${{ steps.prerelease.outputs.prerelease_type }}
+            **Branch:** development
+            **Commit:** ${{ github.sha }}
+            
+            ### ⚠️ Warning
+            This is a pre-release version. Use at your own risk in production environments.
+            
+            ### 📦 Installation
+            ```bash
+            pip install rand-engine==${{ steps.prerelease.outputs.tag }}
+            ```
+            
+            ### 🔗 Links
+            - [PyPI Package](https://pypi.org/project/rand-engine/${{ steps.prerelease.outputs.tag }}/)
+            - [Documentation](https://github.com/${{ github.repository }})
+            - [Changelog](https://github.com/${{ github.repository }}/blob/development/TODOs.md)
+          prerelease: true
+          draft: false
