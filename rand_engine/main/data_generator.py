@@ -48,7 +48,6 @@ class DataGenerator:
       evaluated_spec = self.__evaluate_spec()
       rand_generator = RandGenerator(evaluated_spec)
       df_pandas = rand_generator.generate_first_level(size=size)
-      df_pandas = rand_generator.handle_splitable(df_pandas)
       df_pandas = rand_generator.apply_embedded_transformers(df_pandas)
       df_pandas = rand_generator.apply_global_transformers(df_pandas, self._transformers)
       return df_pandas

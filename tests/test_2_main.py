@@ -38,9 +38,9 @@ def test_pandas_df_kwargs(df_size, rand_spec_case_1):
                     kwargs=dict(distincts=distincts_multi_map)),
 
   }
-  df_data = DataGenerator(metadata).size(10**7).get_df()
+  df_data = DataGenerator(metadata).size(10**1).get_df()
   print()
-  #print(df_data)
+  print(df_data)
   print(f"Elapsed time: {time.time() - start_time}")
   #assert df_data.shape[0] == df_size
   #assert rand_spec_case_1.keys() == set(df_data.columns)

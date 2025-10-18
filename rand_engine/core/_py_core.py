@@ -37,6 +37,50 @@ class PyCore:
       else:
         list_of_lists.append(np.array([pattern[replacer_cursor] for i in range(size)]))
     return reduce(lambda a, b: a.astype('str') + b.astype('str'), list_of_lists)
+
+
+  @classmethod
+  def gen_distincts_untyped(self, size: int, distinct: List[Any]) -> List[Any]:
+    return list(map(lambda x: distinct[x], np.random.randint(0, len(distinct), size)))
+  
+
+  @classmethod
+  def gen_distincts_map(self, size: int, distincts: Dict[str, List[Any]]) -> np.ndarray:
+    distincts_map = [(i, j) for j in distincts for i in distincts[j]]
+    assert len(list(set([type(x) for x in distincts]))) == 1
+    return self.gen_distincts_untyped(size, distincts_map)
+
+
+  @classmethod
+  def gen_distincts_multi_map(self, size: int, distincts: Dict[str, List[Any]]) -> np.ndarray:
+    combinations = [list(itertools.product([k], *v)) for k, v in distincts.items()]
+    combinations = [[[i for i in tupla] for tupla in sublist] for sublist in combinations]
+    distincts = [i for sublist in combinations for i in sublist]
+    return self.gen_distincts_untyped(size, distincts)
+
+  @classmethod
+  def gen_distincts_map_prop(self, size: int, distincts: Dict[str, List[Any]]) -> np.ndarray:
+    distincts_map_prop = [
+      (category, value)
+      for category, value_weight_pairs in distincts.items()
+      for value, weight in value_weight_pairs
+      for _ in range(weight)
+    ]
+    return self.gen_distincts_untyped(size, distincts_map_prop)
+
+
+# def test_handle_distincts_lvl_5():
+#     distincts = {
+#         "PF": [{"premium": ["platinum", "black, gold"]}, {"standard": ["simples"]}],
+#         "PJ": [{"premium": ["platinum", "black, gold"]}, {"standard": ["simples"]}]
+#     }
+#     result = DistinctsUtils.handle_distincts_lvl_5(distincts, sep=";")
+#     assert result == ['PF;premium;platinum', 'PF;premium;black, gold', 'PF;standard;simples', 'PJ;premium;platinum', 'PJ;premium;black, gold', 'PJ;standard;simples']
+
+
+if __name__ == "__main__":
+  pass
+
   # @classmethod
   # def gen_timestamps(self, size: int, start: str, end: str, format: str) -> np.ndarray:
   #   """
@@ -55,44 +99,3 @@ class PyCore:
   #   timestamp_array = self.gen_unix_timestamps(size, start, end, format_in)
   #   vectorized_func = np.vectorize(lambda x: dt.fromtimestamp(x).strftime(format_out))
   #   return vectorized_func(timestamp_array)
-
-
-  @classmethod
-  def gen_distincts_untyped(self, size: int, distinct: List[Any]) -> List[Any]:
-    return list(map(lambda x: distinct[x], np.random.randint(0, len(distinct), size)))
-  
-
-  @classmethod
-  def gen_distincts_map(self, size: int, distincts: Dict[str, List[Any]]) -> np.ndarray:
-    distincts_map = [(i, j) for j in distincts for i in distincts[j]]
-    assert len(list(set([type(x) for x in distincts]))) == 1
-    return list(map(lambda x: distincts_map[x], np.random.randint(0, len(distincts_map), size)))
-
-
-  @classmethod
-  def gen_distincts_multi_map(self, size: int, distincts: Dict[str, List[Any]]) -> np.ndarray:
-    combinations = [list(itertools.product([k], *v)) for k, v in distincts.items()]
-    combinations = [[[i for i in tupla] for tupla in sublist] for sublist in combinations]
-    distincts = [i for sublist in combinations for i in sublist]
-    return list(map(lambda x: distincts[x], np.random.randint(0, len(distincts), size)))
-  
-
-  @classmethod
-  def gen_distincts_map_prop(self, size: int, distincts: Dict[str, List[Any]]) -> np.ndarray:
-    distincts_map_prop = []
-    for k, v in distincts.items():
-      for i in v:
-        for _ in range(i[1]):
-          distincts_map_prop.append((k, i[0]))
-    return list(map(lambda x: distincts_map_prop[x], np.random.randint(0, len(distincts_map_prop), size)))
-
-  
-if __name__ == "__main__":
-
-  #distincts = {"OPC": [("C_OPC", 8),("V_OPC", 2)], "SWP": [("C_SWP", 6), ("V_SWP", 4)]}
-  distincts = {"OPC": [["C_OPC","V_OPC"], ["PF", "PJ"]], "SWP": (["C_SWP", "V_SWP"], [None])}
-  result = PyCore.gen_distincts_multi_map(100, distincts)
-  print(result)
-  pass
-
-  

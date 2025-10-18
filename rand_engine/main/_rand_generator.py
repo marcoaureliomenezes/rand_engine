@@ -89,11 +89,3 @@ class RandGenerator:
           df = transformer(df)
     return df
  
-  def handle_splitable(self, df):
-    for key, value in self.random_spec.items():
-      if value.get("splitable"):
-        sep = value.get("sep", ";")   
-        cols = value.get("columns")
-        df[cols] = df[key].str.split(sep, expand=True)
-        df.drop(columns=[key], inplace=True)
-    return df

@@ -14,8 +14,8 @@ class NPCore:
     return np.random.choice([True, False], size, p=[true_prob, 1 - true_prob])
   
   @classmethod
-  def gen_ints(self, size: int, min: int, max: int) -> np.ndarray:
-    return np.random.randint(min, max + 1, size)
+  def gen_ints(self, size: int, min: int, max: int, int_type: str = 'int32') -> np.ndarray:
+    return np.random.randint(min, max + 1, size).astype(int_type)
 
 
   @classmethod
