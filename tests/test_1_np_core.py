@@ -1,10 +1,11 @@
 import pytest
 import numpy as np
 from rand_engine.core._np_core import NPCore
-from tests.fixtures.f1_general import default_size
+from tests.fixtures.f1_right_specs import default_size
 
 
 
+# Test for integer generation with various types and ranges
 @pytest.mark.parametrize("min, max,int_type", [
     (-1*2**7, (2**7 - 1), 'int8'),
     (-1*2**15, (2**15 - 1), 'int16'),
@@ -27,12 +28,14 @@ def test_gen_ints(min, max, int_type):
   assert total_size == item_size * kwargs["size"]
 
 
+# Test for integer generation with size 0
 def test_gen_ints_with_size_0(default_size):
   kwargs = dict(size=0, min=0, max=10)
   data = NPCore.gen_ints(**kwargs)
   assert len(data) == 0
 
 
+# Test for integer generation with inconsistent parameters
 @pytest.mark.parametrize("size, min, max", [
     (10, 10**5, 10**1),
     (10, 0, -10**1),
@@ -44,6 +47,7 @@ def test_gen_ints_with_inconsistent_parameters(size, min, max):
     _ = NPCore.gen_ints(**kwargs)
 
 
+# Test for float generation with various ranges and rounding
 @pytest.mark.parametrize("size, min, max, round", [
     (10, 0, 10**4, 2),
     (10, 0, 10**4, 10),
@@ -53,29 +57,49 @@ def test_gen_ints_with_inconsistent_parameters(size, min, max):
 def test_gen_floats(size, min, max, round):
   kwargs = dict(size=size, min=min, max=max, round=round)
   real_result = NPCore.gen_floats(**kwargs)
-  print(real_result)
   assert len(real_result) == kwargs["size"]
   assert type(real_result) == np.ndarray
   assert real_result.dtype == np.float64
 
 
-# def test_gen_floats_normal(default_size):
-#   kwargs = dict(size=default_size, mean=10**3, std=10**2, round=2)
-#   real_result = NPCore.gen_floats_normal(**kwargs)
-#   assert len(real_result) == kwargs["size"]
-#   assert type(real_result) == np.ndarray
+# Test for float generation with inconsistent parameters
+@pytest.mark.parametrize("size, min, max", [
+    (10, 10**5, 10**1),
+    (10, -10**1, -10**5),
+    (-1, 0, 10**1)
+])
+def test_gen_floats_with_inconsistent_parameters(size, min, max):
+  kwargs = dict(size=size, min=min, max=max)
+  with pytest.raises(ValueError):
+    _ = NPCore.gen_floats(**kwargs)
 
-# def test_gen_distincts_low_cardinality(default_size):
-#   distincts = ["value1", "value2", "value3"]
-#   result = NPCore.gen_distincts(size=default_size, distincts=distincts)
-#   assert len(result) == default_size
-#   assert all(isinstance(item, str) for item in result)
 
-# def test_gen_distincts_high_cardinality(default_size):
-#   distincts = [f"value{i}" for i in range(default_size)]
-#   result = NPCore.gen_distincts(size=default_size, distincts=distincts)
-#   assert len(result) == default_size
-#   assert all(isinstance(item, str) for item in result)
+@pytest.mark.parametrize("size, mean, std, round", [
+    (100, 0, 1, 2),
+    (100, 10**3, 10**2, 5),
+    (100, 10**6, 10**5, 10),
+])
+def test_gen_floats_normal(size, mean, std, round):
+  kwargs = dict(size=size, mean=mean, std=std, round=round)
+  real_result = NPCore.gen_floats_normal(**kwargs)
+  assert len(real_result) == kwargs["size"]
+  assert type(real_result) == np.ndarray
+  assert real_result.dtype == np.float64
+  assert abs(np.mean(real_result) - mean) < std * 3  # within 3 std devs
+  assert abs(np.std(real_result) - std) < std * 0.5
+
+
+@pytest.mark.parametrize("size, distincts", [
+    (10, ["A", "B", "C"]),
+    (10, [1, 2, 3, 4, 5]),
+    (10, [True, False]),
+])
+def test_gen_distincts_low_cardinality(size, distincts):
+  result = NPCore.gen_distincts(size=size, distincts=distincts)
+  assert len(result) == size
+  assert all(item in distincts for item in result)
+
+
 
 
 # def test_gen_unix_timestamps(default_size):

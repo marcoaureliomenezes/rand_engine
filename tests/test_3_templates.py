@@ -27,3 +27,4 @@ def test_generate_template_webserver_logs_with_transformers(df_size, web_server_
   transformers = web_server_logs.transformers()
   df_data = DataGenerator(metadata).transformers(transformers).size(df_size).get_df()
   assert df_data.shape[0] == df_size
+

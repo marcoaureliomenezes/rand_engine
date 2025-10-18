@@ -1,0 +1,387 @@
+"""
+Testes para o novo validador educativo (SpecValidator v2).
+"""
+
+import pytest
+from rand_engine.validators.spec_validator import SpecValidator
+from rand_engine.validators.exceptions import SpecValidationError
+
+
+def test_valid_spec_integers():
+    """Testa spec válida com método integers."""
+    spec = {
+        "idade": {
+            "method": "integers",
+            "kwargs": {"min": 18, "max": 65}
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 0
+
+
+def test_valid_spec_with_all_basic_methods():
+    """Testa spec válida com todos os métodos básicos."""
+    spec = {
+        "id": {"method": "unique_ids", "kwargs": {"strategy": "zint", "length": 12}},
+        "idade": {"method": "integers", "kwargs": {"min": 0, "max": 100}},
+        "preco": {"method": "floats", "kwargs": {"min": 0, "max": 1000, "round": 2}},
+        "altura": {"method": "floats_normal", "kwargs": {"mean": 170, "std": 10, "round": 2}},
+        "ativo": {"method": "booleans", "kwargs": {"true_prob": 0.7}},
+        "plano": {"method": "distincts", "kwargs": {"distincts": ["free", "premium"]}},
+        "dispositivo": {"method": "distincts_prop", "kwargs": {"distincts": {"mobile": 70, "desktop": 30}}},
+        "created_at": {"method": "unix_timestamps", "kwargs": {"start": "01-01-2024", "end": "31-12-2024", "format": "%d-%m-%Y"}},
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 0
+
+
+def test_valid_spec_with_correlated_columns():
+    """Testa spec válida com colunas correlacionadas."""
+    spec = {
+        "device_os": {
+            "method": "distincts_map",
+            "cols": ["device_type", "os_type"],
+            "kwargs": {"distincts": {
+                "smartphone": ["android", "ios"],
+                "desktop": ["windows", "linux"]
+            }}
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 0
+
+
+def test_valid_spec_with_transformers():
+    """Testa spec válida com transformers."""
+    spec = {
+        "nome": {
+            "method": "distincts",
+            "kwargs": {"distincts": ["joao", "maria", "pedro"]},
+            "transformers": [lambda x: x.upper(), lambda x: x.strip()]
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 0
+
+
+def test_invalid_spec_not_dict():
+    """Testa erro quando spec não é dicionário."""
+    spec = ["lista", "invalida"]
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 1
+    assert "must be a dictionary" in errors[0]
+
+
+def test_invalid_spec_empty():
+    """Testa erro quando spec está vazia."""
+    spec = {}
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 1
+    assert "cannot be empty" in errors[0]
+
+
+def test_invalid_column_config_not_dict():
+    """Tests error when column configuration is not a dictionary."""
+    spec = {
+        "idade": "string_invalida"
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 1
+    assert "configuration must be a dictionary" in errors[0]
+    assert "idade" in errors[0]
+
+
+def test_invalid_missing_method():
+    """Testa erro quando campo method está ausente."""
+    spec = {
+        "idade": {
+            "kwargs": {"min": 0, "max": 100}
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 1
+    assert "'method' is required" in errors[0]
+
+
+def test_invalid_method_not_string():
+    """Testa erro quando method não é string."""
+    spec = {
+        "idade": {
+            "method": 12345,
+            "kwargs": {"min": 0, "max": 100}
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) > 0
+    assert "'method' must be string" in errors[0]
+
+
+def test_invalid_method_unknown():
+    """Tests error when method does not exist."""
+    spec = {
+        "idade": {
+            "method": "metodo_inexistente",
+            "kwargs": {"min": 0, "max": 100}
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 1
+    assert "does not exist" in errors[0]
+    assert "Available methods" in errors[0]
+
+
+def test_invalid_both_kwargs_and_args():
+    """Tests error when having both kwargs and args simultaneously."""
+    spec = {
+        "idade": {
+            "method": "integers",
+            "kwargs": {"min": 0, "max": 100},
+            "args": [0, 100]
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 1
+    assert "cannot have both" in errors[0] and "simultaneously" in errors[0]
+
+
+def test_invalid_missing_kwargs_and_args():
+    """Tests error when neither kwargs nor args are present."""
+    spec = {
+        "idade": {
+            "method": "integers"
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 1
+    assert "requires" in errors[0] and ("kwargs" in errors[0] or "args" in errors[0])
+
+
+def test_invalid_kwargs_not_dict():
+    """Testa erro quando kwargs não é dicionário."""
+    spec = {
+        "idade": {
+            "method": "integers",
+            "kwargs": [0, 100]  # Lista ao invés de dict
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 1
+    assert "'kwargs' must be dictionary" in errors[0]
+
+
+def test_invalid_missing_required_param():
+    """Testa erro quando falta parâmetro obrigatório."""
+    spec = {
+        "idade": {
+            "method": "integers",
+            "kwargs": {"min": 0}  # Falta 'max'
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 1
+    assert "requires parameter 'max'" in errors[0]
+    assert "Correct example" in errors[0]
+
+
+def test_invalid_wrong_param_type():
+    """Testa erro quando tipo de parâmetro está errado."""
+    spec = {
+        "idade": {
+            "method": "integers",
+            "kwargs": {"min": "zero", "max": "cem"}  # Strings ao invés de int
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 2  # min e max errados
+    assert any("must be int" in e for e in errors)
+
+
+def test_invalid_method_requires_cols():
+    """Tests error when method requires cols but it wasn't provided."""
+    spec = {
+        "device_os": {
+            "method": "distincts_map",
+            "kwargs": {"distincts": {
+                "smartphone": ["android", "ios"]
+            }}
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 1
+    assert "requires" in errors[0] and "cols" in errors[0]
+
+
+def test_invalid_cols_not_list():
+    """Testa erro quando cols não é lista."""
+    spec = {
+        "device_os": {
+            "method": "distincts_map",
+            "cols": "device_type",  # String ao invés de lista
+            "kwargs": {"distincts": {
+                "smartphone": ["android", "ios"]
+            }}
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 1
+    assert "'cols' must be list" in errors[0]
+
+
+def test_invalid_transformers_not_list():
+    """Testa erro quando transformers não é lista."""
+    spec = {
+        "nome": {
+            "method": "distincts",
+            "kwargs": {"distincts": ["joao", "maria"]},
+            "transformers": lambda x: x.upper()  # Função direta ao invés de lista
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 1
+    assert "'transformers' must be list" in errors[0]
+
+
+def test_invalid_transformer_not_callable():
+    """Testa erro quando transformer não é callable."""
+    spec = {
+        "nome": {
+            "method": "distincts",
+            "kwargs": {"distincts": ["joao", "maria"]},
+            "transformers": ["string_invalida"]
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 1
+    assert "must be callable" in errors[0]
+
+
+def test_invalid_pk_not_dict():
+    """Testa erro quando pk não é dicionário."""
+    spec = {
+        "id": {
+            "method": "unique_ids",
+            "kwargs": {"strategy": "zint"},
+            "pk": "users"  # String ao invés de dict
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 1
+    assert "'pk' must be dictionary" in errors[0]
+
+
+def test_invalid_pk_missing_required_fields():
+    """Tests error when pk doesn't have required fields."""
+    spec = {
+        "id": {
+            "method": "unique_ids",
+            "kwargs": {"strategy": "zint"},
+            "pk": {"name": "users"}  # Missing 'datatype'
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 1
+    assert "requires" in errors[0] and "datatype" in errors[0]
+
+
+def test_validate_and_raise_valid():
+    """Testa que validate_and_raise não levanta exceção para spec válida."""
+    spec = {
+        "idade": {
+            "method": "integers",
+            "kwargs": {"min": 0, "max": 100}
+        }
+    }
+    # Não deve levantar exceção
+    SpecValidator.validate_and_raise(spec)
+
+
+def test_validate_and_raise_invalid():
+    """Tests that validate_and_raise raises exception for invalid spec."""
+    spec = {
+        "idade": {
+            "method": "metodo_inexistente",
+            "kwargs": {"min": 0, "max": 100}
+        }
+    }
+    with pytest.raises(SpecValidationError) as exc_info:
+        SpecValidator.validate_and_raise(spec)
+    
+    assert "SPEC VALIDATION ERROR" in str(exc_info.value)
+    assert "does not exist" in str(exc_info.value)
+
+
+def test_multiple_errors_in_single_column():
+    """Testa múltiplos erros em uma única coluna."""
+    spec = {
+        "dados": {
+            "method": "integers",
+            "kwargs": {"min": "zero"},  # Tipo errado e falta 'max'
+            "transformers": "nao_eh_lista"  # Tipo errado
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    # Deve ter pelo menos 3 erros: tipo de min, falta max, transformers
+    assert len(errors) >= 3
+
+
+def test_multiple_errors_across_columns():
+    """Testa múltiplos erros em diferentes colunas."""
+    spec = {
+        "idade": {
+            "method": "integers",
+            "kwargs": {"min": 0}  # Falta 'max'
+        },
+        "nome": {
+            "method": "metodo_inexistente",
+            "kwargs": {}
+        },
+        "ativo": {
+            # Falta 'method'
+            "kwargs": {"true_prob": 0.7}
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) >= 3  # Pelo menos um erro por coluna
+
+
+def test_warning_for_unknown_params():
+    """Testa aviso para unknown parameters."""
+    spec = {
+        "idade": {
+            "method": "integers",
+            "kwargs": {
+                "min": 0,
+                "max": 100,
+                "parametro_invalido": "valor"
+            }
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 1
+    assert "unknown parameters" in errors[0]
+    assert "parametro_invalido" in errors[0]
+
+
+def test_valid_spec_complex_distincts():
+    """Testa spec válida com complex_distincts."""
+    spec = {
+        "ip": {
+            "method": "complex_distincts",
+            "kwargs": {
+                "pattern": "x.x.x.x",
+                "replacement": "x",
+                "templates": [
+                    {"method": "distincts", "parms": {"distincts": ["192", "10"]}},
+                    {"method": "integers", "parms": {"min": 0, "max": 255}},
+                    {"method": "integers", "parms": {"min": 0, "max": 255}},
+                    {"method": "integers", "parms": {"min": 1, "max": 254}}
+                ]
+            }
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 0
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
