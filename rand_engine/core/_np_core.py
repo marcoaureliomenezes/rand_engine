@@ -60,6 +60,7 @@ class NPCore:
 
   @classmethod
   def gen_distincts(self, size: int, distincts: List[Any]) -> np.ndarray:
+
     assert len(list(set([type(x) for x in distincts]))) == 1
     return np.random.choice(distincts, size)
 

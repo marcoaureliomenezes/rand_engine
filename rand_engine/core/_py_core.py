@@ -1,9 +1,8 @@
 import itertools
 from typing import Dict, List, Any
 import numpy as np
-from datetime import datetime as dt
 from functools import reduce
-
+from rand_engine.integrations._duckdb_handler import DuckDBHandler
 
 class PyCore:
 
@@ -39,7 +38,7 @@ class PyCore:
     return reduce(lambda a, b: a.astype('str') + b.astype('str'), list_of_lists)
 
 
-  @classmethod
+  @classmethod  
   def gen_distincts_untyped(self, size: int, distinct: List[Any]) -> List[Any]:
     return list(map(lambda x: distinct[x], np.random.randint(0, len(distinct), size)))
   
@@ -67,6 +66,15 @@ class PyCore:
       for _ in range(weight)
     ]
     return self.gen_distincts_untyped(size, distincts_map_prop)
+
+
+  @classmethod
+  def gen_distincts_external(self, size, table, pk_fields, db_path=":memory:"):
+    db = DuckDBHandler(db_path=db_path)
+    df = db.select_all(f"checkpoint_{table}", pk_fields)
+    cat_ids = df[pk_fields[0]].to_list()
+    self.gen_distincts_untyped(size, cat_ids)
+    return cat_ids
 
 
 # def test_handle_distincts_lvl_5():

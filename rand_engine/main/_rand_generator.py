@@ -1,6 +1,6 @@
 from typing import Dict, List, Optional, Callable
 import pandas as pd
-from rand_engine.integrations.duckdb_handler import DuckDBHandler
+from rand_engine.integrations._duckdb_handler import DuckDBHandler
 from rand_engine.validators.spec_validator import SpecValidator
 from rand_engine.validators.exceptions import ColumnGenerationError, TransformerError
 from rand_engine.core._np_core import NPCore
@@ -38,11 +38,11 @@ class RandGenerator:
     for k, v in self.random_spec.items():
       columns = v.get("cols", [k])
       try:
-        # if "args" in v: 
-        #   dict_data[k] = mapped_methods[v["method"]](size , *v["args"])
-        # else:
-
-        values = mapped_methods[v["method"]](size , **v.get("kwargs", {}))
+        if "args" in v: 
+          values = mapped_methods[v["method"]](size , *v["args"])
+   
+        else:
+          values = mapped_methods[v["method"]](size , **v.get("kwargs", {}))
         for i, col in enumerate(columns):
           dict_data[col] = values if len(columns) == 1 else [val[i] for val in values]
       except Exception as e:
