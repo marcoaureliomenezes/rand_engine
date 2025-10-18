@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from rand_engine.core.np_core import NPCore
+from rand_engine.core._np_core import NPCore
 from tests.fixtures.f1_general import default_size
 
 

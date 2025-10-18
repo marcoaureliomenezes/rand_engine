@@ -41,7 +41,8 @@ class SpecValidator:
     # Métodos válidos (identificadores string)
     VALID_METHOD_IDENTIFIERS = {
         "integers", "int_zfilled", "floats", "floats_normal",
-        "distincts", "complex_distincts", "unix_timestamps", "unique_ids", "booleans"
+        "distincts", "distincts_prop", "complex_distincts", 
+        "unix_timestamps", "unique_ids", "booleans"
     }
     
     @staticmethod

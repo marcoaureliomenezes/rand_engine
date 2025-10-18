@@ -5,7 +5,7 @@ Testes para o módulo de validação de specs.
 import pytest
 from rand_engine.validators.spec_validator import SpecValidator
 from rand_engine.validators.exceptions import SpecValidationError
-from rand_engine.core.np_core import NPCore
+from rand_engine.core._np_core import NPCore
 
 
 class TestSpecValidator:
@@ -54,6 +54,17 @@ class TestSpecValidator:
                 "splitable": True,
                 "cols": ["device", "os"],
                 "sep": ";"
+            }
+        }
+        errors = SpecValidator.validate(spec)
+        assert len(errors) == 0
+    
+    def test_valid_spec_with_distincts_prop(self):
+        """Testa validação de spec válida com distincts_prop."""
+        spec = {
+            "plan": {
+                "method": "distincts_prop",
+                "kwargs": {"distincts": {"free": 70, "standard": 30}}
             }
         }
         errors = SpecValidator.validate(spec)

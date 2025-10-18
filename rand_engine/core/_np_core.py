@@ -1,17 +1,13 @@
 
-from typing import List, Any
+from typing import List, Any, Dict
 import numpy as np
 from datetime import datetime as dt
 from functools import reduce
-
+from rand_engine.utils.distincts_utils import DistinctsUtils
 
 
 class NPCore:
     
-  @classmethod
-  def gen_distincts(self, size: int, distincts: List[Any]) -> np.ndarray:
-    assert len(list(set([type(x) for x in distincts]))) == 1
-    return np.random.choice(distincts, size)
 
   @classmethod
   def gen_bools(self, size: int, true_prob=0.5) -> np.ndarray:
@@ -62,3 +58,27 @@ class NPCore:
       raise ValueError("Method not recognized. Use 'uuid4', 'uuid1', 'shortuuid' or 'random'.")
 
 
+  @classmethod
+  def gen_distincts(self, size: int, distincts: List[Any]) -> np.ndarray:
+    assert len(list(set([type(x) for x in distincts]))) == 1
+    return np.random.choice(distincts, size)
+
+
+  @classmethod
+  def gen_distincts_prop(self, size: int, distincts: Dict[str, int]) -> np.ndarray:
+    distincts_prop = [ key for key, value in distincts.items() for i in range(value) ]
+    #assert len(list(set([type(x) for x in distincts]))) == 1
+    return np.random.choice(distincts_prop, size)
+  
+
+
+    
+if __name__ == "__main__":
+  
+  # distinct_prop = {"A": 1, "B": 2, "C": 7}
+  # result = NPCore.gen_distincts_prop(10, distinct_prop)
+  # print(result)
+
+  distincts_map = {"smartphone": [2,1], "desktop": [2, 1]}
+  result = NPCore.gen_distincts_map(10, distincts_map)
+  print(result)
