@@ -28,14 +28,16 @@ class TestPublicAPI:
     
     def test_datagenerator_in_all(self):
         """
-        Example 2: Check that __all__ only contains DataGenerator.
+        Example 2: Check that __all__ contains public API: DataGenerator and ExampleSpecs.
         
         __all__ defines the public API of a module.
         """
         import rand_engine
         
         assert hasattr(rand_engine, '__all__')
-        assert rand_engine.__all__ == ["DataGenerator"]
+        assert "DataGenerator" in rand_engine.__all__
+        assert "ExampleSpecs" in rand_engine.__all__
+        assert len(rand_engine.__all__) == 2
         print(f"\n✓ rand_engine.__all__ = {rand_engine.__all__}")
     
     
@@ -91,9 +93,29 @@ class TestPublicAPI:
         print("\n✓ Private modules use underscore naming convention")
     
     
+    def test_examplespecs_can_be_imported(self):
+        """
+        Example 5a: ExampleSpecs should be importable from rand_engine.
+        
+        ExampleSpecs provides ready-to-use specifications for learning and prototyping.
+        """
+        from rand_engine import ExampleSpecs
+        
+        assert ExampleSpecs is not None
+        examples = ExampleSpecs()
+        
+        # Verify all specs are accessible
+        assert hasattr(examples, 'simple_client')
+        assert hasattr(examples, 'simple_client_2')
+        assert hasattr(examples, 'simple_client_3')
+        assert hasattr(examples, 'simple_client_4')
+        
+        print("\n✓ ExampleSpecs successfully imported and has all specs")
+    
+    
     def test_datagenerator_can_be_instantiated(self):
         """
-        Example 5: Verify DataGenerator works correctly.
+        Example 5b: Verify DataGenerator works correctly.
         
         The public API should be fully functional.
         """
@@ -116,6 +138,25 @@ class TestPublicAPI:
         print(f"\n✓ DataGenerator works correctly: {len(df)} rows generated")
     
     
+    def test_examplespecs_works_with_datagenerator(self):
+        """
+        Example 5c: Verify ExampleSpecs works with DataGenerator.
+        
+        Pre-built specs should work seamlessly with DataGenerator.
+        """
+        from rand_engine import DataGenerator, ExampleSpecs
+        
+        examples = ExampleSpecs()
+        df = DataGenerator(examples.simple_client, seed=42).size(10).get_df()
+        
+        assert len(df) == 10
+        assert 'id' in df.columns
+        assert 'age' in df.columns
+        assert 'profession' in df.columns
+        
+        print(f"\n✓ ExampleSpecs works with DataGenerator: {len(df)} rows with {len(df.columns)} columns")
+    
+    
     def test_public_api_is_minimal(self):
         """
         Example 6: Public API should be minimal and well-defined.
@@ -127,18 +168,13 @@ class TestPublicAPI:
         # Get all public attributes (not starting with _)
         public_attrs = [attr for attr in dir(rand_engine) if not attr.startswith('_')]
         
-        # Should only have DataGenerator (and maybe version info)
-        expected = ["DataGenerator"]
+        # Should only have DataGenerator and ExampleSpecs
+        expected_public = ['DataGenerator', 'ExampleSpecs']
         
-        for attr in expected:
-            assert attr in public_attrs, f"Expected public attribute '{attr}' not found"
+        for expected in expected_public:
+            assert expected in public_attrs, f"{expected} should be public"
         
-        # Filter out common module attributes
-        extra_attrs = [a for a in public_attrs if a not in expected]
-        
-        print(f"\n✓ Public API minimal: {public_attrs}")
-        if extra_attrs:
-            print(f"  Additional attributes: {extra_attrs}")
+        print(f"\n✓ Public API is minimal: {', '.join(expected_public)}")
     
     
     def test_private_module_naming_convention(self):

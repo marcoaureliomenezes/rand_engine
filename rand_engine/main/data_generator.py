@@ -8,7 +8,6 @@ from rand_engine.file_handlers._writer_stream import FileStreamWriter
 from rand_engine.utils.stream_handler import StreamHandler
 from rand_engine.validators.spec_validator import SpecValidator
 from rand_engine.validators.exceptions import SpecValidationError
-
   
 class DataGenerator:
       
