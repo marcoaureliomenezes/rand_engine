@@ -15,7 +15,6 @@ class BaseDBHandler(ABC):
     to ensure consistency across different database backends.
     """
     
-    @abstractmethod
     def __init__(self, db_path: str = ":memory:"):
         """
         Initialize database handler.
@@ -23,7 +22,7 @@ class BaseDBHandler(ABC):
         Args:
             db_path: Path to database file. Use ':memory:' for in-memory database.
         """
-        pass
+        self.db_path = db_path
     
     @abstractmethod
     def create_table(self, table_name: str, pk_def: str):

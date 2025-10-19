@@ -29,7 +29,7 @@ class SQLiteHandler(BaseDBHandler):
             db_path: Path to database file. Use ':memory:' for in-memory database.
                      All handlers with the same db_path share the same connection.
         """
-        self.db_path = db_path
+        super().__init__(db_path)
         
         # Reuse existing connection or create new one
         if db_path not in self._connections:

@@ -28,7 +28,7 @@ class DuckDBHandler(BaseDBHandler):
             db_path: Path to database file. Use ':memory:' for in-memory database.
                      All handlers with the same db_path share the same connection.
         """
-        self.db_path = db_path
+        super().__init__(db_path)
         
         # Reutiliza conexão existente ou cria nova
         if db_path not in self._connections:
