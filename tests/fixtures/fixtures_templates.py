@@ -1,4 +1,4 @@
-from rand_engine.core.np_core import Core
+from rand_engine.core._np_core import Core
 from rand_engine.interfaces.i_random_spec import IRandomSpec
 from rand_engine.utils.distincts_utils import DistinctsUtils
 import faker

@@ -72,3 +72,109 @@ jobs:
         if: always()
         run: |
           echo "✅ Tests completed for Python ${{ matrix.python-version }}"
+
+  # Summary job
+  summary:
+    name: Test Summary
+    needs: [check_pr, test]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Generate Test Summary
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          HAS_PR="${{ needs.check_pr.outputs.has_pr }}"
+          
+          echo "# 🧪 Test Results - Feature Branch" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Branch Info
+          echo "## 📋 Branch Information" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch** | \`$BRANCH\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Author** | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit Message** | ${{ github.event.head_commit.message }} |" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "$HAS_PR" == "true" ]; then
+            echo "| **PR Status** | ⏭️ PR exists - tests skipped (will run on PR) |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| **PR Status** | ✅ No PR - tests executed |" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Test Results
+          if [ "$HAS_PR" == "false" ]; then
+            echo "## 🔄 Test Execution Status" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Python Version | Status |" >> $GITHUB_STEP_SUMMARY
+            echo "|----------------|--------|" >> $GITHUB_STEP_SUMMARY
+            
+            if [ "${{ needs.test.result }}" == "success" ]; then
+              echo "| Python 3.10 | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+              echo "| Python 3.11 | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+              echo "| Python 3.12 | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "| Python 3.10 | ${{ contains(needs.test.result, 'failure') && '❌ Failed' || '✅ Passed' }} |" >> $GITHUB_STEP_SUMMARY
+              echo "| Python 3.11 | ${{ contains(needs.test.result, 'failure') && '❌ Failed' || '✅ Passed' }} |" >> $GITHUB_STEP_SUMMARY
+              echo "| Python 3.12 | ${{ contains(needs.test.result, 'failure') && '❌ Failed' || '✅ Passed' }} |" >> $GITHUB_STEP_SUMMARY
+            fi
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            # Next Steps
+            echo "## 🎯 Next Steps" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            if [ "${{ needs.test.result }}" == "success" ]; then
+              echo "✅ **All tests passed!** Your code is ready for the next step:" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "### Option 1: Create Pull Request" >> $GITHUB_STEP_SUMMARY
+              echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+              echo "# Via GitHub CLI" >> $GITHUB_STEP_SUMMARY
+              echo "gh pr create --base development --title \"feat: your feature\" --body \"Description\"" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "# Or via GitHub Web UI" >> $GITHUB_STEP_SUMMARY
+              echo "# https://github.com/${{ github.repository }}/pull/new/$BRANCH" >> $GITHUB_STEP_SUMMARY
+              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "### Option 2: Continue Development" >> $GITHUB_STEP_SUMMARY
+              echo "- Keep committing to this branch" >> $GITHUB_STEP_SUMMARY
+              echo "- Tests will run automatically on each push" >> $GITHUB_STEP_SUMMARY
+              echo "- Create PR when ready" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ **Tests failed.** Please fix the issues:" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "1. Check the test logs above for details" >> $GITHUB_STEP_SUMMARY
+              echo "2. Fix the failing tests locally" >> $GITHUB_STEP_SUMMARY
+              echo "3. Run tests locally: \`poetry run pytest tests/ -v\`" >> $GITHUB_STEP_SUMMARY
+              echo "4. Commit and push the fixes" >> $GITHUB_STEP_SUMMARY
+            fi
+            
+          else
+            # PR exists - skipped
+            echo "## ⏭️ Tests Skipped" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Tests were skipped because a Pull Request already exists for this branch." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Why?" >> $GITHUB_STEP_SUMMARY
+            echo "To avoid duplicate test runs, tests are only executed in the PR workflow." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Where to find test results?" >> $GITHUB_STEP_SUMMARY
+            echo "Check the PR checks: https://github.com/${{ github.repository }}/pulls" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Status message
+          if [ "$HAS_PR" == "true" ]; then
+            echo "ℹ️ **Workflow completed** - Tests will run on PR validation" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.test.result }}" == "success" ]; then
+            echo "✅ **Success!** All tests passed. Ready to create PR to \`development\`." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Action Required!** Fix failing tests before creating PR." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi

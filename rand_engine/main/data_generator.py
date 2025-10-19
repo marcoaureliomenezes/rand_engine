@@ -2,9 +2,9 @@ import time
 import pandas as pd
 import numpy as np
 from typing import List, Optional, Generator, Callable, Any
-from rand_engine.main.rand_generator import RandGenerator
-from rand_engine.file_handlers.writer_batch import FileBatchWriter
-from rand_engine.file_handlers.writer_stream import FileStreamWriter
+from rand_engine.main._rand_generator import RandGenerator
+from rand_engine.file_handlers._writer_batch import FileBatchWriter
+from rand_engine.file_handlers._writer_stream import FileStreamWriter
 from rand_engine.utils.stream_handler import StreamHandler
 from rand_engine.validators.spec_validator import SpecValidator
 from rand_engine.validators.exceptions import SpecValidationError
@@ -48,7 +48,6 @@ class DataGenerator:
       evaluated_spec = self.__evaluate_spec()
       rand_generator = RandGenerator(evaluated_spec)
       df_pandas = rand_generator.generate_first_level(size=size)
-      df_pandas = rand_generator.handle_splitable(df_pandas)
       df_pandas = rand_generator.apply_embedded_transformers(df_pandas)
       df_pandas = rand_generator.apply_global_transformers(df_pandas, self._transformers)
       return df_pandas

@@ -6,12 +6,9 @@ import threading
 import pytest
 
 from rand_engine.main.data_generator import DataGenerator
-from tests.fixtures.f1_general import (
-    rand_spec_case_1,
-    rand_spec_case_2,
-    rand_spec_case_1_transformer,
-    rand_engine_splitable_benchmark,
-    rand_engine_splitable_benchmark_baseline,
+from tests.fixtures.f1_right_specs import (
+    rand_spec_with_kwargs,
+    rand_spec_with_args
 )
 
 
@@ -38,7 +35,7 @@ from tests.fixtures.f3_integrations import (
 ])
 def test_writing_multiple_files(
   df_size,
-  rand_spec_case_1,
+  rand_spec_with_kwargs,
   base_path_files_test,
   format_type,
   compression,
@@ -46,14 +43,14 @@ def test_writing_multiple_files(
 ):
   path = f"{base_path_files_test}/{format_type}/{file_path}"
   _ = (
-    DataGenerator(rand_spec_case_1)
+    DataGenerator(rand_spec_with_kwargs)
       .writeStream
       .size(df_size)
       .mode("overwrite")
       .format(format_type)
       .option("compression", compression)
-      .option("timeout", 1)
-      .trigger(frequency=0.1)
+      .option("timeout", 0.1)
+      .trigger(frequency=0.01)
       .start(path)
   )
   assert True

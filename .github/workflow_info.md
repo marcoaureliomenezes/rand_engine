@@ -1,15 +1,18 @@
 # 🚀 CI/CD Workflows - Rand Engine
 
-> Documentação completa do sistema de CI/CD com versionamento RC (Release Candidate)
+> Documentação completa do sistema de CI/CD com versionamento RC, segurança e visual summaries
 
 ## 📋 Índice
 
 - [Visão Geral](#-visão-geral)
 - [Estratégia de Versionamento](#-estratégia-de-versionamento)
 - [Workflows Implementados](#-workflows-implementados)
+- [Segurança e Otimizações](#-segurança-e-otimizações)
+- [Visual Summaries](#-visual-summaries)
 - [Fluxo Completo](#-fluxo-completo)
 - [Configuração Necessária](#-configuração-necessária)
 - [Como Usar](#-como-usar)
+- [Troubleshooting](#-troubleshooting)
 - [Melhores Práticas](#-melhores-práticas)
 
 ---
@@ -22,6 +25,9 @@ Este projeto utiliza **CI/CD totalmente automatizado** com os seguintes princíp
 - ✅ **Apenas RC** para pre-release (sem alpha/beta)
 - ✅ **Multi-job workflows** - Modularidade e clareza
 - ✅ **PyPI Trusted Publishing** - Sem tokens ou senhas
+- ✅ **Segurança em camadas** - SAST, dependency scanning, CodeQL
+- ✅ **Testes otimizados** - Sem duplicação (~66% economia)
+- ✅ **Coverage enforcement** - Mínimo 60% obrigatório
 - ✅ **Melhores práticas** - Validação, testes, instalação
 - ✅ **Observabilidade** - Logs detalhados e sumários visuais
 
@@ -83,29 +89,275 @@ git commit -m "chore: bump version to 0.5.6"
 
 ---
 
+## �️ Segurança e Otimizações
+
+### ✅ Problema Resolvido: Testes Duplicados
+
+**Antes:**
+```
+Push em feature → test_on_push.yml executa
+Abrir PR → pr_to_development.yml executa (DUPLICADO)
+Push no PR → pr_to_development.yml executa (TRIPLICADO)
+```
+
+**Depois:**
+```
+Push em feature (sem PR) → test_on_push.yml executa
+Push em feature (com PR aberto) → test_on_push.yml SKIP ⏭️
+Abrir PR → pr_to_development.yml executa (ÚNICA VEZ)
+Push no PR → pr_to_development.yml executa (ATUALIZAÇÃO)
+```
+
+**Economia:** ~66% menos execuções de testes!
+
+### 🔒 Camadas de Segurança Implementadas
+
+#### 1. SAST - Static Application Security Testing
+
+**Bandit (Python Security Scanner)**
+- Detecta vulnerabilidades comuns no código Python
+- Exemplos: `eval()`, `exec()`, SQL injection, hardcoded passwords, weak cryptography
+- Configuração: `.bandit` suprime falsos positivos (B101, B311, B324)
+- Status: ⚠️ Warning (não bloqueia PR)
+
+**Semgrep (Advanced Static Analysis)**
+- Análise semântica avançada
+- Exemplos: Code injection, insecure deserialization, path traversal, XSS
+- Status: ⚠️ Warning (não bloqueia PR)
+
+#### 2. Dependency Scanning
+
+**Safety (Python Package Vulnerabilities)**
+- Verifica vulnerabilidades conhecidas em dependências
+- Database: CVE (Common Vulnerabilities and Exposures)
+- Status: ⚠️ Warning (não bloqueia PR)
+
+**Trivy (Comprehensive Scanner)**
+- Scanner multi-propósito: vulnerabilidades, misconfigurações, secrets, licenses
+- Upload SARIF para GitHub Security tab
+- Status: ⚠️ Warning (não bloqueia PR)
+
+#### 3. CodeQL (GitHub Advanced Security)
+
+- Análise semântica profunda (gratuito para repos públicos)
+- Queries: security-extended + security-and-quality
+- Taint analysis, data flow analysis, control flow analysis, CWE detection
+- Status: ⚠️ Warning (não bloqueia PR)
+
+#### 4. Coverage Enforcement
+
+- **Mínimo:** 60% de cobertura de testes
+- **Bloqueio:** PR não pode ser mergeado se coverage < 60%
+- **Status:** ❌ Blocker (falha CI se não atender)
+
+### 🚨 Política de Segurança
+
+**❌ Blockers (PR não pode ser mergeado):**
+1. Testes falhando
+2. Coverage < 60%
+3. Validação de source branch falhar
+
+**⚠️ Warnings (Review necessário, mas não bloqueia):**
+1. Vulnerabilidades detectadas pelo Bandit
+2. Issues encontrados pelo Semgrep
+3. Vulnerabilidades em dependências (Safety/Trivy)
+4. Findings do CodeQL
+
+**Razão:** Nem todo "finding" é um problema real. Falsos positivos são comuns, especialmente em bibliotecas de geração de dados de teste.
+
+### 🔧 Fix: Poetry Export Error
+
+**Problema:** `The requested command export does not exist.`
+
+**Solução:** Desde Poetry 1.2+, o comando `export` foi movido para plugin separado.
+
+```yaml
+- name: Install Poetry Export Plugin
+  run: poetry self add poetry-plugin-export
+
+- name: Export requirements
+  run: poetry export -f requirements.txt --output requirements.txt --without-hashes
+```
+
+### 🛡️ SQL Injection Protection
+
+Implementado validação de input em handlers de banco de dados:
+
+```python
+# Valida table names (apenas alphanumeric + underscore)
+if not table_name.replace('_', '').isalnum():
+    raise ValueError(f"Invalid table name: {table_name}")
+```
+
+Arquivos protegidos:
+- `rand_engine/integrations/duckdb_handler.py`
+- `rand_engine/integrations/sqlite_handler.py`
+
+### 📊 Arquitetura de Segurança
+
+```
+┌─────────────────────────────────────────────────────────┐
+│               PR para Development Branch                 │
+└─────────────────────────────────────────────────────────┘
+                         │
+        ┌────────────────┼────────────────┬──────────────┐
+        ↓                ↓                ↓              ↓
+┌──────────────┐  ┌──────────────┐  ┌──────────┐  ┌──────────┐
+│   SAST       │  │ Dependency   │  │ CodeQL   │  │  Tests   │
+│  Analysis    │  │   Scanning   │  │ Analysis │  │ + Cov    │
+│              │  │              │  │          │  │  ≥60%    │
+│ • Bandit     │  │ • Safety     │  │ • Taint  │  │          │
+│ • Semgrep    │  │ • Trivy      │  │ • Data   │  │ • Pytest │
+│              │  │              │  │   Flow   │  │ • Cov    │
+│ Status: ⚠️   │  │ Status: ⚠️   │  │ Status:⚠️│  │Status: ❌│
+│ (Warning)    │  │ (Warning)    │  │(Warning) │  │(Blocker) │
+└──────────────┘  └──────────────┘  └──────────┘  └──────────┘
+        │                │                │              │
+        └────────────────┴────────────────┴──────────────┘
+                         │
+                         ↓
+              ✅ READY TO MERGE (if tests pass)
+              ⚠️  REVIEW SECURITY FINDINGS
+```
+
+### 🔧 Ferramentas e Custos
+
+| Ferramenta | Tipo | Custo | Onde Executa |
+|------------|------|-------|--------------|
+| **Bandit** | SAST Python | Grátis | GitHub Actions |
+| **Semgrep** | SAST Universal | Grátis (Community) | GitHub Actions |
+| **Safety** | Dependency | Grátis (DB básico) | GitHub Actions |
+| **Trivy** | Multi-scanner | Grátis (Open Source) | GitHub Actions |
+| **CodeQL** | Advanced SAST | Grátis (repos públicos) | GitHub Actions |
+| **pytest-cov** | Coverage | Grátis | GitHub Actions |
+| **Codecov** | Coverage Viz | Grátis (repos públicos) | Cloud |
+
+**Total:** R$ 0,00 para repositórios públicos! 🎉
+
+---
+
+## 📊 Visual Summaries
+
+### Todos os Workflows têm Summaries Visuais
+
+#### 1. `test_on_push.yml` - 3 Cenários
+
+**Cenário A: Tests Executados com Sucesso ✅**
+```markdown
+# 🧪 Test Results - Feature Branch
+- Branch info table
+- Test execution status (all ✅)
+- Next steps: Create PR commands and links
+```
+
+**Cenário B: Tests Executados com Falha ❌**
+```markdown
+# 🧪 Test Results - Feature Branch
+- Branch info table
+- Test execution status (with ❌)
+- Debugging steps and local test commands
+```
+
+**Cenário C: Tests Pulados (PR existe) ⏭️**
+```markdown
+# 🧪 Test Results - Feature Branch
+- Branch info table
+- Explanation: Tests run on PR workflow
+- Link to PR checks
+```
+
+#### 2. `pr_to_development.yml` - Security + Tests
+
+```markdown
+# 🔍 Security & Test Validation
+- Security analysis results (4 tools)
+- Test results matrix (Python 3.10, 3.11, 3.12)
+- Coverage status
+- Links to artifacts
+```
+
+#### 3. `auto_tag_publish_development.yml` - RC Deployment
+
+```markdown
+# 📦 RC Deployment Complete
+- Version info (e.g., 0.5.5rc1)
+- Pipeline status table (all 7 jobs)
+- PyPI pre-release link
+- GitHub Pre-Release link
+- Installation commands
+- Testing instructions
+```
+
+#### 4. `auto_tag_publish_master.yml` - Production Deployment
+
+**Success Scenario:**
+```markdown
+# 🎉 Production Deployment Complete!
+- Version info with RC promotion details
+- Pipeline status table (all 6 jobs)
+- Direct links to PyPI and GitHub Release
+- Installation: pip install rand-engine==X.Y.Z
+- Testing instructions
+- Next steps suggestions
+```
+
+**Skip Scenario (tag exists):**
+```markdown
+# ⏭️ Deployment Skipped
+- Tag already exists explanation
+- Links to existing release
+- Guidance on creating new version
+```
+
+### 🎨 Benefícios dos Summaries
+
+1. **Visibilidade Total**: Status de cada job em formato tabela
+2. **Documentação Automática**: Comandos prontos para copiar
+3. **Debugging Facilitado**: Mensagens claras sobre o que fazer
+4. **Profissionalismo**: UX consistente e visual atraente
+5. **Orientação Clara**: Próximos passos baseados no contexto
+
+---
+
+
 ## 🔄 Workflows Implementados
 
 ### 1. `test_on_push.yml` - Testes em Feature Branches
 
 **Trigger:** Push em qualquer branch **exceto** `master` e `development`
 
+**Jobs:**
+1. **check_pr**: Detecta se PR existe (usando GitHub CLI)
+2. **test**: Testes Python 3.10, 3.11, 3.12 (apenas se não houver PR)
+3. **summary**: Visual report com 3 cenários (success/failure/skip)
+
 **Função:**
-- Testes automáticos em Python 3.10, 3.11, 3.12
-- Validação de código antes de criar PRs
+- Testes automáticos antes de criar PRs
+- Skip inteligente se PR já existe (evita duplicação)
 - Cobertura de testes
+- Orientação sobre próximos passos
 
 **Uso:** Desenvolvimento local em feature branches
 
 ---
 
-### 2. `pr_to_development.yml` - Validação de PR
+### 2. `pr_to_development.yml` - Validação de PR + Security
 
 **Trigger:** Pull Request para `development`
 
+**Jobs:**
+1. **validate_source**: Source branch ≠ master
+2. **security_sast**: Bandit + Semgrep (⚠️ warning)
+3. **security_dependencies**: Safety + Trivy (⚠️ warning)
+4. **security_codeql**: GitHub Advanced Security (⚠️ warning)
+5. **test**: Python 3.10, 3.11, 3.12 + Coverage ≥60% (❌ blocker)
+6. **summary**: Status de todos os checks
+
 **Validações:**
-- ✅ Source branch **não** pode ser `master`
-- ✅ Testes em Python 3.10, 3.11, 3.12
-- ✅ Coverage upload para Codecov
+- ✅ Análise de segurança em 5 ferramentas
+- ✅ Coverage enforcement (mínimo 60%)
+- ✅ Poetry export plugin instalado automaticamente
+- ✅ Upload SARIF para GitHub Security tab
 
 **Uso:** Validação antes de merge em `development`
 
@@ -212,9 +464,20 @@ rc_number: "1"             # RC number
 - Mostra qual RC foi promovido
 - Artifacts anexados
 
-#### Job 7: Skip Notification
-- Notifica se tag já existe
-- Evita deploy duplicado
+#### Job 7: Summary
+- Sumário visual do deployment
+- Informações de versão e RC promovido
+- Status de cada job (✅/❌)
+- Links para PyPI e GitHub Release
+- Comandos de instalação e testes
+- Próximos passos sugeridos
+- Determina sucesso/falha com exit codes
+
+#### Job 8: Skip Notification
+- Executa quando tag já existe
+- Explica por que deployment foi pulado
+- Links para release existente
+- Orientação sobre como criar nova versão
 
 **Outputs:**
 ```yaml
@@ -222,6 +485,78 @@ version: "0.5.5"           # Production version
 tag_exists: "false"        # Se já existe
 latest_rc: "0.5.5rc3"      # Último RC (se existir)
 ```
+
+---
+
+## 🔧 Troubleshooting
+
+### Poetry Export Error
+
+**Sintoma:** `The requested command export does not exist.`
+
+**Causa:** Plugin poetry-plugin-export não instalado (obrigatório desde Poetry 1.2+)
+
+**Solução:** Já implementada nos workflows - instala automaticamente:
+```yaml
+- name: Install Poetry Export Plugin
+  run: poetry self add poetry-plugin-export
+```
+
+### Bandit False Positives
+
+**Sintoma:** Bandit reporta issues em código de teste/mock data
+
+**Causa:** Biblioteca gera dados aleatórios para testes (uso legítimo de `random`, `assert`, `hashlib`)
+
+**Solução:** Configuração `.bandit` já criada:
+```ini
+[bandit]
+skips = B101,B311,B324  # assert, random, hashlib
+```
+
+### Trivy Upload Error
+
+**Sintoma:** `Error: Unable to upload SARIF file`
+
+**Causa:** Trivy pode não gerar SARIF em algumas situações
+
+**Solução:** Já implementada - `continue-on-error: true` nos jobs de segurança
+
+### Coverage Failure
+
+**Sintoma:** `Error: coverage is less than 60%`
+
+**Causa:** Código novo sem testes adequados
+
+**Solução:** Adicionar testes para cobrir pelo menos 60% do código
+```bash
+# Rodar localmente para ver coverage
+poetry run pytest tests/ --cov=rand_engine --cov-report=html
+# Abrir htmlcov/index.html para ver detalhes
+```
+
+### Tag Already Exists
+
+**Sintoma:** Deployment skip notification
+
+**Causa:** Versão já foi publicada anteriormente
+
+**Solução:** Atualizar versão no `pyproject.toml`:
+```toml
+[tool.poetry]
+version = "0.5.6"  # Incrementar versão
+```
+
+### PyPI Publishing Error
+
+**Sintoma:** `invalid-publisher: valid token, but no corresponding publisher`
+
+**Causa:** PyPI Trusted Publishing não configurado corretamente
+
+**Solução:** Verificar configuração no PyPI:
+- Workflow name deve ser exato: `auto_tag_publish_development.yml` ou `auto_tag_publish_master.yml`
+- Owner e repo devem corresponder exatamente
+- Ver seção [Configuração PyPI](#-configuração-necessária)
 
 ---
 
@@ -579,16 +914,33 @@ poetry run pytest tests/ -v --cov=rand_engine
 - [Poetry Documentation](https://python-poetry.org/docs/)
 - [Semantic Versioning](https://semver.org/)
 
+### Ferramentas de Segurança
+- [Bandit](https://bandit.readthedocs.io/) - Python security scanner
+- [Semgrep](https://semgrep.dev/docs/) - Advanced static analysis
+- [Safety](https://pyup.io/safety/) - Dependency vulnerability scanner
+- [Trivy](https://aquasecurity.github.io/trivy/) - Comprehensive security scanner
+- [CodeQL](https://codeql.github.com/) - GitHub Advanced Security
+
+### Security Standards
+- [OWASP Top 10](https://owasp.org/www-project-top-ten/)
+- [CWE Top 25](https://cwe.mitre.org/top25/)
+- [NIST Guidelines](https://nvd.nist.gov/)
+
 ### Scripts de Utilidade
 - `.github/test_tag_logic.sh` - Testa lógica de RC localmente
 - `.github/check_pypi_config.sh` - Diagnóstico de configuração
 
 ### Workflows
 - `.github/workflows/test_on_push.yml` - Testes em feature branches
-- `.github/workflows/pr_to_development.yml` - Validação de PR
+- `.github/workflows/pr_to_development.yml` - Validação de PR + Security
 - `.github/workflows/pr_to_master.yml` - Validação strict de PR
 - `.github/workflows/auto_tag_publish_development.yml` - RC deployment
 - `.github/workflows/auto_tag_publish_master.yml` - Production deployment
+
+### Configurações
+- `.bandit` - Configuração do Bandit security scanner
+- `pyproject.toml` - Poetry configuration e versão do projeto
+
 
 ---
 
@@ -612,19 +964,25 @@ poetry run pytest tests/ -v --cov=rand_engine
 
 **✅ Sistema Implementado e Pronto para Uso**
 
-- Workflows: 5 workflows funcionais
-- Documentação: Completa e atualizada
-- Testes: Cobertura em 3 versões Python
-- Segurança: PyPI Trusted Publishing configurável
-- Observabilidade: Logs detalhados e sumários visuais
+- **Workflows:** 5 workflows funcionais com visual summaries
+- **Segurança:** 5 ferramentas de análise (Bandit, Semgrep, Safety, Trivy, CodeQL)
+- **Testes:** Cobertura em 3 versões Python (3.10, 3.11, 3.12)
+- **Coverage:** Enforcement de mínimo 60%
+- **Otimização:** Testes sem duplicação (~66% economia)
+- **Publishing:** PyPI Trusted Publishing (OIDC) configurável
+- **Observabilidade:** Logs detalhados e sumários visuais em todos os workflows
+- **Documentação:** Completa e atualizada
 
 **🎯 Próximos Passos:**
-1. Configurar PyPI Trusted Publishing
-2. Testar com merge em development
-3. Validar RC deployment
-4. Testar promoção para production
+1. Configurar PyPI Trusted Publishing (development + production)
+2. Adicionar `CODECOV_TOKEN` nos GitHub Secrets
+3. Testar com merge em development (RC deployment)
+4. Validar segurança e coverage
+5. Testar promoção para production
 
 ---
 
-**Documentação atualizada:** 2025-01-16  
-**Versão do sistema:** RC-only (sem alpha/beta)
+**Documentação atualizada:** 2025-10-17  
+**Versão do sistema:** RC-only com segurança e visual summaries  
+**Arquivos consolidados:** README.md, POETRY_EXPORT_FIX.md, MASTER_SUMMARY_ENHANCEMENT.md, TEST_ON_PUSH_SUMMARY.md, SECURITY_IMPROVEMENTS.md
+

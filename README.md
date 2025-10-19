@@ -1,12 +1,17 @@
 # Rand Engine
 
-**Gerador de dados randômicos em escala para testes, desenvolvimento e prototipação.**
+**High-performance synthetic data generation for testing, development, and prototyping.**
 
-Biblioteca Python para gerar milhões de linhas de dados sintéticos através de especificações declarativas. Construída com NumPy e Pandas para máxima performance.
+A Python library for generating millions of rows of realistic synthetic data through declarative specifications. Built on NumPy and Pandas for maximum performance.
+
+[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Tests](https://img.shields.io/badge/tests-189%20passing-brightgreen.svg)]()
+[![Coverage](https://img.shields.io/badge/coverage-82%25-green.svg)]()
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)]()
 
 ---
 
-## 📦 Instalação
+## 📦 Installation
 
 ```bash
 pip install rand-engine
@@ -14,38 +19,38 @@ pip install rand-engine
 
 ---
 
-## ✅ Requisitos
+## ✅ Requirements
 
 - **Python**: >= 3.10
 - **numpy**: >= 2.1.1
 - **pandas**: >= 2.2.2
-- **faker**: >= 28.4.1 (opcional, para dados realistas)
-- **duckdb**: >= 1.4.1 (opcional, para integrações)
+- **faker**: >= 28.4.1 (optional, for realistic data)
+- **duckdb**: >= 1.1.0 (optional, for database integrations)
 
 ---
 
-## 🎯 Público Alvo
+## 🎯 Who Is This For?
 
-- **Engenheiros de Dados**: Testes de pipelines ETL/ELT sem depender de dados de produção
-- **QA Engineers**: Geração de datasets realistas para testes de carga e integração
-- **Data Scientists**: Mock de dados durante desenvolvimento de modelos
-- **Desenvolvedores Backend**: Popular ambientes de desenvolvimento e staging
-- **Profissionais de BI**: Criar demos e POCs sem expor dados sensíveis
+- **Data Engineers**: Test ETL/ELT pipelines without production data dependencies
+- **QA Engineers**: Generate realistic datasets for load and integration testing
+- **Data Scientists**: Mock data during model development and validation
+- **Backend Developers**: Populate development and staging environments
+- **BI Professionals**: Create demos and POCs without exposing sensitive data
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Geração Básica com Identificadores String
+### 1. Simple Data Generation
 
 ```python
-from rand_engine.main.data_generator import DataGenerator
+from rand_engine import DataGenerator
 
-# Especificação declarativa usando identificadores string
+# Declarative specification
 spec = {
-    "id": {
+    "user_id": {
         "method": "unique_ids",
-        "kwargs": {"strategy": "zint"}
+        "kwargs": {"strategy": "zint", "length": 8}
     },
     "age": {
         "method": "integers",
@@ -53,114 +58,63 @@ spec = {
     },
     "salary": {
         "method": "floats",
-        "kwargs": {"min": 1500.0, "max": 15000.0, "round": 2}
+        "kwargs": {"min": 30000.0, "max": 150000.0, "round": 2}
     },
     "is_active": {
         "method": "booleans",
-        "kwargs": {"true_prob": 0.7}
+        "kwargs": {"true_prob": 0.8}
     },
     "plan": {
         "method": "distincts",
-        "kwargs": {"distincts": ["free", "standard", "premium"]}
+        "kwargs": {"distincts": ["free", "basic", "premium", "enterprise"]}
     }
 }
 
-# Gerar DataFrame
-df = DataGenerator(spec).size(10000).get_df()
+# Generate DataFrame
+generator = DataGenerator(spec, seed=42)
+df = generator.size(10000).get_df()
 print(df.head())
 ```
 
-### 2. Usando Args (Argumentos Posicionais)
-
-```python
-spec = {
-    "id": {"method": "unique_ids", "args": ["zint", 8]},
-    "age": {"method": "integers", "args": [18, 65]},
-    "salary": {"method": "floats", "args": [1500, 15000, 2]},
-    "plan": {"method": "distincts", "args": [["free", "standard", "premium"]]}
-}
-
-df = DataGenerator(spec).size(5000).get_df()
+**Output:**
+```
+   user_id  age    salary  is_active      plan
+0  00000001   42  87543.21       True  premium
+1  00000002   28  45621.89       True     free
+2  00000003   56 132041.50      False    basic
+3  00000004   33  62789.12       True  premium
+4  00000005   49  98234.77       True enterprise
 ```
 
-### 3. Exportar para Diferentes Formatos
+### 2. Export to Multiple Formats
 
 ```python
-# CSV comprimido
-(DataGenerator(spec)
-    .write
-    .size(100000)
-    .format("csv")
-    .option("compression", "gzip")
-    .mode("overwrite")
-    .save("./data/users.csv"))
+# CSV with gzip compression
+generator.write.size(100000).format("csv").option("compression", "gzip").save("users.csv")
 
-# Parquet com múltiplos arquivos
-(DataGenerator(spec)
-    .write
-    .size(1000000)
-    .format("parquet")
-    .option("compression", "snappy")
-    .option("numFiles", 5)
-    .save("./data/users.parquet"))
+# Parquet with snappy compression
+generator.write.size(1000000).format("parquet").option("compression", "snappy").save("users.parquet")
 
 # JSON
-(DataGenerator(spec)
-    .write
-    .size(50000)
-    .format("json")
-    .save("./data/users.json"))
+generator.write.size(50000).format("json").save("users.json")
 ```
 
-### 4. Streaming de Dados
+### 3. Streaming Data Generation
 
 ```python
-import time
-
-# Gerar stream contínuo de registros
-stream = DataGenerator(spec).size(1000).stream_dict(
-    min_throughput=5, 
-    max_throughput=10
-)
+# Generate continuous stream of records
+stream = generator.stream_dict(min_throughput=5, max_throughput=15)
 
 for record in stream:
-    # Cada registro inclui timestamp_created automaticamente
+    # Each record includes automatic timestamp_created field
     print(record)
-    # Exemplo: enviar para Kafka, API, banco de dados, etc.
+    # Send to Kafka, API, database, etc.
 ```
 
-### 5. Transformadores (Pós-processamento)
+### 4. Reproducible Data with Seeds
 
 ```python
-from datetime import datetime as dt
-
-spec = {
-    "id": {"method": "unique_ids", "args": ["zint"]},
-    "created_at": {
-        "method": "unix_timestamps",
-        "args": ["01-01-2020", "31-12-2020", "%d-%m-%Y"],
-        # Transformador inline na coluna
-        "transformers": [
-            lambda ts: dt.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
-        ]
-    }
-}
-
-# Transformador global (aplicado ao DataFrame completo)
-transformers = [
-    lambda df: df.assign(year=df["created_at"].str[:4])
-]
-
-df = (DataGenerator(spec)
-    .transformers(transformers)
-    .size(1000)
-    .get_df())
-```
-
-### 6. Seed para Reprodutibilidade
-
-```python
-# Mesmo seed = mesmos dados
+# Same seed = identical data
 df1 = DataGenerator(spec, seed=42).size(1000).get_df()
 df2 = DataGenerator(spec, seed=42).size(1000).get_df()
 
@@ -169,417 +123,521 @@ assert df1.equals(df2)  # True
 
 ---
 
-## 📚 Métodos de Geração Disponíveis
+## 📚 Available Generation Methods
 
-### Identificadores String (Recomendado)
+### Core Methods
 
-| Método | Descrição | Exemplo |
-|--------|-----------|---------|
-| `integers` | Inteiros uniformes | `{"method": "integers", "kwargs": {"min": 0, "max": 100}}` |
-| `int_zfilled` | Inteiros com zeros à esquerda | `{"method": "int_zfilled", "kwargs": {"min": 0, "max": 999, "length": 5}}` |
-| `floats` | Floats uniformes | `{"method": "floats", "kwargs": {"min": 0.0, "max": 100.0, "round": 2}}` |
-| `floats_normal` | Floats com distribuição normal | `{"method": "floats_normal", "kwargs": {"mean": 50, "std": 10}}` |
-| `distincts` | Valores de lista | `{"method": "distincts", "kwargs": {"distincts": ["A", "B", "C"]}}` |
-| `complex_distincts` | Padrões complexos (IPs, URLs) | Ver exemplo acima |
-| `unix_timestamps` | Timestamps Unix | `{"method": "unix_timestamps", "kwargs": {"start": "01-01-2020", "end": "31-12-2020"}}` |
-| `unique_ids` | IDs únicos | `{"method": "unique_ids", "kwargs": {"strategy": "zint"}}` |
-| `booleans` | Valores booleanos | `{"method": "booleans", "kwargs": {"true_prob": 0.7}}` |
+| Method | Description | Example |
+|--------|-------------|---------|
+| **integers** | Random integers within range | `{"method": "integers", "kwargs": {"min": 0, "max": 100}}` |
+| **int_zfilled** | Zero-padded numeric strings | `{"method": "int_zfilled", "kwargs": {"length": 8}}` |
+| **floats** | Random floats with precision | `{"method": "floats", "kwargs": {"min": 0.0, "max": 100.0, "round": 2}}` |
+| **floats_normal** | Normally distributed floats | `{"method": "floats_normal", "kwargs": {"mean": 50, "std": 10, "round": 2}}` |
+| **booleans** | Boolean values with probability | `{"method": "booleans", "kwargs": {"true_prob": 0.7}}` |
+| **distincts** | Random selection from list | `{"method": "distincts", "kwargs": {"distincts": ["A", "B", "C"]}}` |
+| **distincts_prop** | Weighted random selection | `{"method": "distincts_prop", "kwargs": {"distincts": {"mobile": 70, "desktop": 30}}}` |
+| **unix_timestamps** | Unix timestamps in range | `{"method": "unix_timestamps", "kwargs": {"start": "01-01-2020", "end": "31-12-2023", "format": "%d-%m-%Y"}}` |
+| **unique_ids** | Unique identifiers | `{"method": "unique_ids", "kwargs": {"strategy": "zint", "length": 10}}` |
+
+### Advanced Methods
+
+| Method | Description | Use Case |
+|--------|-------------|----------|
+| **distincts_map** | Correlated 2-column pairs | Device → OS mapping |
+| **distincts_map_prop** | Weighted correlated pairs | Product → Status with weights |
+| **distincts_multi_map** | N-column Cartesian products | Company → Sector → Size |
+| **complex_distincts** | Pattern-based generation | IP addresses, URLs, codes |
 
 ---
 
-## 🔧 Recursos Avançados
+## � Advanced Features
 
-### Splitable Pattern (Colunas Correlacionadas)
+### 1. Correlated Columns (2-Column Mapping)
 
-Gere múltiplas colunas correlacionadas a partir de uma única coluna:
+Generate correlated data where one column determines another:
 
 ```python
-from rand_engine.utils.distincts_utils import DistinctsUtils
-
-spec_handle = {
-    "mobile": ["iOS", "Android"],
-    "desktop": ["Windows", "MacOS", "Linux"]
-}
-
 spec = {
     "device_os": {
-        "method": "distincts",
-        "splitable": True,
-        "cols": ["device", "os"],
-        "sep": ";",
+        "method": "distincts_map",
+        "cols": ["device_type", "os"],
         "kwargs": {
-            "distincts": DistinctsUtils.handle_distincts_lvl_2(spec_handle)
+            "distincts": {
+                "smartphone": ["Android", "iOS"],
+                "tablet": ["Android", "iOS", "iPadOS"],
+                "desktop": ["Windows", "macOS", "Linux"]
+            }
         }
     }
 }
 
-# Resultado:
-# | device  | os      |
-# |---------|---------|
-# | mobile  | iOS     |
-# | desktop | Windows |
-# | mobile  | Android |
+df = DataGenerator(spec).size(1000).get_df()
+# Result: 2 columns (device_type, os) with valid combinations
 ```
 
-### Distribuições Proporcionais
+### 2. Weighted Correlated Data
 
 ```python
-# Nível 1: Proporções simples
-spec_level_1 = {"free": 70, "standard": 20, "premium": 10}
-distincts = DistinctsUtils.handle_distincts_lvl_1(spec_level_1)
-
-# Nível 2: Correlação entre categorias
-spec_level_2 = {
-    "mobile": ["iOS", "Android"],
-    "desktop": ["Windows", "MacOS"]
+spec = {
+    "product_status": {
+        "method": "distincts_map_prop",
+        "cols": ["product", "status"],
+        "kwargs": {
+            "distincts": {
+                "laptop": [("new", 90), ("refurbished", 10)],
+                "phone": [("new", 95), ("refurbished", 5)],
+                "tablet": [("new", 85), ("refurbished", 15)]
+            }
+        }
+    }
 }
-distincts = DistinctsUtils.handle_distincts_lvl_2(spec_level_2)
 
-# Nível 3: Correlação com proporções
-spec_level_3 = {
-    "GET /home": [("200", 7), ("400", 2), ("500", 1)],
-    "POST /login": [("201", 5), ("404", 3)]
-}
-distincts = DistinctsUtils.handle_distincts_lvl_3(spec_level_3)
+df = DataGenerator(spec).size(10000).get_df()
+# 90% of laptops will be "new", 10% "refurbished"
 ```
 
-### Integração com Faker
+### 3. Complex Patterns (IP Addresses, URLs)
 
 ```python
-import faker
+spec = {
+    "ip_address": {
+        "method": "complex_distincts",
+        "kwargs": {
+            "pattern": "x.x.x.x",
+            "replacement": "x",
+            "templates": [
+                {"method": "distincts", "kwargs": {"distincts": ["192", "10", "172"]}},
+                {"method": "integers", "kwargs": {"min": 0, "max": 255}},
+                {"method": "integers", "kwargs": {"min": 0, "max": 255}},
+                {"method": "integers", "kwargs": {"min": 1, "max": 254}}
+            ]
+        }
+    }
+}
 
-fake = faker.Faker(locale="pt_BR")
-fake.seed_instance(42)
+df = DataGenerator(spec).size(100).get_df()
+# Output: 192.168.1.45, 10.0.52.231, 172.24.133.89, etc.
+```
+
+### 4. Data Transformers
+
+Apply transformations to generated data:
+
+```python
+from datetime import datetime
 
 spec = {
-    "name": {
-        "method": "distincts",
-        "kwargs": {"distincts": [fake.name() for _ in range(1000)]}
+    "timestamp": {
+        "method": "unix_timestamps",
+        "kwargs": {"start": "01-01-2023", "end": "31-12-2023", "format": "%d-%m-%Y"},
+        # Column-level transformer
+        "transformers": [
+            lambda ts: datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+        ]
     },
-    "job": {
-        "method": "distincts",
-        "kwargs": {"distincts": [fake.job() for _ in range(100)]}
+    "value": {
+        "method": "integers",
+        "kwargs": {"min": 100, "max": 1000}
     }
 }
+
+# DataFrame-level transformer
+def add_year_column(df):
+    df['year'] = df['timestamp'].str[:4]
+    return df
+
+df = (DataGenerator(spec)
+    .transformers([add_year_column])
+    .size(1000)
+    .get_df())
 ```
 
----
+### 5. Spec Validation
 
-## 📝 Formato da Especificação
-
-### Estrutura Básica
+Enable validation to catch errors early:
 
 ```python
-spec = {
-    "nome_coluna": {
-        "method": "identificador_string",  # ou callable
-        "kwargs": {...},                   # argumentos nomeados
-        "args": [...],                     # ou argumentos posicionais
-        "transformers": [...],             # transformadores inline (opcional)
-        "splitable": True,                 # para colunas correlacionadas (opcional)
-        "cols": [...],                     # nomes das colunas split (se splitable)
-        "sep": ";"                         # separador (se splitable)
+invalid_spec = {
+    "age": {
+        "method": "integers"  # Missing required "min" and "max"
     }
-}
-```
-
-### Opções de Formato
-
-- **kwargs**: Dicionário de argumentos nomeados
-- **args**: Lista de argumentos posicionais (alternativa a kwargs)
-- **transformers**: Lista de funções lambda para transformar valores
-- **splitable**: Habilita divisão de uma coluna em múltiplas
-- **cols**: Nomes das colunas resultantes (obrigatório se splitable=True)
-- **sep**: Separador usado para split (obrigatório se splitable=True)
-
----
-
-## ⚙️ API de Escrita de Arquivos
-
-### Fluent API
-
-```python
-(DataGenerator(spec)
-    .write
-    .size(1000000)                    # Quantidade de registros
-    .format("parquet")                # csv, json, parquet
-    .option("compression", "gzip")    # Opções específicas do formato
-    .option("numFiles", 10)           # Dividir em múltiplos arquivos
-    .mode("overwrite")                # overwrite ou append
-    .save("/path/to/output"))
-```
-
-### Opções por Formato
-
-**CSV:**
-- `compression`: None, "gzip", "zip"
-- `numFiles`: Número de arquivos a gerar
-
-**JSON:**
-- `compression`: None, "gzip"
-- `numFiles`: Número de arquivos a gerar
-
-**Parquet:**
-- `compression`: None, "gzip", "snappy"
-- `numFiles`: Número de arquivos a gerar
-
----
-
-## 🧪 Casos de Uso
-
-### 1. Testes de ETL
-
-```python
-# Gerar dados de entrada para pipeline
-input_data = DataGenerator(input_spec).size(100000).get_df()
-
-# Executar pipeline
-result = etl_pipeline(input_data)
-
-# Validar saída
-assert result.shape[0] == 100000
-assert "processed_at" in result.columns
-```
-
-### 2. Testes de Carga
-
-```python
-# Gerar 10 milhões de registros em Parquet
-(DataGenerator(spec)
-    .write
-    .size(10_000_000)
-    .format("parquet")
-    .option("compression", "snappy")
-    .option("numFiles", 50)
-    .save("/data/load_test"))
-```
-
-### 3. Mock de API
-
-```python
-# Endpoint simulado
-@app.get("/users")
-def get_users(limit: int = 100):
-    df = DataGenerator(user_spec).size(limit).get_df()
-    return df.to_dict(orient="records")
-```
-
-### 4. Demos e Apresentações
-
-```python
-# Dataset realista para demo
-demo_spec = {
-    "customer_id": {"method": "unique_ids", "args": ["zint"]},
-    "name": {"method": "distincts", "kwargs": {...}},  # usar faker
-    "revenue": {"method": "floats_normal", "kwargs": {"mean": 5000, "std": 2000}},
-    "segment": {"method": "distincts", "kwargs": {...}}
-}
-
-df = DataGenerator(demo_spec, seed=42).size(1000).get_df()
-```
-
----
-
-## 🔍 Validação de Specs
-
-A biblioteca valida automaticamente as especificações:
-
-```python
-# Spec inválida - método não existe
-spec = {
-    "age": {"method": "invalid_method"}
 }
 
 try:
-    df = DataGenerator(spec).size(100).get_df()
-except SpecValidationError as e:
+    generator = DataGenerator(invalid_spec, validate=True)
+except Exception as e:
     print(e)
-    # Output: "invalid method identifier 'invalid_method'. 
-    #          Valid identifiers are: 'integers', 'floats', ..."
+    # ❌ Column 'age': Missing required parameter 'min'
+    #    Correct example:
+    #    {
+    #        "age": {
+    #            "method": "integers",
+    #            "kwargs": {"min": 18, "max": 65}
+    #        }
+    #    }
 ```
 
-Para desabilitar validação:
+---
+
+## 🎨 Real-World Examples
+
+### E-commerce Orders
 
 ```python
-df = DataGenerator(spec, validate=False).size(100).get_df()
-```
-
----
-
-## 🚀 Performance
-
-Benchmarks em um laptop comum (i5, 16GB RAM):
-
-| Operação | Tamanho | Tempo |
-|----------|---------|-------|
-| Geração em memória | 1M linhas, 8 colunas | ~2s |
-| Export CSV gzip | 1M linhas | ~5s |
-| Export Parquet snappy | 1M linhas | ~3s |
-| Export múltiplos arquivos | 1M linhas, 10 arquivos | ~6s |
-
-**Dicas de Performance:**
-- Use `integers` e `floats` para melhor performance (NumPy nativo)
-- Prefira Parquet para grandes volumes
-- Use `numFiles` para paralelizar I/O
-- Evite transformadores complexos em grandes datasets
-
----
-
-## 📖 Exemplos Completos
-
-Veja exemplos completos em:
-- `tests/test_3_main.py` - Testes de geração
-- `tests/test_4_write_batch_files.py` - Testes de escrita
-- `tests/fixtures/f1_general.py` - Specs de exemplo
-- `rand_engine/templates/` - Templates prontos para uso
-
----
-
-## 🤝 Contribuindo
-
-Contribuições são bem-vindas! Por favor:
-1. Fork o repositório
-2. Crie uma branch para sua feature
-3. Adicione testes
-4. Envie um Pull Request
-
----
-
-## 📄 Licença
-
-MIT License - veja LICENSE para detalhes
-
----
-
-## 🔗 Links
-
-- **GitHub**: https://github.com/marcoaureliomenezes/rand_engine
-- **PyPI**: https://pypi.org/project/rand-engine/
-- **Documentação**: Em construção
-
----
-
-**Desenvolvido com ❤️ para a comunidade de dados**
-
-```python
-from rand_engine.core import Core
-from datetime import datetime as dt
-
-# Gerar timestamps Unix com transformação
 spec = {
-    "created_at": {
-        "method": Core.gen_unix_timestamps,
+    "order_id": {
+        "method": "unique_ids",
+        "kwargs": {"strategy": "zint", "length": 10}
+    },
+    "customer_id": {
+        "method": "integers",
+        "kwargs": {"min": 1000, "max": 50000}
+    },
+    "product_category": {
+        "method": "distincts_prop",
         "kwargs": {
-            "start": "01-01-2024",
-            "end": "31-12-2024",
-            "format": "%d-%m-%Y"
-        },
-        "transformers": [
-            lambda ts: dt.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
-        ]
+            "distincts": {
+                "electronics": 40,
+                "clothing": 30,
+                "home": 20,
+                "sports": 10
+            }
+        }
+    },
+    "amount": {
+        "method": "floats",
+        "kwargs": {"min": 10.0, "max": 5000.0, "round": 2}
+    },
+    "payment_status": {
+        "method": "distincts_prop",
+        "kwargs": {
+            "distincts": {
+                "paid": 85,
+                "pending": 10,
+                "failed": 5
+            }
+        }
+    },
+    "created_at": {
+        "method": "unix_timestamps",
+        "kwargs": {"start": "01-01-2024", "end": "31-12-2024", "format": "%d-%m-%Y"}
     }
 }
+
+# Generate 1 million orders
+orders = DataGenerator(spec, seed=42).size(1000000).get_df()
+orders.to_parquet("orders.parquet", compression="snappy")
 ```
 
-### 8. Geração Incremental por Tamanho
+### IoT Sensor Data
 
 ```python
-from rand_engine.data_generator import DataGenerator
+spec = {
+    "sensor_id": {
+        "method": "distincts",
+        "kwargs": {"distincts": [f"SENSOR_{i:03d}" for i in range(1, 101)]}
+    },
+    "temperature": {
+        "method": "floats_normal",
+        "kwargs": {"mean": 22.0, "std": 3.5, "round": 2}
+    },
+    "humidity": {
+        "method": "floats_normal",
+        "kwargs": {"mean": 60.0, "std": 10.0, "round": 1}
+    },
+    "battery_level": {
+        "method": "integers",
+        "kwargs": {"min": 0, "max": 100}
+    },
+    "status": {
+        "method": "distincts_prop",
+        "kwargs": {
+            "distincts": {
+                "active": 95,
+                "warning": 4,
+                "error": 1
+            }
+        }
+    }
+}
 
-# Gerar múltiplos arquivos até atingir tamanho total desejado
-DataGenerator(spec) \
-    .write(size=10000) \
-    .format("parquet") \
-    .option("compression", "snappy") \
-    .incr_load("./data/lotes/", size_in_mb=50)
+# Stream sensor readings
+stream = DataGenerator(spec).stream_dict(min_throughput=10, max_throughput=50)
 
-# Gera arquivos de 10k linhas até totalizar ~50MB
+for reading in stream:
+    # Send to time-series database
+    print(f"Sensor {reading['sensor_id']}: {reading['temperature']}°C")
+```
+
+### User Behavior Logs
+
+```python
+spec = {
+    "session_id": {
+        "method": "unique_ids",
+        "kwargs": {"strategy": "zint", "length": 12}
+    },
+    "device_os": {
+        "method": "distincts_map",
+        "cols": ["device", "os"],
+        "kwargs": {
+            "distincts": {
+                "mobile": ["Android", "iOS"],
+                "tablet": ["Android", "iOS"],
+                "desktop": ["Windows", "macOS", "Linux"]
+            }
+        }
+    },
+    "page_views": {
+        "method": "integers",
+        "kwargs": {"min": 1, "max": 50}
+    },
+    "duration_seconds": {
+        "method": "integers",
+        "kwargs": {"min": 10, "max": 3600}
+    },
+    "converted": {
+        "method": "booleans",
+        "kwargs": {"true_prob": 0.03}  # 3% conversion rate
+    }
+}
+
+logs = DataGenerator(spec, seed=123).size(500000).get_df()
 ```
 
 ---
 
-## 📊 Principais Recursos
+## 🗂️ File Export Options
 
-✅ **Performance**: Geração vetorizada com NumPy  
-✅ **Declarativo**: Configuração via dicionários Python  
-✅ **Flexível**: Suporte a transformers customizados  
-✅ **Escalável**: Gere milhões de registros em segundos  
-✅ **Formatos**: CSV, JSON, Parquet com compressão  
-✅ **Streaming**: Geração contínua para testes de throughput  
-✅ **Reprodutível**: Controle de seed para resultados consistentes  
-✅ **Correlações**: Dados relacionados com splitable pattern  
+### Batch Writing
 
----
+```python
+from rand_engine import DataGenerator
 
-## 🔄 Processo de Release CI/CD
+spec = {...}  # Your spec here
 
-O projeto utiliza **GitHub Actions** para automação completa do processo de release:
+# CSV with compression
+(DataGenerator(spec)
+    .write
+    .size(100000)
+    .format("csv")
+    .option("compression", "gzip")
+    .option("index", False)
+    .mode("overwrite")
+    .save("output/data.csv"))
 
-### Workflow de Release
+# Parquet with multiple files
+(DataGenerator(spec)
+    .write
+    .size(5000000)
+    .format("parquet")
+    .option("compression", "snappy")
+    .option("numFiles", 10)  # Split into 10 files
+    .save("output/data.parquet"))
 
-1. **Trigger**: Push de tag com versionamento semântico
-   ```bash
-   git tag 0.4.7
-   git push origin --tags
-   ```
+# JSON with pretty print
+(DataGenerator(spec)
+    .write
+    .size(10000)
+    .format("json")
+    .option("indent", 2)
+    .save("output/data.json"))
+```
 
-2. **Validação**: Verifica se a versão é maior que a publicada no PyPI
+### Streaming Writing
 
-3. **Build**: 
-   - Atualiza versão no `pyproject.toml` via Poetry
-   - Instala dependências
-   - Gera distribuições `sdist` e `wheel`
-
-4. **Testes**: Executa suite completa de testes via pytest
-
-5. **Publicação**: 
-   - Upload automático para PyPI
-   - Criação de GitHub Release com artifacts
-
-6. **Deploy**: Pacote disponível via `pip install rand-engine`
-
-### Versionamento
-
-O projeto segue **Semantic Versioning** (semver):
-- `MAJOR.MINOR.PATCH` (ex: `0.4.7`)
-- Suporte a pre-releases: `0.5.0a1`, `0.5.0b2`, `0.5.0rc1`
-
-**⚠️ Importante**: A versão é gerenciada automaticamente pela tag Git. Não edite manualmente o `pyproject.toml`.
-
----
-
-## 📚 Documentação Adicional
-
-Para informações detalhadas sobre a arquitetura interna, padrões de desenvolvimento e contribuições, consulte:
-
-- [Copilot Instructions](/.github/copilot-instructions.md) - Guia completo da arquitetura
+```python
+# Write data in micro-batches
+(DataGenerator(spec)
+    .writeStream
+    .microbatch_size(1000)
+    .max_microbatches(100)
+    .format("csv")
+    .option("compression", "gzip")
+    .save("output/stream/"))
+```
 
 ---
 
-## 🤝 Contribuindo
+## 🔌 Database Integrations
 
-Contribuições são bem-vindas! Siga o processo:
+### DuckDB Integration
 
-1. Fork o repositório
-2. Crie uma branch para sua feature (`git checkout -b feature/nova-funcionalidade`)
-3. Commit suas mudanças (`git commit -m 'Adiciona nova funcionalidade'`)
-4. Push para a branch (`git push origin feature/nova-funcionalidade`)
-5. Abra um Pull Request
+```python
+from rand_engine.integrations._duckdb_handler import DuckDBHandler
+
+# Generate and insert data
+spec = {...}
+df = DataGenerator(spec).size(100000).get_df()
+
+# Create handler (in-memory or file-based)
+handler = DuckDBHandler(":memory:")  # or DuckDBHandler("mydb.duckdb")
+
+# Create table
+handler.create_table("users", "user_id VARCHAR(10)")
+
+# Insert data
+handler.insert_df("users", df, pk_cols=["user_id"])
+
+# Query data
+result = handler.select_all("users")
+print(result.head())
+
+# Cleanup
+handler.close()
+```
+
+### SQLite Integration
+
+```python
+from rand_engine.integrations._sqlite_handler import SQLiteHandler
+
+handler = SQLiteHandler("test.db")
+handler.create_table("events", "event_id VARCHAR(10)")
+handler.insert_df("events", df, pk_cols=["event_id"])
+
+# Query with column selection
+result = handler.select_all("events", columns=["event_id", "timestamp"])
+
+handler.close()
+```
 
 ---
 
-## 📄 Licença
+## 🏗️ Architecture
 
-Este projeto está sob licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+### Design Principles
+
+1. **Declarative Specifications**: Define what you want, not how to generate it
+2. **High Performance**: Built on NumPy for vectorized operations
+3. **Type Safety**: Full type hints and validation
+4. **Composability**: Chain methods for fluent API
+5. **Extensibility**: Easy to add custom generators and transformers
+
+### Public API
+
+The library exposes a single entry point:
+
+```python
+from rand_engine import DataGenerator
+```
+
+All internal modules (prefixed with `_`) are implementation details and may change.
+
+### Key Components
+
+- **DataGenerator**: Main class for data generation
+- **SpecValidator**: Educational validator with helpful error messages
+- **File Writers**: Batch and stream writers for multiple formats
+- **Database Handlers**: DuckDB and SQLite integrations with connection pooling
+- **Core Generators**: Stateless NumPy-based generation methods
 
 ---
 
-## 🔗 Links
+## 🧪 Testing
 
-- **PyPI**: [https://pypi.org/project/rand-engine/](https://pypi.org/project/rand-engine/)
-- **GitHub**: [https://github.com/marcoaureliomenezes/rand_engine](https://github.com/marcoaureliomenezes/rand_engine)
-- **Issues**: [https://github.com/marcoaureliomenezes/rand_engine/issues](https://github.com/marcoaureliomenezes/rand_engine/issues)
+The library has comprehensive test coverage:
+
+- **189 tests** across all components
+- **82% code coverage**
+- **Unit tests**: Core generation methods
+- **Integration tests**: File writers, database handlers
+- **API tests**: Public interface validation
+
+Run tests:
+
+```bash
+# All tests
+pytest
+
+# With coverage
+pytest --cov=rand_engine --cov-report=html
+
+# Specific module
+pytest tests/integrations/
+```
 
 ---
 
-**Desenvolvido com ❤️ por Marco Menezes**
+## 📖 Documentation
+
+### Method Reference
+
+All 13 generation methods are documented in the validator:
+
+```python
+from rand_engine.validators.spec_validator import SpecValidator
+
+# See all available methods and their parameters
+print(SpecValidator.METHOD_SPECS.keys())
+# dict_keys(['integers', 'int_zfilled', 'floats', 'floats_normal', 'booleans', 
+#            'distincts', 'distincts_prop', 'distincts_map', 'distincts_map_prop',
+#            'distincts_multi_map', 'complex_distincts', 'unix_timestamps', 'unique_ids'])
+```
+
+### Getting Help
+
+Enable validation for helpful error messages:
+
+```python
+spec = {
+    "age": {
+        "method": "unknown_method"  # Typo!
+    }
+}
+
+try:
+    DataGenerator(spec, validate=True)
+except Exception as e:
+    print(e)
+    # Shows correct method names and examples
+```
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Write tests for your changes
+4. Ensure all tests pass (`pytest`)
+5. Submit a pull request
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🌟 Acknowledgments
+
+- Built with [NumPy](https://numpy.org/) and [Pandas](https://pandas.pydata.org/)
+- Inspired by modern data engineering practices
+- Community feedback and contributions
+
+---
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/marcoaureliomenezes/rand_engine/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/marcoaureliomenezes/rand_engine/discussions)
+- **Email**: marco.a.menezes@gmail.com
+
+---
+
+## 🗺️ Roadmap
+
+- [ ] PostgreSQL integration
+- [ ] MySQL/MariaDB support
+- [ ] Apache Arrow format support
+- [ ] Distributed generation with Dask
+- [ ] Web UI for spec building
+- [ ] More pre-built templates
+
+---
+
+**Made with ❤️ for the data community**

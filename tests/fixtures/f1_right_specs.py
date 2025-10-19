@@ -11,7 +11,7 @@ def default_size():
 
 
 @pytest.fixture(scope="function")
-def rand_spec_case_1():
+def rand_spec_with_kwargs():
   fake = faker.Faker(locale="pt_BR")
   return {
     "id":        dict(method="unique_ids", kwargs=dict(strategy="zint")),
@@ -20,13 +20,28 @@ def rand_spec_case_1():
     "height":      dict(method="floats_normal", kwargs=dict(mean=10**3, std=10**1, round=2)),
     "is_active":   dict(method="booleans", kwargs=dict(true_prob=0.7)),
     "plan":        dict(method="distincts", kwargs=dict(distincts=["free", "standard", "premium"])),
-    "profession":  dict(method="distincts", kwargs=dict(distincts=[fake.job() for _ in range(100)])),
+    "profession":  dict(method="distincts", kwargs=dict(distincts=[fake.job() for _ in range(5)])),
     "created_at":  dict(method="unix_timestamps", kwargs=dict(start="01-01-2020", end="31-12-2020", format="%d-%m-%Y")),
+    "device":     dict(method="distincts_prop", kwargs=dict(distincts={"mobile": 2, "desktop": 1})),
+  }
+ 
+@pytest.fixture(scope="function")
+def rand_spec_lambda_with_kwargs():
+  fake = faker.Faker(locale="pt_BR")
+  return lambda: {
+    "id":        dict(method="unique_ids", kwargs=dict(strategy="zint")),
+    "age":         dict(method="integers", kwargs=dict(min=0, max=100)),
+    "salary":      dict(method="floats", kwargs=dict(min=0, max=10**3, round=2)),
+    "height":      dict(method="floats_normal", kwargs=dict(mean=10**3, std=10**1, round=2)),
+    "is_active":   dict(method="booleans", kwargs=dict(true_prob=0.7)),
+    "plan":        dict(method="distincts", kwargs=dict(distincts=["free", "standard", "premium"])),
+    "profession":  dict(method="distincts", kwargs=dict(distincts=[fake.job() for _ in range(5)])),
+    "created_at":  dict(method="unix_timestamps", kwargs=dict(start="01-01-2020", end="31-12-2020", format="%d-%m-%Y")),
+    "device":     dict(method="distincts_prop", kwargs=dict(distincts={"mobile": 2, "desktop": 1})),
   }
 
-
 @pytest.fixture(scope="function")
-def rand_spec_case_2():
+def rand_spec_with_args():
   fake = faker.Faker(locale="pt_BR")
   return {
     "id":        dict(method="unique_ids", args=["zint", 8]),
@@ -39,6 +54,33 @@ def rand_spec_case_2():
     "created_at": dict(method="unix_timestamps", args=["01-01-2020", "31-12-2020", "%d-%m-%Y"]),
   }
 
+
+@pytest.fixture(scope="function")
+def rand_spec_with_related_columns():
+  return {
+    "id":        dict(method="unique_ids", kwargs=dict(strategy="zint")),
+    "age":         dict(method="integers", kwargs=dict(min=0, max=100)),
+    "device_plat": dict(
+                    method="distincts_map", cols = ["device_type", "os_type"],
+                    kwargs=dict(distincts={
+                       "smartphone": ["android","IOS"], 
+                       "desktop": ["linux", "windows"]
+    })),
+    "deriv_tip": dict(
+                    method="distincts_map_prop", cols = ["op", "tip_op"],
+                    kwargs=dict(distincts={
+                       "OPC": [ ("C_OPC", 8), ("V_OPC", 2)], 
+                       "SWP": [ ("C_SWP", 6), ("V_SWP", 4)]
+    })),
+    "empresa": dict(
+                    method="distincts_multi_map", cols = ["setor", "sub_setor", "porte", "codigo_municipio"],
+                    kwargs=dict(distincts={
+                      "setor_1": [
+                          ["agro", "mineração", "petróleo", "pecuária"], [0.25, 0.15], [None], ["01", "02"]], 
+                         "setor_2": [
+                          ["indústria", "construção"], [0.30, 0.20, 0.10], ["micro", "pequena", "média"], ["03", "04", "05"]]
+    })),
+  }
 
 @pytest.fixture(scope="function")
 def rand_spec_case_1_transformer():
