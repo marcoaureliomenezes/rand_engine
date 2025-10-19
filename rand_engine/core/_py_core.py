@@ -8,7 +8,7 @@ class PyCore:
 
 
   @classmethod
-  def gen_complex_distincts(self, size: int, pattern="x.x.x-x", replacement="x", templates=[]):
+  def gen_complex_distincts(dcls, size: int, pattern="x.x.x-x", replacement="x", templates=[]):
     from rand_engine.core._np_core import NPCore
     
     # Mapeamento de strings para métodos
@@ -39,41 +39,41 @@ class PyCore:
 
 
   @classmethod  
-  def gen_distincts_untyped(self, size: int, distinct: List[Any]) -> List[Any]:
+  def gen_distincts_untyped(dcls, size: int, distinct: List[Any]) -> List[Any]:
     return list(map(lambda x: distinct[x], np.random.randint(0, len(distinct), size)))
   
 
   @classmethod
-  def gen_distincts_map(self, size: int, distincts: Dict[str, List[Any]]) -> np.ndarray:
+  def gen_distincts_map(dcls, size: int, distincts: Dict[str, List[Any]]) -> np.ndarray:
     distincts_map = [(i, j) for j in distincts for i in distincts[j]]
     assert len(list(set([type(x) for x in distincts]))) == 1
-    return self.gen_distincts_untyped(size, distincts_map)
+    return dcls.gen_distincts_untyped(size, distincts_map)
 
 
   @classmethod
-  def gen_distincts_multi_map(self, size: int, distincts: Dict[str, List[Any]]) -> np.ndarray:
+  def gen_distincts_multi_map(dcls, size: int, distincts: Dict[str, List[Any]]) -> np.ndarray:
     combinations = [list(itertools.product([k], *v)) for k, v in distincts.items()]
     combinations = [[[i for i in tupla] for tupla in sublist] for sublist in combinations]
     distincts = [i for sublist in combinations for i in sublist]
-    return self.gen_distincts_untyped(size, distincts)
+    return dcls.gen_distincts_untyped(size, distincts)
 
   @classmethod
-  def gen_distincts_map_prop(self, size: int, distincts: Dict[str, List[Any]]) -> np.ndarray:
+  def gen_distincts_map_prop(dcls, size: int, distincts: Dict[str, List[Any]]) -> np.ndarray:
     distincts_map_prop = [
       (category, value)
       for category, value_weight_pairs in distincts.items()
       for value, weight in value_weight_pairs
       for _ in range(weight)
     ]
-    return self.gen_distincts_untyped(size, distincts_map_prop)
+    return dcls.gen_distincts_untyped(size, distincts_map_prop)
 
 
   @classmethod
-  def gen_distincts_external(self, size, table, pk_fields, db_path=":memory:"):
+  def gen_distincts_external(dcls, size, table, pk_fields, db_path=":memory:"):
     db = DuckDBHandler(db_path=db_path)
     df = db.select_all(f"checkpoint_{table}", pk_fields)
     cat_ids = df[pk_fields[0]].to_list()
-    self.gen_distincts_untyped(size, cat_ids)
+    dcls.gen_distincts_untyped(size, cat_ids)
     return cat_ids
 
 
@@ -90,7 +90,7 @@ if __name__ == "__main__":
   pass
 
   # @classmethod
-  # def gen_timestamps(self, size: int, start: str, end: str, format: str) -> np.ndarray:
+  # def gen_timestamps(dcls, size: int, start: str, end: str, format: str) -> np.ndarray:
   #   """
   #   This method generates an array of random timestamps.
   #   :param size: int: Number of elements to be generated.
@@ -98,12 +98,12 @@ if __name__ == "__main__":
   #   :param end: str: End date of the generated timestamps.
   #   :param format: str: Format of the input dates.
   #   :return: np.ndarray: Array of random timestamps."""
-  #   date_array = self.gen_unix_timestamps(size, start, end, format).astype('datetime64[s]')
+  #   date_array = dcls.gen_unix_timestamps(size, start, end, format).astype('datetime64[s]')
   #   return date_array
   
   
   # @classmethod
-  # def gen_datetimes(self, size: int, start: str, end: str, format_in: str, format_out: str):
-  #   timestamp_array = self.gen_unix_timestamps(size, start, end, format_in)
+  # def gen_datetimes(dcls, size: int, start: str, end: str, format_in: str, format_out: str):
+  #   timestamp_array = dcls.gen_unix_timestamps(size, start, end, format_in)
   #   vectorized_func = np.vectorize(lambda x: dt.fromtimestamp(x).strftime(format_out))
   #   return vectorized_func(timestamp_array)
