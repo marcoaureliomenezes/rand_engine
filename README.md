@@ -528,17 +528,11 @@ pytest --cov=rand_engine --cov-report=html
 
 ---
 
-## 🤝 Contributing
-
-Contributions are welcome! See our [Contributing Guide](CONTRIBUTING.md) for details.
-
----
-
 ## 📞 Support
 
 - **Issues**: [GitHub Issues](https://github.com/marcoaureliomenezes/rand_engine/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/marcoaureliomenezes/rand_engine/discussions)
-- **Email**: marco.a.menezes@gmail.com
+- **Email**: marcourelioreislima@gmail.com
 
 ---
 

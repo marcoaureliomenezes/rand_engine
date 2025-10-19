@@ -149,10 +149,11 @@ jobs:
           category: "/language:python"
 
   test:
-    name: Run Tests (Python ${{ matrix.python-version }})
-    runs-on: ubuntu-latest
+    name: Run Tests (Python ${{ matrix.python-version }} on ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ['3.10', '3.11', '3.12']
       fail-fast: false
     
@@ -169,11 +170,15 @@ jobs:
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
           echo "$HOME/.local/bin" >> $GITHUB_PATH
+        shell: bash
       
       - name: Cache Poetry dependencies
         uses: actions/cache@v4
         with:
-          path: ~/.cache/pypoetry
+          path: |
+            ~/.cache/pypoetry
+            ~/AppData/Local/pypoetry/Cache
+            ~/Library/Caches/pypoetry
           key: ${{ runner.os }}-poetry-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
           restore-keys: |
             ${{ runner.os }}-poetry-${{ matrix.python-version }}-
@@ -181,10 +186,12 @@ jobs:
       - name: Install dependencies
         run: |
           poetry install --with test --no-interaction
+        shell: bash
       
       - name: Run tests with coverage
         run: |
           poetry run pytest tests/ -v --cov=rand_engine --cov-report=xml --cov-report=term-missing --cov-fail-under=60
+        shell: bash
       
       - name: Check coverage threshold
         if: always()
@@ -193,6 +200,7 @@ jobs:
           echo "📊 Coverage: ${COVERAGE}%"
           if (( $(echo "$COVERAGE < 60" | bc -l) )); then
             echo "❌ Coverage ${COVERAGE}% is below minimum 60%"
+        shell: bash
             exit 1
           else
             echo "✅ Coverage ${COVERAGE}% meets minimum requirement"
