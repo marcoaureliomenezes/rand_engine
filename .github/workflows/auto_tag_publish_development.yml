@@ -182,9 +182,10 @@ jobs:
           python -m pip install dist/*.whl
           python -c "
           import rand_engine
-          from rand_engine.main.rand_generator import RandGenerator
+          from rand_engine import DataGenerator
           print('✅ Package imported successfully')
           print(f'📦 Version: {rand_engine.__version__ if hasattr(rand_engine, \"__version__\") else \"N/A\"}')
+          print(f'✅ Public API verified: DataGenerator available')
           "
       
       - name: Upload build artifacts
