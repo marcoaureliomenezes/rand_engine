@@ -443,7 +443,7 @@ def test_close_connection():
     print("\n✓ Connection closed and removed from pool")
 
 
-def test_close_all_connections():
+def test_close_all_connections(temp_db_path):
     """
     Example 20: Close all pooled connections.
     
@@ -451,7 +451,7 @@ def test_close_all_connections():
     """
     # Create multiple handlers with different databases
     handler1 = DuckDBHandler(":memory:")
-    handler2 = DuckDBHandler(":memory:2")
+    handler2 = DuckDBHandler(temp_db_path)  # Use temp file instead of ":memory:2"
     
     assert len(DuckDBHandler._connections) == 2
     

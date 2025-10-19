@@ -12,7 +12,7 @@ from rand_engine.validators.exceptions import SpecValidationError
   
 class DataGenerator:
       
-  def __init__(self, random_spec: Callable[[], dict] | dict, seed: int = None, validate: bool = False):
+  def __init__(self, random_spec: Callable[[], dict] | dict, seed: int = None, validate: bool = True):
     # Avalia a spec se for callable
 
     np.random.seed(seed)
