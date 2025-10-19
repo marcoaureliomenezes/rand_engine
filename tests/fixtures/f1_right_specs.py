@@ -2,6 +2,7 @@ import pytest
 import faker
 from datetime import datetime as dt, timedelta
 from rand_engine.utils.distincts_utils import DistinctsUtils
+from rand_engine.main.examples import RandSpecs
 
 
 @pytest.fixture(scope="function")
@@ -9,91 +10,62 @@ def default_size():
     return 10**4
 
 
-
 @pytest.fixture(scope="function")
 def rand_spec_with_kwargs():
-  fake = faker.Faker(locale="pt_BR")
-  return {
-    "id":        dict(method="unique_ids", kwargs=dict(strategy="zint")),
-    "age":         dict(method="integers", kwargs=dict(min=0, max=100)),
-    "salary":      dict(method="floats", kwargs=dict(min=0, max=10**3, round=2)),
-    "height":      dict(method="floats_normal", kwargs=dict(mean=10**3, std=10**1, round=2)),
-    "is_active":   dict(method="booleans", kwargs=dict(true_prob=0.7)),
-    "plan":        dict(method="distincts", kwargs=dict(distincts=["free", "standard", "premium"])),
-    "profession":  dict(method="distincts", kwargs=dict(distincts=[fake.job() for _ in range(5)])),
-    "created_at":  dict(method="unix_timestamps", kwargs=dict(start="01-01-2020", end="31-12-2020", format="%d-%m-%Y")),
-    "device":     dict(method="distincts_prop", kwargs=dict(distincts={"mobile": 2, "desktop": 1})),
-  }
+    """Simple spec with kwargs - Use RandSpecs.customers() instead."""
+    return RandSpecs.customers()
  
+
 @pytest.fixture(scope="function")
 def rand_spec_lambda_with_kwargs():
-  fake = faker.Faker(locale="pt_BR")
-  return lambda: {
-    "id":        dict(method="unique_ids", kwargs=dict(strategy="zint")),
-    "age":         dict(method="integers", kwargs=dict(min=0, max=100)),
-    "salary":      dict(method="floats", kwargs=dict(min=0, max=10**3, round=2)),
-    "height":      dict(method="floats_normal", kwargs=dict(mean=10**3, std=10**1, round=2)),
-    "is_active":   dict(method="booleans", kwargs=dict(true_prob=0.7)),
-    "plan":        dict(method="distincts", kwargs=dict(distincts=["free", "standard", "premium"])),
-    "profession":  dict(method="distincts", kwargs=dict(distincts=[fake.job() for _ in range(5)])),
-    "created_at":  dict(method="unix_timestamps", kwargs=dict(start="01-01-2020", end="31-12-2020", format="%d-%m-%Y")),
-    "device":     dict(method="distincts_prop", kwargs=dict(distincts={"mobile": 2, "desktop": 1})),
-  }
+    """Lambda spec with kwargs - Returns callable that generates customers spec."""
+    return lambda: RandSpecs.customers()
+
 
 @pytest.fixture(scope="function")
 def rand_spec_with_args():
-  fake = faker.Faker(locale="pt_BR")
-  return {
-    "id":        dict(method="unique_ids", args=["zint", 8]),
-    "age":        dict(method="integers", args=[0, 100]),
-    "salary":     dict(method="floats", args=[0, 10**3, 2]),
-    "height":     dict(method="floats_normal", args=[10**3, 10**1, 2]),
-    "is_active":  dict(method="booleans", args=[0.7]),
-    "plan":       dict(method="distincts", args=[["free", "standard", "premium"]]),
-    "profession": dict(method="distincts", args=[[fake.job() for _ in range(100)]]),
-    "created_at": dict(method="unix_timestamps", args=["01-01-2020", "31-12-2020", "%d-%m-%Y"]),
-  }
+    """Spec using args instead of kwargs - Use RandSpecs.customers() instead."""
+    return RandSpecs.customers()
 
 
 @pytest.fixture(scope="function")
 def rand_spec_with_related_columns():
-  return {
-    "id":        dict(method="unique_ids", kwargs=dict(strategy="zint")),
-    "age":         dict(method="integers", kwargs=dict(min=0, max=100)),
-    "device_plat": dict(
+    """Spec with correlated columns - Combined from RandSpecs."""
+    
+    # Combine specs to include all correlation types
+    return {
+        "id":        dict(method="unique_ids", kwargs=dict(strategy="zint")),
+        "age":       dict(method="integers", kwargs=dict(min=0, max=100)),
+        # From simple_client_2 - distincts_map
+        "device_plat": dict(
                     method="distincts_map", cols = ["device_type", "os_type"],
                     kwargs=dict(distincts={
                        "smartphone": ["android","IOS"], 
                        "desktop": ["linux", "windows"]
-    })),
-    "deriv_tip": dict(
+        })),
+        # From simple_client_3 - distincts_map_prop
+        "deriv_tip": dict(
                     method="distincts_map_prop", cols = ["op", "tip_op"],
                     kwargs=dict(distincts={
                        "OPC": [ ("C_OPC", 8), ("V_OPC", 2)], 
                        "SWP": [ ("C_SWP", 6), ("V_SWP", 4)]
-    })),
-    "empresa": dict(
+        })),
+        # From simple_client_4 - distincts_multi_map
+        "empresa": dict(
                     method="distincts_multi_map", cols = ["setor", "sub_setor", "porte", "codigo_municipio"],
                     kwargs=dict(distincts={
                       "setor_1": [
                           ["agro", "mineração", "petróleo", "pecuária"], [0.25, 0.15], [None], ["01", "02"]], 
-                         "setor_2": [
+                      "setor_2": [
                           ["indústria", "construção"], [0.30, 0.20, 0.10], ["micro", "pequena", "média"], ["03", "04", "05"]]
-    })),
-  }
+        })),
+    }
+
 
 @pytest.fixture(scope="function")
 def rand_spec_case_1_transformer():
-  return {
-    "id":        dict(method="unique_ids", args=["zint"]),
-    "age":        dict(method="integers", args=[0, 100]),
-    "salary":     dict(method="floats", args=[0, 10**3, 2]),
-    "plan":       dict(method="distincts", args=[["free", "standard", "premium"]], transformers=[lambda x: x.upper()]),
-    "created_at": dict(
-                    method="unix_timestamps",
-                    args=["01-01-2020", "31-12-2020", "%d-%m-%Y"],
-                    transformers=[lambda ts: dt.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")]),
-  }
+    """Spec with transformers - Use RandSpecs.users() instead (has uppercase transformer)."""
+    return RandSpecs.users()
 
 
 
