@@ -15,19 +15,23 @@ class NPCore:
   
   @classmethod
   def gen_ints(cls, size: int, min: int, max: int, int_type: str = 'int32') -> np.ndarray:
-    return np.random.randint(min, max + 1, size).astype(int_type)
+    # Use int64 explicitly to avoid Windows int32 overflow issues
+    return np.random.randint(min, max + 1, size, dtype=np.int64).astype(int_type)
 
 
   @classmethod
   def gen_ints_zfilled(cls, size: int, length: int) -> np.ndarray:
-    str_arr = np.random.randint(0, 10**length, size).astype('str')
+    # Use int64 explicitly to handle large numbers on Windows
+    max_val = 10**length - 1
+    str_arr = np.random.randint(0, max_val + 1, size, dtype=np.int64).astype('str')
     return np.char.zfill(str_arr, length)
   
   
   @classmethod
   def gen_floats(cls, size: int, min: int, max: int, round: int = 2) -> np.ndarray:
-    sig_part = np.random.randint(min, max, size)
-    decimal = np.random.randint(0, 10 ** round, size)
+    # Use int64 for integer parts to avoid Windows overflow
+    sig_part = np.random.randint(min, max, size, dtype=np.int64)
+    decimal = np.random.randint(0, 10 ** round, size, dtype=np.int64)
     return sig_part + (decimal / 10 ** round) if round > 0 else sig_part
 
 
@@ -40,8 +44,9 @@ class NPCore:
   def gen_unix_timestamps(cls, size: int, start: str, end: str, format: str) -> np.ndarray:
     dt_start, dt_end = dt.strptime(start, format), dt.strptime(end, format)
     if dt_start < dt(1970, 1, 1): dt_start = dt(1970, 1, 1)
-    timestamp_start, timestamp_end = dt_start.timestamp(), dt_end.timestamp()
-    int_array = np.random.randint(timestamp_start, timestamp_end, size)
+    timestamp_start, timestamp_end = int(dt_start.timestamp()), int(dt_end.timestamp())
+    # Use int64 to handle large Unix timestamps on Windows
+    int_array = np.random.randint(timestamp_start, timestamp_end, size, dtype=np.int64)
     return int_array
   
 
