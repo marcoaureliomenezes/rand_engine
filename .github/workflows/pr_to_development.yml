@@ -206,9 +206,96 @@ jobs:
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
 
+  test_package_build:
+    name: Test Package Build & Installation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      
+      - name: Build package
+        run: |
+          echo "🔨 Building package..."
+          poetry build
+      
+      - name: Verify build artifacts
+        run: |
+          WHEEL_COUNT=$(ls dist/*.whl 2>/dev/null | wc -l)
+          SDIST_COUNT=$(ls dist/*.tar.gz 2>/dev/null | wc -l)
+          
+          if [ "$WHEEL_COUNT" -eq 0 ] || [ "$SDIST_COUNT" -eq 0 ]; then
+            echo "❌ Build failed - missing artifacts"
+            exit 1
+          fi
+          
+          echo "✅ Found $WHEEL_COUNT wheel(s) and $SDIST_COUNT source distribution(s)"
+      
+      - name: Check package metadata
+        run: |
+          pip install twine
+          twine check dist/*
+          echo "✅ Package metadata validated"
+      
+      - name: Test package installation
+        run: |
+          echo "📦 Installing package from wheel..."
+          python -m pip install dist/*.whl
+          
+          echo "🧪 Testing package imports..."
+          python -c "
+          import rand_engine
+          from rand_engine import DataGenerator
+          
+          # Verify public API
+          assert 'DataGenerator' in dir(rand_engine), 'DataGenerator not in public API'
+          
+          # Verify private modules are not directly accessible
+          try:
+              from rand_engine.main.rand_generator import RandGenerator
+              print('⚠️  WARNING: Private module accessible (backwards compat)')
+          except ModuleNotFoundError:
+              print('✅ Private modules properly hidden')
+          
+          print('✅ Package imported successfully')
+          print(f'📦 Version: {rand_engine.__version__ if hasattr(rand_engine, \"__version__\") else \"N/A\"}')
+          print(f'✅ Public API verified: DataGenerator available')
+          "
+      
+      - name: Test basic functionality
+        run: |
+          python -c "
+          from rand_engine import DataGenerator
+          
+          # Test basic data generation
+          spec = {
+              'id': {'method': 'integers', 'kwargs': {'min': 1, 'max': 100}},
+              'value': {'method': 'floats', 'kwargs': {'min': 0.0, 'max': 1.0, 'round': 2}}
+          }
+          
+          generator = DataGenerator(spec, seed=42)
+          df = generator.size(10).get_df()
+          
+          assert len(df) == 10, 'DataFrame size mismatch'
+          assert 'id' in df.columns, 'Missing id column'
+          assert 'value' in df.columns, 'Missing value column'
+          
+          print('✅ Basic functionality test passed')
+          print(f'✅ Generated {len(df)} rows with {len(df.columns)} columns')
+          "
+
   summary:
     name: PR Validation Summary
-    needs: [validate_source, security_sast, security_dependencies, security_codeql, test]
+    needs: [validate_source, security_sast, security_dependencies, security_codeql, test, test_package_build]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -223,8 +310,11 @@ jobs:
           echo "| Dependency Scan | ${{ needs.security_dependencies.result == 'success' && '✅ Passed' || '⚠️ Review Required' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| CodeQL Analysis | ${{ needs.security_codeql.result == 'success' && '✅ Passed' || '⚠️ Review Required' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Tests (Coverage ≥60%) | ${{ needs.test.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Package Build & Install | ${{ needs.test_package_build.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
           
-          if [ "${{ needs.validate_source.result }}" == "success" ] && [ "${{ needs.test.result }}" == "success" ]; then
+          if [ "${{ needs.validate_source.result }}" == "success" ] && \
+             [ "${{ needs.test.result }}" == "success" ] && \
+             [ "${{ needs.test_package_build.result }}" == "success" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "✅ **All critical checks passed - PR ready to merge**" >> $GITHUB_STEP_SUMMARY
             

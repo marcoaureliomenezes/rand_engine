@@ -1,12 +1,16 @@
 # Rand Engine
 
-**Gerador de dados randômicos em escala para testes, desenvolvimento e prototipação.**
+**High-performance synthetic data generation for testing, development, and prototyping.**
 
-Biblioteca Python para gerar milhões de linhas de dados sintéticos através de especificações declarativas. Construída com NumPy e Pandas para máxima performance.
+A Python library for generating millions of rows of realistic synthetic data through declarative specifications. Built on NumPy and Pandas for maximum performance.
+
+[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Tests](https://img.shields.io/badge/tests-212%20passing-brightgreen.svg)]()
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)]()
 
 ---
 
-## 📦 Instalação
+## 📦 Installation
 
 ```bash
 pip install rand-engine
@@ -14,38 +18,100 @@ pip install rand-engine
 
 ---
 
-## ✅ Requisitos
+## 🎯 Who Is This For?
 
-- **Python**: >= 3.10
-- **numpy**: >= 2.1.1
-- **pandas**: >= 2.2.2
-- **faker**: >= 28.4.1 (opcional, para dados realistas)
-- **duckdb**: >= 1.4.1 (opcional, para integrações)
-
----
-
-## 🎯 Público Alvo
-
-- **Engenheiros de Dados**: Testes de pipelines ETL/ELT sem depender de dados de produção
-- **QA Engineers**: Geração de datasets realistas para testes de carga e integração
-- **Data Scientists**: Mock de dados durante desenvolvimento de modelos
-- **Desenvolvedores Backend**: Popular ambientes de desenvolvimento e staging
-- **Profissionais de BI**: Criar demos e POCs sem expor dados sensíveis
+- **Data Engineers**: Test ETL/ELT pipelines without production data dependencies
+- **QA Engineers**: Generate realistic datasets for load and integration testing
+- **Data Scientists**: Mock data during model development and validation
+- **Backend Developers**: Populate development and staging environments
+- **BI Professionals**: Create demos and POCs without exposing sensitive data
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Geração Básica com Identificadores String
+### 1. Use Pre-Built Examples (Fastest Way)
+
+Get started immediately with ready-to-use specifications:
 
 ```python
-from rand_engine.main.data_generator import DataGenerator
+from rand_engine import DataGenerator, RandSpecs
 
-# Especificação declarativa usando identificadores string
+# Generate 10,000 customer records
+customers = DataGenerator(RandSpecs.customers(), seed=42).size(10000).get_df()
+print(customers.head())
+```
+
+**Output:**
+```
+   customer_id       name  age                    email  is_active  account_balance
+0    C00000001  John Smith   42    john.smith@email.com       True         15432.50
+1    C00000002  Jane Brown   28   jane.brown@email.com       True          8721.33
+2    C00000003   Bob Wilson   56   bob.wilson@email.com      False         42156.89
+3    C00000004  Alice Davis   33  alice.davis@email.com       True         23400.12
+4    C00000005   Tom Miller   49   tom.miller@email.com       True         31245.67
+```
+
+**Available Pre-Built Specs:**
+
+```python
+from rand_engine import RandSpecs
+
+# 🛒 E-commerce & Retail
+RandSpecs.customers()    # Customer profiles (6 fields)
+RandSpecs.products()     # Product catalog (6 fields)
+RandSpecs.orders()       # Order records with currency/country (6 fields)
+RandSpecs.invoices()     # Invoice records (6 fields)
+RandSpecs.shipments()    # Shipping data with carrier/destination (6 fields)
+
+# 💰 Financial
+RandSpecs.transactions() # Financial transactions (6 fields)
+
+# 👥 HR & People
+RandSpecs.employees()    # Employee records with dept/level/role (6 fields)
+RandSpecs.users()        # Application users (6 fields)
+
+# 🔧 IoT & Systems
+RandSpecs.devices()      # IoT device data with status/priority (6 fields)
+RandSpecs.events()       # Event logs (6 fields)
+```
+
+**Complete Example:**
+
+```python
+from rand_engine import DataGenerator, RandSpecs
+
+# Generate products
+products = DataGenerator(RandSpecs.products()).size(1000).get_df()
+
+# Generate orders
+orders = DataGenerator(RandSpecs.orders(), seed=123).size(50000).get_df()
+
+# Generate employee data
+employees = DataGenerator(RandSpecs.employees()).size(500).get_df()
+
+# Export to files
+DataGenerator(RandSpecs.customers()).write \
+    .size(100000) \
+    .format("parquet") \
+    .option("compression", "snappy") \
+    .save("customers.parquet")
+```
+
+---
+
+### 2. Create Custom Specifications
+
+Build your own specs for specific use cases:
+
+```python
+from rand_engine import DataGenerator
+
+# Simple specification
 spec = {
-    "id": {
+    "user_id": {
         "method": "unique_ids",
-        "kwargs": {"strategy": "zint"}
+        "kwargs": {"strategy": "zint", "length": 8}
     },
     "age": {
         "method": "integers",
@@ -53,533 +119,439 @@ spec = {
     },
     "salary": {
         "method": "floats",
-        "kwargs": {"min": 1500.0, "max": 15000.0, "round": 2}
-    },
-    "is_active": {
-        "method": "booleans",
-        "kwargs": {"true_prob": 0.7}
-    },
-    "plan": {
-        "method": "distincts",
-        "kwargs": {"distincts": ["free", "standard", "premium"]}
+        "kwargs": {"min": 30000.0, "max": 150000.0, "round": 2}
     }
 }
 
-# Gerar DataFrame
-df = DataGenerator(spec).size(10000).get_df()
-print(df.head())
+df = DataGenerator(spec, seed=42).size(10000).get_df()
 ```
 
-### 2. Usando Args (Argumentos Posicionais)
+---
+
+## 📚 Core Generation Methods
+
+| Method | Description | Example Use Case |
+|--------|-------------|------------------|
+| **unique_ids** | Unique identifiers | User IDs, order numbers |
+| **integers** | Random integers | Ages, quantities, counts |
+| **floats** | Random decimals | Prices, weights, measurements |
+| **floats_normal** | Normal distribution | Heights, temperatures, scores |
+| **booleans** | True/False with probability | Active flags, feature toggles |
+| **distincts** | Random selection | Categories, statuses, types |
+| **distincts_prop** | Weighted selection | Product mix, user tiers |
+| **unix_timestamps** | Date/time values | Created dates, event times |
+
+**Simple Example:**
 
 ```python
 spec = {
-    "id": {"method": "unique_ids", "args": ["zint", 8]},
-    "age": {"method": "integers", "args": [18, 65]},
-    "salary": {"method": "floats", "args": [1500, 15000, 2]},
-    "plan": {"method": "distincts", "args": [["free", "standard", "premium"]]}
+    "product_id": {"method": "unique_ids", "kwargs": {"strategy": "zint"}},
+    "price": {"method": "floats", "kwargs": {"min": 9.99, "max": 999.99, "round": 2}},
+    "category": {"method": "distincts", "kwargs": {"distincts": ["Electronics", "Clothing", "Food"]}},
+    "in_stock": {"method": "booleans", "kwargs": {"true_prob": 0.85}}
 }
 
-df = DataGenerator(spec).size(5000).get_df()
+products = DataGenerator(spec).size(5000).get_df()
 ```
 
-### 3. Exportar para Diferentes Formatos
+---
+
+## 🎨 Real-World Use Cases
+
+### Testing ETL Pipelines
 
 ```python
-# CSV comprimido
-(DataGenerator(spec)
-    .write
-    .size(100000)
-    .format("csv")
-    .option("compression", "gzip")
-    .mode("overwrite")
-    .save("./data/users.csv"))
+from rand_engine import DataGenerator, RandSpecs
 
-# Parquet com múltiplos arquivos
-(DataGenerator(spec)
-    .write
-    .size(1000000)
-    .format("parquet")
-    .option("compression", "snappy")
-    .option("numFiles", 5)
-    .save("./data/users.parquet"))
+# Generate source data
+source_df = DataGenerator(RandSpecs.transactions(), seed=42).size(1_000_000).get_df()
 
-# JSON
-(DataGenerator(spec)
-    .write
-    .size(50000)
-    .format("json")
-    .save("./data/users.json"))
+# Export to staging
+source_df.to_parquet("staging/transactions.parquet")
+
+# Run your ETL pipeline
+# ...
+
+# Generate more data for incremental loads
+incremental_df = DataGenerator(RandSpecs.transactions()).size(10_000).get_df()
 ```
 
-### 4. Streaming de Dados
+### Load Testing APIs
 
 ```python
-import time
+import requests
+from rand_engine import DataGenerator, RandSpecs
 
-# Gerar stream contínuo de registros
-stream = DataGenerator(spec).size(1000).stream_dict(
-    min_throughput=5, 
-    max_throughput=10
+# Generate test users
+stream = DataGenerator(RandSpecs.users()).stream_dict(min_throughput=10, max_throughput=50)
+
+for user in stream:
+    response = requests.post("https://api.example.com/users", json=user)
+    print(f"Created user {user['user_id']}: {response.status_code}")
+```
+
+### Populating Development Databases
+
+```python
+from rand_engine import DataGenerator, RandSpecs
+from rand_engine.integrations._duckdb_handler import DuckDBHandler
+
+# Generate data
+customers = DataGenerator(RandSpecs.customers()).size(10_000).get_df()
+orders = DataGenerator(RandSpecs.orders()).size(50_000).get_df()
+
+# Insert into database
+db = DuckDBHandler("dev_database.duckdb")
+db.create_table("customers", "customer_id VARCHAR(10) PRIMARY KEY")
+db.insert_df("customers", customers, pk_cols=["customer_id"])
+db.create_table("orders", "order_id VARCHAR(10) PRIMARY KEY")
+db.insert_df("orders", orders, pk_cols=["order_id"])
+db.close()
+```
+
+### QA Testing with Edge Cases
+
+```python
+from rand_engine import DataGenerator
+
+# Mix of normal and edge cases
+spec = {
+    "value": {"method": "floats", "kwargs": {"min": -999999.99, "max": 999999.99, "round": 2}},
+    "status": {"method": "distincts", "kwargs": {"distincts": ["active", "deleted", "suspended", "pending"]}},
+    "edge_case": {"method": "booleans", "kwargs": {"true_prob": 0.05}}  # 5% edge cases
+}
+
+test_data = DataGenerator(spec, seed=789).size(1000).get_df()
+edge_cases = test_data[test_data['edge_case'] == True]
+```
+
+---
+
+## 🔥 Advanced Features
+
+### Correlated Columns
+
+Generate related data (device → OS, product → status, etc.):
+
+```python
+# Example: orders() spec includes correlated currency & country
+orders = DataGenerator(RandSpecs.orders()).size(1000).get_df()
+
+# Result: 
+# order_id  amount  currency  country
+#       001  100.50      USD       US
+#       002   85.30      EUR       DE
+#       003  120.75      GBP       UK
+```
+
+### Weighted Distributions
+
+```python
+# Example: products() uses weighted categories
+products = DataGenerator(RandSpecs.products()).size(10000).get_df()
+
+# Result distribution:
+# Electronics: ~40%
+# Clothing: ~30%  
+# Food: ~20%
+# Books: ~10%
+```
+
+### Streaming Generation
+
+```python
+from rand_engine import DataGenerator, RandSpecs
+
+# Generate continuous data stream
+stream = DataGenerator(RandSpecs.events()).stream_dict(
+    min_throughput=5,   # Minimum records/second
+    max_throughput=15   # Maximum records/second
 )
 
-for record in stream:
-    # Cada registro inclui timestamp_created automaticamente
-    print(record)
-    # Exemplo: enviar para Kafka, API, banco de dados, etc.
+for event in stream:
+    # Each record includes automatic timestamp_created
+    print(f"[{event['timestamp_created']}] Event: {event['event_type']}")
+    # Send to Kafka, Kinesis, etc.
 ```
 
-### 5. Transformadores (Pós-processamento)
+### Multiple Export Formats
 
 ```python
-from datetime import datetime as dt
+from rand_engine import DataGenerator, RandSpecs
 
-spec = {
-    "id": {"method": "unique_ids", "args": ["zint"]},
-    "created_at": {
-        "method": "unix_timestamps",
-        "args": ["01-01-2020", "31-12-2020", "%d-%m-%Y"],
-        # Transformador inline na coluna
-        "transformers": [
-            lambda ts: dt.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
-        ]
-    }
-}
+spec = RandSpecs.transactions()
 
-# Transformador global (aplicado ao DataFrame completo)
-transformers = [
-    lambda df: df.assign(year=df["created_at"].str[:4])
-]
+# CSV with compression
+DataGenerator(spec).write.size(100000).format("csv").option("compression", "gzip").save("data.csv.gz")
 
-df = (DataGenerator(spec)
-    .transformers(transformers)
-    .size(1000)
-    .get_df())
+# Parquet with Snappy
+DataGenerator(spec).write.size(1000000).format("parquet").option("compression", "snappy").save("data.parquet")
+
+# JSON
+DataGenerator(spec).write.size(50000).format("json").save("data.json")
 ```
 
-### 6. Seed para Reprodutibilidade
+### Reproducible Data
 
 ```python
-# Mesmo seed = mesmos dados
-df1 = DataGenerator(spec, seed=42).size(1000).get_df()
-df2 = DataGenerator(spec, seed=42).size(1000).get_df()
+from rand_engine import DataGenerator, RandSpecs
 
-assert df1.equals(df2)  # True
+# Same seed = identical data
+df1 = DataGenerator(RandSpecs.customers(), seed=42).size(1000).get_df()
+df2 = DataGenerator(RandSpecs.customers(), seed=42).size(1000).get_df()
+
+assert df1.equals(df2)  # True - perfect reproducibility
 ```
 
 ---
 
-## 📚 Métodos de Geração Disponíveis
+## 🗂️ Export & Integration
 
-### Identificadores String (Recomendado)
+### File Formats
 
-| Método | Descrição | Exemplo |
-|--------|-----------|---------|
-| `integers` | Inteiros uniformes | `{"method": "integers", "kwargs": {"min": 0, "max": 100}}` |
-| `int_zfilled` | Inteiros com zeros à esquerda | `{"method": "int_zfilled", "kwargs": {"min": 0, "max": 999, "length": 5}}` |
-| `floats` | Floats uniformes | `{"method": "floats", "kwargs": {"min": 0.0, "max": 100.0, "round": 2}}` |
-| `floats_normal` | Floats com distribuição normal | `{"method": "floats_normal", "kwargs": {"mean": 50, "std": 10}}` |
-| `distincts` | Valores de lista | `{"method": "distincts", "kwargs": {"distincts": ["A", "B", "C"]}}` |
-| `complex_distincts` | Padrões complexos (IPs, URLs) | Ver exemplo acima |
-| `unix_timestamps` | Timestamps Unix | `{"method": "unix_timestamps", "kwargs": {"start": "01-01-2020", "end": "31-12-2020"}}` |
-| `unique_ids` | IDs únicos | `{"method": "unique_ids", "kwargs": {"strategy": "zint"}}` |
-| `booleans` | Valores booleanos | `{"method": "booleans", "kwargs": {"true_prob": 0.7}}` |
+```python
+from rand_engine import DataGenerator, RandSpecs
+
+generator = DataGenerator(RandSpecs.orders())
+
+# CSV
+generator.write.size(10000).format("csv").save("orders.csv")
+
+# Parquet (recommended for large datasets)
+generator.write.size(1000000).format("parquet").save("orders.parquet")
+
+# JSON
+generator.write.size(5000).format("json").save("orders.json")
+
+# Multiple files (partitioned)
+generator.write.size(1000000).num_files(10).format("parquet").save("orders/")
+```
+
+### Database Integration
+
+**DuckDB:**
+
+```python
+from rand_engine import DataGenerator, RandSpecs
+from rand_engine.integrations._duckdb_handler import DuckDBHandler
+
+# Generate data
+df = DataGenerator(RandSpecs.employees()).size(10000).get_df()
+
+# Insert into DuckDB
+db = DuckDBHandler("analytics.duckdb")
+db.create_table("employees", "employee_id VARCHAR(10) PRIMARY KEY")
+db.insert_df("employees", df, pk_cols=["employee_id"])
+
+# Query
+result = db.select_all("employees")
+print(result.head())
+
+db.close()
+```
+
+**SQLite:**
+
+```python
+from rand_engine.integrations._sqlite_handler import SQLiteHandler
+
+db = SQLiteHandler("test.db")
+db.create_table("users", "user_id VARCHAR(10) PRIMARY KEY")
+db.insert_df("users", df, pk_cols=["user_id"])
+db.close()
+```
 
 ---
 
-## 🔧 Recursos Avançados
+## 📖 Exploring Available Specs
 
-### Splitable Pattern (Colunas Correlacionadas)
-
-Gere múltiplas colunas correlacionadas a partir de uma única coluna:
+Want to see what's inside each pre-built spec?
 
 ```python
-from rand_engine.utils.distincts_utils import DistinctsUtils
+from rand_engine import RandSpecs
+import json
 
-spec_handle = {
-    "mobile": ["iOS", "Android"],
-    "desktop": ["Windows", "MacOS", "Linux"]
-}
+# View any spec structure
+spec = RandSpecs.customers()
+print(json.dumps(spec, indent=2))
 
-spec = {
-    "device_os": {
-        "method": "distincts",
-        "splitable": True,
-        "cols": ["device", "os"],
-        "sep": ";",
-        "kwargs": {
-            "distincts": DistinctsUtils.handle_distincts_lvl_2(spec_handle)
-        }
-    }
-}
-
-# Resultado:
-# | device  | os      |
-# |---------|---------|
-# | mobile  | iOS     |
-# | desktop | Windows |
-# | mobile  | Android |
+# Output shows all fields and generation methods:
+# {
+#   "customer_id": {
+#     "method": "unique_ids",
+#     "kwargs": {"strategy": "zint", "prefix": "C"}
+#   },
+#   "name": {
+#     "method": "distincts",
+#     "kwargs": {"distincts": ["John Smith", "Jane Brown", ...]}
+#   },
+#   ...
+# }
 ```
 
-### Distribuições Proporcionais
+**Try different specs:**
 
 ```python
-# Nível 1: Proporções simples
-spec_level_1 = {"free": 70, "standard": 20, "premium": 10}
-distincts = DistinctsUtils.handle_distincts_lvl_1(spec_level_1)
-
-# Nível 2: Correlação entre categorias
-spec_level_2 = {
-    "mobile": ["iOS", "Android"],
-    "desktop": ["Windows", "MacOS"]
-}
-distincts = DistinctsUtils.handle_distincts_lvl_2(spec_level_2)
-
-# Nível 3: Correlação com proporções
-spec_level_3 = {
-    "GET /home": [("200", 7), ("400", 2), ("500", 1)],
-    "POST /login": [("201", 5), ("404", 3)]
-}
-distincts = DistinctsUtils.handle_distincts_lvl_3(spec_level_3)
+# See all available specs
+print(RandSpecs.products())
+print(RandSpecs.transactions())
+print(RandSpecs.devices())
+print(RandSpecs.events())
 ```
 
-### Integração com Faker
+Each spec demonstrates different generation techniques - use them as templates for your own custom specs!
+
+---
+
+## 🛠️ Creating Custom Specs
+
+### Basic Template
 
 ```python
-import faker
+from rand_engine import DataGenerator
 
-fake = faker.Faker(locale="pt_BR")
-fake.seed_instance(42)
-
-spec = {
+my_spec = {
+    "id": {
+        "method": "unique_ids",
+        "kwargs": {"strategy": "zint"}
+    },
     "name": {
         "method": "distincts",
-        "kwargs": {"distincts": [fake.name() for _ in range(1000)]}
+        "kwargs": {"distincts": ["Alice", "Bob", "Charlie"]}
     },
-    "job": {
-        "method": "distincts",
-        "kwargs": {"distincts": [fake.job() for _ in range(100)]}
+    "value": {
+        "method": "floats",
+        "kwargs": {"min": 0.0, "max": 100.0, "round": 2}
     }
 }
+
+df = DataGenerator(my_spec).size(1000).get_df()
 ```
 
----
+### Spec Validation
 
-## 📝 Formato da Especificação
-
-### Estrutura Básica
+Enable validation to catch errors early:
 
 ```python
-spec = {
-    "nome_coluna": {
-        "method": "identificador_string",  # ou callable
-        "kwargs": {...},                   # argumentos nomeados
-        "args": [...],                     # ou argumentos posicionais
-        "transformers": [...],             # transformadores inline (opcional)
-        "splitable": True,                 # para colunas correlacionadas (opcional)
-        "cols": [...],                     # nomes das colunas split (se splitable)
-        "sep": ";"                         # separador (se splitable)
+invalid_spec = {
+    "age": {
+        "method": "integers"  # Missing required "min" and "max"
     }
-}
-```
-
-### Opções de Formato
-
-- **kwargs**: Dicionário de argumentos nomeados
-- **args**: Lista de argumentos posicionais (alternativa a kwargs)
-- **transformers**: Lista de funções lambda para transformar valores
-- **splitable**: Habilita divisão de uma coluna em múltiplas
-- **cols**: Nomes das colunas resultantes (obrigatório se splitable=True)
-- **sep**: Separador usado para split (obrigatório se splitable=True)
-
----
-
-## ⚙️ API de Escrita de Arquivos
-
-### Fluent API
-
-```python
-(DataGenerator(spec)
-    .write
-    .size(1000000)                    # Quantidade de registros
-    .format("parquet")                # csv, json, parquet
-    .option("compression", "gzip")    # Opções específicas do formato
-    .option("numFiles", 10)           # Dividir em múltiplos arquivos
-    .mode("overwrite")                # overwrite ou append
-    .save("/path/to/output"))
-```
-
-### Opções por Formato
-
-**CSV:**
-- `compression`: None, "gzip", "zip"
-- `numFiles`: Número de arquivos a gerar
-
-**JSON:**
-- `compression`: None, "gzip"
-- `numFiles`: Número de arquivos a gerar
-
-**Parquet:**
-- `compression`: None, "gzip", "snappy"
-- `numFiles`: Número de arquivos a gerar
-
----
-
-## 🧪 Casos de Uso
-
-### 1. Testes de ETL
-
-```python
-# Gerar dados de entrada para pipeline
-input_data = DataGenerator(input_spec).size(100000).get_df()
-
-# Executar pipeline
-result = etl_pipeline(input_data)
-
-# Validar saída
-assert result.shape[0] == 100000
-assert "processed_at" in result.columns
-```
-
-### 2. Testes de Carga
-
-```python
-# Gerar 10 milhões de registros em Parquet
-(DataGenerator(spec)
-    .write
-    .size(10_000_000)
-    .format("parquet")
-    .option("compression", "snappy")
-    .option("numFiles", 50)
-    .save("/data/load_test"))
-```
-
-### 3. Mock de API
-
-```python
-# Endpoint simulado
-@app.get("/users")
-def get_users(limit: int = 100):
-    df = DataGenerator(user_spec).size(limit).get_df()
-    return df.to_dict(orient="records")
-```
-
-### 4. Demos e Apresentações
-
-```python
-# Dataset realista para demo
-demo_spec = {
-    "customer_id": {"method": "unique_ids", "args": ["zint"]},
-    "name": {"method": "distincts", "kwargs": {...}},  # usar faker
-    "revenue": {"method": "floats_normal", "kwargs": {"mean": 5000, "std": 2000}},
-    "segment": {"method": "distincts", "kwargs": {...}}
-}
-
-df = DataGenerator(demo_spec, seed=42).size(1000).get_df()
-```
-
----
-
-## 🔍 Validação de Specs
-
-A biblioteca valida automaticamente as especificações:
-
-```python
-# Spec inválida - método não existe
-spec = {
-    "age": {"method": "invalid_method"}
 }
 
 try:
-    df = DataGenerator(spec).size(100).get_df()
-except SpecValidationError as e:
+    generator = DataGenerator(invalid_spec, validate=True)
+except Exception as e:
     print(e)
-    # Output: "invalid method identifier 'invalid_method'. 
-    #          Valid identifiers are: 'integers', 'floats', ..."
+    # ❌ Column 'age': Missing required parameter 'min'
+    #    Correct example:
+    #    {
+    #        "age": {
+    #            "method": "integers",
+    #            "kwargs": {"min": 18, "max": 65}
+    #        }
+    #    }
 ```
 
-Para desabilitar validação:
+---
+
+## 🏗️ Architecture
+
+### Design Philosophy
+
+- **Declarative**: Specify what you want, not how to generate it
+- **Performance**: Built on NumPy for vectorized operations (millions of rows/second)
+- **Simplicity**: Pre-built examples for immediate use
+- **Extensibility**: Easy to create custom specifications
+
+### Public API
 
 ```python
-df = DataGenerator(spec, validate=False).size(100).get_df()
+from rand_engine import DataGenerator, RandSpecs
+
+# That's it! Simple and clean.
+```
+
+All internal modules (prefixed with `_`) are implementation details.
+
+---
+
+## 🧪 Quality & Testing
+
+- **212 tests** passing
+- **Comprehensive coverage** of all generation methods
+- **Validated** on millions of generated records
+- **Battle-tested** in production ETL pipelines
+
+```bash
+# Run tests
+pytest
+
+# With coverage report
+pytest --cov=rand_engine --cov-report=html
 ```
 
 ---
 
-## 🚀 Performance
+## 💡 Tips & Best Practices
 
-Benchmarks em um laptop comum (i5, 16GB RAM):
+### For Data Engineers
 
-| Operação | Tamanho | Tempo |
-|----------|---------|-------|
-| Geração em memória | 1M linhas, 8 colunas | ~2s |
-| Export CSV gzip | 1M linhas | ~5s |
-| Export Parquet snappy | 1M linhas | ~3s |
-| Export múltiplos arquivos | 1M linhas, 10 arquivos | ~6s |
+- Use `seed` parameter for reproducible test data
+- Export to Parquet with compression for large datasets
+- Use streaming mode for continuous data generation
+- Leverage pre-built specs to quickly scaffold test environments
 
-**Dicas de Performance:**
-- Use `integers` e `floats` para melhor performance (NumPy nativo)
-- Prefira Parquet para grandes volumes
-- Use `numFiles` para paralelizar I/O
-- Evite transformadores complexos em grandes datasets
+### For QA Engineers
 
----
+- Start with pre-built specs (RandSpecs)
+- Use validation mode (`validate=True`) during development
+- Generate edge cases with low probability booleans
+- Create multiple test datasets with different seeds
 
-## 📖 Exemplos Completos
+### Performance Tips
 
-Veja exemplos completos em:
-- `tests/test_3_main.py` - Testes de geração
-- `tests/test_4_write_batch_files.py` - Testes de escrita
-- `tests/fixtures/f1_general.py` - Specs de exemplo
-- `rand_engine/templates/` - Templates prontos para uso
+- Generate data in batches for optimal memory usage
+- Use Parquet format for large datasets (10x smaller than CSV)
+- Enable compression for file exports
+- Reuse DataGenerator instances when generating multiple datasets
 
 ---
 
-## 🤝 Contribuindo
+## 📄 Requirements
 
-Contribuições são bem-vindas! Por favor:
-1. Fork o repositório
-2. Crie uma branch para sua feature
-3. Adicione testes
-4. Envie um Pull Request
-
----
-
-## 📄 Licença
-
-MIT License - veja LICENSE para detalhes
+- **Python**: >= 3.10
+- **numpy**: >= 2.1.1
+- **pandas**: >= 2.2.2
+- **faker**: >= 28.4.1 (optional)
+- **duckdb**: >= 1.1.0 (optional)
 
 ---
 
-## 🔗 Links
+## 🤝 Contributing
 
-- **GitHub**: https://github.com/marcoaureliomenezes/rand_engine
-- **PyPI**: https://pypi.org/project/rand-engine/
-- **Documentação**: Em construção
+Contributions are welcome! See our [Contributing Guide](CONTRIBUTING.md) for details.
 
 ---
 
-**Desenvolvido com ❤️ para a comunidade de dados**
+## 📞 Support
 
-```python
-from rand_engine.core import Core
-from datetime import datetime as dt
-
-# Gerar timestamps Unix com transformação
-spec = {
-    "created_at": {
-        "method": Core.gen_unix_timestamps,
-        "kwargs": {
-            "start": "01-01-2024",
-            "end": "31-12-2024",
-            "format": "%d-%m-%Y"
-        },
-        "transformers": [
-            lambda ts: dt.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
-        ]
-    }
-}
-```
-
-### 8. Geração Incremental por Tamanho
-
-```python
-from rand_engine.data_generator import DataGenerator
-
-# Gerar múltiplos arquivos até atingir tamanho total desejado
-DataGenerator(spec) \
-    .write(size=10000) \
-    .format("parquet") \
-    .option("compression", "snappy") \
-    .incr_load("./data/lotes/", size_in_mb=50)
-
-# Gera arquivos de 10k linhas até totalizar ~50MB
-```
+- **Issues**: [GitHub Issues](https://github.com/marcoaureliomenezes/rand_engine/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/marcoaureliomenezes/rand_engine/discussions)
+- **Email**: marco.a.menezes@gmail.com
 
 ---
 
-## 📊 Principais Recursos
+## 📄 License
 
-✅ **Performance**: Geração vetorizada com NumPy  
-✅ **Declarativo**: Configuração via dicionários Python  
-✅ **Flexível**: Suporte a transformers customizados  
-✅ **Escalável**: Gere milhões de registros em segundos  
-✅ **Formatos**: CSV, JSON, Parquet com compressão  
-✅ **Streaming**: Geração contínua para testes de throughput  
-✅ **Reprodutível**: Controle de seed para resultados consistentes  
-✅ **Correlações**: Dados relacionados com splitable pattern  
+MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-## 🔄 Processo de Release CI/CD
+## 🌟 Star History
 
-O projeto utiliza **GitHub Actions** para automação completa do processo de release:
-
-### Workflow de Release
-
-1. **Trigger**: Push de tag com versionamento semântico
-   ```bash
-   git tag 0.4.7
-   git push origin --tags
-   ```
-
-2. **Validação**: Verifica se a versão é maior que a publicada no PyPI
-
-3. **Build**: 
-   - Atualiza versão no `pyproject.toml` via Poetry
-   - Instala dependências
-   - Gera distribuições `sdist` e `wheel`
-
-4. **Testes**: Executa suite completa de testes via pytest
-
-5. **Publicação**: 
-   - Upload automático para PyPI
-   - Criação de GitHub Release com artifacts
-
-6. **Deploy**: Pacote disponível via `pip install rand-engine`
-
-### Versionamento
-
-O projeto segue **Semantic Versioning** (semver):
-- `MAJOR.MINOR.PATCH` (ex: `0.4.7`)
-- Suporte a pre-releases: `0.5.0a1`, `0.5.0b2`, `0.5.0rc1`
-
-**⚠️ Importante**: A versão é gerenciada automaticamente pela tag Git. Não edite manualmente o `pyproject.toml`.
+If you find this project useful, consider giving it a ⭐ on GitHub!
 
 ---
 
-## 📚 Documentação Adicional
-
-Para informações detalhadas sobre a arquitetura interna, padrões de desenvolvimento e contribuições, consulte:
-
-- [Copilot Instructions](/.github/copilot-instructions.md) - Guia completo da arquitetura
-
----
-
-## 🤝 Contribuindo
-
-Contribuições são bem-vindas! Siga o processo:
-
-1. Fork o repositório
-2. Crie uma branch para sua feature (`git checkout -b feature/nova-funcionalidade`)
-3. Commit suas mudanças (`git commit -m 'Adiciona nova funcionalidade'`)
-4. Push para a branch (`git push origin feature/nova-funcionalidade`)
-5. Abra um Pull Request
-
----
-
-## 📄 Licença
-
-Este projeto está sob licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
-
----
-
-## 🔗 Links
-
-- **PyPI**: [https://pypi.org/project/rand-engine/](https://pypi.org/project/rand-engine/)
-- **GitHub**: [https://github.com/marcoaureliomenezes/rand_engine](https://github.com/marcoaureliomenezes/rand_engine)
-- **Issues**: [https://github.com/marcoaureliomenezes/rand_engine/issues](https://github.com/marcoaureliomenezes/rand_engine/issues)
-
----
-
-**Desenvolvido com ❤️ por Marco Menezes**
+**Built with ❤️ for Data Engineers, QA Engineers, and the entire data community**

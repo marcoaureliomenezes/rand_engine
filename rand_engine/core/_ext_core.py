@@ -19,15 +19,3 @@ class DistinctsUtils:
     ]
   
 
-  @classmethod
-  def handle_foreign_keys(self, table, pk_fields, db_path=":memory:"):
-    db = DuckDBHandler(db_path=db_path)
-    df = db.select_all(f"checkpoint_{table}", pk_fields)
-    cat_ids = df[pk_fields[0]].to_list()
-    return cat_ids
-  
-
-
-if __name__ == '__main__':
-  pass
-

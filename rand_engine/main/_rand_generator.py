@@ -1,11 +1,11 @@
 from typing import Dict, List, Optional, Callable
 import pandas as pd
-from rand_engine.integrations.duckdb_handler import DuckDBHandler
+from rand_engine.integrations._duckdb_handler import DuckDBHandler
 from rand_engine.validators.spec_validator import SpecValidator
 from rand_engine.validators.exceptions import ColumnGenerationError, TransformerError
-from rand_engine.core.np_core import NPCore
-from rand_engine.core.py_core import PyCore
-from rand_engine.core.spark_core import SparkCore
+from rand_engine.core._np_core import NPCore
+from rand_engine.core._py_core import PyCore
+from rand_engine.core._spark_core import SparkCore
 
 class RandGenerator:
 
@@ -22,6 +22,10 @@ class RandGenerator:
       "floats": NPCore.gen_floats,
       "floats_normal": NPCore.gen_floats_normal,
       "distincts": NPCore.gen_distincts,
+      "distincts_prop": NPCore.gen_distincts_prop,
+      "distincts_map": PyCore.gen_distincts_map,
+      "distincts_multi_map": PyCore.gen_distincts_multi_map,
+      "distincts_map_prop": PyCore.gen_distincts_map_prop,
       "complex_distincts": PyCore.gen_complex_distincts,
       "unix_timestamps": NPCore.gen_unix_timestamps,
       "unique_ids": NPCore.gen_unique_identifiers,
@@ -32,9 +36,15 @@ class RandGenerator:
     dict_data = {}
     mapped_methods = self.map_methods()
     for k, v in self.random_spec.items():
+      columns = v.get("cols", [k])
       try:
-        if "args" in v: dict_data[k] = mapped_methods[v["method"]](size , *v["args"])
-        else: dict_data[k] = mapped_methods[v["method"]](size , **v.get("kwargs", {}))
+        if "args" in v: 
+          values = mapped_methods[v["method"]](size , *v["args"])
+   
+        else:
+          values = mapped_methods[v["method"]](size , **v.get("kwargs", {}))
+        for i, col in enumerate(columns):
+          dict_data[col] = values if len(columns) == 1 else [val[i] for val in values]
       except Exception as e:
         raise ColumnGenerationError(
           f"Error generating column '{k}': {type(e).__name__}: {str(e)}"
@@ -60,18 +70,7 @@ class RandGenerator:
   
 
   def apply_embedded_transformers(self, df):
-    """
-    Aplica transformers embutidos nas specs de cada coluna.
-    
-    Args:
-        df: DataFrame pandas com dados gerados
-    
-    Returns:
-        DataFrame com transformações aplicadas
-    
-    Raises:
-        TransformerError: Se houver erro ao aplicar transformer
-    """
+
     cols_with_transformers = {key: value["transformers"] for key, value in self.random_spec.items() if value.get("transformers")}
     for col, transformers in cols_with_transformers.items():
       for i, transformer in enumerate(transformers):
@@ -90,11 +89,3 @@ class RandGenerator:
           df = transformer(df)
     return df
  
-  def handle_splitable(self, df):
-    for key, value in self.random_spec.items():
-      if value.get("splitable"):
-        sep = value.get("sep", ";")   
-        cols = value.get("cols")
-        df[cols] = df[key].str.split(sep, expand=True)
-        df.drop(columns=[key], inplace=True)
-    return df

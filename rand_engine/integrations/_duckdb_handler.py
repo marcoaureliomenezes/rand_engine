@@ -4,10 +4,11 @@ Maintains shared connections to avoid losing state in :memory: databases.
 """
 import pandas as pd
 import duckdb
-from typing import Dict, Optional
+from typing import Dict, List, Optional
+from ._base_handler import BaseDBHandler
 
 
-class DuckDBHandler:
+class DuckDBHandler(BaseDBHandler):
     """
     DuckDB Handler with connection pooling.
     Maintains shared connections per db_path to preserve state.
@@ -27,7 +28,7 @@ class DuckDBHandler:
             db_path: Path to database file. Use ':memory:' for in-memory database.
                      All handlers with the same db_path share the same connection.
         """
-        self.db_path = db_path
+        super().__init__(db_path)
         
         # Reutiliza conexão existente ou cria nova
         if db_path not in self._connections:
@@ -39,7 +40,7 @@ class DuckDBHandler:
         self.conn = self._connections[db_path]
 
 
-    def create_table(self, table_name, pk_def):
+    def create_table(self, table_name: str, pk_def: str):
         """Create table with primary key definition. Creates if not exists."""
         query = f"""
         CREATE TABLE IF NOT EXISTS {table_name} (
@@ -47,7 +48,7 @@ class DuckDBHandler:
         self.conn.execute(query)
 
 
-    def insert_df(self, table_name, df, pk_cols):
+    def insert_df(self, table_name: str, df: pd.DataFrame, pk_cols: List[str]):
         """
         Insert DataFrame into table, ignoring duplicate primary keys.
         
@@ -66,7 +67,7 @@ class DuckDBHandler:
 
 
 
-    def select_all(self, table_name, columns=None) -> pd.DataFrame:
+    def select_all(self, table_name: str, columns: Optional[List[str]] = None) -> pd.DataFrame:
         # Validate table_name to prevent SQL injection
         if not table_name.replace('_', '').isalnum():
             raise ValueError(f"Invalid table name: {table_name}")
@@ -103,7 +104,7 @@ class DuckDBHandler:
         print("✓ All connections closed")
 
 
-    def drop_table(self, table_name):
+    def drop_table(self, table_name: str):
         """Drop table if exists."""
         query = f"DROP TABLE IF EXISTS {table_name}"
         self.conn.execute(query)
