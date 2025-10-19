@@ -57,21 +57,24 @@ def test_create_df_simple_with_related_columns(rand_spec_with_related_columns, s
 def test_create_df_simple_with_inline_transformer(rand_spec_case_1_transformer, size):
   df_data = DataGenerator(rand_spec_case_1_transformer).size(size).get_df()
   assert df_data.shape[0] == size
-  assert "created_at" in df_data.columns
+  # users() spec has 'plan' column with uppercase transformer
+  assert "plan" in df_data.columns
+  assert "signup_date" in df_data.columns
 
 
 
 @pytest.mark.parametrize("size", [10**1, 10**2, 10**3])
 def test_pandas_df_transformer(size, rand_spec_with_args):
   df_data_1 = DataGenerator(rand_spec_with_args).size(size).get_df()
+  # customers() spec has 'account_balance' column - let's transform it
   transformers = [
-    lambda df: df.assign(created_at=df["created_at"].apply(
-      lambda ts: dt.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S"))),
+    lambda df: df.assign(balance_formatted=df["account_balance"].apply(
+      lambda val: f"${val:.2f}")),
   ]
   df_data_2 = DataGenerator(rand_spec_with_args).transformers(transformers).size(size).get_df()
   assert df_data_1.shape[0] == size
   assert df_data_2.shape[0] == size
-  assert "created_at" in df_data_2.columns
+  assert "balance_formatted" in df_data_2.columns
 
 
 

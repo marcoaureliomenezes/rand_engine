@@ -5,6 +5,6 @@ Provides ready-to-use specification templates demonstrating different
 generation methods and patterns.
 """
 
-from rand_engine.main.examples import ExampleSpecs
+from rand_engine.main.examples import RandSpecs
 
-__all__ = ["ExampleSpecs"]
+__all__ = ["RandSpecs"]
