@@ -79,7 +79,3 @@ if __name__ == "__main__":
   # distinct_prop = {"A": 1, "B": 2, "C": 7}
   # result = NPCore.gen_distincts_prop(10, distinct_prop)
   # print(result)
-
-  distincts_map = {"smartphone": [2,1], "desktop": [2, 1]}
-  result = NPCore.gen_distincts_map(10, distincts_map)
-  print(result)
