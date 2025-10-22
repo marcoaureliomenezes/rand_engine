@@ -29,12 +29,13 @@ jobs:
           fi
 
   test:
-    name: Run Tests (Python ${{ matrix.python-version }})
+    name: Run Tests (Python ${{ matrix.python-version }} on ${{ matrix.os }})
     needs: check_pr
     if: needs.check_pr.outputs.has_pr == 'false'
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ['3.10', '3.11', '3.12']
       fail-fast: false
     
@@ -47,15 +48,27 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       
-      - name: Install Poetry
+      - name: Install Poetry (Linux/macOS)
+        if: runner.os != 'Windows'
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
           echo "$HOME/.local/bin" >> $GITHUB_PATH
+        shell: bash
+      
+      - name: Install Poetry (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | python -
+          echo "$env:APPDATA\Python\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        shell: powershell
       
       - name: Cache Poetry dependencies
         uses: actions/cache@v4
         with:
-          path: ~/.cache/pypoetry
+          path: |
+            ~/.cache/pypoetry
+            ~/AppData/Local/pypoetry/Cache
+            ~/Library/Caches/pypoetry
           key: ${{ runner.os }}-poetry-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
           restore-keys: |
             ${{ runner.os }}-poetry-${{ matrix.python-version }}-
@@ -71,7 +84,7 @@ jobs:
       - name: Test summary
         if: always()
         run: |
-          echo "✅ Tests completed for Python ${{ matrix.python-version }}"
+          echo "✅ Tests completed for Python ${{ matrix.python-version }} on ${{ matrix.os }}"
 
   # Summary job
   summary:
@@ -109,18 +122,20 @@ jobs:
           if [ "$HAS_PR" == "false" ]; then
             echo "## 🔄 Test Execution Status" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "| Python Version | Status |" >> $GITHUB_STEP_SUMMARY
-            echo "|----------------|--------|" >> $GITHUB_STEP_SUMMARY
+            echo "| OS | Python 3.10 | Python 3.11 | Python 3.12 |" >> $GITHUB_STEP_SUMMARY
+            echo "|---------|-------------|-------------|-------------|" >> $GITHUB_STEP_SUMMARY
             
             if [ "${{ needs.test.result }}" == "success" ]; then
-              echo "| Python 3.10 | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
-              echo "| Python 3.11 | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
-              echo "| Python 3.12 | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+              echo "| 🐧 Linux | ✅ Passed | ✅ Passed | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+              echo "| 🪟 Windows | ✅ Passed | ✅ Passed | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+              echo "| 🍎 macOS | ✅ Passed | ✅ Passed | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
             else
-              echo "| Python 3.10 | ${{ contains(needs.test.result, 'failure') && '❌ Failed' || '✅ Passed' }} |" >> $GITHUB_STEP_SUMMARY
-              echo "| Python 3.11 | ${{ contains(needs.test.result, 'failure') && '❌ Failed' || '✅ Passed' }} |" >> $GITHUB_STEP_SUMMARY
-              echo "| Python 3.12 | ${{ contains(needs.test.result, 'failure') && '❌ Failed' || '✅ Passed' }} |" >> $GITHUB_STEP_SUMMARY
+              echo "| 🐧 Linux | ${{ contains(needs.test.result, 'failure') && '❌ Failed' || '✅ Passed' }} | ${{ contains(needs.test.result, 'failure') && '❌ Failed' || '✅ Passed' }} | ${{ contains(needs.test.result, 'failure') && '❌ Failed' || '✅ Passed' }} |" >> $GITHUB_STEP_SUMMARY
+              echo "| 🪟 Windows | ${{ contains(needs.test.result, 'failure') && '❌ Failed' || '✅ Passed' }} | ${{ contains(needs.test.result, 'failure') && '❌ Failed' || '✅ Passed' }} | ${{ contains(needs.test.result, 'failure') && '❌ Failed' || '✅ Passed' }} |" >> $GITHUB_STEP_SUMMARY
+              echo "| 🍎 macOS | ${{ contains(needs.test.result, 'failure') && '❌ Failed' || '✅ Passed' }} | ${{ contains(needs.test.result, 'failure') && '❌ Failed' || '✅ Passed' }} | ${{ contains(needs.test.result, 'failure') && '❌ Failed' || '✅ Passed' }} |" >> $GITHUB_STEP_SUMMARY
             fi
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Total Test Combinations:** 9 (3 OS × 3 Python versions)" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             
             # Next Steps

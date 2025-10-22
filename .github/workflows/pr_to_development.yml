@@ -149,10 +149,11 @@ jobs:
           category: "/language:python"
 
   test:
-    name: Run Tests (Python ${{ matrix.python-version }})
-    runs-on: ubuntu-latest
+    name: Run Tests (Python ${{ matrix.python-version }} on ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ['3.10', '3.11', '3.12']
       fail-fast: false
     
@@ -165,15 +166,27 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       
-      - name: Install Poetry
+      - name: Install Poetry (Linux/macOS)
+        if: runner.os != 'Windows'
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
           echo "$HOME/.local/bin" >> $GITHUB_PATH
+        shell: bash
+      
+      - name: Install Poetry (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | python -
+          echo "$env:APPDATA\Python\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        shell: powershell
       
       - name: Cache Poetry dependencies
         uses: actions/cache@v4
         with:
-          path: ~/.cache/pypoetry
+          path: |
+            ~/.cache/pypoetry
+            ~/AppData/Local/pypoetry/Cache
+            ~/Library/Caches/pypoetry
           key: ${{ runner.os }}-poetry-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
           restore-keys: |
             ${{ runner.os }}-poetry-${{ matrix.python-version }}-
@@ -188,6 +201,7 @@ jobs:
       
       - name: Check coverage threshold
         if: always()
+        shell: bash
         run: |
           COVERAGE=$(poetry run coverage report | grep TOTAL | awk '{print $4}' | sed 's/%//')
           echo "📊 Coverage: ${COVERAGE}%"

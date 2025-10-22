@@ -1,8 +1,6 @@
 import time
 import pytest
 from rand_engine.main.data_generator import DataGenerator
-from datetime import datetime as dt
-from rand_engine.utils.distincts_utils import DistinctsUtils
 from tests.fixtures.f2_templates import update_transformer
 from tests.fixtures.f1_right_specs import (
     rand_spec_with_kwargs,

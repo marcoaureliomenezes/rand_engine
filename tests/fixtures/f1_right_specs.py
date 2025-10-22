@@ -1,7 +1,6 @@
 import pytest
 import faker
 from datetime import datetime as dt, timedelta
-from rand_engine.utils.distincts_utils import DistinctsUtils
 from rand_engine.main.examples import RandSpecs
 
 
@@ -69,29 +68,6 @@ def rand_spec_case_1_transformer():
 
 
 
-
-@pytest.fixture(scope="function")
-def rand_engine_splitable_benchmark():
-  spec_handle_2 = {"mobile": ["IOS","Android"], "Desktop": ["Windows", "MacOS", "Linux"]}
-  distincts = DistinctsUtils.handle_distincts_lvl_2(spec_handle_2)
-  return {
-    "id":        dict(method="unique_ids", args=["zint"]),
-    "device_os": dict(
-      method=     "distincts",
-      splitable=  True,
-      cols=       ["device", "platform"],
-      sep=        ";",
-      kwargs=      dict(distincts=distincts)
-    ),
-    # "http_request_http_status": dict(
-    #   method=       "distincts",
-    #   splitable=    True,
-    #   cols=         ["http_request", "http_status"],
-    #   sep=          ";",
-    #   kwargs=        dict(distincts=DistinctsUtils.handle_distincts_lvl_3(spec_handle_3))
-    # ),
-  }
-
 @pytest.fixture(scope="function")
 def rand_engine_splitable_benchmark_baseline():
   return {
@@ -101,67 +77,6 @@ def rand_engine_splitable_benchmark_baseline():
     "http_request": dict(method="distincts", args=[["GET /home", "GET /login", "POST /login", "GET /logout"]]),
     "http_status": dict(method="distincts", args=[["200", "201", "400", "404", "500"]]),
   }
-
-@pytest.fixture(scope="function")
-def rand_engine_splitable_benchmark():
-  spec_handle_1 = {"daily": 70,"weekly":20, "monthly": 10}
-  spec_handle_2 = {"mobile": ["IOS","Android"], "Desktop": ["Windows", "MacOS", "Linux"]}
-  spec_handle_3 = {
-    "GET /home": [("200", 7),("400", 2), ("500", 1)],
-    "GET /login": [("200", 5),("400", 3), ("500", 1)],
-    "POST /login": [("201", 4),("404", 2), ("500", 1)],
-    "GET /logout": [("200", 3),("400", 1), ("400", 1)]
-  }
-  return {
-    "id":        dict(method= "unique_ids", args=["zint"]),
-    "plan":       dict(method="distincts", args=[["free", "standard", "premium"]]),
-    "frequency": dict(
-      method="distincts", 
-      args=[DistinctsUtils.handle_distincts_lvl_1(spec_handle_1)] 
-    ),
-    "device_os": dict(
-      method=     "distincts",
-      splitable=  True,
-      cols=       ["device", "platform"],
-      sep=        ";",
-      kwargs=      dict(distincts=DistinctsUtils.handle_distincts_lvl_2(spec_handle_2))
-    ),
-    "http_request_http_status": dict(
-      method=       "distincts",
-      splitable=    True,
-      cols=         ["http_request", "http_status"],
-      sep=          ";",
-      kwargs=        dict(distincts=DistinctsUtils.handle_distincts_lvl_3(spec_handle_3))
-    ),
-  }
-
-
-
-# @pytest.fixture(scope="function")
-# def rand_spec_case_21():
-
-
-#   metadata = {
-#     "campo_simples_proporcional": {
-#       "method": "distincts",
-#       "parms": dict(distincts=DistinctsUtils.handle_distincts_lvl_1(spec_handle_1, 1))
-#     },
-#     "campos_correlacionados": {
-#       "method":     "distincts",
-#       "splitable":  True,
-#       "cols":       ["categoria_produto", "tipo_produto"],
-#       "sep":        ";",
-#       "parms":      dict(distincts=DistinctsUtils.handle_distincts_lvl_2(spec_handle_2, sep=";"))
-#     },
-#     "campos_correlacionados_proporcionais": dict(
-#       method=       "distincts",
-#       splitable=    True,
-#       cols=         ["http_request", "http_status"],
-#       sep=          ";",
-#       parms=        dict(distincts=DistinctsUtils.handle_distincts_lvl_3(spec_handle_3))
-#     )
-#   }
-#   return metadata
 
 
 # @pytest.fixture(scope="function")
