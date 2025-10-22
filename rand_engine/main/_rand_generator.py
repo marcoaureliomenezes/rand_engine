@@ -6,7 +6,6 @@ from rand_engine.validators.exceptions import ColumnGenerationError, Transformer
 from rand_engine.core._np_core import NPCore
 from rand_engine.core._py_core import PyCore
 from rand_engine.core._spark_core import SparkCore
-import time
 
 
 class RandGenerator:
