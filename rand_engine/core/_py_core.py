@@ -9,7 +9,9 @@ class PyCore:
 
 
   @classmethod
-  def gen_complex_distincts(cls, size: int, pattern="x.x.x-x", replacement="x", templates=[]):
+  def gen_complex_distincts(cls, size: int, pattern="x.x.x-x", replacement="x", templates=None):
+    if templates is None:
+      templates = []
     from rand_engine.core._np_core import NPCore
     
     # Mapeamento de strings para métodos
