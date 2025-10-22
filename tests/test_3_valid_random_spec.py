@@ -383,5 +383,317 @@ def test_valid_spec_complex_distincts():
     assert len(errors) == 0
 
 
+# ============================================================================
+# CONSTRAINTS VALIDATION TESTS
+# ============================================================================
+
+def test_valid_constraints_pk_simple():
+    """Testa constraint PK válida simples."""
+    spec = {
+        "category_id": {
+            "method": "unique_ids",
+            "kwargs": {"strategy": "zint", "length": 4}
+        },
+        "constraints": {
+            "category_pk": {
+                "name": "category_pk",
+                "tipo": "PK",
+                "fields": ["category_id VARCHAR(4)"]
+            }
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 0
+
+
+def test_valid_constraints_pk_composite():
+    """Testa constraint PK composta (múltiplos campos)."""
+    spec = {
+        "client_id": {
+            "method": "unique_ids",
+            "kwargs": {"strategy": "zint", "length": 8}
+        },
+        "tp_pes": {
+            "method": "distincts",
+            "kwargs": {"distincts": ["PF", "PJ"]}
+        },
+        "constraints": {
+            "clients_pk": {
+                "name": "clients_pk",
+                "tipo": "PK",
+                "fields": ["client_id VARCHAR(8)", "tp_pes VARCHAR(2)"]
+            }
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 0
+
+
+def test_valid_constraints_fk_with_watermark():
+    """Testa constraint FK válida com watermark."""
+    spec = {
+        "product_id": {
+            "method": "unique_ids",
+            "kwargs": {"strategy": "zint", "length": 8}
+        },
+        "constraints": {
+            "category_fk": {
+                "name": "category_pk",
+                "tipo": "FK",
+                "fields": ["category_id"],
+                "watermark": 60
+            }
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 0
+
+
+def test_valid_constraints_fk_without_watermark():
+    """Testa constraint FK sem watermark (warning esperado)."""
+    spec = {
+        "product_id": {
+            "method": "unique_ids",
+            "kwargs": {"strategy": "zint", "length": 8}
+        },
+        "constraints": {
+            "category_fk": {
+                "name": "category_pk",
+                "tipo": "FK",
+                "fields": ["category_id"]
+            }
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    # Should have 1 warning about missing watermark
+    assert len(errors) == 1
+    assert "watermark" in errors[0].lower()
+    assert "⚠️" in errors[0]
+
+
+def test_valid_constraints_fk_composite():
+    """Testa constraint FK composta."""
+    spec = {
+        "transaction_id": {
+            "method": "unique_ids",
+            "kwargs": {"strategy": "zint", "length": 8}
+        },
+        "constraints": {
+            "clients_fk": {
+                "name": "clients_pk",
+                "tipo": "FK",
+                "fields": ["client_id", "tp_pes"],
+                "watermark": 60
+            }
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 0
+
+
+def test_invalid_constraints_not_dict():
+    """Testa erro quando constraints não é dicionário."""
+    spec = {
+        "id": {"method": "unique_ids", "kwargs": {"strategy": "zint"}},
+        "constraints": "string_invalida"
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) >= 1
+    assert any("must be dictionary" in err for err in errors)
+
+
+def test_invalid_constraints_empty():
+    """Testa warning quando constraints está vazio."""
+    spec = {
+        "id": {"method": "unique_ids", "kwargs": {"strategy": "zint"}},
+        "constraints": {}
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 1
+    assert "empty" in errors[0].lower()
+
+
+def test_invalid_constraint_missing_name():
+    """Testa erro quando constraint não tem campo 'name'."""
+    spec = {
+        "category_id": {"method": "unique_ids", "kwargs": {"strategy": "zint"}},
+        "constraints": {
+            "category_pk": {
+                "tipo": "PK",
+                "fields": ["category_id VARCHAR(4)"]
+            }
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) >= 1
+    assert any("missing required field 'name'" in err for err in errors)
+
+
+def test_invalid_constraint_missing_tipo():
+    """Testa erro quando constraint não tem campo 'tipo'."""
+    spec = {
+        "category_id": {"method": "unique_ids", "kwargs": {"strategy": "zint"}},
+        "constraints": {
+            "category_pk": {
+                "name": "category_pk",
+                "fields": ["category_id VARCHAR(4)"]
+            }
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) >= 1
+    assert any("missing required field 'tipo'" in err for err in errors)
+
+
+def test_invalid_constraint_missing_fields():
+    """Testa erro quando constraint não tem campo 'fields'."""
+    spec = {
+        "category_id": {"method": "unique_ids", "kwargs": {"strategy": "zint"}},
+        "constraints": {
+            "category_pk": {
+                "name": "category_pk",
+                "tipo": "PK"
+            }
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) >= 1
+    assert any("missing required field 'fields'" in err for err in errors)
+
+
+def test_invalid_constraint_tipo_invalid():
+    """Testa erro quando tipo não é PK nem FK."""
+    spec = {
+        "category_id": {"method": "unique_ids", "kwargs": {"strategy": "zint"}},
+        "constraints": {
+            "category_pk": {
+                "name": "category_pk",
+                "tipo": "UNIQUE",  # Invalid
+                "fields": ["category_id VARCHAR(4)"]
+            }
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) >= 1
+    assert any("must be 'PK' or 'FK'" in err for err in errors)
+
+
+def test_invalid_constraint_fields_not_list():
+    """Testa erro quando fields não é lista."""
+    spec = {
+        "category_id": {"method": "unique_ids", "kwargs": {"strategy": "zint"}},
+        "constraints": {
+            "category_pk": {
+                "name": "category_pk",
+                "tipo": "PK",
+                "fields": "category_id VARCHAR(4)"  # Should be list
+            }
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) >= 1
+    assert any("'fields' must be list" in err for err in errors)
+
+
+def test_invalid_constraint_fields_empty():
+    """Testa erro quando fields está vazia."""
+    spec = {
+        "category_id": {"method": "unique_ids", "kwargs": {"strategy": "zint"}},
+        "constraints": {
+            "category_pk": {
+                "name": "category_pk",
+                "tipo": "PK",
+                "fields": []
+            }
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) >= 1
+    assert any("cannot be empty" in err for err in errors)
+
+
+def test_invalid_constraint_watermark_negative():
+    """Testa erro quando watermark é negativo."""
+    spec = {
+        "product_id": {"method": "unique_ids", "kwargs": {"strategy": "zint"}},
+        "constraints": {
+            "category_fk": {
+                "name": "category_pk",
+                "tipo": "FK",
+                "fields": ["category_id"],
+                "watermark": -60  # Invalid
+            }
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) >= 1
+    assert any("must be positive" in err for err in errors)
+
+
+def test_invalid_constraint_watermark_on_pk():
+    """Testa warning quando PK tem watermark (desnecessário)."""
+    spec = {
+        "category_id": {"method": "unique_ids", "kwargs": {"strategy": "zint"}},
+        "constraints": {
+            "category_pk": {
+                "name": "category_pk",
+                "tipo": "PK",
+                "fields": ["category_id VARCHAR(4)"],
+                "watermark": 60  # Warning: only for FK
+            }
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) >= 1
+    assert any("only used for FK" in err for err in errors)
+
+
+def test_valid_constraints_multiple():
+    """Testa múltiplas constraints no mesmo spec."""
+    spec = {
+        "category_id": {
+            "method": "unique_ids",
+            "kwargs": {"strategy": "zint", "length": 4}
+        },
+        "product_id": {
+            "method": "unique_ids",
+            "kwargs": {"strategy": "zint", "length": 8}
+        },
+        "constraints": {
+            "category_pk": {
+                "name": "category_pk",
+                "tipo": "PK",
+                "fields": ["category_id VARCHAR(4)"]
+            },
+            "product_pk": {
+                "name": "product_pk",
+                "tipo": "PK",
+                "fields": ["product_id VARCHAR(8)"]
+            }
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 0
+
+
+def test_constraints_not_interfere_with_columns():
+    """Testa que constraints não interferem na validação de colunas."""
+    spec = {
+        "age": {
+            "method": "integers",
+            "kwargs": {"min": 0, "max": 100}
+        },
+        "constraints": {
+            "users_pk": {
+                "name": "users_pk",
+                "tipo": "PK",
+                "fields": ["user_id VARCHAR(12)"]
+            }
+        }
+    }
+    errors = SpecValidator.validate(spec)
+    assert len(errors) == 0
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

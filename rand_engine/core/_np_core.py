@@ -2,8 +2,6 @@
 from typing import List, Any, Dict
 import numpy as np
 from datetime import datetime as dt
-from functools import reduce
-from rand_engine.utils.distincts_utils import DistinctsUtils
 
 
 class NPCore:

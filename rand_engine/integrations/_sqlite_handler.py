@@ -7,6 +7,9 @@ import sqlite3
 import pandas as pd
 from typing import Dict, List, Optional
 from ._base_handler import BaseDBHandler
+from rand_engine.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class SQLiteHandler(BaseDBHandler):
@@ -34,9 +37,9 @@ class SQLiteHandler(BaseDBHandler):
         # Reuse existing connection or create new one
         if db_path not in self._connections:
             self._connections[db_path] = sqlite3.connect(db_path, check_same_thread=False)
-            print(f"✓ Created new connection to SQLite database: {db_path}")
+            logger.info(f"Created new connection to SQLite database: {db_path}")
         else:
-            print(f"✓ Reusing existing connection to SQLite database: {db_path}")
+            logger.info(f"Reusing existing connection to SQLite database: {db_path}")
         
         self.conn = self._connections[db_path]
 
@@ -119,7 +122,7 @@ class SQLiteHandler(BaseDBHandler):
         if self.db_path in self._connections:
             self._connections[self.db_path].close()
             del self._connections[self.db_path]
-            print(f"✓ Database connection closed and removed from pool: {self.db_path}")
+            logger.info(f"Database connection closed and removed from pool: {self.db_path}")
 
 
     @classmethod
@@ -127,9 +130,9 @@ class SQLiteHandler(BaseDBHandler):
         """Close all pooled connections. Useful for cleanup in tests."""
         for db_path, conn in cls._connections.items():
             conn.close()
-            print(f"✓ Closed connection: {db_path}")
+            logger.debug(f"Closed connection: {db_path}")
         cls._connections.clear()
-        print("✓ All connections closed")
+        logger.info("All SQLite connections closed")
 
 
 if __name__ == "__main__":

@@ -5,8 +5,22 @@
 A Python library for generating millions of rows of realistic synthetic data through declarative specifications. Built on NumPy and Pandas for maximum performance.
 
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-212%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-236%20passing-brightgreen.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)]()
+[![Version](https://img.shields.io/badge/version-0.6.1-orange.svg)]()
+
+---
+
+## 🔥 What's New in v0.6.1
+
+- ✅ **Constraints System**: Primary Keys (PK) and Foreign Keys (FK) for referential integrity between specs
+- ✅ **Composite Keys**: Support for multi-column primary and foreign keys
+- ✅ **Watermarks**: Temporal windows for realistic time-based relationships
+- ✅ **Enhanced Validation**: Educational error messages with examples
+- ✅ **Logging System**: Transparent logging with Python's built-in logger
+- ✅ **Windows Support**: Full cross-platform compatibility (Linux, macOS, Windows)
+
+📖 **Complete documentation:** [CONSTRAINTS.md](./docs/CONSTRAINTS.md) | [EXAMPLES.md](./EXAMPLES.md)
 
 ---
 
@@ -91,11 +105,15 @@ orders = DataGenerator(RandSpecs.orders(), seed=123).size(50000).get_df()
 employees = DataGenerator(RandSpecs.employees()).size(500).get_df()
 
 # Export to files
-DataGenerator(RandSpecs.customers()).write \
-    .size(100000) \
-    .format("parquet") \
-    .option("compression", "snappy") \
-    .save("customers.parquet")
+_ = (
+  DataGenerator(RandSpecs.customers()).write \
+    .size(100000)
+    .format("parquet")
+    .mode("overwrite")
+    .option("numFiles", 5)
+    .option("compression", "snappy")
+    .save("./customers.parquet")
+)
 ```
 
 ---
@@ -157,6 +175,55 @@ products = DataGenerator(spec).size(5000).get_df()
 ---
 
 ## 🎨 Real-World Use Cases
+
+### E-commerce with Referential Integrity (3 Levels)
+
+```python
+from rand_engine import DataGenerator
+
+# Use shared checkpoint database for referential integrity
+checkpoint_db = "ecommerce.duckdb"
+
+# Level 1: Categories (PK)
+spec_categories = {
+    "category_id": {"method": "unique_ids", "kwargs": {"strategy": "zint", "length": 4}},
+    "category_name": {"method": "distincts", "kwargs": {"distincts": ["Electronics", "Books", "Clothing"]}},
+    "constraints": {
+        "category_pk": {"name": "category_pk", "tipo": "PK", "fields": ["category_id VARCHAR(4)"]}
+    }
+}
+
+df_cat = DataGenerator(spec_categories).checkpoint(checkpoint_db).size(10).get_df()
+
+# Level 2: Products (FK → categories, PK for orders)
+spec_products = {
+    "product_id": {"method": "unique_ids", "kwargs": {"strategy": "zint", "length": 8}},
+    "product_name": {"method": "distincts", "kwargs": {"distincts": [f"Product {i}" for i in range(100)]}},
+    "price": {"method": "floats", "kwargs": {"min": 10.0, "max": 1000.0, "round": 2}},
+    "constraints": {
+        "product_pk": {"name": "product_pk", "tipo": "PK", "fields": ["product_id VARCHAR(8)"]},
+        "category_fk": {"name": "category_pk", "tipo": "FK", "fields": ["category_id"], "watermark": 60}
+    }
+}
+
+df_prod = DataGenerator(spec_products).checkpoint(checkpoint_db).size(100).get_df()
+
+# Level 3: Orders (FK → products)
+spec_orders = {
+    "order_id": {"method": "unique_ids", "kwargs": {"strategy": "uuid4"}},
+    "quantity": {"method": "integers", "kwargs": {"min": 1, "max": 10}},
+    "total": {"method": "floats", "kwargs": {"min": 10.0, "max": 5000.0, "round": 2}},
+    "constraints": {
+        "product_fk": {"name": "product_pk", "tipo": "FK", "fields": ["product_id"], "watermark": 120}
+    }
+}
+
+df_orders = DataGenerator(spec_orders).checkpoint(checkpoint_db).size(1000).get_df()
+
+# ✅ Result: Categories → Products → Orders with 100% integrity
+print(f"Products reference valid categories: {set(df_prod['category_id']).issubset(set(df_cat['category_id']))}")
+print(f"Orders reference valid products: {set(df_orders['product_id']).issubset(set(df_prod['product_id']))}")
+```
 
 ### Testing ETL Pipelines
 
@@ -228,6 +295,74 @@ edge_cases = test_data[test_data['edge_case'] == True]
 ---
 
 ## 🔥 Advanced Features
+
+### 🔗 Constraints & Referential Integrity ⭐ NEW
+
+**The most powerful feature of v0.6.1!** Create realistic datasets with proper Primary Key/Foreign Key relationships.
+
+```python
+from rand_engine import DataGenerator
+
+# 1. Create CATEGORIES (Primary Key)
+spec_categories = {
+    "category_id": {"method": "unique_ids", "kwargs": {"strategy": "zint", "length": 4}},
+    "category_name": {"method": "distincts", "kwargs": {"distincts": ["Electronics", "Books", "Clothing"]}},
+    "constraints": {
+        "category_pk": {
+            "name": "category_pk",
+            "tipo": "PK",
+            "fields": ["category_id VARCHAR(4)"]
+        }
+    }
+}
+
+# Generate categories
+df_categories = (
+    DataGenerator(spec_categories, seed=42)
+    .checkpoint(":memory:")
+    .size(10)
+    .get_df()
+)
+
+# 2. Create PRODUCTS (Foreign Key → categories)
+spec_products = {
+    "product_id": {"method": "unique_ids", "kwargs": {"strategy": "zint", "length": 8}},
+    "product_name": {"method": "distincts", "kwargs": {"distincts": [f"Product {i}" for i in range(100)]}},
+    "price": {"method": "floats", "kwargs": {"min": 10.0, "max": 1000.0, "round": 2}},
+    "constraints": {
+        "category_fk": {
+            "name": "category_pk",
+            "tipo": "FK",
+            "fields": ["category_id"],
+            "watermark": 60  # Reference records from last 60 seconds
+        }
+    }
+}
+
+# Generate products
+df_products = (
+    DataGenerator(spec_products, seed=42)
+    .checkpoint(":memory:")
+    .size(1000)
+    .get_df()
+)
+
+# ✅ RESULT: 100% referential integrity
+# All products reference valid categories
+print(f"Valid integrity: {set(df_products['category_id']).issubset(set(df_categories['category_id']))}")
+# Output: Valid integrity: True
+```
+
+**Key Features:**
+- **Primary Keys (PK)**: Create checkpoint tables with generated records
+- **Foreign Keys (FK)**: Reference values from PK checkpoint tables
+- **Composite Keys**: Multi-column PKs and FKs (e.g., `client_id + client_type`)
+- **Watermarks**: Temporal windows for realistic time-based relationships
+- **DuckDB/SQLite**: Checkpoint tables stored in memory or disk
+
+📖 **Complete guide with 3-level examples:** [CONSTRAINTS.md](./docs/CONSTRAINTS.md)
+
+---
 
 ### Correlated Columns
 
@@ -453,6 +588,12 @@ except Exception as e:
     #    }
 ```
 
+**Validates:**
+- Required parameters for each method
+- Constraints structure (PK/FK, fields, watermark)
+- Data types and ranges
+- Provides educational error messages with examples
+
 ---
 
 ## 🏗️ Architecture
@@ -478,14 +619,18 @@ All internal modules (prefixed with `_`) are implementation details.
 
 ## 🧪 Quality & Testing
 
-- **212 tests** passing
+- **236 tests** passing (20 new constraint tests in v0.6.1)
 - **Comprehensive coverage** of all generation methods
 - **Validated** on millions of generated records
 - **Battle-tested** in production ETL pipelines
+- **Constraint validation** with 100% integrity checks
 
 ```bash
 # Run tests
 pytest
+
+# Run constraint tests only
+pytest tests/test_8_consistency.py -v
 
 # With coverage report
 pytest --cov=rand_engine --cov-report=html
@@ -500,7 +645,8 @@ pytest --cov=rand_engine --cov-report=html
 - Use `seed` parameter for reproducible test data
 - Export to Parquet with compression for large datasets
 - Use streaming mode for continuous data generation
-- Leverage pre-built specs to quickly scaffold test environments
+- Leverage **constraints** for multi-table data generation with referential integrity
+- Use `.checkpoint(":memory:")` for in-memory databases or `.checkpoint("path/to/db.duckdb")` for persistence
 
 ### For QA Engineers
 
@@ -508,6 +654,7 @@ pytest --cov=rand_engine --cov-report=html
 - Use validation mode (`validate=True`) during development
 - Generate edge cases with low probability booleans
 - Create multiple test datasets with different seeds
+- Test PK/FK relationships with constraints for realistic scenarios
 
 ### Performance Tips
 
@@ -515,6 +662,17 @@ pytest --cov=rand_engine --cov-report=html
 - Use Parquet format for large datasets (10x smaller than CSV)
 - Enable compression for file exports
 - Reuse DataGenerator instances when generating multiple datasets
+- Use watermarks to control FK relationship size (avoid loading entire checkpoint tables)
+
+### Constraints Best Practices
+
+- Use **composite keys** for complex relationships (e.g., `client_id + client_type`)
+- Set appropriate **watermarks** (60-3600 seconds) based on data freshness requirements
+- Use **in-memory databases** (`:memory:`) for testing, disk-based for production
+- Generate PK specs before FK specs to ensure checkpoint tables exist
+- Validate integrity with set operations: `set(fk_values).issubset(set(pk_values))`
+
+📖 **50+ production-ready examples:** [EXAMPLES.md](./EXAMPLES.md)
 
 ---
 
@@ -523,8 +681,18 @@ pytest --cov=rand_engine --cov-report=html
 - **Python**: >= 3.10
 - **numpy**: >= 2.1.1
 - **pandas**: >= 2.2.2
-- **faker**: >= 28.4.1 (optional)
-- **duckdb**: >= 1.1.0 (optional)
+- **faker**: >= 28.4.1 (optional, for realistic names/addresses)
+- **duckdb**: >= 1.1.0 (optional, for constraints with DuckDB)
+- **sqlite3**: Built-in Python (for constraints with SQLite)
+
+---
+
+## 📚 Documentation
+
+- **[EXAMPLES.md](./EXAMPLES.md)**: 50+ production-ready examples (1,600+ lines)
+- **[CONSTRAINTS.md](./docs/CONSTRAINTS.md)**: Complete guide to PK/FK system (900+ lines)
+- **[API_REFERENCE.md](./docs/API_REFERENCE.md)**: Full method reference
+- **[LOGGING.md](./docs/LOGGING.md)**: Logging configuration guide
 
 ---
 
