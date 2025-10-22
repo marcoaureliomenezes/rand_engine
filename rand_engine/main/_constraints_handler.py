@@ -1,5 +1,4 @@
 import time
-from typing import Callable, Optional, List
 from rand_engine.integrations._duckdb_handler import DuckDBHandler
 from rand_engine.core._py_core import PyCore
 
