@@ -201,6 +201,7 @@ jobs:
       
       - name: Check coverage threshold
         if: always()
+        shell: bash
         run: |
           COVERAGE=$(poetry run coverage report | grep TOTAL | awk '{print $4}' | sed 's/%//')
           echo "📊 Coverage: ${COVERAGE}%"
