@@ -52,8 +52,9 @@ Get started immediately with ready-to-use specifications:
 from rand_engine import DataGenerator, RandSpecs
 
 # Generate 10,000 customer records
-customers = DataGenerator(RandSpecs.customers(), seed=42).size(10000).get_df()
-print(customers.head())
+rand_spec_example = RandSpecs.customers()
+df_customers = DataGenerator(rand_spec_example, seed=42).size(10000).get_df()
+print(df_customers.head()) # output is a pandas DataFrame
 ```
 
 **Output:**
@@ -66,43 +67,38 @@ print(customers.head())
 4    C00000005   Tom Miller   49   tom.miller@email.com       True         31245.67
 ```
 
-**Available Pre-Built Specs:**
+**Test Available Pre-Built Specs:**
 
 ```python
 from rand_engine import RandSpecs
 
-# 🛒 E-commerce & Retail
-RandSpecs.customers()    # Customer profiles (6 fields)
-RandSpecs.products()     # Product catalog (6 fields)
-RandSpecs.orders()       # Order records with currency/country (6 fields)
-RandSpecs.invoices()     # Invoice records (6 fields)
-RandSpecs.shipments()    # Shipping data with carrier/destination (6 fields)
+builtin_rand_specs = [
+  RandSpecs.customers(),    # Customer profiles (6 fields)
+  RandSpecs.products(),     # Product catalog (6 fields)
+  RandSpecs.orders(),       # Order records with currency/country (6 fields)
+  RandSpecs.invoices(),     # Invoice records (6 fields)
+  RandSpecs.shipments(),    # Shipping data with carrier/destination (6 fields)
 
-# 💰 Financial
-RandSpecs.transactions() # Financial transactions (6 fields)
+  # 💰 Financial
+  RandSpecs.transactions(), # Financial transactions (6 fields)
 
-# 👥 HR & People
-RandSpecs.employees()    # Employee records with dept/level/role (6 fields)
-RandSpecs.users()        # Application users (6 fields)
+  # 👥 HR & People
+  RandSpecs.employees(),    # Employee records with dept/level/role (6 fields)
+  RandSpecs.users(),        # Application users (6 fields)
 
-# 🔧 IoT & Systems
-RandSpecs.devices()      # IoT device data with status/priority (6 fields)
-RandSpecs.events()       # Event logs (6 fields)
-```
+  # 🔧 IoT & Systems
+  RandSpecs.devices(),      # IoT device data with status/priority (6 fields)
+  RandSpecs.events()       # Event logs (6 fields)
+]
+for rand_spec in builtin_rand_specs:
+  df = DataGenerator(rand_spec, seed=42).size(10**6).get_df()
+  print(df)
 
 **Complete Example:**
 
 ```python
 from rand_engine import DataGenerator, RandSpecs
 
-# Generate products
-products = DataGenerator(RandSpecs.products()).size(1000).get_df()
-
-# Generate orders
-orders = DataGenerator(RandSpecs.orders(), seed=123).size(50000).get_df()
-
-# Generate employee data
-employees = DataGenerator(RandSpecs.employees()).size(500).get_df()
 
 # Export to files
 _ = (
@@ -141,7 +137,8 @@ spec = {
     }
 }
 
-df = DataGenerator(spec, seed=42).size(10000).get_df()
+df = DataGenerator(spec, seed=42).size(10**7).get_df()
+print(df)
 ```
 
 ---
@@ -169,7 +166,8 @@ spec = {
     "in_stock": {"method": "booleans", "kwargs": {"true_prob": 0.85}}
 }
 
-products = DataGenerator(spec).size(5000).get_df()
+df_products = DataGenerator(spec).size(10**6).get_df()
+print(df_products)
 ```
 
 ---
@@ -178,51 +176,72 @@ products = DataGenerator(spec).size(5000).get_df()
 
 ### E-commerce with Referential Integrity (3 Levels)
 
+These examples demonstrate generating related datasets with Primary Key (PK) and Foreign Key (FK) constraints to maintain referential integrity.
+
+In background, Rand Engine uses a shared checkpoint database to track generated keys and ensure relationships are valid. At this point, it can use DuckDB or SQLite for this purpose.
+
 ```python
+
+
 from rand_engine import DataGenerator
 
 # Use shared checkpoint database for referential integrity
-checkpoint_db = "ecommerce.duckdb"
 
 # Level 1: Categories (PK)
-spec_categories = {
-    "category_id": {"method": "unique_ids", "kwargs": {"strategy": "zint", "length": 4}},
-    "category_name": {"method": "distincts", "kwargs": {"distincts": ["Electronics", "Books", "Clothing"]}},
+spec_categories = lambda: {
+    "category_id": dict(method="unique_ids", kwargs={"strategy": "zint", "length": 4}),
+    "category_name": dict(method="distincts", kwargs={"distincts": ["Electronics", "Books", "Clothing"]}),
     "constraints": {
-        "category_pk": {"name": "category_pk", "tipo": "PK", "fields": ["category_id VARCHAR(4)"]}
+        "category_pk": dict(
+            name="category_pk",
+            tipo="PK",
+            fields=["category_id VARCHAR(4)"]
+        )
     }
 }
-
-df_cat = DataGenerator(spec_categories).checkpoint(checkpoint_db).size(10).get_df()
 
 # Level 2: Products (FK → categories, PK for orders)
-spec_products = {
-    "product_id": {"method": "unique_ids", "kwargs": {"strategy": "zint", "length": 8}},
-    "product_name": {"method": "distincts", "kwargs": {"distincts": [f"Product {i}" for i in range(100)]}},
-    "price": {"method": "floats", "kwargs": {"min": 10.0, "max": 1000.0, "round": 2}},
+spec_products = lambda: {
+    "product_id": dict(method="unique_ids", kwargs={"strategy": "zint", "length": 8}),
+    "product_name": dict(method="distincts", kwargs={"distincts": [f"Product {i}" for i in range(100)]}),
+    "price": dict(method="floats", kwargs={"min": 10.0, "max": 1000.0, "round": 2}),
     "constraints": {
-        "product_pk": {"name": "product_pk", "tipo": "PK", "fields": ["product_id VARCHAR(8)"]},
-        "category_fk": {"name": "category_pk", "tipo": "FK", "fields": ["category_id"], "watermark": 60}
+        "product_pk": dict(
+            name="product_pk", 
+            tipo="PK",
+            fields=["product_id VARCHAR(8)"]
+        ),
+        "category_fk": dict(
+            name="category_pk",
+            tipo="FK",
+            fields=["category_id"],
+            watermark=60)
     }
 }
-
-df_prod = DataGenerator(spec_products).checkpoint(checkpoint_db).size(100).get_df()
 
 # Level 3: Orders (FK → products)
-spec_orders = {
-    "order_id": {"method": "unique_ids", "kwargs": {"strategy": "uuid4"}},
-    "quantity": {"method": "integers", "kwargs": {"min": 1, "max": 10}},
-    "total": {"method": "floats", "kwargs": {"min": 10.0, "max": 5000.0, "round": 2}},
+spec_orders = lambda:{
+    "order_id": dict(method="unique_ids", kwargs={"strategy": "uuid4"}),
+    "quantity": dict(method="integers", kwargs={"min": 1, "max": 10}),
+    "total": dict(method="floats", kwargs={"min": 10.0, "max": 5000.0, "round": 2}),
     "constraints": {
-        "product_fk": {"name": "product_pk", "tipo": "FK", "fields": ["product_id"], "watermark": 120}
+        "product_fk": dict(
+            name="product_pk",
+            tipo="FK",
+            fields=["product_id"],
+            watermark=120
+        )
     }
 }
 
-df_orders = DataGenerator(spec_orders).checkpoint(checkpoint_db).size(1000).get_df()
+df_cat = DataGenerator(spec_categories).size(10).get_df()
+print(df_cat)
 
-# ✅ Result: Categories → Products → Orders with 100% integrity
-print(f"Products reference valid categories: {set(df_prod['category_id']).issubset(set(df_cat['category_id']))}")
-print(f"Orders reference valid products: {set(df_orders['product_id']).issubset(set(df_prod['product_id']))}")
+df_prod = DataGenerator(spec_products).size(100).get_df()
+print(df_prod)
+
+df_orders = DataGenerator(spec_orders).size(1000).get_df()
+print(df_orders)
 ```
 
 ### Testing ETL Pipelines
@@ -459,8 +478,51 @@ generator.write.size(1000000).format("parquet").save("orders.parquet")
 generator.write.size(5000).format("json").save("orders.json")
 
 # Multiple files (partitioned)
-generator.write.size(1000000).num_files(10).format("parquet").save("orders/")
+generator.write.size(1000000).option("numFiles", 10).format("parquet").save("orders/")
 ```
+
+### Writing Modes: Batch vs Streaming
+
+`rand_engine` supports two distinct writing modes:
+
+**Batch Mode** (`.write`): Generate all data at once
+
+```python
+# Single file
+DataGenerator(spec).write \
+    .size(10000) \
+    .format("parquet") \
+    .option("compression", "snappy") \
+    .save("output/data.parquet")
+
+# Multiple files (parallel processing)
+DataGenerator(spec).write \
+    .size(1000000) \
+    .option("numFiles", 5) \
+    .format("parquet") \
+    .save("output/data.parquet")
+# Creates: part_uuid1.parquet, part_uuid2.parquet, ...
+```
+
+**Streaming Mode** (`.writeStream`): Continuous generation over time
+
+```python
+# Stream for 1 hour, new file every minute
+DataGenerator(spec).writeStream \
+    .size(500) \
+    .format("json") \
+    .option("compression", "gzip") \
+    .option("timeout", 3600) \
+    .trigger(frequency=60) \
+    .start("output/events")
+# Creates 60 files over 1 hour
+```
+
+**Compression Support:**
+- **CSV/JSON**: gzip, bz2, zip, xz
+- **Parquet**: snappy (default), gzip, zstd, lz4, brotli
+
+📖 **Complete guide with examples:** [WRITING_FILES.md](./docs/WRITING_FILES.md)
 
 ### Database Integration
 

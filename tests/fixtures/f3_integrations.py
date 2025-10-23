@@ -35,7 +35,7 @@ def create_output_dir():
     os.makedirs(output_dir)
   yield
   # delete the directory after the test recursively
-  delete_dir_recursive(output_dir)
+  #delete_dir_recursive(output_dir)
 
 
 @pytest.fixture(scope="function")
