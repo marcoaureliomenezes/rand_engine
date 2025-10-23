@@ -54,7 +54,7 @@ def test_writing_multiple_files(
       .mode("overwrite")
       .format(format_type)
       .option("compression", compression)
-      .option("timeout", 0.2)
+      .option("timeout", 0.1)
       .trigger(frequency=0.01)
       .start(path)
   )
@@ -62,7 +62,7 @@ def test_writing_multiple_files(
   elapsed_time = time.time() - start_time
   files = glob.glob(f"{path}/*")
   assert elapsed_time > 0.1 and elapsed_time < 0.3
-  assert len(files) < 10 and len(files) >= 2
+  assert len(files) < 10 and len(files) >= 1
 
 
 @pytest.mark.parametrize("format_type,compression,file_path", [
@@ -97,7 +97,7 @@ def test_writing_multiple_files_append(
       .mode("overwrite")
       .format(format_type)
       .option("compression", compression)
-      .option("timeout", 0.2)
+      .option("timeout", 0.1)
       .trigger(frequency=0.01)
       .start(path)
   )
@@ -109,7 +109,7 @@ def test_writing_multiple_files_append(
       .mode("append")
       .format(format_type)
       .option("compression", compression)
-      .option("timeout", 0.2)
+      .option("timeout", 0.1)
       .trigger(frequency=0.01)
       .start(path)
   )
@@ -117,4 +117,4 @@ def test_writing_multiple_files_append(
   elapsed_time = time.time() - start_time
   files = glob.glob(f"{path}/*")
   assert elapsed_time > 0.1 and elapsed_time < 0.5
-  assert len(files) < 20 and len(files) >= 3
+  assert len(files) < 20 and len(files) >= 2

@@ -32,7 +32,9 @@ class FileStreamWriter(FileWriter):
     path = f"{base_path}/{file_name_cleaned}"
     os.makedirs(path, exist_ok=True)
     if self.write_mode == "overwrite":
-      _ = [os.remove(os.path.join(path, f)) for f in os.listdir(path)]
+      if os.path.exists(path):
+        for f in os.listdir(path):
+          os.remove(os.path.join(path, f))
     timeout = self.write_options.get("timeout", 20)
     del self.write_options["timeout"]
     start_time = time.time()
