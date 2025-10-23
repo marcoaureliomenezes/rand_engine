@@ -28,6 +28,7 @@ class FileHandler:
     file_name_cleaned = file_name.replace(f".{file_format}", "").replace(f".{comp_type}", "")
     if comp_type and file_format != "parquet":
       ext = f"{file_format}.{comp_type}"
-    else: ext = file_format
+    else:
+      ext = file_format
     return base_path, file_name_cleaned, ext
   
