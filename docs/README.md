@@ -101,6 +101,32 @@ How to enable, configure, and use logging in rand-engine.
 
 ---
 
+#### **[Writing Files Guide](./WRITING_FILES.md)** - File Export Complete Reference
+Comprehensive guide to file writing modes, formats, and compression.
+
+**Contents:**
+- Batch vs Streaming Modes
+- Supported Formats (CSV, JSON, Parquet)
+- Compression Options (All Codecs)
+- File Naming Patterns
+- Overwrite vs Append Modes
+- Complete API Reference
+- Practical Examples
+- Performance Considerations
+- Troubleshooting
+
+**Length:** 800+ lines | **Audience:** Data Engineers, developers
+
+**Key Topics:**
+- ✅ Single vs multiple files
+- ✅ Streaming with timeout/trigger
+- ✅ CSV/JSON external compression (gzip, bz2, zip, xz)
+- ✅ Parquet internal compression (snappy, zstd, lz4, brotli)
+- ✅ File extensions and naming patterns
+- ✅ Parallel processing patterns
+
+---
+
 ### 🔧 Technical References
 
 #### **[Changelog](../CHANGELOG.md)** - Version History
@@ -146,6 +172,7 @@ Architecture overview, conventions, and patterns for contributors.
 - API: [API_REFERENCE.md](./API_REFERENCE.md) → Constraints Section
 
 **File Export:**
+- Complete Guide: [WRITING_FILES.md](./WRITING_FILES.md)
 - Examples: [EXAMPLES.md](../EXAMPLES.md) → File Export
 - API: [API_REFERENCE.md](./API_REFERENCE.md) → File Writers
 
@@ -171,12 +198,13 @@ Architecture overview, conventions, and patterns for contributors.
 
 | Document | Lines | Status | Last Updated |
 |----------|-------|--------|--------------|
-| [README.md](../README.md) | 719 | ✅ Complete | Oct 21, 2025 |
+| [README.md](../README.md) | 770 | ✅ Complete | Oct 21, 2025 |
 | [API_REFERENCE.md](./API_REFERENCE.md) | 1,400+ | ✅ Complete | Oct 21, 2025 |
 | [CONSTRAINTS.md](./CONSTRAINTS.md) | 900+ | ✅ Complete | Oct 21, 2025 |
 | [EXAMPLES.md](../EXAMPLES.md) | 1,647 | ✅ Complete | Oct 21, 2025 |
 | [LOGGING.md](./LOGGING.md) | 450+ | ✅ Complete | Oct 21, 2025 |
-| **Total** | **5,116+** | ✅ **Complete** | v0.6.1 |
+| [WRITING_FILES.md](./WRITING_FILES.md) | 800+ | ✅ Complete | Oct 21, 2025 |
+| **Total** | **5,967+** | ✅ **Complete** | v0.6.1 |
 
 ---
 
