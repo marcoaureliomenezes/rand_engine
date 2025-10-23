@@ -34,9 +34,9 @@ class FileBatchWriter(FileWriter):
     else: files = [f"{base_path}/{file_name}.{ext}"]
     os.makedirs(os.path.dirname(files[0]), exist_ok=True)
     if num_files > 1 and self.write_mode == "overwrite":
-      for f in os.listdir(path):
-        os.remove(os.path.join(path, f))
-      
+      if os.path.exists(path):
+        for f in os.listdir(path):
+          os.remove(os.path.join(path, f))
     for file in files:
       self.__generate_file(file)
 
