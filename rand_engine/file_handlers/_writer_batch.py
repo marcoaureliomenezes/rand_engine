@@ -28,7 +28,6 @@ class FileBatchWriter(FileWriter):
 
     base_path, file_name, ext = FileHandler.handle_path(path, self.write_format, self.write_options)
     if num_files > 1:
-      
       path = f"{base_path}/{file_name}"
       files = self.__handle_filenames(path, num_files, ext)
     else: files = [f"{base_path}/{file_name}.{ext}"]
