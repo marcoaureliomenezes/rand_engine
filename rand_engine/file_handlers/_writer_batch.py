@@ -13,7 +13,7 @@ class FileBatchWriter(FileWriter):
   
 
   def __handle_filenames(self, path: str, size: int, ext) -> List[str]:
-    return [f"{path}/part_{str(uuid.uuid4())[:18]}.{ext}" for i in range(size)]
+    return [f"{path}/part_{str(uuid.uuid4())[:18]}.{ext}" for _ in range(size)]
 
 
   def __generate_file(self, path):
