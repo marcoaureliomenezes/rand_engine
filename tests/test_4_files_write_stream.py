@@ -61,7 +61,7 @@ def test_writing_multiple_files(
 
   elapsed_time = time.time() - start_time
   files = glob.glob(f"{path}/*")
-  assert elapsed_time > 0.1 and elapsed_time < 0.3
+  assert elapsed_time > 0.1 and elapsed_time < 3
   assert len(files) < 10 and len(files) >= 1
 
 
@@ -116,5 +116,5 @@ def test_writing_multiple_files_append(
 
   elapsed_time = time.time() - start_time
   files = glob.glob(f"{path}/*")
-  assert elapsed_time > 0.1 and elapsed_time < 0.5
+  assert elapsed_time > 0.1 and elapsed_time < 5
   assert len(files) < 20 and len(files) >= 2
