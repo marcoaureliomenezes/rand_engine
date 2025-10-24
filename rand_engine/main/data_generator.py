@@ -117,28 +117,6 @@ class DataGenerator:
 
 
 
-
-class SparkGenerator:
-
-  def __init__(self, spark, F, metadata):
-    self.spark = spark
-    self.F = F
-    self.metadata = metadata
-    _size = 0
-
-
-  def size(self, size):
-    self._size = size
-    return self
-
-
-  def get_df(self):
-    dataframe = self.spark.range(self._size)
-    for k, v in self.metadata.items():
-      dataframe = v["method"](self.spark, F=self.F, df=dataframe, col_name=k, **v["kwargs"])
-    return dataframe
-  
-
 if __name__ == '__main__':
 
   pass
