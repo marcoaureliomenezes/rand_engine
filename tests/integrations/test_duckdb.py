@@ -37,12 +37,23 @@ def temp_db_path():
     # Generate path without creating the file (DuckDB will create it)
     db_path = os.path.join(tempfile.gettempdir(), f"test_db_{os.getpid()}_{id(object())}.duckdb")
     yield db_path
-    # Cleanup
+    # Cleanup - Close all connections first (critical for Windows)
+    DuckDBHandler.close_all()
+    # Wait a bit for Windows to release file handles
+    import time
+    time.sleep(0.1)
+    # Then remove files
     if os.path.exists(db_path):
-        os.remove(db_path)
+        try:
+            os.remove(db_path)
+        except PermissionError:
+            pass  # File still in use, skip deletion
     wal_path = f"{db_path}.wal"
     if os.path.exists(wal_path):
-        os.remove(wal_path)
+        try:
+            os.remove(wal_path)
+        except PermissionError:
+            pass  # File still in use, skip deletion
 
 
 # ============================================================================

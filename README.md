@@ -5,8 +5,22 @@
 A Python library for generating millions of rows of realistic synthetic data through declarative specifications. Built on NumPy and Pandas for maximum performance.
 
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-212%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-236%20passing-brightgreen.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)]()
+[![Version](https://img.shields.io/badge/version-0.6.1-orange.svg)]()
+
+---
+
+## 🔥 What's New in v0.6.1
+
+- ✅ **Constraints System**: Primary Keys (PK) and Foreign Keys (FK) for referential integrity between specs
+- ✅ **Composite Keys**: Support for multi-column primary and foreign keys
+- ✅ **Watermarks**: Temporal windows for realistic time-based relationships
+- ✅ **Enhanced Validation**: Educational error messages with examples
+- ✅ **Logging System**: Transparent logging with Python's built-in logger
+- ✅ **Windows Support**: Full cross-platform compatibility (Linux, macOS, Windows)
+
+📖 **Complete documentation:** [CONSTRAINTS.md](./docs/CONSTRAINTS.md) | [EXAMPLES.md](./EXAMPLES.md)
 
 ---
 
@@ -38,8 +52,9 @@ Get started immediately with ready-to-use specifications:
 from rand_engine import DataGenerator, RandSpecs
 
 # Generate 10,000 customer records
-customers = DataGenerator(RandSpecs.customers(), seed=42).size(10000).get_df()
-print(customers.head())
+rand_spec_example = RandSpecs.customers()
+df_customers = DataGenerator(rand_spec_example, seed=42).size(10000).get_df()
+print(df_customers.head()) # output is a pandas DataFrame
 ```
 
 **Output:**
@@ -52,50 +67,49 @@ print(customers.head())
 4    C00000005   Tom Miller   49   tom.miller@email.com       True         31245.67
 ```
 
-**Available Pre-Built Specs:**
+**Test Available Pre-Built Specs:**
 
 ```python
 from rand_engine import RandSpecs
 
-# 🛒 E-commerce & Retail
-RandSpecs.customers()    # Customer profiles (6 fields)
-RandSpecs.products()     # Product catalog (6 fields)
-RandSpecs.orders()       # Order records with currency/country (6 fields)
-RandSpecs.invoices()     # Invoice records (6 fields)
-RandSpecs.shipments()    # Shipping data with carrier/destination (6 fields)
+builtin_rand_specs = [
+  RandSpecs.customers(),    # Customer profiles (6 fields)
+  RandSpecs.products(),     # Product catalog (6 fields)
+  RandSpecs.orders(),       # Order records with currency/country (6 fields)
+  RandSpecs.invoices(),     # Invoice records (6 fields)
+  RandSpecs.shipments(),    # Shipping data with carrier/destination (6 fields)
 
-# 💰 Financial
-RandSpecs.transactions() # Financial transactions (6 fields)
+  # 💰 Financial
+  RandSpecs.transactions(), # Financial transactions (6 fields)
 
-# 👥 HR & People
-RandSpecs.employees()    # Employee records with dept/level/role (6 fields)
-RandSpecs.users()        # Application users (6 fields)
+  # 👥 HR & People
+  RandSpecs.employees(),    # Employee records with dept/level/role (6 fields)
+  RandSpecs.users(),        # Application users (6 fields)
 
-# 🔧 IoT & Systems
-RandSpecs.devices()      # IoT device data with status/priority (6 fields)
-RandSpecs.events()       # Event logs (6 fields)
-```
+  # 🔧 IoT & Systems
+  RandSpecs.devices(),      # IoT device data with status/priority (6 fields)
+  RandSpecs.events()       # Event logs (6 fields)
+]
+for rand_spec in builtin_rand_specs:
+  df = DataGenerator(rand_spec, seed=42).size(10**6).get_df()
+  print(df)
 
 **Complete Example:**
 
 ```python
 from rand_engine import DataGenerator, RandSpecs
 
-# Generate products
-products = DataGenerator(RandSpecs.products()).size(1000).get_df()
-
-# Generate orders
-orders = DataGenerator(RandSpecs.orders(), seed=123).size(50000).get_df()
-
-# Generate employee data
-employees = DataGenerator(RandSpecs.employees()).size(500).get_df()
 
 # Export to files
-DataGenerator(RandSpecs.customers()).write \
-    .size(100000) \
-    .format("parquet") \
-    .option("compression", "snappy") \
-    .save("customers.parquet")
+_ = (
+  DataGenerator(RandSpecs.customers()).write \
+    .size(100000)
+    .format("parquet")
+    .mode("overwrite")
+    .option("numFiles", 5)
+    .option("compression", "snappy")
+    .save("./customers.parquet")
+)
 ```
 
 ---
@@ -123,7 +137,8 @@ spec = {
     }
 }
 
-df = DataGenerator(spec, seed=42).size(10000).get_df()
+df = DataGenerator(spec, seed=42).size(10**7).get_df()
+print(df)
 ```
 
 ---
@@ -151,12 +166,83 @@ spec = {
     "in_stock": {"method": "booleans", "kwargs": {"true_prob": 0.85}}
 }
 
-products = DataGenerator(spec).size(5000).get_df()
+df_products = DataGenerator(spec).size(10**6).get_df()
+print(df_products)
 ```
 
 ---
 
 ## 🎨 Real-World Use Cases
+
+### E-commerce with Referential Integrity (3 Levels)
+
+These examples demonstrate generating related datasets with Primary Key (PK) and Foreign Key (FK) constraints to maintain referential integrity.
+
+In background, Rand Engine uses a shared checkpoint database to track generated keys and ensure relationships are valid. At this point, it can use DuckDB or SQLite for this purpose.
+
+```python
+
+
+from rand_engine import DataGenerator
+
+# Use shared checkpoint database for referential integrity
+
+# Level 1: Categories (PK)
+spec_categories = lambda: {
+    "category_id": dict(method="unique_ids", kwargs={"strategy": "zint", "length": 4}),
+    "category_name": dict(method="distincts", kwargs={"distincts": ["Electronics", "Books", "Clothing"]}),
+    "constraints": {
+        "category_pk": dict(
+            name="category_pk",
+            tipo="PK",
+            fields=["category_id VARCHAR(4)"]
+        )
+    }
+}
+
+# Level 2: Products (FK → categories, PK for orders)
+spec_products = lambda: {
+    "product_id": dict(method="unique_ids", kwargs={"strategy": "zint", "length": 8}),
+    "product_name": dict(method="distincts", kwargs={"distincts": [f"Product {i}" for i in range(100)]}),
+    "price": dict(method="floats", kwargs={"min": 10.0, "max": 1000.0, "round": 2}),
+    "constraints": {
+        "product_pk": dict(
+            name="product_pk", 
+            tipo="PK",
+            fields=["product_id VARCHAR(8)"]
+        ),
+        "category_fk": dict(
+            name="category_pk",
+            tipo="FK",
+            fields=["category_id"],
+            watermark=60)
+    }
+}
+
+# Level 3: Orders (FK → products)
+spec_orders = lambda:{
+    "order_id": dict(method="unique_ids", kwargs={"strategy": "uuid4"}),
+    "quantity": dict(method="integers", kwargs={"min": 1, "max": 10}),
+    "total": dict(method="floats", kwargs={"min": 10.0, "max": 5000.0, "round": 2}),
+    "constraints": {
+        "product_fk": dict(
+            name="product_pk",
+            tipo="FK",
+            fields=["product_id"],
+            watermark=120
+        )
+    }
+}
+
+df_cat = DataGenerator(spec_categories).size(10).get_df()
+print(df_cat)
+
+df_prod = DataGenerator(spec_products).size(100).get_df()
+print(df_prod)
+
+df_orders = DataGenerator(spec_orders).size(1000).get_df()
+print(df_orders)
+```
 
 ### Testing ETL Pipelines
 
@@ -228,6 +314,74 @@ edge_cases = test_data[test_data['edge_case'] == True]
 ---
 
 ## 🔥 Advanced Features
+
+### 🔗 Constraints & Referential Integrity ⭐ NEW
+
+**The most powerful feature of v0.6.1!** Create realistic datasets with proper Primary Key/Foreign Key relationships.
+
+```python
+from rand_engine import DataGenerator
+
+# 1. Create CATEGORIES (Primary Key)
+spec_categories = {
+    "category_id": {"method": "unique_ids", "kwargs": {"strategy": "zint", "length": 4}},
+    "category_name": {"method": "distincts", "kwargs": {"distincts": ["Electronics", "Books", "Clothing"]}},
+    "constraints": {
+        "category_pk": {
+            "name": "category_pk",
+            "tipo": "PK",
+            "fields": ["category_id VARCHAR(4)"]
+        }
+    }
+}
+
+# Generate categories
+df_categories = (
+    DataGenerator(spec_categories, seed=42)
+    .checkpoint(":memory:")
+    .size(10)
+    .get_df()
+)
+
+# 2. Create PRODUCTS (Foreign Key → categories)
+spec_products = {
+    "product_id": {"method": "unique_ids", "kwargs": {"strategy": "zint", "length": 8}},
+    "product_name": {"method": "distincts", "kwargs": {"distincts": [f"Product {i}" for i in range(100)]}},
+    "price": {"method": "floats", "kwargs": {"min": 10.0, "max": 1000.0, "round": 2}},
+    "constraints": {
+        "category_fk": {
+            "name": "category_pk",
+            "tipo": "FK",
+            "fields": ["category_id"],
+            "watermark": 60  # Reference records from last 60 seconds
+        }
+    }
+}
+
+# Generate products
+df_products = (
+    DataGenerator(spec_products, seed=42)
+    .checkpoint(":memory:")
+    .size(1000)
+    .get_df()
+)
+
+# ✅ RESULT: 100% referential integrity
+# All products reference valid categories
+print(f"Valid integrity: {set(df_products['category_id']).issubset(set(df_categories['category_id']))}")
+# Output: Valid integrity: True
+```
+
+**Key Features:**
+- **Primary Keys (PK)**: Create checkpoint tables with generated records
+- **Foreign Keys (FK)**: Reference values from PK checkpoint tables
+- **Composite Keys**: Multi-column PKs and FKs (e.g., `client_id + client_type`)
+- **Watermarks**: Temporal windows for realistic time-based relationships
+- **DuckDB/SQLite**: Checkpoint tables stored in memory or disk
+
+📖 **Complete guide with 3-level examples:** [CONSTRAINTS.md](./docs/CONSTRAINTS.md)
+
+---
 
 ### Correlated Columns
 
@@ -324,8 +478,51 @@ generator.write.size(1000000).format("parquet").save("orders.parquet")
 generator.write.size(5000).format("json").save("orders.json")
 
 # Multiple files (partitioned)
-generator.write.size(1000000).num_files(10).format("parquet").save("orders/")
+generator.write.size(1000000).option("numFiles", 10).format("parquet").save("orders/")
 ```
+
+### Writing Modes: Batch vs Streaming
+
+`rand_engine` supports two distinct writing modes:
+
+**Batch Mode** (`.write`): Generate all data at once
+
+```python
+# Single file
+DataGenerator(spec).write \
+    .size(10000) \
+    .format("parquet") \
+    .option("compression", "snappy") \
+    .save("output/data.parquet")
+
+# Multiple files (parallel processing)
+DataGenerator(spec).write \
+    .size(1000000) \
+    .option("numFiles", 5) \
+    .format("parquet") \
+    .save("output/data.parquet")
+# Creates: part_uuid1.parquet, part_uuid2.parquet, ...
+```
+
+**Streaming Mode** (`.writeStream`): Continuous generation over time
+
+```python
+# Stream for 1 hour, new file every minute
+DataGenerator(spec).writeStream \
+    .size(500) \
+    .format("json") \
+    .option("compression", "gzip") \
+    .option("timeout", 3600) \
+    .trigger(frequency=60) \
+    .start("output/events")
+# Creates 60 files over 1 hour
+```
+
+**Compression Support:**
+- **CSV/JSON**: gzip, bz2, zip, xz
+- **Parquet**: snappy (default), gzip, zstd, lz4, brotli
+
+📖 **Complete guide with examples:** [WRITING_FILES.md](./docs/WRITING_FILES.md)
 
 ### Database Integration
 
@@ -453,6 +650,12 @@ except Exception as e:
     #    }
 ```
 
+**Validates:**
+- Required parameters for each method
+- Constraints structure (PK/FK, fields, watermark)
+- Data types and ranges
+- Provides educational error messages with examples
+
 ---
 
 ## 🏗️ Architecture
@@ -478,14 +681,18 @@ All internal modules (prefixed with `_`) are implementation details.
 
 ## 🧪 Quality & Testing
 
-- **212 tests** passing
+- **236 tests** passing (20 new constraint tests in v0.6.1)
 - **Comprehensive coverage** of all generation methods
 - **Validated** on millions of generated records
 - **Battle-tested** in production ETL pipelines
+- **Constraint validation** with 100% integrity checks
 
 ```bash
 # Run tests
 pytest
+
+# Run constraint tests only
+pytest tests/test_8_consistency.py -v
 
 # With coverage report
 pytest --cov=rand_engine --cov-report=html
@@ -500,7 +707,8 @@ pytest --cov=rand_engine --cov-report=html
 - Use `seed` parameter for reproducible test data
 - Export to Parquet with compression for large datasets
 - Use streaming mode for continuous data generation
-- Leverage pre-built specs to quickly scaffold test environments
+- Leverage **constraints** for multi-table data generation with referential integrity
+- Use `.checkpoint(":memory:")` for in-memory databases or `.checkpoint("path/to/db.duckdb")` for persistence
 
 ### For QA Engineers
 
@@ -508,6 +716,7 @@ pytest --cov=rand_engine --cov-report=html
 - Use validation mode (`validate=True`) during development
 - Generate edge cases with low probability booleans
 - Create multiple test datasets with different seeds
+- Test PK/FK relationships with constraints for realistic scenarios
 
 ### Performance Tips
 
@@ -515,6 +724,17 @@ pytest --cov=rand_engine --cov-report=html
 - Use Parquet format for large datasets (10x smaller than CSV)
 - Enable compression for file exports
 - Reuse DataGenerator instances when generating multiple datasets
+- Use watermarks to control FK relationship size (avoid loading entire checkpoint tables)
+
+### Constraints Best Practices
+
+- Use **composite keys** for complex relationships (e.g., `client_id + client_type`)
+- Set appropriate **watermarks** (60-3600 seconds) based on data freshness requirements
+- Use **in-memory databases** (`:memory:`) for testing, disk-based for production
+- Generate PK specs before FK specs to ensure checkpoint tables exist
+- Validate integrity with set operations: `set(fk_values).issubset(set(pk_values))`
+
+📖 **50+ production-ready examples:** [EXAMPLES.md](./EXAMPLES.md)
 
 ---
 
@@ -523,14 +743,18 @@ pytest --cov=rand_engine --cov-report=html
 - **Python**: >= 3.10
 - **numpy**: >= 2.1.1
 - **pandas**: >= 2.2.2
-- **faker**: >= 28.4.1 (optional)
-- **duckdb**: >= 1.1.0 (optional)
+- **faker**: >= 28.4.1 (optional, for realistic names/addresses)
+- **duckdb**: >= 1.1.0 (optional, for constraints with DuckDB)
+- **sqlite3**: Built-in Python (for constraints with SQLite)
 
 ---
 
-## 🤝 Contributing
+## 📚 Documentation
 
-Contributions are welcome! See our [Contributing Guide](CONTRIBUTING.md) for details.
+- **[EXAMPLES.md](./EXAMPLES.md)**: 50+ production-ready examples (1,600+ lines)
+- **[CONSTRAINTS.md](./docs/CONSTRAINTS.md)**: Complete guide to PK/FK system (900+ lines)
+- **[API_REFERENCE.md](./docs/API_REFERENCE.md)**: Full method reference
+- **[LOGGING.md](./docs/LOGGING.md)**: Logging configuration guide
 
 ---
 
@@ -538,7 +762,7 @@ Contributions are welcome! See our [Contributing Guide](CONTRIBUTING.md) for det
 
 - **Issues**: [GitHub Issues](https://github.com/marcoaureliomenezes/rand_engine/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/marcoaureliomenezes/rand_engine/discussions)
-- **Email**: marco.a.menezes@gmail.com
+- **Email**: marcourelioreislima@gmail.com
 
 ---
 

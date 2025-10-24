@@ -24,7 +24,11 @@ class FileHandler:
     file_name = os.path.basename(path)
     base_path = os.path.dirname(path)
     comp_type = write_options.get("compression", None)
+    comp_type = "gz" if comp_type == "gzip" else comp_type
     file_name_cleaned = file_name.replace(f".{file_format}", "").replace(f".{comp_type}", "")
-    ext = f".{file_format}.{comp_type}" if comp_type else f".{file_format}"
+    if comp_type and file_format != "parquet":
+      ext = f"{file_format}.{comp_type}"
+    else:
+      ext = file_format
     return base_path, file_name_cleaned, ext
   

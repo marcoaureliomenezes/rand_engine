@@ -37,7 +37,8 @@ class TestPublicAPI:
         assert hasattr(rand_engine, '__all__')
         assert "DataGenerator" in rand_engine.__all__
         assert "RandSpecs" in rand_engine.__all__
-        assert len(rand_engine.__all__) == 2
+        assert "SparkGenerator" in rand_engine.__all__
+        assert len(rand_engine.__all__) == 3
         print(f"\n✓ rand_engine.__all__ = {rand_engine.__all__}")
     
     

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "rand-engine"
-version = "0.6.0"
+version = "0.6.1"
 description = "Rand Engine v2. Package with some methods to generate random data in different formats. Great to mock data while testing or developing."
 authors = ["marcoaureliomenezes <marcoaurelioreislima@gmail.com>"]
 repository = "https://github.com/marcoaureliomenezes/rand_engine"
@@ -19,6 +19,14 @@ duckdb = "^1.4.1"
 pytest = "^8.3.3"
 pytest-cov = "^6.0.0"
 faker = "^28.4.1"
+pyspark = "^3.5.0"
+setuptools = "^75.0.0"  # Required for PySpark on Python 3.12+ (distutils replacement)
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::DeprecationWarning:pyspark.sql.pandas.utils",
+    "ignore::DeprecationWarning:pyspark.sql.pandas.conversion",
+]
 
 [build-system]
 requires = ["poetry-core"]
