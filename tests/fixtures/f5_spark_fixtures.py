@@ -20,15 +20,19 @@ def spark_session():
     import sys
     import platform
     
+    # Import PySpark - skip if not available
     try:
         from pyspark.sql import SparkSession
     except ImportError:
         pytest.skip("PySpark not installed - skipping Spark tests")
+        return  # This line never executes, but helps static analyzers
     
     # Skip Spark tests on Windows with Python 3.12+ due to compatibility issues
     if platform.system() == "Windows" and sys.version_info >= (3, 12):
         pytest.skip("Spark tests not supported on Windows with Python 3.12+ (worker crashes)")
+        return  # This line never executes, but helps static analyzers
     
+    # Create SparkSession with optimized settings for tests
     spark = (
         SparkSession.builder
         .appName("rand-engine-tests")
