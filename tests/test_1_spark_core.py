@@ -66,8 +66,10 @@ class TestSparkCoreNumeric:
         # All should be strings of length 8
         assert all(isinstance(v, str) for v in values)
         assert all(len(v) == 8 for v in values)
-        # All should start with zeros (at least some)
-        assert any(v.startswith("0") for v in values)
+        # All should be numeric strings (can convert back to int)
+        assert all(v.isdigit() for v in values)
+        # All should be valid integers within range
+        assert all(0 <= int(v) <= 99999999 for v in values)
     
     def test_gen_floats_basic(self, spark_session, spark_functions, small_spark_df):
         """Test basic float generation."""
