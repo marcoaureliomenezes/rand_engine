@@ -96,7 +96,8 @@ class DataGenerator:
 
 
   def stream_dict(self, min_throughput: int=1, max_throughput: int = 10) -> Generator:
-    lazy_dataframe = self.wrapped_df_generator(size=self._size)
+    size = self._size() if callable(self._size) else self._size
+    lazy_dataframe = self.wrapped_df_generator(size=size)
     assert lazy_dataframe is not None, "You need to generate a DataFrame first."
     assert callable(lazy_dataframe), "wrapped_df_generator must return a callable"
     while True:
@@ -110,11 +111,13 @@ class DataGenerator:
   
 
   def _writer(self):
+    size = self._size() if callable(self._size) else self._size
     microbatch_def = lambda size: self.wrapped_df_generator(size=size)
     return FileBatchWriter(microbatch_def)
    
 
   def _stream_writer(self):
+    size = self._size() if callable(self._size) else self._size
     microbatch_def = lambda size: self.wrapped_df_generator(size=size)
     return FileStreamWriter(microbatch_def)
 
