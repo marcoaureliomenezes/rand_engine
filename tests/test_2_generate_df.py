@@ -1,3 +1,4 @@
+from random import randint
 import time
 import pytest
 from rand_engine.main.data_generator import DataGenerator
@@ -17,12 +18,21 @@ from tests.fixtures.f3_integrations import (
 )
 
 
+
+
 @pytest.mark.parametrize("size", [10**1, 10**2, 10**3])
 def test_create_df_simple_with_kwargs_spec(rand_spec_with_kwargs, size):
   df_data = DataGenerator(rand_spec_with_kwargs).size(size).get_df()
   assert df_data.shape[0] == size
   assert rand_spec_with_kwargs.keys() == set(df_data.columns)
 
+
+def test_create_df_simple_with_kwargs_spec_lambda_size(rand_spec_with_kwargs):
+  min_size = 10**2
+  max_size = 10**3
+  df_data = DataGenerator(rand_spec_with_kwargs).size(lambda: randint(min_size, max_size)).get_df()
+  assert min_size <= df_data.shape[0] <= max_size
+  assert rand_spec_with_kwargs.keys() == set(df_data.columns)
 
 
 @pytest.mark.parametrize("size", [10**1, 10**2, 10**3])

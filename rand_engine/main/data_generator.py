@@ -88,6 +88,7 @@ class DataGenerator:
   def get_df(self):
     if self._options.get("reset_checkpoint"):
       self.constraints_handler.delete_state()
+    if callable(self._size): self._size = self._size()
     lazy_dataframe = self.wrapped_df_generator(size=self._size)
     assert lazy_dataframe is not None, "You need to generate a DataFrame first."
     return lazy_dataframe()
