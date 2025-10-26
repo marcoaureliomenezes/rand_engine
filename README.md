@@ -44,17 +44,28 @@ pip install rand-engine
 
 ## 🚀 Quick Start
 
-### 1. Use Pre-Built Examples (Fastest Way)
+### 1. Pre-Built Examples (Fastest Way to Start)
 
-Get started immediately with ready-to-use specifications:
+DataGenerator produces synthetic datasets in seconds. It leverages **NumPy** and **Pandas** for blazing-fast random data generation.
+
+Creating 1 million rows is as simple as:
+- Choose a built-in **RandSpec** (e.g., `customers`, `orders`, `transactions`)
+- Set the **size** (number of rows)
+- Optionally set a **seed** for reproducibility
+- Call `.get_df()` to obtain a pandas DataFrame
+
+**What's a RandSpec?** A declarative specification dictionary that defines your dataset's structure and generation rules. 
+
+Rand Engine includes **10+ ready-to-use RandSpecs** covering common business domains—no configuration needed.
 
 ```python
 from rand_engine import DataGenerator, RandSpecs
 
-# Generate 10,000 customer records
-rand_spec_example = RandSpecs.customers()
-df_customers = DataGenerator(rand_spec_example, seed=42).size(10000).get_df()
-print(df_customers.head()) # output is a pandas DataFrame
+# Generate 1 million customer records in seconds
+customers_spec = RandSpecs.customers()  # Pre-built specification
+df_customers = DataGenerator(customers_spec, seed=42).size(1_000_000).get_df()
+
+print(df_customers.head())
 ```
 
 **Output:**
@@ -67,265 +78,412 @@ print(df_customers.head()) # output is a pandas DataFrame
 4    C00000005   Tom Miller   49   tom.miller@email.com       True         31245.67
 ```
 
-**Test Available Pre-Built Specs:**
+---
+
+Size parameter can be an integer or a callable function that returns an integer.
 
 ```python
-from rand_engine import RandSpecs
+from rand_engine import DataGenerator, RandSpecs
+from random import randint
 
-builtin_rand_specs = [
-  RandSpecs.customers(),    # Customer profiles (6 fields)
-  RandSpecs.products(),     # Product catalog (6 fields)
-  RandSpecs.orders(),       # Order records with currency/country (6 fields)
-  RandSpecs.invoices(),     # Invoice records (6 fields)
-  RandSpecs.shipments(),    # Shipping data with carrier/destination (6 fields)
+lambda_size = lambda: randint(500_000, 2_000_000)
+# Generate 1 million customer records in seconds
+customers_spec = RandSpecs.customers()  # Pre-built specification
+df_customers = DataGenerator(customers_spec, seed=42).size(lambda_size).get_df()
 
-  # 💰 Financial
-  RandSpecs.transactions(), # Financial transactions (6 fields)
+print(df_customers.shape)
+```
 
-  # 👥 HR & People
-  RandSpecs.employees(),    # Employee records with dept/level/role (6 fields)
-  RandSpecs.users(),        # Application users (6 fields)
+### 2. Databricks Integration
 
-  # 🔧 IoT & Systems
-  RandSpecs.devices(),      # IoT device data with status/priority (6 fields)
-  RandSpecs.events()       # Event logs (6 fields)
-]
-for rand_spec in builtin_rand_specs:
-  df = DataGenerator(rand_spec, seed=42).size(10**6).get_df()
-  print(df)
-
-**Complete Example:**
+Seamlessly integrate with **Databricks** and other Spark environments. Generate synthetic data and convert to Spark DataFrames with zero friction.
 
 ```python
 from rand_engine import DataGenerator, RandSpecs
 
+# Generate synthetic data for Databricks
+transactions_spec = RandSpecs.transactions()
+df_pandas = DataGenerator(transactions_spec, seed=42).size(1_000_000).get_df()
 
-# Export to files
-_ = (
-  DataGenerator(RandSpecs.customers()).write \
-    .size(100000)
-    .format("parquet")
-    .mode("overwrite")
-    .option("numFiles", 5)
-    .option("compression", "snappy")
-    .save("./customers.parquet")
-)
+# Option 1: Display pandas DataFrame
+display(df_pandas)
+
+# Option 2: Convert to Spark DataFrame for distributed processing
+df_spark = spark.createDataFrame(df_pandas)
+display(df_spark)
+
+# Write directly to Delta Lake, Parquet, or any Spark-supported format
+df_spark.write.format("delta").mode("overwrite").save("/path/to/delta/table")
 ```
 
 ---
 
-### 2. Create Custom Specifications
+### 3. Explore Built-In RandSpecs
 
-Build your own specs for specific use cases:
+Rand Engine provides **10+ production-ready specifications** across multiple business domains. Each spec generates realistic, correlated data with 6+ fields.
+
+```python
+from rand_engine import DataGenerator, RandSpecs
+
+# 🛍️ E-Commerce & Retail
+builtin_specs = [
+    RandSpecs.customers(),    # Customer profiles with contact info
+    RandSpecs.products(),     # Product catalog with pricing
+    RandSpecs.orders(),       # Orders with currency/country correlation
+    RandSpecs.invoices(),     # Invoice records with payment details
+    RandSpecs.shipments(),    # Shipping data with carrier/destination
+]
+
+# 💰 Financial Services
+builtin_specs += [
+    RandSpecs.transactions(), # Financial transactions with amounts
+]
+
+# 👥 HR & User Management
+builtin_specs += [
+    RandSpecs.employees(),    # Employee records (dept/level/role)
+    RandSpecs.users(),        # Application users with auth data
+]
+
+# 🔧 IoT & System Monitoring
+builtin_specs += [
+    RandSpecs.devices(),      # IoT device telemetry
+    RandSpecs.events(),       # System event logs
+]
+
+# Generate millions of rows from any spec
+for spec in builtin_specs:
+    df = DataGenerator(spec, seed=42).size(1_000_000).get_df()
+    print(f"\n{spec['__meta__']['name']}:")
+    print(df.head())
+```
+
+**💡 Pro Tip:** These specs include realistic correlations (e.g., `orders.currency` matches `orders.country`, `employees.level` correlates with `salary`). Perfect for testing real-world scenarios!
+
+---
+
+### 4. File Writing Capabilities
+
+Generate and write synthetic data directly to files—no intermediate DataFrames needed. Supports **CSV**, **Parquet**, and **JSON** with advanced options.
+
+#### 4.1. Supported Formats & Compression
+
+| Format | Compression Options | Use Case |
+|--------|---------------------|----------|
+| **CSV** | None, gzip, zip, bz2 | Human-readable, spreadsheet imports |
+| **Parquet** | None, snappy, gzip | Columnar analytics, data lakes |
+| **JSON** | None, gzip, zip, bz2 | APIs, document stores, config files |
+
+---
+
+#### 4.2. Batch Writing Mode
+
+Write synthetic data in **single** or **multiple** files with full control over format, compression, and write modes.
+
+- As rand-engine generates pandas DataFrames under the hood, data can be written efficiently using Pandas' built-in I/O capabilities.
+- Although users can easily obtain DataFrames via `.get_df()` and write them manually, the built-in `.write` interface simplifies the process significantly.
+
+**📝 Single File Writing**
+
+Write an entire dataset to a single file—ideal for small to medium datasets or when you need one consolidated output.
+
+
+```python
+from rand_engine import DataGenerator, RandSpecs
+
+# Write 10,000 customer records to a single CSV file
+local_path = "./data/customers"
+# Or Databricks: "/Volumes/prd/demo_volumes/rand_engine_data/customers"
+
+(
+    DataGenerator(RandSpecs.customers())
+    .write
+    .size(10_000)
+    .format("csv")                    # Format: csv, json, or parquet
+    .mode("overwrite")                # Mode: overwrite or append
+    .option("compression", None)      # Optional: gzip, zip, bz2
+    .save(local_path)
+)
+```
+
+**Key Features:**
+- ✅ **Auto file extension**: `customers` → `customers.csv` automatically
+- ✅ **Overwrite mode**: Replaces existing file
+- ✅ **Append mode**: Adds new records to existing file
+- ✅ **Full path control**: Specify exact output location
+
+**Result:** Single file created at `./data/customers.csv` with 10,000 rows.
+
+---
+
+**📦 Multiple Files Writing**
+
+- Write large datasets using **multiple batches**. 
+- Perfect for generating massive datasets on disk without overwhelming memory.
+
+```python
+from rand_engine import DataGenerator, RandSpecs
+
+# Write 500,000 records split across 5 CSV files (100,000 rows each)
+(
+    DataGenerator(RandSpecs.customers())
+    .write
+    .size(100_000)
+    .format("csv")
+    .mode("overwrite")
+    .option("numFiles", 5)           # Split into 5 files
+    .option("compression", "gzip")   # Compress each file
+    .save("./data/customers_multi")
+)
+```
+
+**Output Structure:**
+```
+data/
+└── customers_multi/
+    ├── part_a3f2c91e.csv.gz    (10,000 rows)
+    ├── part_b7e4d23a.csv.gz    (10,000 rows)
+    ├── part_c1f8e45b.csv.gz    (10,000 rows)
+    ├── part_d9a2f67c.csv.gz    (10,000 rows)
+    └── part_e5b3g89d.csv.gz    (10,000 rows)
+```
+
+**Important Behaviors:**
+- 🗂️ **Folder creation**: `numFiles > 1` automatically creates a directory
+- ➕ **Append mode**: Adds new files to existing folder without removing old ones
+- 🔄 **Overwrite mode**: Clears folder contents before writing new files
+- 🎲 **Random names**: Files get unique identifiers (`part_<hash>.<ext>`)
+
+---
+
+**🎯 Advanced Example: Testing All Format/Compression Combinations**
+
+Easy for Data Engineers to generate synthetic data for **learning**, **development**, and **testing**.
+- Test your entire data pipeline with different format and compression options.
+- Users can quickly understand different performance and storage trade-offs.
+- Great for benchmarking read/write speeds and compression ratios.
+
+```python
+from rand_engine import DataGenerator, RandSpecs
+
+base_path = "./data/batch_tests"
+
+# Define all format and compression combinations to test
+test_configs = [
+    # CSV variations
+    {"format": "csv", "compression": None,     "path": f"{base_path}/csv/default/customers"},
+    {"format": "csv", "compression": "gzip",   "path": f"{base_path}/csv/gzip/customers"},
+    {"format": "csv", "compression": "zip",    "path": f"{base_path}/csv/zip/customers"},
+    {"format": "csv", "compression": "bz2",    "path": f"{base_path}/csv/bz2/customers"},
+    
+    # JSON variations
+    {"format": "json", "compression": None,    "path": f"{base_path}/json/default/customers"},
+    {"format": "json", "compression": "gzip",  "path": f"{base_path}/json/gzip/customers"},
+    {"format": "json", "compression": "zip",   "path": f"{base_path}/json/zip/customers"},
+    {"format": "json", "compression": "bz2",   "path": f"{base_path}/json/bz2/customers"},
+    
+    # Parquet variations
+    {"format": "parquet", "compression": None,    "path": f"{base_path}/parquet/default/customers"},
+    {"format": "parquet", "compression": "snappy", "path": f"{base_path}/parquet/snappy/customers"},
+    {"format": "parquet", "compression": "gzip",   "path": f"{base_path}/parquet/gzip/customers"},
+]
+
+# Test 1: Write single files (10,000 rows each)
+print("📝 Writing single files...")
+for config in test_configs:
+    (
+        DataGenerator(RandSpecs.customers())
+        .write
+        .size(10_000)
+        .format(config["format"])
+        .mode("overwrite")
+        .option("compression", config["compression"])
+        .save(config["path"])
+    )
+    print(f"  ✅ {config['format']} ({config['compression'] or 'none'}) → {config['path']}")
+
+# Test 2: Write multiple files (5 files × 10,000 rows = 50,000 total)
+print("\n📦 Writing multiple files...")
+for config in test_configs:
+    multi_path = config["path"].replace("/batch_tests/", "/batch_tests/multi_")
+    (
+        DataGenerator(RandSpecs.customers())
+        .write
+        .size(50_000)
+        .format(config["format"])
+        .mode("overwrite")
+        .option("numFiles", 5)
+        .option("compression", config["compression"])
+        .save(multi_path)
+    )
+    print(f"  ✅ {config['format']} ({config['compression'] or 'none'}) → {multi_path}/ (5 files)")
+```
+
+**Use Cases:**
+- 🧪 **Testing data pipelines** with different file formats
+- 📊 **Benchmarking** compression ratios and read/write performance
+- 🔄 **CI/CD validation** of file processing workflows
+- 📁 **Data lake ingestion** testing with various formats
+
+---
+
+#### 4.3. Streaming Write Mode
+
+Generate and write data **continuously** with controlled throughput—perfect for testing real-time pipelines, Kafka producers, or event-driven systems.
+
+```python
+from rand_engine import DataGenerator, RandSpecs
+
+# Stream customer records at 20k records/second
+(
+    DataGenerator(RandSpecs.customers())
+    .size(10**5)
+    .writeStream
+    .format("json")
+    .mode("overwrite")
+    .option("compression", "gzip")
+    .option("timeout", 100)
+    .trigger(frequency=5)
+    .start(path="./data/stream/customers")
+)
+```
+
+**Key Features:**
+- 🕐 **Controlled throughput**: Simulate realistic event rates (20k records/sec)
+- ♾️ **Continuous generation**: Runs indefinitely until stopped or timeout reached
+- ⏱️ **Auto timestamps**: Each record includes `timestamp_created` field
+- 📂 **Append mode**: New files created every N records (configurable)
+- 🔄 **Databricks integration**: Perfect to feed Auto loader on Databricks
+
+**Output Structure:**
+```
+data/stream/customers/
+├── stream_2025-10-25_14-30-05.json.gz   (1,000 records)
+├── stream_2025-10-25_14-31-12.json.gz   (1,000 records)
+├── stream_2025-10-25_14-32-18.json.gz   (1,000 records)
+└── ... (continues streaming)
+```
+
+**Use Cases:**
+- 🌊 **Kafka testing**: Simulate producers with realistic data
+- 🔄 **CDC pipelines**: Test change data capture workflows
+- 📊 **Real-time analytics**: Feed data to streaming platforms (Spark Streaming, Flink)
+- 🧪 **Load testing**: Stress-test event ingestion systems
+
+---
+
+### 5. Build Custom Specifications
+
+Ready to create your own specs? Define custom data structures with full control over generation logic.
 
 ```python
 from rand_engine import DataGenerator
 
-# Simple specification
-spec = {
+# Define your custom specification
+custom_spec = {
     "user_id": {
         "method": "unique_ids",
-        "kwargs": {"strategy": "zint", "length": 8}
+        "kwargs": {"strategy": "zint", "length": 8}  # Zero-padded integers: 00000001
     },
     "age": {
         "method": "integers",
-        "kwargs": {"min": 18, "max": 65}
+        "kwargs": {"min": 18, "max": 65}             # Random integers
     },
     "salary": {
         "method": "floats",
-        "kwargs": {"min": 30000.0, "max": 150000.0, "round": 2}
+        "kwargs": {"min": 30_000.0, "max": 150_000.0, "round": 2}  # Decimals
+    },
+    "is_premium": {
+        "method": "booleans",
+        "kwargs": {"true_prob": 0.15}                # 15% will be True
+    },
+    "department": {
+        "method": "distincts",
+        "kwargs": {"distincts": ["Engineering", "Sales", "Marketing", "HR"]}
     }
 }
 
-df = DataGenerator(spec, seed=42).size(10**7).get_df()
-print(df)
+# Generate 10 million rows
+df = DataGenerator(custom_spec, seed=42).size(10_000_000).get_df()
+print(df.head())
 ```
+
+**Spec Anatomy:**
+- `"method"`: Core generation function (see table below)
+- `"kwargs"`: Method-specific parameters
+- **Declarative**: Define _what_ you want, not _how_ to generate it
 
 ---
 
-## 📚 Core Generation Methods
+## 📚 Core Generation Methods Reference
 
-| Method | Description | Example Use Case |
-|--------|-------------|------------------|
-| **unique_ids** | Unique identifiers | User IDs, order numbers |
-| **integers** | Random integers | Ages, quantities, counts |
-| **floats** | Random decimals | Prices, weights, measurements |
-| **floats_normal** | Normal distribution | Heights, temperatures, scores |
-| **booleans** | True/False with probability | Active flags, feature toggles |
-| **distincts** | Random selection | Categories, statuses, types |
-| **distincts_prop** | Weighted selection | Product mix, user tiers |
-| **unix_timestamps** | Date/time values | Created dates, event times |
+Complete API for building custom specifications:
 
-**Simple Example:**
+| Method | Description | Parameters | Example |
+|--------|-------------|------------|---------|
+| **`unique_ids`** | Unique identifiers | `strategy`: `"zint"`, `"uuid4"`, `"sequence"`<br>`length`: digits (zint only) | User IDs, order numbers, SKUs |
+| **`integers`** | Random integers | `min`: minimum value<br>`max`: maximum value | Ages, quantities, counts |
+| **`floats`** | Random decimals | `min`: minimum value<br>`max`: maximum value<br>`round`: decimal places | Prices, weights, percentages |
+| **`floats_normal`** | Normal distribution | `mean`: center value<br>`std`: spread<br>`round`: decimals | Heights, test scores, temperatures |
+| **`booleans`** | True/False flags | `true_prob`: probability of True (0.0-1.0) | Active flags, feature toggles |
+| **`distincts`** | Random selection | `distincts`: list of values | Categories, statuses, types |
+| **`distincts_prop`** | Weighted selection | `distincts`: `{value: weight, ...}` | Product mix (70% A, 30% B) |
+| **`unix_timestamps`** | Date/time values | `start`: start date (YYYY-MM-DD)<br>`end`: end date<br>`formato`: output format | Created dates, event times |
+
+**Quick Example:**
 
 ```python
-spec = {
-    "product_id": {"method": "unique_ids", "kwargs": {"strategy": "zint"}},
-    "price": {"method": "floats", "kwargs": {"min": 9.99, "max": 999.99, "round": 2}},
-    "category": {"method": "distincts", "kwargs": {"distincts": ["Electronics", "Clothing", "Food"]}},
-    "in_stock": {"method": "booleans", "kwargs": {"true_prob": 0.85}}
+# Product catalog with realistic distributions
+product_spec = {
+    "product_id": {
+        "method": "unique_ids", 
+        "kwargs": {"strategy": "zint", "length": 10}
+    },
+    "price": {
+        "method": "floats", 
+        "kwargs": {"min": 9.99, "max": 999.99, "round": 2}
+    },
+    "category": {
+        "method": "distincts", 
+        "kwargs": {"distincts": ["Electronics", "Clothing", "Food", "Books"]}
+    },
+    "in_stock": {
+        "method": "booleans", 
+        "kwargs": {"true_prob": 0.85}  # 85% in stock
+    },
+    "rating": {
+        "method": "floats_normal",
+        "kwargs": {"mean": 4.2, "std": 0.8, "round": 1}  # Bell curve around 4.2★
+    }
 }
 
-df_products = DataGenerator(spec).size(10**6).get_df()
+df_products = DataGenerator(product_spec, seed=123).size(1_000_000).get_df()
 print(df_products)
 ```
+
+📖 **For advanced examples:** See [EXAMPLES.md](./EXAMPLES.md) for correlated columns, composite keys, and more.
 
 ---
 
 ## 🎨 Real-World Use Cases
 
-### E-commerce with Referential Integrity (3 Levels)
+### 🛒 E-Commerce with Referential Integrity
 
-These examples demonstrate generating related datasets with Primary Key (PK) and Foreign Key (FK) constraints to maintain referential integrity.
-
-In background, Rand Engine uses a shared checkpoint database to track generated keys and ensure relationships are valid. At this point, it can use DuckDB or SQLite for this purpose.
-
-```python
-
-
-from rand_engine import DataGenerator
-
-# Use shared checkpoint database for referential integrity
-
-# Level 1: Categories (PK)
-spec_categories = lambda: {
-    "category_id": dict(method="unique_ids", kwargs={"strategy": "zint", "length": 4}),
-    "category_name": dict(method="distincts", kwargs={"distincts": ["Electronics", "Books", "Clothing"]}),
-    "constraints": {
-        "category_pk": dict(
-            name="category_pk",
-            tipo="PK",
-            fields=["category_id VARCHAR(4)"]
-        )
-    }
-}
-
-# Level 2: Products (FK → categories, PK for orders)
-spec_products = lambda: {
-    "product_id": dict(method="unique_ids", kwargs={"strategy": "zint", "length": 8}),
-    "product_name": dict(method="distincts", kwargs={"distincts": [f"Product {i}" for i in range(100)]}),
-    "price": dict(method="floats", kwargs={"min": 10.0, "max": 1000.0, "round": 2}),
-    "constraints": {
-        "product_pk": dict(
-            name="product_pk", 
-            tipo="PK",
-            fields=["product_id VARCHAR(8)"]
-        ),
-        "category_fk": dict(
-            name="category_pk",
-            tipo="FK",
-            fields=["category_id"],
-            watermark=60)
-    }
-}
-
-# Level 3: Orders (FK → products)
-spec_orders = lambda:{
-    "order_id": dict(method="unique_ids", kwargs={"strategy": "uuid4"}),
-    "quantity": dict(method="integers", kwargs={"min": 1, "max": 10}),
-    "total": dict(method="floats", kwargs={"min": 10.0, "max": 5000.0, "round": 2}),
-    "constraints": {
-        "product_fk": dict(
-            name="product_pk",
-            tipo="FK",
-            fields=["product_id"],
-            watermark=120
-        )
-    }
-}
-
-df_cat = DataGenerator(spec_categories).size(10).get_df()
-print(df_cat)
-
-df_prod = DataGenerator(spec_products).size(100).get_df()
-print(df_prod)
-
-df_orders = DataGenerator(spec_orders).size(1000).get_df()
-print(df_orders)
-```
-
-### Testing ETL Pipelines
-
-```python
-from rand_engine import DataGenerator, RandSpecs
-
-# Generate source data
-source_df = DataGenerator(RandSpecs.transactions(), seed=42).size(1_000_000).get_df()
-
-# Export to staging
-source_df.to_parquet("staging/transactions.parquet")
-
-# Run your ETL pipeline
-# ...
-
-# Generate more data for incremental loads
-incremental_df = DataGenerator(RandSpecs.transactions()).size(10_000).get_df()
-```
-
-### Load Testing APIs
-
-```python
-import requests
-from rand_engine import DataGenerator, RandSpecs
-
-# Generate test users
-stream = DataGenerator(RandSpecs.users()).stream_dict(min_throughput=10, max_throughput=50)
-
-for user in stream:
-    response = requests.post("https://api.example.com/users", json=user)
-    print(f"Created user {user['user_id']}: {response.status_code}")
-```
-
-### Populating Development Databases
-
-```python
-from rand_engine import DataGenerator, RandSpecs
-from rand_engine.integrations._duckdb_handler import DuckDBHandler
-
-# Generate data
-customers = DataGenerator(RandSpecs.customers()).size(10_000).get_df()
-orders = DataGenerator(RandSpecs.orders()).size(50_000).get_df()
-
-# Insert into database
-db = DuckDBHandler("dev_database.duckdb")
-db.create_table("customers", "customer_id VARCHAR(10) PRIMARY KEY")
-db.insert_df("customers", customers, pk_cols=["customer_id"])
-db.create_table("orders", "order_id VARCHAR(10) PRIMARY KEY")
-db.insert_df("orders", orders, pk_cols=["order_id"])
-db.close()
-```
-
-### QA Testing with Edge Cases
+Create **realistic multi-level datasets** with proper Primary Key (PK) and Foreign Key (FK) relationships. Rand Engine uses an internal checkpoint database (DuckDB/SQLite) to ensure 100% referential integrity.
 
 ```python
 from rand_engine import DataGenerator
 
-# Mix of normal and edge cases
-spec = {
-    "value": {"method": "floats", "kwargs": {"min": -999999.99, "max": 999999.99, "round": 2}},
-    "status": {"method": "distincts", "kwargs": {"distincts": ["active", "deleted", "suspended", "pending"]}},
-    "edge_case": {"method": "booleans", "kwargs": {"true_prob": 0.05}}  # 5% edge cases
-}
-
-test_data = DataGenerator(spec, seed=789).size(1000).get_df()
-edge_cases = test_data[test_data['edge_case'] == True]
-```
-
----
-
-## 🔥 Advanced Features
-
-### 🔗 Constraints & Referential Integrity ⭐ NEW
-
-**The most powerful feature of v0.6.1!** Create realistic datasets with proper Primary Key/Foreign Key relationships.
-
-```python
-from rand_engine import DataGenerator
-
-# 1. Create CATEGORIES (Primary Key)
+# Level 1: Categories (Primary Key)
 spec_categories = {
-    "category_id": {"method": "unique_ids", "kwargs": {"strategy": "zint", "length": 4}},
-    "category_name": {"method": "distincts", "kwargs": {"distincts": ["Electronics", "Books", "Clothing"]}},
+    "category_id": {
+        "method": "unique_ids", 
+        "kwargs": {"strategy": "zint", "length": 4}
+    },
+    "category_name": {
+        "method": "distincts", 
+        "kwargs": {"distincts": ["Electronics", "Books", "Clothing", "Home"]}
+    },
     "constraints": {
         "category_pk": {
             "name": "category_pk",
@@ -335,326 +493,74 @@ spec_categories = {
     }
 }
 
-# Generate categories
-df_categories = (
-    DataGenerator(spec_categories, seed=42)
-    .checkpoint(":memory:")
-    .size(10)
-    .get_df()
-)
-
-# 2. Create PRODUCTS (Foreign Key → categories)
+# Level 2: Products (Foreign Key → Categories)
 spec_products = {
-    "product_id": {"method": "unique_ids", "kwargs": {"strategy": "zint", "length": 8}},
-    "product_name": {"method": "distincts", "kwargs": {"distincts": [f"Product {i}" for i in range(100)]}},
-    "price": {"method": "floats", "kwargs": {"min": 10.0, "max": 1000.0, "round": 2}},
+    "product_id": {
+        "method": "unique_ids", 
+        "kwargs": {"strategy": "zint", "length": 8}
+    },
+    "product_name": {
+        "method": "distincts", 
+        "kwargs": {"distincts": [f"Product {i:03d}" for i in range(100)]}
+    },
+    "price": {
+        "method": "floats", 
+        "kwargs": {"min": 10.0, "max": 1000.0, "round": 2}
+    },
     "constraints": {
+        "product_pk": {
+            "name": "product_pk",
+            "tipo": "PK",
+            "fields": ["product_id VARCHAR(8)"]
+        },
         "category_fk": {
-            "name": "category_pk",
+            "name": "category_pk",  # References category_pk constraint
             "tipo": "FK",
             "fields": ["category_id"],
-            "watermark": 60  # Reference records from last 60 seconds
+            "watermark": 60  # Only reference categories created in last 60 records
         }
     }
 }
 
-# Generate products
-df_products = (
-    DataGenerator(spec_products, seed=42)
-    .checkpoint(":memory:")
-    .size(1000)
-    .get_df()
-)
-
-# ✅ RESULT: 100% referential integrity
-# All products reference valid categories
-print(f"Valid integrity: {set(df_products['category_id']).issubset(set(df_categories['category_id']))}")
-# Output: Valid integrity: True
-```
-
-**Key Features:**
-- **Primary Keys (PK)**: Create checkpoint tables with generated records
-- **Foreign Keys (FK)**: Reference values from PK checkpoint tables
-- **Composite Keys**: Multi-column PKs and FKs (e.g., `client_id + client_type`)
-- **Watermarks**: Temporal windows for realistic time-based relationships
-- **DuckDB/SQLite**: Checkpoint tables stored in memory or disk
-
-📖 **Complete guide with 3-level examples:** [CONSTRAINTS.md](./docs/CONSTRAINTS.md)
-
----
-
-### Correlated Columns
-
-Generate related data (device → OS, product → status, etc.):
-
-```python
-# Example: orders() spec includes correlated currency & country
-orders = DataGenerator(RandSpecs.orders()).size(1000).get_df()
-
-# Result: 
-# order_id  amount  currency  country
-#       001  100.50      USD       US
-#       002   85.30      EUR       DE
-#       003  120.75      GBP       UK
-```
-
-### Weighted Distributions
-
-```python
-# Example: products() uses weighted categories
-products = DataGenerator(RandSpecs.products()).size(10000).get_df()
-
-# Result distribution:
-# Electronics: ~40%
-# Clothing: ~30%  
-# Food: ~20%
-# Books: ~10%
-```
-
-### Streaming Generation
-
-```python
-from rand_engine import DataGenerator, RandSpecs
-
-# Generate continuous data stream
-stream = DataGenerator(RandSpecs.events()).stream_dict(
-    min_throughput=5,   # Minimum records/second
-    max_throughput=15   # Maximum records/second
-)
-
-for event in stream:
-    # Each record includes automatic timestamp_created
-    print(f"[{event['timestamp_created']}] Event: {event['event_type']}")
-    # Send to Kafka, Kinesis, etc.
-```
-
-### Multiple Export Formats
-
-```python
-from rand_engine import DataGenerator, RandSpecs
-
-spec = RandSpecs.transactions()
-
-# CSV with compression
-DataGenerator(spec).write.size(100000).format("csv").option("compression", "gzip").save("data.csv.gz")
-
-# Parquet with Snappy
-DataGenerator(spec).write.size(1000000).format("parquet").option("compression", "snappy").save("data.parquet")
-
-# JSON
-DataGenerator(spec).write.size(50000).format("json").save("data.json")
-```
-
-### Reproducible Data
-
-```python
-from rand_engine import DataGenerator, RandSpecs
-
-# Same seed = identical data
-df1 = DataGenerator(RandSpecs.customers(), seed=42).size(1000).get_df()
-df2 = DataGenerator(RandSpecs.customers(), seed=42).size(1000).get_df()
-
-assert df1.equals(df2)  # True - perfect reproducibility
-```
-
----
-
-## 🗂️ Export & Integration
-
-### File Formats
-
-```python
-from rand_engine import DataGenerator, RandSpecs
-
-generator = DataGenerator(RandSpecs.orders())
-
-# CSV
-generator.write.size(10000).format("csv").save("orders.csv")
-
-# Parquet (recommended for large datasets)
-generator.write.size(1000000).format("parquet").save("orders.parquet")
-
-# JSON
-generator.write.size(5000).format("json").save("orders.json")
-
-# Multiple files (partitioned)
-generator.write.size(1000000).option("numFiles", 10).format("parquet").save("orders/")
-```
-
-### Writing Modes: Batch vs Streaming
-
-`rand_engine` supports two distinct writing modes:
-
-**Batch Mode** (`.write`): Generate all data at once
-
-```python
-# Single file
-DataGenerator(spec).write \
-    .size(10000) \
-    .format("parquet") \
-    .option("compression", "snappy") \
-    .save("output/data.parquet")
-
-# Multiple files (parallel processing)
-DataGenerator(spec).write \
-    .size(1000000) \
-    .option("numFiles", 5) \
-    .format("parquet") \
-    .save("output/data.parquet")
-# Creates: part_uuid1.parquet, part_uuid2.parquet, ...
-```
-
-**Streaming Mode** (`.writeStream`): Continuous generation over time
-
-```python
-# Stream for 1 hour, new file every minute
-DataGenerator(spec).writeStream \
-    .size(500) \
-    .format("json") \
-    .option("compression", "gzip") \
-    .option("timeout", 3600) \
-    .trigger(frequency=60) \
-    .start("output/events")
-# Creates 60 files over 1 hour
-```
-
-**Compression Support:**
-- **CSV/JSON**: gzip, bz2, zip, xz
-- **Parquet**: snappy (default), gzip, zstd, lz4, brotli
-
-📖 **Complete guide with examples:** [WRITING_FILES.md](./docs/WRITING_FILES.md)
-
-### Database Integration
-
-**DuckDB:**
-
-```python
-from rand_engine import DataGenerator, RandSpecs
-from rand_engine.integrations._duckdb_handler import DuckDBHandler
-
-# Generate data
-df = DataGenerator(RandSpecs.employees()).size(10000).get_df()
-
-# Insert into DuckDB
-db = DuckDBHandler("analytics.duckdb")
-db.create_table("employees", "employee_id VARCHAR(10) PRIMARY KEY")
-db.insert_df("employees", df, pk_cols=["employee_id"])
-
-# Query
-result = db.select_all("employees")
-print(result.head())
-
-db.close()
-```
-
-**SQLite:**
-
-```python
-from rand_engine.integrations._sqlite_handler import SQLiteHandler
-
-db = SQLiteHandler("test.db")
-db.create_table("users", "user_id VARCHAR(10) PRIMARY KEY")
-db.insert_df("users", df, pk_cols=["user_id"])
-db.close()
-```
-
----
-
-## 📖 Exploring Available Specs
-
-Want to see what's inside each pre-built spec?
-
-```python
-from rand_engine import RandSpecs
-import json
-
-# View any spec structure
-spec = RandSpecs.customers()
-print(json.dumps(spec, indent=2))
-
-# Output shows all fields and generation methods:
-# {
-#   "customer_id": {
-#     "method": "unique_ids",
-#     "kwargs": {"strategy": "zint", "prefix": "C"}
-#   },
-#   "name": {
-#     "method": "distincts",
-#     "kwargs": {"distincts": ["John Smith", "Jane Brown", ...]}
-#   },
-#   ...
-# }
-```
-
-**Try different specs:**
-
-```python
-# See all available specs
-print(RandSpecs.products())
-print(RandSpecs.transactions())
-print(RandSpecs.devices())
-print(RandSpecs.events())
-```
-
-Each spec demonstrates different generation techniques - use them as templates for your own custom specs!
-
----
-
-## 🛠️ Creating Custom Specs
-
-### Basic Template
-
-```python
-from rand_engine import DataGenerator
-
-my_spec = {
-    "id": {
-        "method": "unique_ids",
-        "kwargs": {"strategy": "zint"}
+# Level 3: Orders (Foreign Key → Products)
+spec_orders = {
+    "order_id": {
+        "method": "unique_ids", 
+        "kwargs": {"strategy": "uuid4"}
     },
-    "name": {
-        "method": "distincts",
-        "kwargs": {"distincts": ["Alice", "Bob", "Charlie"]}
+    "quantity": {
+        "method": "integers", 
+        "kwargs": {"min": 1, "max": 10}
     },
-    "value": {
-        "method": "floats",
-        "kwargs": {"min": 0.0, "max": 100.0, "round": 2}
+    "total": {
+        "method": "floats", 
+        "kwargs": {"min": 10.0, "max": 5000.0, "round": 2}
+    },
+    "constraints": {
+        "product_fk": {
+            "name": "product_pk",  # References product_pk constraint
+            "tipo": "FK",
+            "fields": ["product_id"],
+            "watermark": 120
+        }
     }
 }
 
-df = DataGenerator(my_spec).size(1000).get_df()
+# Generate datasets (order matters: Categories → Products → Orders)
+df_categories = DataGenerator(spec_categories).size(10).get_df()
+df_products = DataGenerator(spec_products).size(100).get_df()
+df_orders = DataGenerator(spec_orders).size(1_000).get_df()
+
+# Verify referential integrity
+print(f"✅ All products reference valid categories: {set(df_products['category_id']).issubset(set(df_categories['category_id']))}")
+print(f"✅ All orders reference valid products: {set(df_orders['product_id']).issubset(set(df_products['product_id']))}")
 ```
 
-### Spec Validation
+📖 **Complete constraints guide:** [CONSTRAINTS.md](./docs/CONSTRAINTS.md)
 
-Enable validation to catch errors early:
+---
 
-```python
-invalid_spec = {
-    "age": {
-        "method": "integers"  # Missing required "min" and "max"
-    }
-}
 
-try:
-    generator = DataGenerator(invalid_spec, validate=True)
-except Exception as e:
-    print(e)
-    # ❌ Column 'age': Missing required parameter 'min'
-    #    Correct example:
-    #    {
-    #        "age": {
-    #            "method": "integers",
-    #            "kwargs": {"min": 18, "max": 65}
-    #        }
-    #    }
-```
-
-**Validates:**
-- Required parameters for each method
-- Constraints structure (PK/FK, fields, watermark)
-- Data types and ranges
-- Provides educational error messages with examples
 
 ---
 

@@ -18,10 +18,8 @@ class DataGenerator:
 
     np.random.seed(seed)
     self.lazy_random_spec = random_spec
-    self.lazy_dataframe: Optional[Callable[[], pd.DataFrame]] = None
     self._constraints_db_path = ":memory:"
     # Passa a spec avaliada como callable para manter compatibilidade
-    self._size = 1000
     self.write = self._writer()
     self.writeStream = self._stream_writer()
     self._transformers: List[Optional[Callable]] = []
@@ -88,14 +86,18 @@ class DataGenerator:
   def get_df(self):
     if self._options.get("reset_checkpoint"):
       self.constraints_handler.delete_state()
-    lazy_dataframe = self.wrapped_df_generator(size=self._size)
+    size = self._size if not callable(self._size) else self._size()
+    lazy_dataframe = self.wrapped_df_generator(size=size)
     assert lazy_dataframe is not None, "You need to generate a DataFrame first."
+    assert callable(lazy_dataframe), "wrapped_df_generator must return a callable"
     return lazy_dataframe()
 
 
   def stream_dict(self, min_throughput: int=1, max_throughput: int = 10) -> Generator:
-    lazy_dataframe = self.wrapped_df_generator(size=self._size)
+    size = self._size() if callable(self._size) else self._size
+    lazy_dataframe = self.wrapped_df_generator(size=size)
     assert lazy_dataframe is not None, "You need to generate a DataFrame first."
+    assert callable(lazy_dataframe), "wrapped_df_generator must return a callable"
     while True:
       df_data_microbatch = lazy_dataframe()
       df_data_parsed = StreamHandler.convert_dt_to_str(df_data_microbatch)
@@ -107,11 +109,13 @@ class DataGenerator:
   
 
   def _writer(self):
+    #size = self._size() if callable(self._size) else self._size
     microbatch_def = lambda size: self.wrapped_df_generator(size=size)
     return FileBatchWriter(microbatch_def)
    
 
   def _stream_writer(self):
+    #size = self._size() if callable(self._size) else self._size
     microbatch_def = lambda size: self.wrapped_df_generator(size=size)
     return FileStreamWriter(microbatch_def)
 
