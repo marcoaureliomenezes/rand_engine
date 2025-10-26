@@ -18,10 +18,8 @@ class DataGenerator:
 
     np.random.seed(seed)
     self.lazy_random_spec = random_spec
-    self.lazy_dataframe: Optional[Callable[[], pd.DataFrame]] = None
     self._constraints_db_path = ":memory:"
     # Passa a spec avaliada como callable para manter compatibilidade
-    self._size = 1000
     self.write = self._writer()
     self.writeStream = self._stream_writer()
     self._transformers: List[Optional[Callable]] = []
@@ -111,13 +109,13 @@ class DataGenerator:
   
 
   def _writer(self):
-    size = self._size() if callable(self._size) else self._size
+    #size = self._size() if callable(self._size) else self._size
     microbatch_def = lambda size: self.wrapped_df_generator(size=size)
     return FileBatchWriter(microbatch_def)
    
 
   def _stream_writer(self):
-    size = self._size() if callable(self._size) else self._size
+    #size = self._size() if callable(self._size) else self._size
     microbatch_def = lambda size: self.wrapped_df_generator(size=size)
     return FileStreamWriter(microbatch_def)
 
