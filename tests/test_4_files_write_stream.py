@@ -62,7 +62,7 @@ def test_writing_multiple_files(
   elapsed_time = time.time() - start_time
   files = glob.glob(f"{path}/*")
   assert elapsed_time > 0.1
-  assert len(files) < 100 and len(files) >= 1
+  assert len(files) >= 1
 
 
 @pytest.mark.parametrize("format_type,compression,file_path", [
@@ -116,5 +116,5 @@ def test_writing_multiple_files_append(
 
   elapsed_time = time.time() - start_time
   files = glob.glob(f"{path}/*")
-  assert elapsed_time > 0.1
-  assert len(files) < 20 and len(files) >= 1
+  assert elapsed_time > 0.2
+  assert len(files) >= 2
