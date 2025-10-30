@@ -25,13 +25,13 @@ class RandGenerator:
       "floats_normal": NPCore.gen_floats_normal,
       "distincts": NPCore.gen_distincts,
       "distincts_prop": NPCore.gen_distincts_prop,
+      "unix_timestamps": NPCore.gen_unix_timestamps,
+      "uuid4": NPCore.gen_uuid4,
+      "booleans": NPCore.gen_booleans,
       "distincts_map": PyCore.gen_distincts_map,
       "distincts_multi_map": PyCore.gen_distincts_multi_map,
       "distincts_map_prop": PyCore.gen_distincts_map_prop,
       "complex_distincts": PyCore.gen_complex_distincts,
-      "unix_timestamps": NPCore.gen_unix_timestamps,
-      "unique_ids": NPCore.gen_unique_identifiers,
-      "booleans": NPCore.gen_bools,
     }
  
   def generate_first_level(self, size: int):

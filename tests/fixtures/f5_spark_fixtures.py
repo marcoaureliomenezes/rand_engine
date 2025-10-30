@@ -114,18 +114,9 @@ def spark_metadata_simple():
     Simple metadata for basic Spark generation tests.
     """
     return {
-        "id": {
-            "method": "integers",
-            "kwargs": {"min": 1, "max": 100}
-        },
-        "name": {
-            "method": "distincts",
-            "kwargs": {"distincts": ["Alice", "Bob", "Charlie", "Diana"]}
-        },
-        "score": {
-            "method": "floats",
-            "kwargs": {"min": 0.0, "max": 100.0, "decimals": 2}
-        }
+        "id": dict(method="integers", kwargs=dict(min=1, max=100)),
+        "name": dict(method="distincts", kwargs=dict(distincts=["Alice", "Bob", "Charlie", "Diana"])),
+        "score": dict(method="floats", kwargs=dict(min=0.0, max=100.0, decimals=2))
     }
 
 
@@ -135,38 +126,13 @@ def spark_metadata_complex():
     Complex metadata for advanced Spark generation tests.
     """
     return {
-        "user_id": {
-            "method": "uuid4",
-            "kwargs": {}
-        },
-        "age": {
-            "method": "integers",
-            "kwargs": {"min": 18, "max": 80}
-        },
-        "height_cm": {
-            "method": "floats_normal",
-            "kwargs": {"mean": 170.0, "stddev": 10.0, "decimals": 1}
-        },
-        "is_active": {
-            "method": "booleans",
-            "kwargs": {"true_prob": 0.75}
-        },
-        "category": {
-            "method": "distincts",
-            "kwargs": {"distincts": ["A", "B", "C", "D", "E"]}
-        },
-        "registration_date": {
-            "method": "dates",
-            "kwargs": {
-                "start": "2020-01-01",
-                "end": "2024-12-31",
-                "formato": "%Y-%m-%d"
-            }
-        },
-        "code": {
-            "method": "zint",
-            "kwargs": {"length": 8}
-        }
+        "user_id": dict(method="uuid4", kwargs={}),
+        "age": dict(method="integers", kwargs=dict(min=18, max=80)),
+        "height_cm": dict(method="floats_normal", kwargs=dict(mean=170.0, std=10.0, decimals=1)),
+        "is_active": dict(method="booleans", kwargs=dict(true_prob=0.75)),
+        "category": dict(method="distincts", kwargs=dict(distincts=["A", "B", "C", "D", "E"])),
+        "registration_date": dict(method="dates", kwargs=dict(start="2020-01-01", end="2024-12-31", formato="%Y-%m-%d")),
+        "code": dict(method="zint", kwargs=dict(length=8))
     }
 
 
@@ -179,48 +145,20 @@ def spark_metadata_all_types():
     """
     return {
         # Numeric
-        "int_col": {
-            "method": "integers",
-            "kwargs": {"min": 0, "max": 1000}
-        },
-        "float_col": {
-            "method": "floats",
-            "kwargs": {"min": 0.0, "max": 100.0, "decimals": 3}
-        },
-        "normal_col": {
-            "method": "floats_normal",
-            "kwargs": {"mean": 50.0, "stddev": 15.0, "decimals": 2}
-        },
+        "int_col": dict(method="integers", kwargs=dict(min=0, max=1000)),
+        "float_col": dict(method="floats", kwargs=dict(min=0.0, max=100.0, decimals=3)),
+        "normal_col": dict(method="floats_normal", kwargs=dict(mean=50.0, std=15.0, decimals=2)),
         
         # Identifiers
-        "uuid_col": {
-            "method": "uuid4",
-            "kwargs": {}
-        },
-        "zint_col": {
-            "method": "zint",
-            "kwargs": {"length": 10}
-        },
+        "uuid_col": dict(method="uuid4", kwargs={}),
+        "zint_col": dict(method="zint", kwargs=dict(length=10)),
         
         # Selection
-        "distinct_col": {
-            "method": "distincts",
-            "kwargs": {"distincts": ["Option1", "Option2", "Option3"]}
-        },
-        "bool_col": {
-            "method": "booleans",
-            "kwargs": {"true_prob": 0.5}
-        },
+        "distinct_col": dict(method="distincts", kwargs=dict(distincts=["Option1", "Option2", "Option3"])),
+        "bool_col": dict(method="booleans", kwargs=dict(true_prob=0.5)),
         
         # Temporal
-        "date_col": {
-            "method": "dates",
-            "kwargs": {
-                "start": "2023-01-01",
-                "end": "2023-12-31",
-                "formato": "%Y-%m-%d"
-            }
-        }
+        "date_col": dict(method="dates", kwargs=dict(start="2023-01-01", end="2023-12-31", formato="%Y-%m-%d"))
     }
 
 

@@ -16,8 +16,8 @@ class ProductCategory:
   def metadata_category(self):
     return lambda: {
       "category_id":  dict(
-        method="unique_ids",
-        kwargs=dict(strategy="zint", length=4)),
+        method="int_zfilled",
+        kwargs=dict(length=4)),
       "constraints": {
           "category_pk": dict(
             name="category_pk",
@@ -37,8 +37,8 @@ class ProductCategory:
   
   def metadata_products(self):
     return lambda: {
-      "product_id":       dict(method="unique_ids", kwargs=dict(strategy="zint", length=8)),
-      "price":            dict(method="floats_normal", kwargs=dict(mean=50, std=10**1, round=2)),
+      "product_id":       dict(method="int_zfilled", kwargs=dict(length=8)),
+      "price":            dict(method="floats_normal", kwargs=dict(mean=50, std=10**1, decimals=2)),
       "constraints": {
         "category_fk": dict(
           name="category_pk",
@@ -61,8 +61,8 @@ class ClientsProductsCategoriesTransactions:
   def metadata_category(self):
     return lambda: {
       "category_id":  dict(
-        method="unique_ids",
-        kwargs=dict(strategy="zint", length=4)),
+        method="int_zfilled",
+        kwargs=dict(length=4)),
       "constraints": {
           "categories_pk": dict(
             name="categories_pk",
@@ -82,8 +82,8 @@ class ClientsProductsCategoriesTransactions:
   
   def metadata_products(self):
     return lambda: {
-      "product_id":       dict(method="unique_ids", kwargs=dict(strategy="zint", length=8)),
-      "price":            dict(method="floats_normal", kwargs=dict(mean=50, std=10**1, round=2)),
+      "product_id":       dict(method="int_zfilled", kwargs=dict(length=8)),
+      "price":            dict(method="floats_normal", kwargs=dict(mean=50, std=10**1, decimals=2)),
       "constraints": {
         "products_pk": dict(
           name="products_pk",
@@ -102,7 +102,7 @@ class ClientsProductsCategoriesTransactions:
 
   def metadata_clients(self):
     return lambda: {
-      "client_id":  dict(method="unique_ids", kwargs=dict(strategy="zint", length=8)),
+      "client_id":  dict(method="int_zfilled", kwargs=dict(length=8)),
       "tp_pes":  dict(method="distincts", kwargs=dict(distincts=["PF", "PJ"])),
       "constraints": {
         "clients_pk": dict(
@@ -124,8 +124,8 @@ class ClientsProductsCategoriesTransactions:
       
   def metadata_transactions(self):
     return lambda: {
-      "transaction_id":   dict(method="unique_ids", kwargs=dict(strategy="zint", length=8)),
-      "price":            dict(method="floats_normal", kwargs=dict(mean=50, std=10**1, round=2)),
+      "transaction_id":   dict(method="int_zfilled", kwargs=dict(length=8)),
+      "price":            dict(method="floats_normal", kwargs=dict(mean=50, std=10**1, decimals=2)),
       "amount":           dict(method="integers", kwargs=dict(min=1, max=100)),
       "constraints": {
         "clients_fk": dict(
