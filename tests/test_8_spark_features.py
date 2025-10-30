@@ -235,7 +235,7 @@ class TestSparkGeneratorStatistics:
         metadata = {
             "value": {
                 "method": "floats_normal",
-                "kwargs": {"mean": 100.0, "stddev": 15.0, "decimals": 2}
+                "kwargs": {"mean": 100.0, "std": 15.0, "decimals": 2}
             }
         }
         
@@ -246,12 +246,12 @@ class TestSparkGeneratorStatistics:
         from pyspark.sql import functions as F
         stats = df.agg(
             F.mean("value").alias("mean"),
-            F.stddev("value").alias("stddev")
+            F.std("value").alias("std")
         ).collect()[0]
         
-        # Check within tolerance (10% for mean, 20% for stddev)
+        # Check within tolerance (10% for mean, 20% for std)
         assert abs(stats["mean"] - 100.0) < 10.0
-        assert abs(stats["stddev"] - 15.0) < 5.0
+        assert abs(stats["std"] - 15.0) < 5.0
     
     def test_boolean_probability(self, spark_session, spark_functions):
         """Test that boolean generation respects probability."""
@@ -302,7 +302,8 @@ class TestSparkGeneratorEdgeCases:
     
     def test_empty_metadata(self, spark_session, spark_functions):
         """Test with empty metadata (only id column from range)."""
-        generator = SparkGenerator(spark_session, spark_functions, {})
+        # Disable validation to test edge case
+        generator = SparkGenerator(spark_session, spark_functions, {}, validate=False)
         
         df = generator.size(10).get_df()
         
@@ -343,7 +344,8 @@ class TestSparkGeneratorEdgeCases:
             }
         }
         
-        generator = SparkGenerator(spark_session, spark_functions, metadata)
+        # Disable validation to test runtime error handling
+        generator = SparkGenerator(spark_session, spark_functions, metadata, validate=False)
         
         with pytest.raises(KeyError):
             df = generator.size(10).get_df()

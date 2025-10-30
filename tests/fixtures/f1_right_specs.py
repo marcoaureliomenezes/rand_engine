@@ -33,7 +33,7 @@ def rand_spec_with_related_columns():
     
     # Combine specs to include all correlation types
     return {
-        "id":        dict(method="unique_ids", kwargs=dict(strategy="zint")),
+        "id":        dict(method="int_zfilled", kwargs=dict(length=8)),
         "age":       dict(method="integers", kwargs=dict(min=0, max=100)),
         # From simple_client_2 - distincts_map
         "device_plat": dict(
@@ -71,7 +71,7 @@ def rand_spec_case_1_transformer():
 @pytest.fixture(scope="function")
 def rand_engine_splitable_benchmark_baseline():
   return {
-    "id":        dict(method="unique_ids", args=["zint"]),
+    "id":        dict(method="int_zfilled", kwargs=dict(length=8)),
     "device": dict(method="distincts", args=[["mobile", "desktop"]]),
     "platform": dict(method="distincts", args=[["IOS", "Android", "Windows", "MacOS", "Linux"]]),
     "http_request": dict(method="distincts", args=[["GET /home", "GET /login", "POST /login", "GET /logout"]]),

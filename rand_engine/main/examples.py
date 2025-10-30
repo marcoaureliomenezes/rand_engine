@@ -49,10 +49,12 @@ class RandSpecs:
         """
         Customer profiles with demographics and account status.
         
+        **Complexity Level: ★☆☆☆☆ (Basic)** - Perfect starting point for beginners.
+        
         Use this spec to:
         - Generate customer datasets for testing
-        - Learn unique ID generation and basic types
-        - Understand boolean probability
+        - Learn basic generation methods (integers, floats, distincts, booleans)
+        - Understand zero-filled unique identifiers
         
         Generated Columns (6):
         ---------------------
@@ -65,7 +67,7 @@ class RandSpecs:
         
         Generation Methods:
         ------------------
-        - unique_ids: Generates unique customer identifiers
+        - int_zfilled: Zero-filled unique IDs
         - distincts: Random selection from predefined lists
         - integers: Random integers in range
         - booleans: Boolean values with probability
@@ -79,12 +81,12 @@ class RandSpecs:
         ['customer_id', 'name', 'age', 'email', 'is_active', 'account_balance']
         """
         return {
-            "customer_id": dict(method="unique_ids", kwargs=dict(strategy="zint", length=6)),
+            "customer_id": dict(method="int_zfilled", kwargs=dict(length=6)),
             "name": dict(method="distincts", kwargs=dict(distincts=["John Smith", "Maria Garcia", "Li Wei", "Ahmed Hassan", "Sofia Rodriguez"])),
             "age": dict(method="integers", kwargs=dict(min=18, max=80)),
             "email": dict(method="distincts", kwargs=dict(distincts=["gmail.com", "yahoo.com", "outlook.com", "hotmail.com"])),
             "is_active": dict(method="booleans", kwargs=dict(true_prob=0.85)),
-            "account_balance": dict(method="floats", kwargs=dict(min=0, max=10000, round=2))
+            "account_balance": dict(method="floats", kwargs=dict(min=0, max=10000, decimals=2))
         }
 
     @classmethod
@@ -92,10 +94,13 @@ class RandSpecs:
         """
         Product catalog with SKUs, pricing, and categories.
         
+        **Complexity Level: ★★☆☆☆ (Intermediate)** - Introduces complex patterns and weighted distributions.
+        
         Use this spec to:
         - Generate product inventories
         - Understand weighted distributions (distincts_prop)
-        - Learn complex pattern generation
+        - Learn complex pattern generation (complex_distincts)
+        - Work with normal distributions for realistic data
         
         Generated Columns (6):
         ---------------------
@@ -108,7 +113,7 @@ class RandSpecs:
         
         Generation Methods:
         ------------------
-        - complex_distincts: Pattern-based generation
+        - complex_distincts: Pattern-based generation with templates
         - distincts: Simple random selection
         - distincts_prop: Weighted random selection
         - floats: Random floats with precision
@@ -117,8 +122,8 @@ class RandSpecs:
         
         Example:
         --------
-        >>> from rand_engine import RandSpecs
-        >>> df = DataGenerator(RandSpecs.products, seed=42).size(100).get_df()
+        >>> from rand_engine import RandSpecs, DataGenerator
+        >>> df = DataGenerator(RandSpecs.products(), seed=42).size(100).get_df()
         >>> df['category'].value_counts()  # Shows weighted distribution
         """
         return {
@@ -126,14 +131,14 @@ class RandSpecs:
                     pattern="PRD-x",
                     replacement="x",
                     templates=[
-                        dict(method="int_zfilled", parms=dict(length=4))
+                        dict(method="integers", parms=dict(min=1000, max=9999, int_type="int32"))
                     ]
                 )),
                 "product_name": dict(method="distincts", kwargs=dict(distincts=["Laptop", "Smartphone", "T-Shirt", "Jeans", "Coffee", "Bread"])),
                 "category": dict(method="distincts_prop", kwargs=dict(distincts={"Electronics": 50, "Clothing": 30, "Food": 20})),
-                "price": dict(method="floats", kwargs=dict(min=5, max=500, round=2)),
+                "price": dict(method="floats", kwargs=dict(min=5, max=500, decimals=2)),
                 "stock": dict(method="integers", kwargs=dict(min=0, max=1000)),
-                "rating": dict(method="floats_normal", kwargs=dict(mean=4.0, std=0.8, round=1))
+                "rating": dict(method="floats_normal", kwargs=dict(mean=4.0, std=0.8, decimals=1))
             }
 
     @classmethod
@@ -141,10 +146,13 @@ class RandSpecs:
         """
         E-commerce orders with timestamps and payment methods.
         
+        **Complexity Level: ★★★☆☆ (Advanced)** - Introduces UUID4, timestamps, and correlated columns.
+        
         Use this spec to:
         - Generate order transaction data
-        - Learn timestamp generation
-        - Understand correlated data (distincts_map)
+        - Learn timestamp generation (unix_timestamps)
+        - Understand correlated data (distincts_map + splitable pattern)
+        - Work with UUID4 identifiers
         
         Generated Columns (6):
         ---------------------
@@ -153,27 +161,27 @@ class RandSpecs:
         - amount: Order amounts 10-5000 with 2 decimal places
         - status: Order status (Pending 20%, Completed 70%, Cancelled 10%)
         - payment_method: Payment types (Credit, Debit, PayPal, Crypto)
-        - currency_country: Correlated currency-country pairs (USD-US, EUR-DE, etc.)
+        - currency, country: Correlated pairs (USD-US, EUR-DE, etc.)
         
         Generation Methods:
         ------------------
-        - unique_ids: UUID generation
+        - uuid4: UUID generation for unique order IDs
         - unix_timestamps: Timestamps in date range
         - floats: Random floats with precision
         - distincts_prop: Weighted random selection
         - distincts: Simple random selection
-        - distincts_map: Correlated pair generation
+        - distincts_map: Correlated pair generation (splits into 2 columns)
         
         Example:
         --------
-        >>> from rand_engine import RandSpecs
-        >>> df = DataGenerator(RandSpecs.orders, seed=42).size(100).get_df()
+        >>> from rand_engine import RandSpecs, DataGenerator
+        >>> df = DataGenerator(RandSpecs.orders(), seed=42).size(100).get_df()
         >>> df[['currency', 'country']].drop_duplicates()  # Shows correlations
         """
         return {
-                "order_id": dict(method="unique_ids", kwargs=dict(strategy="uuid4")),
+                "order_id": dict(method="uuid4"),
                 "order_date": dict(method="unix_timestamps", kwargs=dict(start="2023-01-01", end="2024-12-31", format="%Y-%m-%d")),
-                "amount": dict(method="floats", kwargs=dict(min=10, max=5000, round=2)),
+                "amount": dict(method="floats", kwargs=dict(min=10, max=5000, decimals=2)),
                 "status": dict(method="distincts_prop", kwargs=dict(distincts={"Pending": 20, "Completed": 70, "Cancelled": 10})),
                 "payment_method": dict(method="distincts", kwargs=dict(distincts=["Credit Card", "Debit Card", "PayPal", "Crypto"])),
                 "currency_country": dict(method="distincts_map", splitable=True, cols=["currency", "country"], sep=";", 
@@ -185,10 +193,13 @@ class RandSpecs:
         """
         Financial transactions with types and descriptions.
         
+        **Complexity Level: ★★☆☆☆ (Intermediate)** - Demonstrates args syntax and negative values.
+        
         Use this spec to:
         - Generate financial transaction logs
         - Learn args syntax (positional arguments)
-        - Understand transaction patterns
+        - Understand transaction patterns with negative values
+        - Work with weighted distributions
         
         Generated Columns (6):
         ---------------------
@@ -201,20 +212,20 @@ class RandSpecs:
         
         Generation Methods:
         ------------------
-        - unique_ids: Using args syntax
-        - unix_timestamps: Using args syntax
+        - int_zfilled: Zero-filled IDs (using args syntax)
+        - unix_timestamps: Timestamps (using args syntax)
         - integers: Negative and positive values
         - distincts_prop: Weighted types
         - distincts: Simple selection
         
         Example:
         --------
-        >>> from rand_engine import RandSpecs
-        >>> df = DataGenerator(RandSpecs.transactions, seed=42).size(100).get_df()
+        >>> from rand_engine import RandSpecs, DataGenerator
+        >>> df = DataGenerator(RandSpecs.transactions(), seed=42).size(100).get_df()
         >>> df[df['amount'] < 0]['type'].value_counts()  # Analyze withdrawals
         """
         return {
-                "transaction_id": dict(method="unique_ids", args=["zint", 8]),
+                "transaction_id": dict(method="int_zfilled", args=[8]),
                 "timestamp": dict(method="unix_timestamps", args=["2024-01-01", "2024-12-31", "%Y-%m-%d"]),
                 "amount": dict(method="integers", kwargs=dict(min=-1000, max=10000)),
                 "type": dict(method="distincts_prop", kwargs=dict(distincts={"Deposit": 40, "Withdrawal": 30, "Transfer": 30})),
@@ -227,44 +238,47 @@ class RandSpecs:
         """
         Employee records with departments and compensation.
         
+        **Complexity Level: ★★★★☆ (Expert)** - Demonstrates multi-level correlations (cartesian product).
+        
         Use this spec to:
         - Generate HR datasets
         - Understand multi-level correlations (distincts_multi_map)
-        - Learn salary distributions
+        - Learn salary distributions with floats_normal
+        - Work with hierarchical data structures
         
         Generated Columns (6):
         ---------------------
         - employee_id: Zero-filled IDs (5 digits)
         - hire_date: Unix timestamps from 2020
         - salary: Normally distributed salaries (mean=60000, std=15000)
-        - department_level_role: Multi-level hierarchy (Dept → Level → Role)
+        - department, level, role: Multi-level hierarchy (splits from distincts_multi_map)
         - is_remote: Boolean with 40% probability of True
         - bonus: Floats 0-20000 with 2 decimal places
         
         Generation Methods:
         ------------------
-        - unique_ids: Employee identifiers
+        - int_zfilled: Employee identifiers
         - unix_timestamps: Historical dates
         - floats_normal: Realistic salary distribution
-        - distincts_multi_map: 3-level cartesian product
+        - distincts_multi_map: 3-level cartesian product (splits into 3 columns)
         - booleans: Remote work flags
         - floats: Bonus amounts
         
         Example:
         --------
-        >>> from rand_engine import RandSpecs
-        >>> df = DataGenerator(RandSpecs.employees, seed=42).size(100).get_df()
+        >>> from rand_engine import RandSpecs, DataGenerator
+        >>> df = DataGenerator(RandSpecs.employees(), seed=42).size(100).get_df()
         >>> df[['department', 'level', 'role']].drop_duplicates()  # Shows all combinations
         """
         return {
-                "employee_id": dict(method="unique_ids", kwargs=dict(strategy="zint", length=5)),
+                "employee_id": dict(method="int_zfilled", kwargs=dict(length=5)),
                 "hire_date": dict(method="unix_timestamps", kwargs=dict(start="2020-01-01", end="2024-12-31", format="%Y-%m-%d")),
-                "salary": dict(method="floats_normal", kwargs=dict(mean=60000, std=15000, round=2)),
+                "salary": dict(method="floats_normal", kwargs=dict(mean=60000, std=15000, decimals=2)),
                 "department_level_role": dict(method="distincts_multi_map", splitable=True, cols=["department", "level", "role"], sep=";",
                                              kwargs=dict(distincts={"Engineering": [["Junior", "Senior"], ["Developer", "QA"]], 
                                                                   "Sales": [["Junior", "Senior"], ["Rep", "Manager"]]})),
                 "is_remote": dict(method="booleans", kwargs=dict(true_prob=0.4)),
-                "bonus": dict(method="floats", kwargs=dict(min=0, max=20000, round=2))
+                "bonus": dict(method="floats", kwargs=dict(min=0, max=20000, decimals=2))
             }
 
     @classmethod
@@ -272,42 +286,45 @@ class RandSpecs:
         """
         IoT devices with metrics and operational status.
         
+        **Complexity Level: ★★★★☆ (Expert)** - Demonstrates distincts_map_prop for weighted correlations.
+        
         Use this spec to:
         - Generate IoT device data
         - Understand device monitoring patterns
-        - Learn correlated attributes (distincts_map_prop)
+        - Learn correlated attributes (distincts_map_prop) with per-value weights
+        - Work with splitable patterns for multi-column generation
         
         Generated Columns (6):
         ---------------------
-        - device_id: UUID1 unique identifiers
+        - device_id: UUID4 unique identifiers
         - device_type: Types (Sensor 50%, Gateway 30%, Controller 20%)
-        - status_priority: Weighted status-priority pairs
-        - temperature: Floats 15-45 degrees
+        - status, priority: Weighted status-priority pairs (splits from distincts_map_prop)
+        - temperature: Floats 15-45 degrees (1 decimal place)
         - battery: Integers 0-100 (percentage)
         - last_ping: Unix timestamps from 2024
         
         Generation Methods:
         ------------------
-        - unique_ids: UUID1 for device tracking
+        - uuid4: Random UUID for device tracking
         - distincts_prop: Weighted device types
-        - distincts_map_prop: Correlated status-priority with weights
+        - distincts_map_prop: Correlated status-priority with nested weights (Online→70% Low, Offline→30% Low)
         - floats: Temperature readings
         - integers: Battery levels
         - unix_timestamps: Last communication time
         
         Example:
         --------
-        >>> from rand_engine import RandSpecs
-        >>> df = DataGenerator(RandSpecs.devices, seed=42).size(100).get_df()
+        >>> from rand_engine import RandSpecs, DataGenerator
+        >>> df = DataGenerator(RandSpecs.devices(), seed=42).size(100).get_df()
         >>> df.groupby(['status', 'priority']).size()  # Shows weighted correlations
         """
         return {
-                "device_id": dict(method="unique_ids", kwargs=dict(strategy="uuid1")),
+                "device_id": dict(method="uuid4"),
                 "device_type": dict(method="distincts_prop", kwargs=dict(distincts={"Sensor": 50, "Gateway": 30, "Controller": 20})),
                 "status_priority": dict(method="distincts_map_prop", splitable=True, cols=["status", "priority"], sep=";",
                                        kwargs=dict(distincts={"Online": [("Low", 70), ("Medium", 20), ("High", 10)],
                                                             "Offline": [("Low", 30), ("Medium", 40), ("High", 30)]})),
-                "temperature": dict(method="floats", kwargs=dict(min=15, max=45, round=1)),
+                "temperature": dict(method="floats", kwargs=dict(min=15, max=45, decimals=1)),
                 "battery": dict(method="integers", kwargs=dict(min=0, max=100)),
                 "last_ping": dict(method="unix_timestamps", kwargs=dict(start="2024-10-01", end="2024-10-18", format="%Y-%m-%d"))
             }
@@ -317,23 +334,26 @@ class RandSpecs:
         """
         Application users with plans and activity metrics.
         
+        **Complexity Level: ★★★☆☆ (Advanced)** - Demonstrates transformers for post-processing.
+        
         Use this spec to:
         - Generate user account data
-        - Learn transformer usage for data formatting
-        - Understand subscription patterns
+        - Learn transformer usage for data formatting (lowercase→uppercase)
+        - Understand subscription patterns with distincts_prop
+        - Work with floats_normal for realistic activity distributions
         
         Generated Columns (6):
         ---------------------
         - user_id: Zero-filled IDs (7 digits)
-        - username: Random usernames
-        - plan: Subscription plans (Free 60%, Pro 30%, Enterprise 10%)
+        - username: Random usernames (5 distinct values)
+        - plan: Subscription plans (Free 60%, Pro 30%, Enterprise 10%) - transformed to uppercase
         - signup_date: Unix timestamps from 2022
-        - login_count: Normally distributed logins (mean=50, std=20)
+        - login_count: Normally distributed logins (mean=50, std=20, rounded to integers)
         - is_verified: Boolean with 75% probability of True
         
         Generation Methods:
         ------------------
-        - unique_ids: User identifiers
+        - int_zfilled: User identifiers
         - distincts: Username selection
         - distincts_prop: Weighted subscription plans (with transformer to uppercase)
         - unix_timestamps: Account creation dates
@@ -342,17 +362,17 @@ class RandSpecs:
         
         Example:
         --------
-        >>> from rand_engine import RandSpecs
-        >>> df = DataGenerator(RandSpecs.users, seed=42).size(100).get_df()
+        >>> from rand_engine import RandSpecs, DataGenerator
+        >>> df = DataGenerator(RandSpecs.users(), seed=42).size(100).get_df()
         >>> df['plan'].value_counts()  # Shows plan distribution (uppercase)
         """
         return {
-                "user_id": dict(method="unique_ids", kwargs=dict(strategy="zint", length=7)),
+                "user_id": dict(method="int_zfilled", kwargs=dict(length=7)),
                 "username": dict(method="distincts", kwargs=dict(distincts=["alex_123", "maria_dev", "john_qa", "sara_eng", "mike_pm"])),
                 "plan": dict(method="distincts_prop", kwargs=dict(distincts={"free": 60, "pro": 30, "enterprise": 10}),
                            transformers=[lambda x: x.upper()]),
                 "signup_date": dict(method="unix_timestamps", kwargs=dict(start="2022-01-01", end="2024-12-31", format="%Y-%m-%d")),
-                "login_count": dict(method="floats_normal", kwargs=dict(mean=50, std=20, round=0)),
+                "login_count": dict(method="floats_normal", kwargs=dict(mean=50, std=20, decimals=0)),
                 "is_verified": dict(method="booleans", kwargs=dict(true_prob=0.75))
             }
 
@@ -361,31 +381,34 @@ class RandSpecs:
         """
         Invoice records with amounts and payment status.
         
+        **Complexity Level: ★★★★☆ (Expert)** - Demonstrates complex_distincts with parms dict in templates.
+        
         Use this spec to:
         - Generate invoice datasets
-        - Learn invoice numbering patterns
+        - Learn invoice numbering patterns (INV-YYYY-XXXXX)
         - Understand payment tracking
+        - Work with nested template structures using parms dict
         
         Generated Columns (6):
         ---------------------
-        - invoice_number: Pattern-based "INV-YYYY-XXXXX"
+        - invoice_number: Pattern-based "INV-YYYY-XXXXX" (2 templates: year + 5-digit number)
         - issue_date: Unix timestamps from 2023
         - due_date: Unix timestamps from 2024
         - amount: Floats 100-50000 with 2 decimal places
         - status: Payment status (Paid 60%, Pending 30%, Overdue 10%)
-        - tax_rate: Floats 0-0.25 with 3 decimal places
+        - tax_rate: Floats 0-25 with 2 decimal places
         
         Generation Methods:
         ------------------
-        - complex_distincts: Invoice number pattern
+        - complex_distincts: Invoice number pattern (uses parms in templates)
         - unix_timestamps: Date tracking
         - floats: Amount and tax calculations
         - distincts_prop: Weighted payment status
         
         Example:
         --------
-        >>> from rand_engine import RandSpecs
-        >>> df = DataGenerator(RandSpecs.invoices, seed=42).size(100).get_df()
+        >>> from rand_engine import RandSpecs, DataGenerator
+        >>> df = DataGenerator(RandSpecs.invoices(), seed=42).size(100).get_df()
         >>> df['status'].value_counts()  # Payment status distribution
         """
         return {
@@ -399,9 +422,9 @@ class RandSpecs:
                 )),
                 "issue_date": dict(method="unix_timestamps", kwargs=dict(start="2023-01-01", end="2023-12-31", format="%Y-%m-%d")),
                 "due_date": dict(method="unix_timestamps", kwargs=dict(start="2024-01-01", end="2024-12-31", format="%Y-%m-%d")),
-                "amount": dict(method="floats", kwargs=dict(min=100, max=50000, round=2)),
+                "amount": dict(method="floats", kwargs=dict(min=100, max=50000, decimals=2)),
                 "status": dict(method="distincts_prop", kwargs=dict(distincts={"Paid": 60, "Pending": 30, "Overdue": 10})),
-                "tax_rate": dict(method="floats", kwargs=dict(min=0, max=25, round=2))
+                "tax_rate": dict(method="floats", kwargs=dict(min=0, max=25, decimals=2))
             }
 
     @classmethod
@@ -409,15 +432,18 @@ class RandSpecs:
         """
         Shipping records with tracking and logistics data.
         
+        **Complexity Level: ★★★★☆ (Expert)** - Demonstrates distincts_map for correlated data.
+        
         Use this spec to:
         - Generate shipping/logistics data
-        - Learn tracking number patterns
-        - Understand carrier-destination correlations
+        - Learn tracking number patterns (TRK-XXXXXXXXXX)
+        - Understand carrier-destination correlations with distincts_map
+        - Work with splitable patterns for multi-column generation
         
         Generated Columns (6):
         ---------------------
-        - tracking_number: Pattern "TRK-XXXXXXXXXX"
-        - carrier_destination: Correlated carrier-destination pairs
+        - tracking_number: Pattern "TRK-XXXXXXXXXX" (10-digit zero-filled)
+        - carrier, destination: Correlated pairs (splits from distincts_map) - e.g., FedEx→[US,CA], DHL→[EU,UK]
         - weight: Floats 0.1-50 kg with 2 decimal places
         - status: Shipping status (In Transit 40%, Delivered 50%, Exception 10%)
         - ship_date: Unix timestamps from 2024
@@ -425,16 +451,16 @@ class RandSpecs:
         
         Generation Methods:
         ------------------
-        - complex_distincts: Tracking number generation
-        - distincts_map: Carrier-destination correlation
+        - complex_distincts: Tracking number generation (uses parms in template)
+        - distincts_map: Carrier-destination correlation (FedEx can only ship to US/CA)
         - floats: Weight measurements
         - distincts_prop: Weighted shipping status
         - unix_timestamps: Date tracking
         
         Example:
         --------
-        >>> from rand_engine import RandSpecs
-        >>> df = DataGenerator(RandSpecs.shipments, seed=42).size(100).get_df()
+        >>> from rand_engine import RandSpecs, DataGenerator
+        >>> df = DataGenerator(RandSpecs.shipments(), seed=42).size(100).get_df()
         >>> df.groupby(['carrier', 'destination']).size()  # Shows correlations
         """
         return {
@@ -447,7 +473,7 @@ class RandSpecs:
                 )),
                 "carrier_destination": dict(method="distincts_map", splitable=True, cols=["carrier", "destination"], sep=";",
                                            kwargs=dict(distincts={"FedEx": ["US", "CA"], "DHL": ["EU", "UK"], "USPS": ["US"], "UPS": ["US", "MX"]})),
-                "weight": dict(method="floats", kwargs=dict(min=0.1, max=50, round=2)),
+                "weight": dict(method="floats", kwargs=dict(min=0.1, max=50, decimals=2)),
                 "status": dict(method="distincts_prop", kwargs=dict(distincts={"In Transit": 40, "Delivered": 50, "Exception": 10})),
                 "ship_date": dict(method="unix_timestamps", kwargs=dict(start="2024-01-01", end="2024-10-01", format="%Y-%m-%d")),
                 "estimated_delivery": dict(method="unix_timestamps", kwargs=dict(start="2024-01-05", end="2024-10-18", format="%Y-%m-%d"))
@@ -458,35 +484,38 @@ class RandSpecs:
         """
         Event logs with timestamps, types, and severity levels.
         
+        **Complexity Level: ★★★☆☆ (Advanced)** - Demonstrates distincts_prop with realistic distributions.
+        
         Use this spec to:
         - Generate application/system event logs
         - Learn event logging patterns
-        - Understand severity distributions
+        - Understand severity distributions with distincts_prop
+        - Work with multiple weighted categorical columns
         
         Generated Columns (6):
         ---------------------
         - event_id: UUID4 unique identifiers
-        - timestamp: Unix timestamps from recent dates
+        - timestamp: Unix timestamps from recent dates (Oct 2024)
         - event_type: Types (INFO 50%, WARNING 30%, ERROR 15%, CRITICAL 5%)
         - severity: Severity levels (Low 60%, Medium 30%, High 10%)
         - source: Event sources (API, Database, Frontend, Backend)
-        - message: Event message descriptions
+        - message: Event message descriptions (5 distinct messages)
         
         Generation Methods:
         ------------------
-        - unique_ids: Event identifiers
+        - uuid4: Event identifiers
         - unix_timestamps: Event timing
-        - distincts_prop: Weighted event types and severity
+        - distincts_prop: Weighted event types and severity (realistic log distributions)
         - distincts: Source and message selection
         
         Example:
         --------
-        >>> from rand_engine import RandSpecs
-        >>> df = DataGenerator(RandSpecs.events, seed=42).size(100).get_df()
+        >>> from rand_engine import RandSpecs, DataGenerator
+        >>> df = DataGenerator(RandSpecs.events(), seed=42).size(100).get_df()
         >>> df['event_type'].value_counts()  # Event type distribution
         """
         return {
-                "event_id": dict(method="unique_ids", kwargs=dict(strategy="uuid4")),
+                "event_id": dict(method="uuid4"),
                 "timestamp": dict(method="unix_timestamps", kwargs=dict(start="2024-10-01", end="2024-10-18", format="%Y-%m-%d")),
                 "event_type": dict(method="distincts_prop", kwargs=dict(distincts={"INFO": 50, "WARNING": 30, "ERROR": 15, "CRITICAL": 5})),
                 "severity": dict(method="distincts_prop", kwargs=dict(distincts={"Low": 60, "Medium": 30, "High": 10})),

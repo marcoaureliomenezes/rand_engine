@@ -58,7 +58,7 @@ class TestSparkCoreNumeric:
         df = small_spark_df
         F = spark_functions
         
-        result = SparkCore.gen_ints_zfill(spark_session, F, df, "test_col", length=8)
+        result = SparkCore.gen_ints_zfilled(spark_session, F, df, "test_col", length=8)
         
         data = result.select("test_col").collect()
         values = [row["test_col"] for row in data]
@@ -109,22 +109,22 @@ class TestSparkCoreNumeric:
         F = spark_functions
         
         mean = 100.0
-        stddev = 15.0
+        std = 15.0
         
         result = SparkCore.gen_floats_normal(
             spark_session, F, df, "test_col",
-            mean=mean, stddev=stddev, decimals=2
+            mean=mean, std=std, decimals=2
         )
         
         # Calculate statistics
         stats = result.agg(
             F.mean("test_col").alias("mean"),
-            F.stddev("test_col").alias("stddev")
+            F.std("test_col").alias("std")
         ).collect()[0]
         
-        # Check that mean and stddev are close to expected (within 10% tolerance)
+        # Check that mean and std are close to expected (within 10% tolerance)
         assert abs(stats["mean"] - mean) < mean * 0.1
-        assert abs(stats["stddev"] - stddev) < stddev * 0.2  # More tolerance for stddev
+        assert abs(stats["std"] - std) < std * 0.2  # More tolerance for std
 
 
 class TestSparkCoreIdentifiers:
@@ -180,6 +180,22 @@ class TestSparkCoreSelection:
         values = [row["test_col"] for row in data]
         
         assert all(v == "OnlyOne" for v in values)
+    
+    def test_gen_distincts_prop_basic(self, spark_session, spark_functions, empty_spark_df):
+        """Test proportional distinct value generation."""
+        df = empty_spark_df
+        F = spark_functions
+        
+        distincts_prop = {"A": 70, "B": 20, "C": 10}
+        result = SparkCore.gen_distincts_prop(spark_session, F, df, "test_col", distincts_prop=distincts_prop)
+        
+        data = result.select("test_col").collect()
+        values = [row["test_col"] for row in data]
+        
+        # All values should be from distincts keys
+        assert all(v in distincts_prop.keys() for v in values)
+        # Should have variety
+        assert len(set(values)) > 1
     
     def test_gen_booleans_default(self, spark_session, spark_functions, large_spark_df):
         """Test boolean generation with default probability."""

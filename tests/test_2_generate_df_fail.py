@@ -172,9 +172,9 @@ def test_multiple_wrong_specs_sequential():
 def test_valid_spec_should_not_raise():
     """Test that a valid spec does NOT raise exception."""
     valid_spec = {
-        "id": {"method": "unique_ids", "kwargs": {"strategy": "zint"}},
+        "id": {"method": "int_zfilled", "kwargs": {"length": 8}},
         "age": {"method": "integers", "kwargs": {"min": 0, "max": 100}},
-        "salary": {"method": "floats", "kwargs": {"min": 0, "max": 10000, "round": 2}},
+        "salary": {"method": "floats", "kwargs": {"min": 0, "max": 10000, "decimals": 2}},
     }
     
     # Should not raise any exception

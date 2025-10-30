@@ -22,8 +22,8 @@ class PyCore:
       "floats_normal": NPCore.gen_floats_normal,
       "distincts": NPCore.gen_distincts,
       "unix_timestamps": NPCore.gen_unix_timestamps,
-      "unique_ids": NPCore.gen_unique_identifiers,
-      "booleans": NPCore.gen_bools,
+      "uuid4": NPCore.gen_uuid4,
+      "booleans": NPCore.gen_booleans,
     }
     
     assert pattern.count(replacement) == len(templates)

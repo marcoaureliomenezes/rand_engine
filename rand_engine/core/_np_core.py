@@ -1,21 +1,30 @@
 
-from typing import List, Any, Dict
+import uuid
 import numpy as np
+
+from typing import List, Any, Dict
 from datetime import datetime as dt
 
 
 class NPCore:
-    
+
 
   @classmethod
-  def gen_bools(cls, size: int, true_prob=0.5) -> np.ndarray:
+  def gen_uuid4(cls, size: int, length=None) -> np.ndarray:
+    
+    lambda_uuid = lambda: str(uuid.uuid4()) if not length else str(uuid.uuid4())
+    return np.array([lambda_uuid() for _ in range(size)])
+    
+  @classmethod
+  def gen_booleans(cls, size: int, true_prob=0.5) -> np.ndarray:
     return np.random.choice([True, False], size, p=[true_prob, 1 - true_prob])
   
+
   @classmethod
   def gen_ints(cls, size: int, min: int, max: int, int_type: str = 'int32') -> np.ndarray:
     # Use int64 explicitly to avoid Windows int32 overflow issues
     return np.random.randint(min, max + 1, size, dtype=np.int64).astype(int_type)
-
+  
 
   @classmethod
   def gen_ints_zfilled(cls, size: int, length: int) -> np.ndarray:
@@ -26,16 +35,30 @@ class NPCore:
   
   
   @classmethod
-  def gen_floats(cls, size: int, min: int, max: int, round: int = 2) -> np.ndarray:
+  def gen_floats(cls, size: int, min: int, max: int, decimals: int = 2) -> np.ndarray:
     # Use int64 for integer parts to avoid Windows overflow
     sig_part = np.random.randint(min, max, size, dtype=np.int64)
-    decimal = np.random.randint(0, 10 ** round, size, dtype=np.int64)
-    return sig_part + (decimal / 10 ** round) if round > 0 else sig_part
+    decimal = np.random.randint(0, 10 ** decimals, size, dtype=np.int64)
+    return sig_part + (decimal / 10 ** decimals) if decimals > 0 else sig_part
 
 
   @classmethod
-  def gen_floats_normal(cls, size: int, mean: int, std: int, round: int = 2) -> np.ndarray:
-    return np.round(np.random.normal(mean, std, size), round)
+  def gen_floats_normal(cls, size: int, mean: int, std: int, decimals: int = 2) -> np.ndarray:
+    return np.round(np.random.normal(mean, std, size), decimals)
+
+
+
+  @classmethod
+  def gen_distincts(cls, size: int, distincts: List[Any]) -> np.ndarray:
+    assert len(list(set([type(x) for x in distincts]))) == 1
+    return np.random.choice(distincts, size)
+
+
+  @classmethod
+  def gen_distincts_prop(cls, size: int, distincts: Dict[str, int]) -> np.ndarray:
+    distincts_prop = [ key for key, value in distincts.items() for i in range(value) ]
+    #assert len(list(set([type(x) for x in distincts]))) == 1
+    return np.random.choice(distincts_prop, size)
   
 
   @classmethod
@@ -49,40 +72,18 @@ class NPCore:
   
 
   @classmethod
-  def gen_unique_identifiers(cls, size: int, strategy="zint", length=12) -> np.ndarray:
-    import uuid
-    if strategy == "uuid4":
-      return np.array([str(uuid.uuid4()) for _ in range(size)])
-    elif strategy == "uuid1":
-      return np.array([str(uuid.uuid1()) for _ in range(size)])
-    elif strategy == "zint":
-      return cls.gen_ints_zfilled(size, length)
-    else:
-      raise ValueError("Method not recognized. Use 'uuid4', 'uuid1', 'shortuuid' or 'random'.")
+  def gen_dates(cls, size: int, start: str, end: str, format: str) -> np.ndarray:
+    timestamp_array = cls.gen_unix_timestamps(size, start, end, format)
+    date_array = timestamp_array.astype('datetime64[s]')
+    print(date_array)
+    # convert to desired string format
+    return date_array
 
-
-  @classmethod
-  def gen_distincts(cls, size: int, distincts: List[Any]) -> np.ndarray:
-
-    assert len(list(set([type(x) for x in distincts]))) == 1
-    return np.random.choice(distincts, size)
-
-
-  @classmethod
-  def gen_distincts_prop(cls, size: int, distincts: Dict[str, int]) -> np.ndarray:
-    distincts_prop = [ key for key, value in distincts.items() for i in range(value) ]
-    #assert len(list(set([type(x) for x in distincts]))) == 1
-    return np.random.choice(distincts_prop, size)
-  
-
-
-    
 if __name__ == "__main__":
   
-  # distinct_prop = {"A": 1, "B": 2, "C": 7}
-  # result = NPCore.gen_distincts_prop(10, distinct_prop)
-  # print(result)
-
-  distincts_map = {"smartphone": [2,1], "desktop": [2, 1]}
-  result = NPCore.gen_distincts_map(10, distincts_map)
-  print(result)
+  # test gen_dates
+  import time
+  start_time = time.time()
+  dates = NPCore.gen_dates(10**7, "2020-01-01", "2024-12-31", "%Y-%m-%d")
+  #print(f"Generated dates: {dates}")
+  print(f"Execution time: {time.time() - start_time} seconds")

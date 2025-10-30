@@ -11,7 +11,7 @@ across multiple specifications. They use checkpoint tables to track created reco
 
 Example PK (Primary Key):
     {
-        "category_id": {"method": "unique_ids", "kwargs": {"strategy": "zint", "length": 4}},
+        "category_id": {"method": "int_zfilled", "kwargs": {"length": 4}},
         "constraints": {
             "category_pk": {
                 "name": "category_pk",
@@ -23,7 +23,7 @@ Example PK (Primary Key):
 
 Example FK (Foreign Key):
     {
-        "product_id": {"method": "unique_ids", "kwargs": {"strategy": "zint", "length": 8}},
+        "product_id": {"method": "int_zfilled", "kwargs": {"length": 8}},
         "constraints": {
             "category_fk": {
                 "name": "category_pk",  # References PK table
@@ -36,7 +36,7 @@ Example FK (Foreign Key):
 
 Composite Keys Example:
     {
-        "client_id": {"method": "unique_ids", "kwargs": {"strategy": "zint", "length": 8}},
+        "client_id": {"method": "int_zfilled", "kwargs": {"length": 8}},
         "tp_pes": {"method": "distincts", "kwargs": {"distincts": ["PF", "PJ"]}},
         "constraints": {
             "clients_pk": {
@@ -92,12 +92,12 @@ class SpecValidator:
             "description": "Generates random decimal numbers within a range",
             "params": {
                 "required": {"min": (int, float), "max": (int, float)},
-                "optional": {"round": int}
+                "optional": {"decimals": int}
             },
             "example": {
                 "price": {
                     "method": "floats",
-                    "kwargs": {"min": 0, "max": 1000, "round": 2}
+                    "kwargs": {"min": 0, "max": 1000, "decimals": 2}
                 }
             }
         },
@@ -105,12 +105,12 @@ class SpecValidator:
             "description": "Generates decimal numbers with normal (Gaussian) distribution",
             "params": {
                 "required": {"mean": (int, float), "std": (int, float)},
-                "optional": {"round": int}
+                "optional": {"decimals": int}
             },
             "example": {
                 "height": {
                     "method": "floats_normal",
-                    "kwargs": {"mean": 170, "std": 10, "round": 2}
+                    "kwargs": {"mean": 170, "std": 10, "decimals": 2}
                 }
             }
         },
@@ -252,16 +252,15 @@ class SpecValidator:
                 }
             }
         },
-        "unique_ids": {
-            "description": "Generates unique identifiers (UUIDs or zerofilled integers)",
+        "uuid4": {
+            "description": "Generates UUID version 4 identifiers (random)",
             "params": {
                 "required": {},
-                "optional": {"strategy": str, "length": int}  # strategy: uuid4, uuid1, zint
+                "optional": {}
             },
             "example": {
                 "id": {
-                    "method": "unique_ids",
-                    "kwargs": {"strategy": "zint", "length": 12}
+                    "method": "uuid4"
                 }
             }
         },
