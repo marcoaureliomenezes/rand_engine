@@ -23,7 +23,7 @@ IMPORTANT DIFFERENCES HANDLED:
    - SparkCore maintains backward compatibility with 'formato'
 """
 
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 
 
 class CommonValidator:
