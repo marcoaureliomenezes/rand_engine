@@ -1,5 +1,4 @@
 import pytest
-import faker
 from datetime import datetime as dt, timedelta
 from rand_engine.examples import CommonRandSpecs
 
