@@ -1,7 +1,10 @@
-"""Tests for SparkSpecValidator."""
+"""
+Tests for CommonValidator - validates SparkGenerator specs.
+Covers common methods shared between DataGenerator and SparkGenerator.
+"""
 
 import pytest
-from rand_engine.validators.spark_spec_validator import SparkSpecValidator
+from rand_engine.validators.common_validator import CommonValidator
 from rand_engine.validators.exceptions import SpecValidationError
 
 
@@ -16,7 +19,7 @@ class TestValidSparkSpecs:
                 "kwargs": {"min": 18, "max": 65}
             }
         }
-        errors = SparkSpecValidator.validate(spec)
+        errors = CommonValidator.validate_spark_spec(spec)
         assert len(errors) == 0
     
     def test_valid_spec_zint(self):
@@ -27,7 +30,7 @@ class TestValidSparkSpecs:
                 "kwargs": {"length": 8}
             }
         }
-        errors = SparkSpecValidator.validate(spec)
+        errors = CommonValidator.validate_spark_spec(spec)
         assert len(errors) == 0
     
     def test_valid_spec_floats(self):
@@ -38,7 +41,7 @@ class TestValidSparkSpecs:
                 "kwargs": {"min": 0.0, "max": 1000.0, "decimals": 2}
             }
         }
-        errors = SparkSpecValidator.validate(spec)
+        errors = CommonValidator.validate_spark_spec(spec)
         assert len(errors) == 0
     
     def test_valid_spec_floats_normal(self):
@@ -49,7 +52,7 @@ class TestValidSparkSpecs:
                 "kwargs": {"mean": 170.0, "std": 10.0, "decimals": 2}
             }
         }
-        errors = SparkSpecValidator.validate(spec)
+        errors = CommonValidator.validate_spark_spec(spec)
         assert len(errors) == 0
     
     def test_valid_spec_booleans(self):
@@ -60,7 +63,7 @@ class TestValidSparkSpecs:
                 "kwargs": {"true_prob": 0.7}
             }
         }
-        errors = SparkSpecValidator.validate(spec)
+        errors = CommonValidator.validate_spark_spec(spec)
         assert len(errors) == 0
     
     def test_valid_spec_distincts(self):
@@ -71,7 +74,7 @@ class TestValidSparkSpecs:
                 "kwargs": {"distincts": ["A", "B", "C"]}
             }
         }
-        errors = SparkSpecValidator.validate(spec)
+        errors = CommonValidator.validate_spark_spec(spec)
         assert len(errors) == 0
     
     def test_valid_spec_distincts_prop(self):
@@ -82,7 +85,7 @@ class TestValidSparkSpecs:
                 "kwargs": {"distincts": {"mobile": 70, "desktop": 30}}
             }
         }
-        errors = SparkSpecValidator.validate(spec)
+        errors = CommonValidator.validate_spark_spec(spec)
         assert len(errors) == 0
     
     def test_valid_spec_uuid4(self):
@@ -93,7 +96,7 @@ class TestValidSparkSpecs:
                 "kwargs": {}
             }
         }
-        errors = SparkSpecValidator.validate(spec)
+        errors = CommonValidator.validate_spark_spec(spec)
         assert len(errors) == 0
     
     def test_valid_spec_dates(self):
@@ -108,7 +111,7 @@ class TestValidSparkSpecs:
                 }
             }
         }
-        errors = SparkSpecValidator.validate(spec)
+        errors = CommonValidator.validate_spark_spec(spec)
         assert len(errors) == 0
 
 
@@ -122,9 +125,9 @@ class TestInvalidSparkSpecs:
                 "kwargs": {"min": 0, "max": 100}
             }
         }
-        errors = SparkSpecValidator.validate(spec)
+        errors = CommonValidator.validate_spark_spec(spec)
         assert len(errors) == 1
-        assert "missing required 'method'" in errors[0]
+        assert "field 'method' is required" in errors[0]
     
     def test_invalid_method_unknown(self):
         """Test error when method is unknown."""
@@ -134,9 +137,9 @@ class TestInvalidSparkSpecs:
                 "kwargs": {}
             }
         }
-        errors = SparkSpecValidator.validate(spec)
+        errors = CommonValidator.validate_spark_spec(spec)
         assert len(errors) == 1
-        assert "unknown method" in errors[0]
+        assert "does not exist" in errors[0]
     
     def test_invalid_missing_required_param(self):
         """Test error when required parameter is missing."""
@@ -146,7 +149,7 @@ class TestInvalidSparkSpecs:
                 "kwargs": {"min": 0}
             }
         }
-        errors = SparkSpecValidator.validate(spec)
+        errors = CommonValidator.validate_spark_spec(spec)
         assert len(errors) == 1
         assert "requires parameter 'max'" in errors[0]
     
@@ -158,7 +161,7 @@ class TestInvalidSparkSpecs:
                 "kwargs": {"mean": 170.0}  # Missing 'std'
             }
         }
-        errors = SparkSpecValidator.validate(spec)
+        errors = CommonValidator.validate_spark_spec(spec)
         assert len(errors) == 1
         assert "requires parameter 'std'" in errors[0]
     
@@ -174,7 +177,7 @@ class TestInvalidSparkSpecs:
                 }
             }
         }
-        errors = SparkSpecValidator.validate(spec)
+        errors = CommonValidator.validate_spark_spec(spec)
         assert len(errors) == 2
         assert any("requires parameter 'date_format'" in error.lower() for error in errors)
         assert any("unknown parameters" in error.lower() and "'format'" in error for error in errors)
@@ -191,7 +194,7 @@ class TestValidateAndRaise:
                 "kwargs": {"min": 0, "max": 100}
             }
         }
-        SparkSpecValidator.validate_and_raise(spec)
+        CommonValidator.validate_spark_and_raise(spec)
     
     def test_validate_and_raise_invalid(self):
         """Test that invalid spec raises SpecValidationError."""
@@ -202,7 +205,7 @@ class TestValidateAndRaise:
             }
         }
         with pytest.raises(SpecValidationError) as exc_info:
-            SparkSpecValidator.validate_and_raise(spec)
-        
-        assert "Spark specification validation failed" in str(exc_info.value)
-        assert "unknown method" in str(exc_info.value)
+            CommonValidator.validate_spark_and_raise(spec)
+    
+        assert "SPARKGENERATOR SPEC VALIDATION ERROR" in str(exc_info.value)
+        assert "does not exist" in str(exc_info.value)

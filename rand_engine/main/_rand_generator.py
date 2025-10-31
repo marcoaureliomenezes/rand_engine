@@ -1,7 +1,6 @@
 from typing import Dict, List, Optional, Callable
 import pandas as pd
 from rand_engine.integrations._duckdb_handler import DuckDBHandler
-from rand_engine.validators.spec_validator import SpecValidator
 from rand_engine.validators.exceptions import ColumnGenerationError, TransformerError
 from rand_engine.core._np_core import NPCore
 from rand_engine.core._py_core import PyCore

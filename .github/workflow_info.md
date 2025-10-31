@@ -1,378 +1,908 @@
-# 🚀 CI/CD Workflows - Rand Engine
+# CI/CD Pipeline Documentation# CI/CD Pipeline Documentation# 🚀 CI/CD Workflows - Rand Engine
 
-> Documentação completa do sistema de CI/CD com versionamento RC, segurança e visual summaries
 
-## 📋 Índice
 
-- [Visão Geral](#-visão-geral)
-- [Estratégia de Versionamento](#-estratégia-de-versionamento)
-- [Workflows Implementados](#-workflows-implementados)
-- [Segurança e Otimizações](#-segurança-e-otimizações)
-- [Visual Summaries](#-visual-summaries)
-- [Fluxo Completo](#-fluxo-completo)
-- [Configuração Necessária](#-configuração-necessária)
-- [Como Usar](#-como-usar)
-- [Troubleshooting](#-troubleshooting)
-- [Melhores Práticas](#-melhores-práticas)
+## Overview
 
----
 
-## 🎯 Visão Geral
 
-Este projeto utiliza **CI/CD totalmente automatizado** com os seguintes princípios:
+Automated CI/CD pipeline with GitHub Actions for testing, security scanning, versioning, and PyPI publishing using Trusted Publishing (no tokens required).## Overview> Documentação completa do sistema de CI/CD com versionamento RC, segurança e visual summaries
 
-- ✅ **Tags automáticas** - Sem criação manual
-- ✅ **Apenas RC** para pre-release (sem alpha/beta)
-- ✅ **Multi-job workflows** - Modularidade e clareza
-- ✅ **PyPI Trusted Publishing** - Sem tokens ou senhas
-- ✅ **Segurança em camadas** - SAST, dependency scanning, CodeQL
-- ✅ **Testes otimizados** - Sem duplicação (~66% economia)
-- ✅ **Coverage enforcement** - Mínimo 60% obrigatório
-- ✅ **Melhores práticas** - Validação, testes, instalação
-- ✅ **Observabilidade** - Logs detalhados e sumários visuais
 
-### Estrutura de Branches
 
-**Branches Protegidas:**
-- `master` - Versões estáveis em produção
-- `development` - Versões RC (Release Candidate)
+**Key Features:** RC versioning for `development`, stable versioning for `master`, multi-platform testing (Ubuntu/Windows/macOS), Python 3.10-3.12, security scanning (SAST/CodeQL), optimized execution.
 
-**Branches Desprotegidas:**
-- Qualquer outra branch (features, bugfixes, etc.)
 
----
 
-## 📦 Estratégia de Versionamento
+---This repository uses a fully automated CI/CD pipeline with GitHub Actions for testing, security scanning, versioning, and publishing to PyPI.## 📋 Índice
 
-### Fonte Única de Verdade
-```toml
-# pyproject.toml
-version = "0.5.5"  # Sempre versão limpa, SEM sufixos
-```
 
-### Versionamento Semântico
 
-| Ambiente | Formato | Exemplo | Uso |
-|----------|---------|---------|-----|
-| **Development** | `X.Y.Zrc[N]` | `0.5.5rc1`, `0.5.5rc2` | Pre-releases no PyPI |
-| **Master** | `X.Y.Z` | `0.5.5` | Versão estável no PyPI |
+## Branch Strategy & Versioning
 
-### Fluxo de Versões
 
-```
+
+| Branch | Tag Format | PyPI Release | Source |### Key Features- [Visão Geral](#-visão-geral)
+
+|--------|-----------|--------------|--------|
+
+| `development` | `X.Y.Zrc[N]` (e.g., `0.5.5rc1`) | Pre-release | Auto-increments on each merge |- ✅ Automated RC (Release Candidate) versioning for `development` branch- [Estratégia de Versionamento](#-estratégia-de-versionamento)
+
+| `master` | `X.Y.Z` (e.g., `0.5.5`) | Stable | From `pyproject.toml` |
+
+- ✅ Automated stable versioning for `master` branch  - [Workflows Implementados](#-workflows-implementados)
+
+**Version Source:** `pyproject.toml` - always use clean version without suffixes.
+
+- ✅ Multi-platform testing (Ubuntu, Windows, macOS)- [Segurança e Otimizações](#-segurança-e-otimizações)
+
+**Flow Example:**
+
+```- ✅ Multi-version Python support (3.10, 3.11, 3.12)- [Visual Summaries](#-visual-summaries)
+
 pyproject.toml: version = "0.5.5"
-         ↓
-    DEVELOPMENT
-         ↓
-   PR Merged #1 → 0.5.5rc1 (PyPI pre-release)
-   PR Merged #2 → 0.5.5rc2 (PyPI pre-release)
-   PR Merged #3 → 0.5.5rc3 (PyPI pre-release)
-         ↓
-    PR → MASTER
-         ↓
-   PR Merged → 0.5.5 (PyPI stable)
-```
 
-### Mudança de Versão
+  ↓- ✅ Security scanning (SAST, dependency check, CodeQL)- [Fluxo Completo](#-fluxo-completo)
 
-Para mudar a versão, edite **apenas** `pyproject.toml`:
+development merges → 0.5.5rc1, 0.5.5rc2, 0.5.5rc3...
+
+  ↓- ✅ PyPI Trusted Publishing (no tokens needed)- [Configuração Necessária](#-configuração-necessária)
+
+master merge → 0.5.5 (stable)
+
+```- ✅ Optimized test execution (no duplicate runs)- [Como Usar](#-como-usar)
+
+
+
+**To Bump Version:** Edit `pyproject.toml`, commit, and merge to `development`.- [Troubleshooting](#-troubleshooting)
+
+
+
+------- [Melhores Práticas](#-melhores-práticas)
+
+
+
+## Workflows
+
+
+
+### `test_on_push.yml`## Branch Strategy---
+
+- **Trigger:** Push to feature branches (not `master`/`development`)
+
+- **Action:** Runs tests (3 OS × 3 Python = 9 jobs) if NO open PR exists
+
+- **Purpose:** Prevents duplicate test runs
+
+### Protected Branches## 🎯 Visão Geral
+
+### `pr_to_development.yml`
+
+- **Trigger:** PR to `development`
+
+- **Validates:** Source is NOT `master`
+
+- **Runs:** Security (SAST/Semgrep/CodeQL), dependency scan, tests (3 OS × 3 Python), coverage (60% min), build validation| Branch | Purpose | Versioning | PyPI Release |Este projeto utiliza **CI/CD totalmente automatizado** com os seguintes princípios:
+
+- **Required:** Must pass to merge
+
+|--------|---------|------------|--------------|
+
+### `pr_to_master.yml`
+
+- **Trigger:** PR to `master`| `master` | Production stable releases | `X.Y.Z` (e.g., `0.5.5`) | Stable release |- ✅ **Tags automáticas** - Sem criação manual
+
+- **Validates:** Source IS `development`
+
+- **Runs:** Tests (3 OS × 3 Python), coverage (60% min)| `development` | Pre-release testing | `X.Y.Zrc[N]` (e.g., `0.5.5rc1`) | Pre-release |- ✅ **Apenas RC** para pre-release (sem alpha/beta)
+
+- **Required:** Must pass to merge
+
+- ✅ **Multi-job workflows** - Modularidade e clareza
+
+### `auto_tag_publish_development.yml`
+
+- **Trigger:** Merge to `development`### Working Branches- ✅ **PyPI Trusted Publishing** - Sem tokens ou senhas
+
+- **Actions:** 
+
+  1. Determine next RC number (e.g., `0.5.5rc3`)Any other branch (feature branches, bugfix branches, etc.) - these are NOT protected.- ✅ **Segurança em camadas** - SAST, dependency scanning, CodeQL
+
+  2. Test (Python 3.10-3.12, Ubuntu only)
+
+  3. Build package- ✅ **Testes otimizados** - Sem duplicação (~66% economia)
+
+  4. Create git tag
+
+  5. Publish to PyPI as pre-release---- ✅ **Coverage enforcement** - Mínimo 60% obrigatório
+
+  6. Create GitHub Release
+
+- ✅ **Melhores práticas** - Validação, testes, instalação
+
+### `auto_tag_publish_master.yml`
+
+- **Trigger:** Merge to `master`## Versioning System- ✅ **Observabilidade** - Logs detalhados e sumários visuais
+
+- **Actions:**
+
+  1. Extract version from `pyproject.toml`
+
+  2. Test (Python 3.10-3.12, Ubuntu only)
+
+  3. Build package### Version Source of Truth### Estrutura de Branches
+
+  4. Create git tag
+
+  5. Publish to PyPI as stable release```toml
+
+  6. Create GitHub Release
+
+# pyproject.toml**Branches Protegidas:**
+
+---
+
+version = "0.5.5"  # Always clean version WITHOUT suffixes- `master` - Versões estáveis em produção
+
+## Developer Guide
+
+```- `development` - Versões RC (Release Candidate)
+
+### Feature Development
 
 ```bash
-# Editar pyproject.toml
-version = "0.5.6"
 
-# Commit e PR → development
-git add pyproject.toml
-git commit -m "chore: bump version to 0.5.6"
-# Após merge: 0.5.6rc1 será criada automaticamente
+git checkout -b feature/xyz
+
+git commit -am "feat: description"### How Versioning Works**Branches Desprotegidas:**
+
+git push -u origin feature/xyz
+
+gh pr create --base development- Qualquer outra branch (features, bugfixes, etc.)
+
+# After merge → auto-tagged as X.Y.Zrc[N] and published
+
+```**Development Branch (RC - Release Candidate):**
+
+
+
+### Production Release- First merge to `development` → creates tag `0.5.5rc1`---
+
+```bash
+
+gh pr create --base master --head development --title "release: X.Y.Z"- Second merge to `development` → creates tag `0.5.5rc2`  
+
+# After merge → tagged as X.Y.Z and published
+
+```- Third merge to `development` → creates tag `0.5.5rc3`## 📦 Estratégia de Versionamento
+
+
+
+### Version Bump- And so on...
+
+```bash
+
+# Edit pyproject.toml: version = "0.6.0"### Fonte Única de Verdade
+
+git commit -am "chore: bump version to 0.6.0"
+
+# PR to development → creates 0.6.0rc1 on merge**Master Branch (Stable):**```toml
+
 ```
+
+- Merge from `development` to `master` → creates tag `0.5.5`# pyproject.toml
 
 ---
 
-## �️ Segurança e Otimizações
+version = "0.5.5"  # Sempre versão limpa, SEM sufixos
 
-### ✅ Problema Resolvido: Testes Duplicados
+## Security & Testing
 
-**Antes:**
+### How to Change Version```
+
+### Security Tools
+
+- **SAST:** Bandit (Python security), Semgrep (patterns)
+
+- **Dependencies:** Safety, pip-audit
+
+- **Code Analysis:** CodeQL1. Edit `pyproject.toml`:### Versionamento Semântico
+
+- **Publishing:** PyPI Trusted Publishing (OIDC-based)
+
+   ```toml
+
+### Test Matrix
+
+- **PR workflows:** Ubuntu/Windows/macOS × Python 3.10/3.11/3.12   version = "0.6.0"  # Update to new version| Ambiente | Formato | Exemplo | Uso |
+
+- **Publish workflows:** Ubuntu only × Python 3.10/3.11/3.12
+
+- **Coverage:** 60% minimum (enforced on Python 3.12 + Ubuntu)   ```|----------|---------|---------|-----|
+
+
+
+---| **Development** | `X.Y.Zrc[N]` | `0.5.5rc1`, `0.5.5rc2` | Pre-releases no PyPI |
+
+
+
+## Configuration2. Commit and create PR:| **Master** | `X.Y.Z` | `0.5.5` | Versão estável no PyPI |
+
+
+
+### Branch Protection   ```bash
+
+**`development`:** Require PR + passing checks (validation, tests, security, build)  
+
+**`master`:** Require PR + passing checks (validation from `development`, tests)   git add pyproject.toml### Fluxo de Versões
+
+
+
+### PyPI Trusted Publishing   git commit -m "chore: bump version to 0.6.0"
+
+Configure at PyPI project settings → Publishing → Add publisher:
+
+- **Project:** `rand-engine`   git push```
+
+- **Owner:** `marcoaureliomenezes`
+
+- **Repo:** `rand_engine`   ```pyproject.toml: version = "0.5.5"
+
+- **Workflows:** `auto_tag_publish_development.yml`, `auto_tag_publish_master.yml`
+
+         ↓
+
+---
+
+3. After PR is merged to `development`:    DEVELOPMENT
+
+## Troubleshooting
+
+   - Tag `0.6.0rc1` is automatically created         ↓
+
+| Issue | Solution |
+
+|-------|----------|   - Package is published to PyPI as pre-release   PR Merged #1 → 0.5.5rc1 (PyPI pre-release)
+
+| PyPI upload fails | Verify Trusted Publishing config matches repo owner/name/workflow exactly |
+
+| PySpark tests crash on Windows | Expected - auto-skipped on Windows + Python 3.12 |   PR Merged #2 → 0.5.5rc2 (PyPI pre-release)
+
+| RC number doesn't increment | Check tags were created/pushed: `git push --tags` |
+
+| Coverage fails | Add tests or adjust threshold (not recommended) |---   PR Merged #3 → 0.5.5rc3 (PyPI pre-release)
+
+
+
+---         ↓
+
+
+
+## Best Practices## Workflows    PR → MASTER
+
+
+
+**DO:** Create PRs, write tests, keep `pyproject.toml` clean (no suffixes), use semantic commits           ↓
+
+**DON'T:** Create tags manually, push to protected branches, add version suffixes, merge `master` → `development`
+
+### 1. `test_on_push.yml` - Tests on Feature Branches   PR Merged → 0.5.5 (PyPI stable)
+
+---
+
+**Trigger:** Push to any branch EXCEPT `master` and `development````
+
+## Monitoring
+
+
+
+```bash
+
+gh run list --limit 10           # Check workflow runs**What it does:**### Mudança de Versão
+
+gh release list                   # View releases
+
+pip index versions rand-engine    # Check PyPI versions- Checks if an open PR exists for the branch
+
 ```
-Push em feature → test_on_push.yml executa
-Abrir PR → pr_to_development.yml executa (DUPLICADO)
+
+- If NO PR: Runs full test suite (3 OS × 3 Python versions = 9 jobs)Para mudar a versão, edite **apenas** `pyproject.toml`:
+
+- If PR exists: Skips (tests will run in PR workflow)
+
+```bash
+
+**Why:** Prevents duplicate test runs when you push to a branch with an open PR.# Editar pyproject.toml
+
+version = "0.5.6"
+
+### 2. `pr_to_development.yml` - PR Validation for Development
+
+**Trigger:** PR opened/updated targeting `development` branch# Commit e PR → development
+
+git add pyproject.toml
+
+**What it does:**git commit -m "chore: bump version to 0.5.6"
+
+1. **Validation**: Ensures PR is NOT from `master` branch# Após merge: 0.5.6rc1 será criada automaticamente
+
+2. **Security Scans**:```
+
+   - SAST (Static Application Security Testing) with Bandit + Semgrep
+
+   - Dependency vulnerability scanning with Safety + pip-audit---
+
+   - CodeQL analysis for code security issues
+
+3. **Tests**: Full test suite (3 OS × 3 Python versions)## �️ Segurança e Otimizações
+
+4. **Coverage**: Enforces minimum 60% code coverage
+
+5. **Quality Checks**: Validates package building and installation### ✅ Problema Resolvido: Testes Duplicados
+
+
+
+**Branch Protection:** This workflow MUST pass before merging to `development`.**Antes:**
+
+```
+
+### 3. `pr_to_master.yml` - PR Validation for MasterPush em feature → test_on_push.yml executa
+
+**Trigger:** PR opened/updated targeting `master` branchAbrir PR → pr_to_development.yml executa (DUPLICADO)
+
 Push no PR → pr_to_development.yml executa (TRIPLICADO)
-```
 
-**Depois:**
-```
+**What it does:**```
+
+1. **Validation**: Ensures PR comes ONLY from `development` branch
+
+2. **Tests**: Full test suite (3 OS × 3 Python versions)**Depois:**
+
+3. **Coverage**: Enforces minimum 60% code coverage```
+
 Push em feature (sem PR) → test_on_push.yml executa
-Push em feature (com PR aberto) → test_on_push.yml SKIP ⏭️
+
+**Branch Protection:** This workflow MUST pass before merging to `master`.Push em feature (com PR aberto) → test_on_push.yml SKIP ⏭️
+
 Abrir PR → pr_to_development.yml executa (ÚNICA VEZ)
-Push no PR → pr_to_development.yml executa (ATUALIZAÇÃO)
-```
 
-**Economia:** ~66% menos execuções de testes!
+### 4. `auto_tag_publish_development.yml` - Deploy to DevelopmentPush no PR → pr_to_development.yml executa (ATUALIZAÇÃO)
 
-### 🔒 Camadas de Segurança Implementadas
+**Trigger:** PR merged to `development` branch```
 
-#### 1. SAST - Static Application Security Testing
 
-**Bandit (Python Security Scanner)**
-- Detecta vulnerabilidades comuns no código Python
+
+**What it does:****Economia:** ~66% menos execuções de testes!
+
+1. **Prepare**: Extracts version from `pyproject.toml` and determines next RC number
+
+2. **Test**: Runs tests on Python 3.10, 3.11, 3.12 (Ubuntu only)### 🔒 Camadas de Segurança Implementadas
+
+3. **Build**: Creates wheel and source distribution
+
+4. **Validate**: Tests package installation and basic imports#### 1. SAST - Static Application Security Testing
+
+5. **Tag**: Creates git tag (e.g., `0.5.5rc1`)
+
+6. **Publish**: Uploads to PyPI as pre-release using Trusted Publishing**Bandit (Python Security Scanner)**
+
+7. **Release**: Creates GitHub Release with changelog- Detecta vulnerabilidades comuns no código Python
+
 - Exemplos: `eval()`, `exec()`, SQL injection, hardcoded passwords, weak cryptography
-- Configuração: `.bandit` suprime falsos positivos (B101, B311, B324)
-- Status: ⚠️ Warning (não bloqueia PR)
 
-**Semgrep (Advanced Static Analysis)**
-- Análise semântica avançada
-- Exemplos: Code injection, insecure deserialization, path traversal, XSS
-- Status: ⚠️ Warning (não bloqueia PR)
+**Example Flow:**- Configuração: `.bandit` suprime falsos positivos (B101, B311, B324)
+
+```- Status: ⚠️ Warning (não bloqueia PR)
+
+pyproject.toml: version = "0.5.5"
+
+  ↓**Semgrep (Advanced Static Analysis)**
+
+Merge PR #1 → Tag: 0.5.5rc1 → PyPI: rand-engine==0.5.5rc1- Análise semântica avançada
+
+Merge PR #2 → Tag: 0.5.5rc2 → PyPI: rand-engine==0.5.5rc2- Exemplos: Code injection, insecure deserialization, path traversal, XSS
+
+Merge PR #3 → Tag: 0.5.5rc3 → PyPI: rand-engine==0.5.5rc3- Status: ⚠️ Warning (não bloqueia PR)
+
+```
 
 #### 2. Dependency Scanning
 
-**Safety (Python Package Vulnerabilities)**
-- Verifica vulnerabilidades conhecidas em dependências
-- Database: CVE (Common Vulnerabilities and Exposures)
-- Status: ⚠️ Warning (não bloqueia PR)
+### 5. `auto_tag_publish_master.yml` - Deploy to Production
 
-**Trivy (Comprehensive Scanner)**
-- Scanner multi-propósito: vulnerabilidades, misconfigurações, secrets, licenses
-- Upload SARIF para GitHub Security tab
-- Status: ⚠️ Warning (não bloqueia PR)
+**Trigger:** PR merged to `master` branch**Safety (Python Package Vulnerabilities)**
+
+- Verifica vulnerabilidades conhecidas em dependências
+
+**What it does:**- Database: CVE (Common Vulnerabilities and Exposures)
+
+1. **Prepare**: Extracts version and checks if tag already exists- Status: ⚠️ Warning (não bloqueia PR)
+
+2. **Test**: Runs tests on Python 3.10, 3.11, 3.12 (Ubuntu only)
+
+3. **Build**: Creates wheel and source distribution**Trivy (Comprehensive Scanner)**
+
+4. **Validate**: Tests package installation and basic imports  - Scanner multi-propósito: vulnerabilidades, misconfigurações, secrets, licenses
+
+5. **Tag**: Creates git tag (e.g., `0.5.5`)- Upload SARIF para GitHub Security tab
+
+6. **Publish**: Uploads to PyPI as stable release using Trusted Publishing- Status: ⚠️ Warning (não bloqueia PR)
+
+7. **Release**: Creates GitHub Release with changelog
 
 #### 3. CodeQL (GitHub Advanced Security)
 
-- Análise semântica profunda (gratuito para repos públicos)
-- Queries: security-extended + security-and-quality
-- Taint analysis, data flow analysis, control flow analysis, CWE detection
-- Status: ⚠️ Warning (não bloqueia PR)
+**Example Flow:**
+
+```- Análise semântica profunda (gratuito para repos públicos)
+
+pyproject.toml: version = "0.5.5"- Queries: security-extended + security-and-quality
+
+  ↓- Taint analysis, data flow analysis, control flow analysis, CWE detection
+
+Merge PR from development → Tag: 0.5.5 → PyPI: rand-engine==0.5.5 (stable)- Status: ⚠️ Warning (não bloqueia PR)
+
+```
 
 #### 4. Coverage Enforcement
 
+---
+
 - **Mínimo:** 60% de cobertura de testes
-- **Bloqueio:** PR não pode ser mergeado se coverage < 60%
+
+## Developer Workflows- **Bloqueio:** PR não pode ser mergeado se coverage < 60%
+
 - **Status:** ❌ Blocker (falha CI se não atender)
+
+### Working on a Feature
 
 ### 🚨 Política de Segurança
 
-**❌ Blockers (PR não pode ser mergeado):**
-1. Testes falhando
+```bash
+
+# 1. Create feature branch**❌ Blockers (PR não pode ser mergeado):**
+
+git checkout -b feature/my-feature1. Testes falhando
+
 2. Coverage < 60%
-3. Validação de source branch falhar
 
-**⚠️ Warnings (Review necessário, mas não bloqueia):**
+# 2. Make changes and commit3. Validação de source branch falhar
+
+git add .
+
+git commit -m "feat: add new feature"**⚠️ Warnings (Review necessário, mas não bloqueia):**
+
 1. Vulnerabilidades detectadas pelo Bandit
-2. Issues encontrados pelo Semgrep
-3. Vulnerabilidades em dependências (Safety/Trivy)
-4. Findings do CodeQL
 
-**Razão:** Nem todo "finding" é um problema real. Falsos positivos são comuns, especialmente em bibliotecas de geração de dados de teste.
+# 3. Push to remote2. Issues encontrados pelo Semgrep
 
-### 🔧 Fix: Poetry Export Error
+git push -u origin feature/my-feature3. Vulnerabilidades em dependências (Safety/Trivy)
 
-**Problema:** `The requested command export does not exist.`
+# ✅ test_on_push.yml runs automatically4. Findings do CodeQL
 
-**Solução:** Desde Poetry 1.2+, o comando `export` foi movido para plugin separado.
 
-```yaml
+
+# 4. Create PR to development**Razão:** Nem todo "finding" é um problema real. Falsos positivos são comuns, especialmente em bibliotecas de geração de dados de teste.
+
+gh pr create --base development --title "feat: add new feature"
+
+# ✅ pr_to_development.yml runs (includes security scans)### 🔧 Fix: Poetry Export Error
+
+
+
+# 5. After PR approval and merge**Problema:** `The requested command export does not exist.`
+
+# ✅ auto_tag_publish_development.yml runs
+
+# ✅ Creates tag like 0.5.5rc1**Solução:** Desde Poetry 1.2+, o comando `export` foi movido para plugin separado.
+
+# ✅ Publishes to PyPI as pre-release
+
+``````yaml
+
 - name: Install Poetry Export Plugin
-  run: poetry self add poetry-plugin-export
 
-- name: Export requirements
-  run: poetry export -f requirements.txt --output requirements.txt --without-hashes
-```
+### Releasing to Production  run: poetry self add poetry-plugin-export
+
+
+
+```bash- name: Export requirements
+
+# 1. Create PR from development to master  run: poetry export -f requirements.txt --output requirements.txt --without-hashes
+
+gh pr create --base master --head development --title "release: version 0.5.5"```
+
+# ✅ pr_to_master.yml runs
 
 ### 🛡️ SQL Injection Protection
 
-Implementado validação de input em handlers de banco de dados:
+# 2. After PR approval and merge
 
-```python
-# Valida table names (apenas alphanumeric + underscore)
+# ✅ auto_tag_publish_master.yml runsImplementado validação de input em handlers de banco de dados:
+
+# ✅ Creates tag 0.5.5
+
+# ✅ Publishes to PyPI as stable release```python
+
+```# Valida table names (apenas alphanumeric + underscore)
+
 if not table_name.replace('_', '').isalnum():
-    raise ValueError(f"Invalid table name: {table_name}")
+
+### Bumping Version    raise ValueError(f"Invalid table name: {table_name}")
+
 ```
 
-Arquivos protegidos:
-- `rand_engine/integrations/duckdb_handler.py`
+```bash
+
+# 1. Edit pyproject.tomlArquivos protegidos:
+
+version = "0.6.0"- `rand_engine/integrations/duckdb_handler.py`
+
 - `rand_engine/integrations/sqlite_handler.py`
 
-### 📊 Arquitetura de Segurança
+# 2. Commit and create PR
 
-```
+git add pyproject.toml### 📊 Arquitetura de Segurança
+
+git commit -m "chore: bump version to 0.6.0"
+
+git push```
+
 ┌─────────────────────────────────────────────────────────┐
-│               PR para Development Branch                 │
-└─────────────────────────────────────────────────────────┘
-                         │
-        ┌────────────────┼────────────────┬──────────────┐
-        ↓                ↓                ↓              ↓
-┌──────────────┐  ┌──────────────┐  ┌──────────┐  ┌──────────┐
-│   SAST       │  │ Dependency   │  │ CodeQL   │  │  Tests   │
-│  Analysis    │  │   Scanning   │  │ Analysis │  │ + Cov    │
-│              │  │              │  │          │  │  ≥60%    │
-│ • Bandit     │  │ • Safety     │  │ • Taint  │  │          │
-│ • Semgrep    │  │ • Trivy      │  │ • Data   │  │ • Pytest │
-│              │  │              │  │   Flow   │  │ • Cov    │
-│ Status: ⚠️   │  │ Status: ⚠️   │  │ Status:⚠️│  │Status: ❌│
-│ (Warning)    │  │ (Warning)    │  │(Warning) │  │(Blocker) │
-└──────────────┘  └──────────────┘  └──────────┘  └──────────┘
-        │                │                │              │
-        └────────────────┴────────────────┴──────────────┘
-                         │
-                         ↓
-              ✅ READY TO MERGE (if tests pass)
-              ⚠️  REVIEW SECURITY FINDINGS
-```
 
-### 🔧 Ferramentas e Custos
+# 3. Create PR to development│               PR para Development Branch                 │
+
+gh pr create --base development└─────────────────────────────────────────────────────────┘
+
+                         │
+
+# 4. After merge        ┌────────────────┼────────────────┬──────────────┐
+
+# ✅ First merge creates: 0.6.0rc1        ↓                ↓                ↓              ↓
+
+# ✅ Second merge creates: 0.6.0rc2┌──────────────┐  ┌──────────────┐  ┌──────────┐  ┌──────────┐
+
+# etc...│   SAST       │  │ Dependency   │  │ CodeQL   │  │  Tests   │
+
+```│  Analysis    │  │   Scanning   │  │ Analysis │  │ + Cov    │
+
+│              │  │              │  │          │  │  ≥60%    │
+
+---│ • Bandit     │  │ • Safety     │  │ • Taint  │  │          │
+
+│ • Semgrep    │  │ • Trivy      │  │ • Data   │  │ • Pytest │
+
+## Security Features│              │  │              │  │   Flow   │  │ • Cov    │
+
+│ Status: ⚠️   │  │ Status: ⚠️   │  │ Status:⚠️│  │Status: ❌│
+
+### 1. SAST (Static Application Security Testing)│ (Warning)    │  │ (Warning)    │  │(Warning) │  │(Blocker) │
+
+- **Bandit**: Python security linter - finds common security issues└──────────────┘  └──────────────┘  └──────────┘  └──────────┘
+
+- **Semgrep**: Multi-language static analysis - detects security patterns        │                │                │              │
+
+        └────────────────┴────────────────┴──────────────┘
+
+### 2. Dependency Scanning                           │
+
+- **Safety**: Checks for known vulnerabilities in Python dependencies                         ↓
+
+- **pip-audit**: Audits Python packages for security vulnerabilities              ✅ READY TO MERGE (if tests pass)
+
+              ⚠️  REVIEW SECURITY FINDINGS
+
+### 3. CodeQL Analysis```
+
+- Advanced semantic code analysis
+
+- Detects security vulnerabilities and coding errors### 🔧 Ferramentas e Custos
+
+- Runs on every PR to `development`
 
 | Ferramenta | Tipo | Custo | Onde Executa |
-|------------|------|-------|--------------|
-| **Bandit** | SAST Python | Grátis | GitHub Actions |
-| **Semgrep** | SAST Universal | Grátis (Community) | GitHub Actions |
-| **Safety** | Dependency | Grátis (DB básico) | GitHub Actions |
+
+### 4. PyPI Trusted Publishing|------------|------|-------|--------------|
+
+- No API tokens or passwords stored| **Bandit** | SAST Python | Grátis | GitHub Actions |
+
+- Uses OpenID Connect (OIDC) for authentication| **Semgrep** | SAST Universal | Grátis (Community) | GitHub Actions |
+
+- More secure than traditional token-based publishing| **Safety** | Dependency | Grátis (DB básico) | GitHub Actions |
+
 | **Trivy** | Multi-scanner | Grátis (Open Source) | GitHub Actions |
-| **CodeQL** | Advanced SAST | Grátis (repos públicos) | GitHub Actions |
+
+---| **CodeQL** | Advanced SAST | Grátis (repos públicos) | GitHub Actions |
+
 | **pytest-cov** | Coverage | Grátis | GitHub Actions |
-| **Codecov** | Coverage Viz | Grátis (repos públicos) | Cloud |
 
-**Total:** R$ 0,00 para repositórios públicos! 🎉
+## Testing Strategy| **Codecov** | Coverage Viz | Grátis (repos públicos) | Cloud |
 
----
 
-## 📊 Visual Summaries
+
+### Test Matrix**Total:** R$ 0,00 para repositórios públicos! 🎉
+
+| OS | Python Versions | When |
+
+|----|----------------|------|---
+
+| Ubuntu | 3.10, 3.11, 3.12 | All workflows |
+
+| Windows | 3.10, 3.11, 3.12 | PR workflows only |## 📊 Visual Summaries
+
+| macOS | 3.10, 3.11, 3.12 | PR workflows only |
 
 ### Todos os Workflows têm Summaries Visuais
 
-#### 1. `test_on_push.yml` - 3 Cenários
+### Coverage Requirements
 
-**Cenário A: Tests Executados com Sucesso ✅**
+- Minimum: 60%#### 1. `test_on_push.yml` - 3 Cenários
+
+- Measured on Python 3.12 + Ubuntu
+
+- Enforced in PR workflows**Cenário A: Tests Executados com Sucesso ✅**
+
 ```markdown
-# 🧪 Test Results - Feature Branch
-- Branch info table
-- Test execution status (all ✅)
-- Next steps: Create PR commands and links
+
+### Optimizations# 🧪 Test Results - Feature Branch
+
+- **No duplicate runs**: If PR exists, `test_on_push.yml` skips- Branch info table
+
+- **OS optimization**: Publish workflows only test on Ubuntu- Test execution status (all ✅)
+
+- **Caching**: Poetry dependencies are cached for faster runs- Next steps: Create PR commands and links
+
 ```
+
+---
 
 **Cenário B: Tests Executados com Falha ❌**
-```markdown
+
+## Configuration Requirements```markdown
+
 # 🧪 Test Results - Feature Branch
-- Branch info table
+
+### GitHub Settings- Branch info table
+
 - Test execution status (with ❌)
-- Debugging steps and local test commands
+
+#### 1. Branch Protection Rules- Debugging steps and local test commands
+
 ```
 
-**Cenário C: Tests Pulados (PR existe) ⏭️**
-```markdown
-# 🧪 Test Results - Feature Branch
-- Branch info table
-- Explanation: Tests run on PR workflow
-- Link to PR checks
-```
+**For `development` branch:**
+
+- Require a pull request before merging**Cenário C: Tests Pulados (PR existe) ⏭️**
+
+- Require status checks to pass:```markdown
+
+  - `Validate PR Source`# 🧪 Test Results - Feature Branch
+
+  - `Run Tests (all matrix combinations)`- Branch info table
+
+  - `Security - SAST`- Explanation: Tests run on PR workflow
+
+  - `Security - Dependency Scanning`- Link to PR checks
+
+  - `Security - CodeQL````
+
+  - `Build and Validate Package`
 
 #### 2. `pr_to_development.yml` - Security + Tests
 
-```markdown
-# 🔍 Security & Test Validation
-- Security analysis results (4 tools)
-- Test results matrix (Python 3.10, 3.11, 3.12)
+**For `master` branch:**
+
+- Require a pull request before merging```markdown
+
+- Require status checks to pass:# 🔍 Security & Test Validation
+
+  - `Validate PR from Development`- Security analysis results (4 tools)
+
+  - `Run Tests (all matrix combinations)`- Test results matrix (Python 3.10, 3.11, 3.12)
+
 - Coverage status
-- Links to artifacts
+
+#### 2. PyPI Trusted Publishing- Links to artifacts
+
 ```
 
-#### 3. `auto_tag_publish_development.yml` - RC Deployment
+Go to PyPI project settings:
 
-```markdown
-# 📦 RC Deployment Complete
-- Version info (e.g., 0.5.5rc1)
-- Pipeline status table (all 7 jobs)
-- PyPI pre-release link
+1. Navigate to: Publishing → Add a new publisher#### 3. `auto_tag_publish_development.yml` - RC Deployment
+
+2. Configure:
+
+   - **PyPI Project Name**: `rand-engine````markdown
+
+   - **Owner**: `marcoaureliomenezes`# 📦 RC Deployment Complete
+
+   - **Repository**: `rand_engine`- Version info (e.g., 0.5.5rc1)
+
+   - **Workflow name**: `auto_tag_publish_development.yml`- Pipeline status table (all 7 jobs)
+
+   - **Environment name**: leave blank- PyPI pre-release link
+
 - GitHub Pre-Release link
-- Installation commands
+
+3. Repeat for `auto_tag_publish_master.yml`- Installation commands
+
 - Testing instructions
-```
 
-#### 4. `auto_tag_publish_master.yml` - Production Deployment
+### Repository Secrets```
 
-**Success Scenario:**
+
+
+No secrets are needed! PyPI Trusted Publishing uses OIDC.#### 4. `auto_tag_publish_master.yml` - Production Deployment
+
+
+
+---**Success Scenario:**
+
 ```markdown
-# 🎉 Production Deployment Complete!
+
+## Troubleshooting# 🎉 Production Deployment Complete!
+
 - Version info with RC promotion details
-- Pipeline status table (all 6 jobs)
+
+### Build Fails on PyPI Upload- Pipeline status table (all 6 jobs)
+
 - Direct links to PyPI and GitHub Release
-- Installation: pip install rand-engine==X.Y.Z
+
+**Problem:** `Error: Invalid or non-existent authentication information`- Installation: pip install rand-engine==X.Y.Z
+
 - Testing instructions
-- Next steps suggestions
-```
 
-**Skip Scenario (tag exists):**
+**Solution:** - Next steps suggestions
+
+1. Check PyPI Trusted Publishing is configured correctly```
+
+2. Verify repository owner and name match exactly
+
+3. Ensure workflow name is spelled correctly**Skip Scenario (tag exists):**
+
 ```markdown
-# ⏭️ Deployment Skipped
+
+### Tests Fail Only on Windows# ⏭️ Deployment Skipped
+
 - Tag already exists explanation
-- Links to existing release
+
+**Problem:** PySpark tests crash on Windows + Python 3.12- Links to existing release
+
 - Guidance on creating new version
-```
 
-### 🎨 Benefícios dos Summaries
+**Solution:** ```
 
-1. **Visibilidade Total**: Status de cada job em formato tabela
+This is expected. Tests automatically skip PySpark on Windows + Python 3.12.
+
+See `tests/fixtures/f5_spark_fixtures.py` for the skip logic.### 🎨 Benefícios dos Summaries
+
+
+
+### RC Number Doesn't Increment1. **Visibilidade Total**: Status de cada job em formato tabela
+
 2. **Documentação Automática**: Comandos prontos para copiar
-3. **Debugging Facilitado**: Mensagens claras sobre o que fazer
+
+**Problem:** Multiple merges create the same RC tag3. **Debugging Facilitado**: Mensagens claras sobre o que fazer
+
 4. **Profissionalismo**: UX consistente e visual atraente
-5. **Orientação Clara**: Próximos passos baseados no contexto
 
----
+**Solution:**5. **Orientação Clara**: Próximos passos baseados no contexto
+
+1. Check that previous tags were created successfully
+
+2. Verify git tags are pushed to remote: `git push --tags`---
+
+3. The workflow uses `git tag -l` to find existing RCs
 
 
-## 🔄 Workflows Implementados
 
-### 1. `test_on_push.yml` - Testes em Feature Branches
+### Coverage Below 60%## 🔄 Workflows Implementados
 
-**Trigger:** Push em qualquer branch **exceto** `master` e `development`
 
-**Jobs:**
+
+**Problem:** PR fails due to low coverage### 1. `test_on_push.yml` - Testes em Feature Branches
+
+
+
+**Solution:****Trigger:** Push em qualquer branch **exceto** `master` e `development`
+
+1. Add tests for new code
+
+2. Or adjust the threshold in workflow files (not recommended)**Jobs:**
+
 1. **check_pr**: Detecta se PR existe (usando GitHub CLI)
-2. **test**: Testes Python 3.10, 3.11, 3.12 (apenas se não houver PR)
+
+---2. **test**: Testes Python 3.10, 3.11, 3.12 (apenas se não houver PR)
+
 3. **summary**: Visual report com 3 cenários (success/failure/skip)
 
+## Best Practices
+
 **Função:**
-- Testes automáticos antes de criar PRs
-- Skip inteligente se PR já existe (evita duplicação)
-- Cobertura de testes
-- Orientação sobre próximos passos
 
-**Uso:** Desenvolvimento local em feature branches
+### DO ✅- Testes automáticos antes de criar PRs
 
----
+- Always create PRs for changes (even small ones)- Skip inteligente se PR já existe (evita duplicação)
 
-### 2. `pr_to_development.yml` - Validação de PR + Security
+- Write tests for new features- Cobertura de testes
 
-**Trigger:** Pull Request para `development`
+- Keep version in `pyproject.toml` clean (no `-rc` suffixes)- Orientação sobre próximos passos
+
+- Test RC versions before promoting to master
+
+- Use semantic commit messages (`feat:`, `fix:`, `chore:`)**Uso:** Desenvolvimento local em feature branches
+
+
+
+### DON'T ❌---
+
+- Don't create tags manually
+
+- Don't push directly to `master` or `development`### 2. `pr_to_development.yml` - Validação de PR + Security
+
+- Don't add version suffixes to `pyproject.toml`
+
+- Don't merge `master` back into `development`**Trigger:** Pull Request para `development`
+
+- Don't skip security scan failures without investigation
 
 **Jobs:**
-1. **validate_source**: Source branch ≠ master
+
+---1. **validate_source**: Source branch ≠ master
+
 2. **security_sast**: Bandit + Semgrep (⚠️ warning)
-3. **security_dependencies**: Safety + Trivy (⚠️ warning)
+
+## Monitoring3. **security_dependencies**: Safety + Trivy (⚠️ warning)
+
 4. **security_codeql**: GitHub Advanced Security (⚠️ warning)
-5. **test**: Python 3.10, 3.11, 3.12 + Coverage ≥60% (❌ blocker)
-6. **summary**: Status de todos os checks
 
-**Validações:**
-- ✅ Análise de segurança em 5 ferramentas
+### Check Workflow Status5. **test**: Python 3.10, 3.11, 3.12 + Coverage ≥60% (❌ blocker)
+
+```bash6. **summary**: Status de todos os checks
+
+gh run list --limit 10
+
+gh run view <run-id>**Validações:**
+
+```- ✅ Análise de segurança em 5 ferramentas
+
 - ✅ Coverage enforcement (mínimo 60%)
-- ✅ Poetry export plugin instalado automaticamente
-- ✅ Upload SARIF para GitHub Security tab
 
-**Uso:** Validação antes de merge em `development`
+### View Recent Releases- ✅ Poetry export plugin instalado automaticamente
 
----
+```bash- ✅ Upload SARIF para GitHub Security tab
 
-### 3. `pr_to_master.yml` - Validação Strict
+gh release list
+
+```**Uso:** Validação antes de merge em `development`
+
+
+
+### Check PyPI Versions---
+
+```bash
+
+pip index versions rand-engine### 3. `pr_to_master.yml` - Validação Strict
+
+```
 
 **Trigger:** Pull Request para `master`
 
-**Validações:**
-- ✅ Source branch **deve** ser `development` (apenas!)
-- ✅ Testes completos em Python 3.10, 3.11, 3.12
-- ✅ Coverage upload para Codecov
+---
 
-**Uso:** Validação antes de release estável
+**Validações:**
+
+## Additional Resources- ✅ Source branch **deve** ser `development` (apenas!)
+
+- ✅ Testes completos em Python 3.10, 3.11, 3.12
+
+- [GitHub Actions Documentation](https://docs.github.com/en/actions)- ✅ Coverage upload para Codecov
+
+- [PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/)
+
+- [Semantic Versioning](https://semver.org/)**Uso:** Validação antes de release estável
+
+- [PEP 440 - Version Identification](https://peps.python.org/pep-0440/)
 
 ---
 

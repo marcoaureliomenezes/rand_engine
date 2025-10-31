@@ -1,5 +1,5 @@
 from rand_engine.core._spark_core import SparkCore
-from rand_engine.validators.spark_spec_validator import SparkSpecValidator
+from rand_engine.validators.common_validator import CommonValidator
 
 
 
@@ -18,7 +18,7 @@ class SparkGenerator:
         SpecValidationError: If metadata is invalid (validation is always performed)
     """
     # Validação obrigatória - sempre executada
-    SparkSpecValidator.validate_and_raise(metadata)
+    CommonValidator.validate_spark_and_raise(metadata)
     
     self.spark = spark
     self.F = F

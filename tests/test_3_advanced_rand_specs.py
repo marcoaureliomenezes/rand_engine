@@ -1,6 +1,6 @@
 """
-Test suite for RandSpecs - Validates all example specifications
-Tests data generation, column presence, data types, and value constraints
+Test suite for AdvancedRandSpecs - Validates advanced example specifications
+Tests data generation using examples from rand_engine/examples/advanced_rand_specs.py
 """
 import pytest
 import pandas as pd
@@ -8,8 +8,8 @@ from rand_engine.examples import RandSpecs, AdvancedRandSpecs
 from rand_engine import DataGenerator
 
 
-class TestRandSpecsAccess:
-    """Test RandSpecs static methods accessibility."""
+class TestAdvancedRandSpecsAccess:
+    """Test AdvancedRandSpecs static methods accessibility."""
     
     def test_customers_accessible(self):
         """Test that customers spec is accessible."""

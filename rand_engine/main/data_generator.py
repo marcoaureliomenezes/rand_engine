@@ -7,7 +7,7 @@ from rand_engine.main._constraints_handler import ConstraintsHandler
 from rand_engine.file_handlers._writer_batch import FileBatchWriter
 from rand_engine.file_handlers._writer_stream import FileStreamWriter
 from rand_engine.utils.stream_handler import StreamHandler
-from rand_engine.validators.spec_validator import SpecValidator
+from rand_engine.validators.advanced_validator import AdvancedValidator
 from rand_engine.validators.exceptions import SpecValidationError
 
   
@@ -36,7 +36,7 @@ class DataGenerator:
   
   def __validate_spec(self):
     evaluated_spec = self.__evaluate_spec()
-    SpecValidator.validate_and_raise(evaluated_spec)
+    AdvancedValidator.validate_and_raise(evaluated_spec)
 
   
   def wrapped_df_generator(self, size: int) -> pd.DataFrame:
