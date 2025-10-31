@@ -151,8 +151,11 @@ class TestPublicAPI:
         
         assert len(df) == 10
         assert 'customer_id' in df.columns
-        assert 'name' in df.columns
         assert 'age' in df.columns
+        assert 'city' in df.columns
+        assert 'total_spent' in df.columns
+        assert 'is_premium' in df.columns
+        assert 'registration_date' in df.columns
         
         print(f"\n✓ RandSpecs works with DataGenerator: {len(df)} rows with {len(df.columns)} columns")
     

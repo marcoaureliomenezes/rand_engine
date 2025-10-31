@@ -143,12 +143,12 @@ def test_gen_distincts_high_cardinality(default_size):
 
 
 def test_gen_unix_timestamps(default_size):
-  result = NPCore.gen_unix_timestamps(default_size, '2024-07-05', '2024-07-06', format="%Y-%m-%d")
+  result = NPCore.gen_unix_timestamps(default_size, '2024-07-05', '2024-07-06', date_format="%Y-%m-%d")
   assert len(result) == default_size
 
 
 def test_gen_dates(default_size):
-  result = NPCore.gen_dates(default_size, '2020-01-01', '2024-12-31', format="%Y-%m-%d")
+  result = NPCore.gen_dates(default_size, '2020-01-01', '2024-12-31', date_format="%Y-%m-%d")
   assert len(result) == default_size
 
 

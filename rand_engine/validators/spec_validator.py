@@ -2,7 +2,11 @@
 Specification (specs) validator for Rand Engine v1.0.
 
 This module provides comprehensive validation with educational messages for specs,
-helping users learn how to use the library correctly.
+helping users learn how to use the DataGenerator (NPCore + PyCore) correctly.
+
+This validator delegates to:
+- CommonValidator: Methods shared between DataGenerator and SparkGenerator
+- AdvancedValidator: Methods specific to DataGenerator (PyCore)
 
 CONSTRAINTS:
 ------------
@@ -50,18 +54,29 @@ Composite Keys Example:
 
 from typing import Dict, List, Any, Optional, Callable
 from rand_engine.validators.exceptions import SpecValidationError
+from rand_engine.validators.common_validator import CommonValidator
+from rand_engine.validators.advanced_validator import AdvancedValidator
 
 
 class SpecValidator:
     """
     Educational data specification validator for Rand Engine.
     
+    Delegates validation to CommonValidator and AdvancedValidator.
     Provides descriptive messages with correct usage examples for each
     available method, helping users learn quickly.
     """
     
-    # Complete mapping of methods with their signatures and examples
+    # Complete mapping of methods combining common and advanced validators
     METHOD_SPECS = {
+        **CommonValidator.METHOD_SPECS,
+        **AdvancedValidator.METHOD_SPECS,
+        # Legacy aliases
+        "foreign_keys": AdvancedValidator.METHOD_SPECS["distincts_external"]
+    }
+    
+    # Old METHOD_SPECS maintained for backward compatibility (if needed)
+    _LEGACY_METHOD_SPECS = {
         "integers": {
             "description": "Generates random integers within a range",
             "params": {
@@ -238,7 +253,7 @@ class SpecValidator:
         "unix_timestamps": {
             "description": "Generates random Unix timestamps within a time period",
             "params": {
-                "required": {"start": str, "end": str, "format": str},
+                "required": {"start": str, "end": str, "date_format": str},
                 "optional": {}
             },
             "example": {
@@ -247,7 +262,24 @@ class SpecValidator:
                     "kwargs": {
                         "start": "01-01-2024",
                         "end": "31-12-2024",
-                        "format": "%d-%m-%Y"
+                        "date_format": "%d-%m-%Y"
+                    }
+                }
+            }
+        },
+        "dates": {
+            "description": "Generates random date strings within a time period (formatted)",
+            "params": {
+                "required": {"start": str, "end": str, "date_format": str},
+                "optional": {}
+            },
+            "example": {
+                "birth_date": {
+                    "method": "dates",
+                    "kwargs": {
+                        "start": "1970-01-01",
+                        "end": "2005-12-31",
+                        "date_format": "%Y-%m-%d"
                     }
                 }
             }
@@ -386,7 +418,7 @@ class SpecValidator:
             return errors
         
         # Validate that the method exists
-        if method not in SpecValidator.METHOD_SPECS:
+        if method not in SpecValidator.METHOD_SPECS and method not in ["foreign_keys"]:
             available_methods = ", ".join(f"'{m}'" for m in sorted(SpecValidator.METHOD_SPECS.keys()))
             errors.append(
                 f"❌ Column '{col_name}': method '{method}' does not exist\n"
@@ -396,66 +428,56 @@ class SpecValidator:
             )
             return errors
         
-        method_spec = SpecValidator.METHOD_SPECS[method]
-        
         # Validate kwargs vs args format
         has_kwargs = "kwargs" in col_config
         has_args = "args" in col_config
         
         if has_kwargs and has_args:
-            example = SpecValidator._format_example(col_name, method_spec["example"])
             errors.append(
                 f"❌ Column '{col_name}': cannot have both 'kwargs' and 'args' simultaneously\n"
-                f"   Use only 'kwargs' (recommended):\n{example}"
+                f"   Use only 'kwargs' (recommended)"
             )
             return errors
         
         if not has_kwargs and not has_args:
-            example = SpecValidator._format_example(col_name, method_spec["example"])
             errors.append(
-                f"❌ Column '{col_name}': method '{method}' requires 'kwargs' or 'args'\n"
-                f"   Correct example:\n{example}"
+                f"❌ Column '{col_name}': method '{method}' requires 'kwargs' or 'args'"
             )
             return errors
         
-        # Validate kwargs (recommended format)
-        if has_kwargs:
-            kwargs_errors = SpecValidator._validate_kwargs(
-                col_name, method, col_config["kwargs"], method_spec
-            )
-            errors.extend(kwargs_errors)
-        
-        # Validate args (legacy format)
+        # DELEGATE TO APPROPRIATE VALIDATOR
+        # Convert legacy 'args' to 'kwargs' for validation
         if has_args:
             if not isinstance(col_config["args"], (list, tuple)):
                 errors.append(
                     f"❌ Column '{col_name}': 'args' must be list or tuple, got {type(col_config['args']).__name__}\n"
                     f"   Or better yet, use 'kwargs' (recommended format)"
                 )
+                return errors
+            # Legacy format - skip detailed validation
+            return errors
         
-        # Validate cols for methods that require it
-        if method_spec.get("requires_cols"):
-            if "cols" not in col_config:
-                example = SpecValidator._format_example(col_name, method_spec["example"])
-                errors.append(
-                    f"❌ Column '{col_name}': method '{method}' requires 'cols' field\n"
-                    f"   Correct example:\n{example}"
-                )
-            elif not isinstance(col_config["cols"], list):
-                errors.append(
-                    f"❌ Column '{col_name}': 'cols' must be list, got {type(col_config['cols']).__name__}"
-                )
-            elif len(col_config["cols"]) == 0:
-                errors.append(
-                    f"❌ Column '{col_name}': 'cols' cannot be empty"
-                )
+        # Use delegated validators for kwargs validation
+        validation_config = {"method": method, "kwargs": col_config["kwargs"]}
+        if "cols" in col_config:
+            validation_config["cols"] = col_config["cols"]
         
-        # Validate transformers
+        # Try CommonValidator first
+        common_errors = CommonValidator.validate_column(col_name, validation_config)
+        if common_errors:
+            errors.extend(common_errors)
+        
+        # Try AdvancedValidator if method wasn't found in common
+        advanced_errors = AdvancedValidator.validate_column(col_name, validation_config)
+        if advanced_errors:
+            errors.extend(advanced_errors)
+        
+        # Validate transformers (not part of common/advanced validators)
         if "transformers" in col_config:
             transformers_errors = SpecValidator._validate_transformers(col_name, col_config["transformers"])
             errors.extend(transformers_errors)
         
-        # Validate PK configuration (legacy)
+        # Validate PK configuration (legacy, not part of common/advanced validators)
         if "pk" in col_config:
             pk_errors = SpecValidator._validate_pk(col_name, col_config["pk"])
             errors.extend(pk_errors)
@@ -631,58 +653,12 @@ class SpecValidator:
         kwargs: Any,
         method_spec: Dict
     ) -> List[str]:
-        """Validates kwargs for a specific method."""
-        errors = []
-        
-        if not isinstance(kwargs, dict):
-            errors.append(
-                f"❌ Column '{col_name}': 'kwargs' must be dictionary, got {type(kwargs).__name__}"
-            )
-            return errors
-        
-        required_params = method_spec["params"]["required"]
-        optional_params = method_spec["params"]["optional"]
-        
-        # Check required parameters
-        for param_name, param_type in required_params.items():
-            if param_name not in kwargs:
-                example = SpecValidator._format_example(col_name, method_spec["example"])
-                errors.append(
-                    f"❌ Column '{col_name}': method '{method}' requires parameter '{param_name}'\n"
-                    f"   Description: {method_spec['description']}\n"
-                    f"   Correct example:\n{example}"
-                )
-                continue
-            
-            # Validate parameter type
-            value = kwargs[param_name]
-            if isinstance(param_type, tuple):
-                if not isinstance(value, param_type):
-                    type_names = " or ".join(t.__name__ for t in param_type)
-                    errors.append(
-                        f"❌ Column '{col_name}': parameter '{param_name}' must be {type_names}, "
-                        f"got {type(value).__name__}"
-                    )
-            else:
-                if not isinstance(value, param_type):
-                    errors.append(
-                        f"❌ Column '{col_name}': parameter '{param_name}' must be {param_type.__name__}, "
-                        f"got {type(value).__name__}"
-                    )
-        
-        # Check unknown parameters
-        all_valid_params = set(required_params.keys()) | set(optional_params.keys())
-        unknown_params = set(kwargs.keys()) - all_valid_params
-        
-        if unknown_params:
-            valid_params_str = ", ".join(f"'{p}'" for p in sorted(all_valid_params))
-            unknown_list = ", ".join(f"'{p}'" for p in unknown_params)
-            errors.append(
-                f"⚠️  Column '{col_name}': unknown parameters: {unknown_list}\n"
-                f"   Valid parameters for '{method}': {valid_params_str}"
-            )
-        
-        return errors
+        """
+        Legacy method kept for backward compatibility.
+        Validation is now delegated to CommonValidator and AdvancedValidator.
+        """
+        # This method is now handled by delegated validators in _validate_column
+        return []
 
     @staticmethod
     def _validate_transformers(col_name: str, transformers: Any) -> List[str]:

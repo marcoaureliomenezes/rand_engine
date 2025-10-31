@@ -32,7 +32,7 @@ class PyCore:
         # Se for string, mapeia para o callable
         if isinstance(method, str):
           method = method_map[method]
-        list_of_lists.append(method(size, **templates[counter]["parms"]))
+        list_of_lists.append(method(size, **templates[counter]["kwargs"]))
         counter += 1
       else:
         list_of_lists.append(np.array([pattern[replacer_cursor] for i in range(size)]))

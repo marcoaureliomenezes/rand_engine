@@ -138,8 +138,8 @@ def spark_metadata_complex():
         "height_cm": dict(method="floats_normal", kwargs=dict(mean=170.0, std=10.0, decimals=1)),
         "is_active": dict(method="booleans", kwargs=dict(true_prob=0.75)),
         "category": dict(method="distincts", kwargs=dict(distincts=["A", "B", "C", "D", "E"])),
-        "registration_date": dict(method="dates", kwargs=dict(start="2020-01-01", end="2024-12-31", formato="%Y-%m-%d")),
-        "code": dict(method="zint", kwargs=dict(length=8))
+        "registration_date": dict(method="dates", kwargs=dict(start="2020-01-01", end="2024-12-31", date_format="%Y-%m-%d")),
+        "code": dict(method="int_zfilled", kwargs=dict(length=8))
     }
 
 
@@ -160,14 +160,14 @@ def spark_metadata_all_types():
         
         # Identifiers
         "uuid_col": dict(method="uuid4", kwargs={}),
-        "zint_col": dict(method="zint", kwargs=dict(length=10)),
+        "zint_col": dict(method="int_zfilled", kwargs=dict(length=10)),
         
         # Selection
         "distinct_col": dict(method="distincts", kwargs=dict(distincts=["Option1", "Option2", "Option3"])),
         "bool_col": dict(method="booleans", kwargs=dict(true_prob=0.5)),
         
         # Temporal
-        "date_col": dict(method="dates", kwargs=dict(start="2023-01-01", end="2023-12-31", formato="%Y-%m-%d"))
+        "date_col": dict(method="dates", kwargs=dict(start="2023-01-01", end="2023-12-31", date_format="%Y-%m-%d"))
     }
 
 

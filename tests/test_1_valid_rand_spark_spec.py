@@ -20,10 +20,10 @@ class TestValidSparkSpecs:
         assert len(errors) == 0
     
     def test_valid_spec_zint(self):
-        """Test valid spec with zint method."""
+        """Test valid spec with int_zfilled method."""
         spec = {
             "code": {
-                "method": "zint",
+                "method": "int_zfilled",
                 "kwargs": {"length": 8}
             }
         }
@@ -97,14 +97,14 @@ class TestValidSparkSpecs:
         assert len(errors) == 0
     
     def test_valid_spec_dates(self):
-        """Test valid spec with dates method."""
+        """Test valid spec with dates method using unified date_format parameter."""
         spec = {
             "created_at": {
                 "method": "dates",
                 "kwargs": {
                     "start": "2020-01-01",
                     "end": "2024-12-31",
-                    "formato": "%Y-%m-%d"
+                    "date_format": "%Y-%m-%d"
                 }
             }
         }
@@ -163,7 +163,7 @@ class TestInvalidSparkSpecs:
         assert "requires parameter 'std'" in errors[0]
     
     def test_invalid_dates_wrong_param_name(self):
-        """Test error when dates uses 'format' instead of 'formato'."""
+        """Test error when dates uses 'format' instead of unified 'date_format'."""
         spec = {
             "created_at": {
                 "method": "dates",
@@ -176,8 +176,8 @@ class TestInvalidSparkSpecs:
         }
         errors = SparkSpecValidator.validate(spec)
         assert len(errors) == 2
-        assert any("requires parameter 'formato'" in error for error in errors)
-        assert any("unknown parameter 'format'" in error for error in errors)
+        assert any("requires parameter 'date_format'" in error.lower() for error in errors)
+        assert any("unknown parameters" in error.lower() and "'format'" in error for error in errors)
 
 
 class TestValidateAndRaise:

@@ -4,7 +4,7 @@ Tests data generation, column presence, data types, and value constraints
 """
 import pytest
 import pandas as pd
-from rand_engine.examples import RandSpecs
+from rand_engine.examples import RandSpecs, AdvancedRandSpecs
 from rand_engine import DataGenerator
 
 
@@ -16,7 +16,8 @@ class TestRandSpecsAccess:
         spec = RandSpecs.customers()
         assert isinstance(spec, dict)
         assert 'customer_id' in spec
-        assert 'name' in spec
+        assert 'age' in spec
+        assert 'city' in spec
     
     def test_products_accessible(self):
         """Test that products spec is accessible."""
@@ -56,13 +57,13 @@ class TestRandSpecsAccess:
     
     def test_invoices_accessible(self):
         """Test that invoices spec is accessible."""
-        spec = RandSpecs.invoices()
+        spec = AdvancedRandSpecs.invoices()
         assert isinstance(spec, dict)
         assert 'invoice_number' in spec
     
     def test_shipments_accessible(self):
         """Test that shipments spec is accessible."""
-        spec = RandSpecs.shipments()
+        spec = AdvancedRandSpecs.shipments()
         assert isinstance(spec, dict)
         assert 'tracking_number' in spec
     
@@ -84,9 +85,11 @@ class TestAllSpecsGeneration:
         ("employees", RandSpecs.employees),
         ("devices", RandSpecs.devices),
         ("users", RandSpecs.users),
-        ("invoices", RandSpecs.invoices),
-        ("shipments", RandSpecs.shipments),
+        ("invoices", AdvancedRandSpecs.invoices),  # Advanced spec (DataGenerator only)
+        ("shipments", AdvancedRandSpecs.shipments),  # Advanced spec (DataGenerator only)
         ("events", RandSpecs.events),
+        ("sensors", RandSpecs.sensors),
+        ("sales", RandSpecs.sales),
     ])
     def test_spec_generates_dataframe(self, spec_name, spec_method):
         """Test that each spec can generate a valid DataFrame."""
@@ -108,9 +111,11 @@ class TestAllSpecsGeneration:
             RandSpecs.employees(),
             RandSpecs.devices(),
             RandSpecs.users(),
-            RandSpecs.invoices(),
-            RandSpecs.shipments(),
+            AdvancedRandSpecs.invoices(),
+            AdvancedRandSpecs.shipments(),
             RandSpecs.events(),
+            RandSpecs.sensors(),
+            RandSpecs.sales(),
         ]
         
         for spec in specs:

@@ -28,6 +28,7 @@ class RandGenerator:
       "unix_timestamps": NPCore.gen_unix_timestamps,
       "uuid4": NPCore.gen_uuid4,
       "booleans": NPCore.gen_booleans,
+      "dates": NPCore.gen_dates,
       "distincts_map": PyCore.gen_distincts_map,
       "distincts_multi_map": PyCore.gen_distincts_multi_map,
       "distincts_map_prop": PyCore.gen_distincts_map_prop,

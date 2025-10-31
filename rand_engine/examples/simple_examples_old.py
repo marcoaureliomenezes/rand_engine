@@ -1,93 +1,48 @@
-"""from typing import Dict, Any
-
-DEPRECATED: This module has been reorganized for better clarity.
+from typing import Dict, Any
 
 
-
-The examples in this file have been split into two new modules:class RandSpecs:
-
+class RandSpecs:
     """
-
-1. CommonRandSpecs (spark_rand_specs.py):    Pre-built specification examples for learning and quick prototyping.
-
-   - Contains specs compatible with BOTH DataGenerator and SparkGenerator    
-
-   - Uses only common methods (integers, floats, distincts, dates, etc.)    RandSpecs provides 10 ready-to-use data generation specifications based on
-
-   - Ideal for cross-platform data generation    real-world entities. Each spec is simple (max 6 fields), demonstrates different
-
-       generation methods, and is accessible as a class method (no instantiation needed).
-
-2. AdvancedRandSpecs (advanced_rand_specs.py):    
-
-   - Contains specs using PyCore-exclusive methods    Available Specs:
-
-   - Works only with DataGenerator (pandas)    ---------------
-
-   - Demonstrates advanced patterns (distincts_map, complex_distincts, etc.)    - customers: Customer profiles with unique IDs, demographics, and status
-
+    Pre-built specification examples for learning and quick prototyping.
+    
+    RandSpecs provides 10 ready-to-use data generation specifications based on
+    real-world entities. Each spec is simple (max 6 fields), demonstrates different
+    generation methods, and is accessible as a class method (no instantiation needed).
+    
+    Available Specs:
+    ---------------
+    - customers: Customer profiles with unique IDs, demographics, and status
     - products: Product catalog with SKUs, names, prices, and categories
-
-Migration Guide:    - orders: E-commerce orders with timestamps, amounts, and payment methods
-
----------------    - transactions: Financial transactions with amounts, currencies, and types
-
-OLD:    - employees: Employee records with salaries, departments, and hire dates
-
->>> from rand_engine.examples.simple_examples import RandSpecs    - devices: IoT devices with IDs, types, statuses, and metrics
-
->>> spec = RandSpecs.customers()    - users: Application users with accounts, plans, and activity flags
-
+    - orders: E-commerce orders with timestamps, amounts, and payment methods
+    - transactions: Financial transactions with amounts, currencies, and types
+    - employees: Employee records with salaries, departments, and hire dates
+    - devices: IoT devices with IDs, types, statuses, and metrics
+    - users: Application users with accounts, plans, and activity flags
     - invoices: Invoice records with numbers, amounts, due dates, and status
-
-NEW (for cross-compatible specs):    - shipments: Shipping records with tracking, weights, and destinations
-
->>> from rand_engine.examples.spark_rand_specs import CommonRandSpecs    - events: Event logs with timestamps, types, severity, and messages
-
->>> spec = CommonRandSpecs.customers()    
-
+    - shipments: Shipping records with tracking, weights, and destinations
+    - events: Event logs with timestamps, types, severity, and messages
+    
     Usage:
-
-NEW (for advanced DataGenerator-only specs):    ------
-
->>> from rand_engine.examples.advanced_rand_specs import AdvancedRandSpecs    >>> from rand_engine import DataGenerator, RandSpecs
-
->>> spec = AdvancedRandSpecs.products()  # Uses complex_distincts    >>> 
-
->>> spec = AdvancedRandSpecs.employees()  # Uses distincts_multi_map    >>> # Generate data using a pre-built spec (no instantiation needed)
-
-"""    >>> df = DataGenerator(RandSpecs.customers(), seed=42).size(1000).get_df()
-
+    ------
+    >>> from rand_engine import DataGenerator, RandSpecs
+    >>> 
+    >>> # Generate data using a pre-built spec (no instantiation needed)
+    >>> df = DataGenerator(RandSpecs.customers(), seed=42).size(1000).get_df()
     >>> print(df.head())
-
-# Backward compatibility - re-export from advanced_rand_specs    >>> 
-
-from rand_engine.examples.advanced_rand_specs import AdvancedRandSpecs as RandSpecs    >>> # Or access spec directly to customize
-
+    >>> 
+    >>> # Or access spec directly to customize
     >>> my_spec = RandSpecs.products().copy()
-
-__all__ = ["RandSpecs"]    >>> my_spec['price']['kwargs']['max'] = 500  # Customize price range
-
+    >>> my_spec['price']['kwargs']['max'] = 500  # Customize price range
     >>> df = DataGenerator(my_spec).size(100).get_df()
-
-# Show deprecation warning when imported    
-
-import warnings    Notes:
-
-warnings.warn(    ------
-
-    "The 'simple_examples' module is deprecated. "    - Static class - no instantiation required
-
-    "Please use 'spark_rand_specs.CommonRandSpecs' for cross-compatible specs or "    - All methods are @classmethod
-
-    "'advanced_rand_specs.AdvancedRandSpecs' for DataGenerator-only specs.",    - Specs are returned as dictionaries, safe to modify
-
-    DeprecationWarning,    - Each spec demonstrates 2-3 different generation patterns
-
-    stacklevel=2    - Maximum 6 fields per spec for simplicity
-
-)    """
-
+    
+    Notes:
+    ------
+    - Static class - no instantiation required
+    - All methods are @classmethod
+    - Specs are returned as dictionaries, safe to modify
+    - Each spec demonstrates 2-3 different generation patterns
+    - Maximum 6 fields per spec for simplicity
+    """
 
     @classmethod
     def customers(cls) -> Dict[str, Any]:

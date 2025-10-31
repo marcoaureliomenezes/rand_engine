@@ -1,7 +1,7 @@
 import pytest
 import faker
 from datetime import datetime as dt, timedelta
-from rand_engine.examples import RandSpecs
+from rand_engine.examples import CommonRandSpecs
 
 
 @pytest.fixture(scope="function")
@@ -11,20 +11,20 @@ def default_size():
 
 @pytest.fixture(scope="function")
 def rand_spec_with_kwargs():
-    """Simple spec with kwargs - Use RandSpecs.customers() instead."""
-    return RandSpecs.customers()
+    """Simple spec with kwargs - Use CommonRandSpecs.customers() instead."""
+    return CommonRandSpecs.customers()
  
 
 @pytest.fixture(scope="function")
 def rand_spec_lambda_with_kwargs():
     """Lambda spec with kwargs - Returns callable that generates customers spec."""
-    return lambda: RandSpecs.customers()
+    return lambda: CommonRandSpecs.customers()
 
 
 @pytest.fixture(scope="function")
 def rand_spec_with_args():
-    """Spec using args instead of kwargs - Use RandSpecs.customers() instead."""
-    return RandSpecs.customers()
+    """Spec using args instead of kwargs - Use CommonRandSpecs.customers() instead."""
+    return CommonRandSpecs.customers()
 
 
 @pytest.fixture(scope="function")
@@ -63,8 +63,8 @@ def rand_spec_with_related_columns():
 
 @pytest.fixture(scope="function")
 def rand_spec_case_1_transformer():
-    """Spec with transformers - Use RandSpecs.users() instead (has uppercase transformer)."""
-    return RandSpecs.users()
+    """Spec with transformers - Use CommonRandSpecs.users() instead (has uppercase transformer)."""
+    return CommonRandSpecs.users()
 
 
 

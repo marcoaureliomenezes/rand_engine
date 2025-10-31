@@ -6,42 +6,73 @@ helping users learn how to use SparkGenerator correctly.
 
 SparkGenerator uses PySpark and SparkCore methods for distributed data generation.
 
-IMPORTANT DIFFERENCES FROM DataGenerator:
------------------------------------------
-1. Method names: 'zint' instead of 'int_zfilled', no 'distincts_map' or 'complex_distincts'
-2. Parameters: 'std' in floats_normal (not 'stddev'), 'formato' instead of 'format' in dates
-3. No support for: distincts_map, distincts_multi_map, distincts_map_prop, complex_distincts
-4. All methods receive (spark, F, df, col_name, **kwargs) signature
+This validator delegates to:
+- CommonValidator: Methods shared between DataGenerator and SparkGenerator
+
+IMPORTANT NOTES:
+----------------
+1. Common methods use unified parameters (date_format, int_type/dtype, decimals, true_prob, distincts)
+2. All Spark methods receive (spark, F, df, col_name, **kwargs) signature  
+3. Advanced PyCore methods (distincts_map, distincts_multi_map, distincts_map_prop, complex_distincts) 
+   have dummy implementations in SparkCore that return NULL values for API compatibility only
 """
 
 from typing import Dict, List, Any, Optional
 from rand_engine.validators.exceptions import SpecValidationError
+from rand_engine.validators.common_validator import CommonValidator
 
 
 class SparkSpecValidator:
     """
     Educational Spark data specification validator for Rand Engine.
     
+    Delegates validation to CommonValidator for shared methods.
     Provides descriptive messages with correct usage examples for each
     available SparkCore method, helping users learn quickly.
     """
     
-    # Complete mapping of Spark methods with their signatures and examples
+    # Complete mapping of Spark methods - uses CommonValidator + dummy methods
     METHOD_SPECS = {
+        **CommonValidator.METHOD_SPECS,
+        # Dummy methods for API compatibility - return NULL in Spark
+        "distincts_map": {
+            "description": "Dummy method for API compatibility - returns NULL values",
+            "params": {"required": {}, "optional": {}},
+            "example": {"mapped": {"method": "distincts_map", "kwargs": {}}}
+        },
+        "distincts_multi_map": {
+            "description": "Dummy method for API compatibility - returns NULL values",
+            "params": {"required": {}, "optional": {}},
+            "example": {"multi_mapped": {"method": "distincts_multi_map", "kwargs": {}}}
+        },
+        "distincts_map_prop": {
+            "description": "Dummy method for API compatibility - returns NULL values",
+            "params": {"required": {}, "optional": {}},
+            "example": {"map_prop": {"method": "distincts_map_prop", "kwargs": {}}}
+        },
+        "complex_distincts": {
+            "description": "Dummy method for API compatibility - returns NULL values",
+            "params": {"required": {}, "optional": {}},
+            "example": {"complex": {"method": "complex_distincts", "kwargs": {}}}
+        }
+    }
+    
+    # Legacy METHOD_SPECS maintained for reference
+    _LEGACY_METHOD_SPECS = {
         "integers": {
             "description": "Generates random integers within a range (Spark distributed)",
             "params": {
                 "required": {"min": int, "max": int},
-                "optional": {}
+                "optional": {"dtype": str, "int_type": str}
             },
             "example": {
                 "age": {
                     "method": "integers",
-                    "kwargs": {"min": 18, "max": 65}
+                    "kwargs": {"min": 18, "max": 65, "dtype": "int"}
                 }
             }
         },
-        "zint": {
+        "int_zfilled": {
             "description": "Generates numeric strings with leading zeros (IDs, codes) - Spark version",
             "params": {
                 "required": {"length": int},
@@ -49,7 +80,7 @@ class SparkSpecValidator:
             },
             "example": {
                 "code": {
-                    "method": "zint",
+                    "method": "int_zfilled",
                     "kwargs": {"length": 8}
                 }
             }
@@ -135,7 +166,7 @@ class SparkSpecValidator:
         "dates": {
             "description": "Generates random date strings within a time period (Spark formatted)",
             "params": {
-                "required": {"start": str, "end": str, "formato": str},
+                "required": {"start": str, "end": str, "date_format": str},
                 "optional": {}
             },
             "example": {
@@ -144,7 +175,7 @@ class SparkSpecValidator:
                     "kwargs": {
                         "start": "2020-01-01",
                         "end": "2024-12-31",
-                        "formato": "%Y-%m-%d"
+                        "date_format": "%Y-%m-%d"
                     }
                 }
             }
@@ -152,7 +183,7 @@ class SparkSpecValidator:
         "unix_timestamps": {
             "description": "Generates random Unix timestamps within a time period (Spark internal)",
             "params": {
-                "required": {"start": str, "end": str, "formato": str},
+                "required": {"start": str, "end": str, "date_format": str},
                 "optional": {}
             },
             "example": {
@@ -161,8 +192,60 @@ class SparkSpecValidator:
                     "kwargs": {
                         "start": "2020-01-01",
                         "end": "2024-12-31",
-                        "formato": "%Y-%m-%d"
+                        "date_format": "%Y-%m-%d"
                     }
+                }
+            }
+        },
+        "distincts_map": {
+            "description": "Dummy method for API compatibility - returns NULL values",
+            "params": {
+                "required": {},
+                "optional": {}
+            },
+            "example": {
+                "mapped": {
+                    "method": "distincts_map",
+                    "kwargs": {}
+                }
+            }
+        },
+        "distincts_multi_map": {
+            "description": "Dummy method for API compatibility - returns NULL values",
+            "params": {
+                "required": {},
+                "optional": {}
+            },
+            "example": {
+                "multi_mapped": {
+                    "method": "distincts_multi_map",
+                    "kwargs": {}
+                }
+            }
+        },
+        "distincts_map_prop": {
+            "description": "Dummy method for API compatibility - returns NULL values",
+            "params": {
+                "required": {},
+                "optional": {}
+            },
+            "example": {
+                "map_prop": {
+                    "method": "distincts_map_prop",
+                    "kwargs": {}
+                }
+            }
+        },
+        "complex_distincts": {
+            "description": "Dummy method for API compatibility - returns NULL values",
+            "params": {
+                "required": {},
+                "optional": {}
+            },
+            "example": {
+                "complex": {
+                    "method": "complex_distincts",
+                    "kwargs": {}
                 }
             }
         }
@@ -209,7 +292,7 @@ class SparkSpecValidator:
     
     @classmethod
     def _validate_column(cls, col_name: str, col_config: Any) -> List[str]:
-        """Validates a single column configuration."""
+        """Validates a single column configuration - delegates to CommonValidator."""
         errors = []
         
         # Check if column config is a dict
@@ -244,16 +327,23 @@ class SparkSpecValidator:
             available_methods = ", ".join(sorted(cls.METHOD_SPECS.keys()))
             errors.append(
                 f"❌ Column '{col_name}': unknown method '{method}'\n"
-                f"   Available Spark methods: {available_methods}\n"
-                "   Note: Spark doesn't support distincts_map, distincts_multi_map, or complex_distincts"
+                f"   Available Spark methods: {available_methods}"
             )
             return errors
         
-        # Validate kwargs
-        method_spec = cls.METHOD_SPECS[method]
-        errors.extend(cls._validate_kwargs(col_name, method, col_config, method_spec))
+        # Check if kwargs exists
+        if "kwargs" not in col_config:
+            errors.append(
+                f"❌ Column '{col_name}': missing 'kwargs' dictionary"
+            )
+            return errors
         
-        # Validate transformers if present
+        # DELEGATE TO CommonValidator for shared methods
+        common_errors = CommonValidator.validate_column(col_name, col_config)
+        if common_errors:
+            errors.extend(common_errors)
+        
+        # Validate transformers if present (not part of common validator)
         if "transformers" in col_config:
             errors.extend(cls._validate_transformers(col_name, col_config["transformers"]))
         
@@ -261,59 +351,12 @@ class SparkSpecValidator:
     
     @classmethod
     def _validate_kwargs(cls, col_name: str, method: str, col_config: Dict, method_spec: Dict) -> List[str]:
-        """Validates kwargs for a specific method."""
-        errors = []
-        
-        # Check if kwargs exists
-        if "kwargs" not in col_config:
-            errors.append(
-                f"❌ Column '{col_name}': missing 'kwargs' dictionary\n"
-                f"   {method_spec['description']}\n"
-                f"   Correct example:\n   {cls._format_example(method_spec['example'])}"
-            )
-            return errors
-        
-        kwargs = col_config["kwargs"]
-        
-        # Check if kwargs is a dict
-        if not isinstance(kwargs, dict):
-            errors.append(
-                f"❌ Column '{col_name}': 'kwargs' must be dictionary, got {type(kwargs).__name__}"
-            )
-            return errors
-        
-        required_params = method_spec["params"]["required"]
-        optional_params = method_spec["params"]["optional"]
-        all_valid_params = {**required_params, **optional_params}
-        
-        # Check required parameters
-        for param_name, param_type in required_params.items():
-            if param_name not in kwargs:
-                errors.append(
-                    f"❌ Column '{col_name}': method '{method}' requires parameter '{param_name}'\n"
-                    f"   {method_spec['description']}\n"
-                    f"   Correct example:\n   {cls._format_example(method_spec['example'])}"
-                )
-            else:
-                # Check parameter type
-                param_value = kwargs[param_name]
-                if not cls._check_type(param_value, param_type):
-                    type_name = cls._get_type_name(param_type)
-                    errors.append(
-                        f"❌ Column '{col_name}': parameter '{param_name}' must be {type_name}, "
-                        f"got {type(param_value).__name__}"
-                    )
-        
-        # Warn about unknown parameters
-        for param_name in kwargs:
-            if param_name not in all_valid_params:
-                valid_params = ", ".join(sorted(all_valid_params.keys()))
-                errors.append(
-                    f"⚠️  Column '{col_name}': unknown parameter '{param_name}' for method '{method}'\n"
-                    f"   Valid parameters: {valid_params}"
-                )
-        
-        return errors
+        """
+        Legacy method kept for backward compatibility.
+        Validation is now delegated to CommonValidator in _validate_column.
+        """
+        # This method is now handled by CommonValidator in _validate_column
+        return []
     
     @classmethod
     def _validate_transformers(cls, col_name: str, transformers: Any) -> List[str]:

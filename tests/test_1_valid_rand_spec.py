@@ -29,7 +29,7 @@ def test_valid_spec_with_all_basic_methods():
         "ativo": {"method": "booleans", "kwargs": {"true_prob": 0.7}},
         "plano": {"method": "distincts", "kwargs": {"distincts": ["free", "premium"]}},
         "dispositivo": {"method": "distincts_prop", "kwargs": {"distincts": {"mobile": 70, "desktop": 30}}},
-        "created_at": {"method": "unix_timestamps", "kwargs": {"start": "01-01-2024", "end": "31-12-2024", "format": "%d-%m-%Y"}},
+        "created_at": {"method": "unix_timestamps", "kwargs": {"start": "01-01-2024", "end": "31-12-2024", "date_format": "%d-%m-%Y"}},
     }
     errors = SpecValidator.validate(spec)
     assert len(errors) == 0
@@ -371,10 +371,10 @@ def test_valid_spec_complex_distincts():
                 "pattern": "x.x.x.x",
                 "replacement": "x",
                 "templates": [
-                    {"method": "distincts", "parms": {"distincts": ["192", "10"]}},
-                    {"method": "integers", "parms": {"min": 0, "max": 255}},
-                    {"method": "integers", "parms": {"min": 0, "max": 255}},
-                    {"method": "integers", "parms": {"min": 1, "max": 254}}
+                    {"method": "distincts", "kwargs": {"distincts": ["192", "10"]}},
+                    {"method": "integers", "kwargs": {"min": 0, "max": 255}},
+                    {"method": "integers", "kwargs": {"min": 0, "max": 255}},
+                    {"method": "integers", "kwargs": {"min": 1, "max": 254}}
                 ]
             }
         }

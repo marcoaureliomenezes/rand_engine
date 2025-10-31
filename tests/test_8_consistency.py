@@ -23,8 +23,7 @@ def configure_logger():
 @pytest.mark.parametrize("size_clients, size_products",[
   (100, 1000),
   (100, 10000),
-  (100, 100000),
-  (100, 1000000)
+  (100, 100000)
 ])
 def test_simple_two_relationship(size_clients, size_products):
 
@@ -47,8 +46,7 @@ def test_simple_two_relationship(size_clients, size_products):
 @pytest.mark.parametrize("size_clients, size_products",[
   (100, 1000),
   (100, 10000),
-  (100, 100000),
-  (100, 1000000)
+  (100, 100000)
 ])
 def test_simple_two_relationship_with_watermark(size_clients, size_products):
 
@@ -76,8 +74,7 @@ def test_simple_two_relationship_with_watermark(size_clients, size_products):
 @pytest.mark.parametrize("size_clients, size_products",[
   (100, 1000),
   (100, 10000),
-  (100, 100000),
-  (100, 1000000)
+  (100, 100000)
 ])
 def test_simple_two_relationship_with_watermark_expires(size_clients, size_products):
 

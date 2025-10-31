@@ -19,10 +19,10 @@ class TestPyCoreComplexDistincts:
         pattern = "x.x.x.x"
         replacement = "x"
         templates = [
-            {"method": NPCore.gen_distincts, "parms": {"distincts": ["192", "172"]}},
-            {"method": NPCore.gen_distincts, "parms": {"distincts": ["168", "10"]}},
-            {"method": NPCore.gen_ints, "parms": {"min": 0, "max": 255, "int_type": "int32"}},
-            {"method": NPCore.gen_ints, "parms": {"min": 1, "max": 254, "int_type": "int32"}}
+            {"method": NPCore.gen_distincts, "kwargs": {"distincts": ["192", "172"]}},
+            {"method": NPCore.gen_distincts, "kwargs": {"distincts": ["168", "10"]}},
+            {"method": NPCore.gen_ints, "kwargs": {"min": 0, "max": 255, "int_type": "int32"}},
+            {"method": NPCore.gen_ints, "kwargs": {"min": 1, "max": 254, "int_type": "int32"}}
         ]
         
         result = PyCore.gen_complex_distincts(
@@ -48,8 +48,8 @@ class TestPyCoreComplexDistincts:
         pattern = "ID-x-x"
         replacement = "x"
         templates = [
-            {"method": NPCore.gen_ints_zfilled, "parms": {"length": 4}},
-            {"method": NPCore.gen_distincts, "parms": {"distincts": ["A", "B", "C"]}}
+            {"method": NPCore.gen_ints_zfilled, "kwargs": {"length": 4}},
+            {"method": NPCore.gen_distincts, "kwargs": {"distincts": ["A", "B", "C"]}}
         ]
         
         result = PyCore.gen_complex_distincts(
@@ -76,9 +76,9 @@ class TestPyCoreComplexDistincts:
         pattern = "x-x-x"
         replacement = "x"
         templates = [
-            {"method": "integers", "parms": {"min": 1, "max": 100, "int_type": "int32"}},
-            {"method": "distincts", "parms": {"distincts": ["alpha", "beta", "gamma"]}},
-            {"method": "int_zfilled", "parms": {"length": 6}}
+            {"method": "integers", "kwargs": {"min": 1, "max": 100, "int_type": "int32"}},
+            {"method": "distincts", "kwargs": {"distincts": ["alpha", "beta", "gamma"]}},
+            {"method": "int_zfilled", "kwargs": {"length": 6}}
         ]
         
         result = PyCore.gen_complex_distincts(
@@ -105,7 +105,7 @@ class TestPyCoreComplexDistincts:
         # MAC address uses hex (simulate with distincts)
         hex_values = [f"{i:02X}" for i in range(256)]
         templates = [
-            {"method": NPCore.gen_distincts, "parms": {"distincts": hex_values}} for _ in range(6)
+            {"method": NPCore.gen_distincts, "kwargs": {"distincts": hex_values}} for _ in range(6)
         ]
         
         result = PyCore.gen_complex_distincts(
@@ -297,8 +297,8 @@ class TestPyCoreEdgeCases:
         pattern = "x.x.x"
         replacement = "x"
         templates = [
-            {"method": NPCore.gen_ints, "parms": {"min": 0, "max": 255, "int_type": "int32"}},
-            {"method": NPCore.gen_ints, "parms": {"min": 0, "max": 255, "int_type": "int32"}}
+            {"method": NPCore.gen_ints, "kwargs": {"min": 0, "max": 255, "int_type": "int32"}},
+            {"method": NPCore.gen_ints, "kwargs": {"min": 0, "max": 255, "int_type": "int32"}}
             # Missing one template!
         ]
         
@@ -337,9 +337,9 @@ class TestPyCoreIntegration:
         pattern = "USER-x-x-x"
         replacement = "x"
         templates = [
-            {"method": NPCore.gen_ints_zfilled, "parms": {"length": 8}},
-            {"method": NPCore.gen_distincts, "parms": {"distincts": ["ACTIVE", "INACTIVE", "PENDING"]}},
-            {"method": NPCore.gen_ints, "parms": {"min": 1, "max": 999, "int_type": "int32"}}
+            {"method": NPCore.gen_ints_zfilled, "kwargs": {"length": 8}},
+            {"method": NPCore.gen_distincts, "kwargs": {"distincts": ["ACTIVE", "INACTIVE", "PENDING"]}},
+            {"method": NPCore.gen_ints, "kwargs": {"min": 1, "max": 999, "int_type": "int32"}}
         ]
         
         result = PyCore.gen_complex_distincts(
