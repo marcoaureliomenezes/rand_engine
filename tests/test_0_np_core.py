@@ -48,14 +48,14 @@ def test_gen_ints_with_inconsistent_parameters(size, min, max):
 
 
 # Test for float generation with various ranges and rounding
-@pytest.mark.parametrize("size, min, max, round", [
+@pytest.mark.parametrize("size, min, max, decimals", [
     (10, 0, 10**4, 2),
     (10, 0, 10**4, 10),
     (10, 0, 10**4, 15),
     (10, 0, 10**18, 15),
 ])
-def test_gen_floats(size, min, max, round):
-  kwargs = dict(size=size, min=min, max=max, round=round)
+def test_gen_floats(size, min, max, decimals):
+  kwargs = dict(size=size, min=min, max=max, decimals=decimals)
   real_result = NPCore.gen_floats(**kwargs)
   assert len(real_result) == kwargs["size"]
   assert type(real_result) == np.ndarray
@@ -74,13 +74,13 @@ def test_gen_floats_with_inconsistent_parameters(size, min, max):
     _ = NPCore.gen_floats(**kwargs)
 
 
-@pytest.mark.parametrize("size, mean, std, round", [
+@pytest.mark.parametrize("size, mean, std, decimals", [
     (100, 0, 1, 2),
     (100, 10**3, 10**2, 5),
     (100, 10**6, 10**5, 10),
 ])
-def test_gen_floats_normal(size, mean, std, round):
-  kwargs = dict(size=size, mean=mean, std=std, round=round)
+def test_gen_floats_normal(size, mean, std, decimals):
+  kwargs = dict(size=size, mean=mean, std=std, decimals=decimals)
   real_result = NPCore.gen_floats_normal(**kwargs)
   assert len(real_result) == kwargs["size"]
   assert type(real_result) == np.ndarray
