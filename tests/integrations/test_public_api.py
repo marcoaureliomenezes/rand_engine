@@ -28,7 +28,7 @@ class TestPublicAPI:
     
     def test_datagenerator_in_all(self):
         """
-        Example 2: Check that __all__ contains public API: DataGenerator and RandSpecs.
+        Example 2: Check that __all__ contains public API: DataGenerator, SparkGenerator, RandSpecs, and SparkRandSpecs.
         
         __all__ defines the public API of a module.
         """
@@ -36,9 +36,10 @@ class TestPublicAPI:
         
         assert hasattr(rand_engine, '__all__')
         assert "DataGenerator" in rand_engine.__all__
-        assert "RandSpecs" in rand_engine.__all__
         assert "SparkGenerator" in rand_engine.__all__
-        assert len(rand_engine.__all__) == 3
+        assert "RandSpecs" in rand_engine.__all__
+        assert "SparkRandSpecs" in rand_engine.__all__
+        assert len(rand_engine.__all__) == 4
         print(f"\n✓ rand_engine.__all__ = {rand_engine.__all__}")
     
     

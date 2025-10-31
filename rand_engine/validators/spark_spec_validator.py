@@ -109,13 +109,13 @@ class SparkSpecValidator:
         "distincts_prop": {
             "description": "Selects values from a dictionary with proportional weights (Spark)",
             "params": {
-                "required": {"distincts_prop": dict},  # {value: weight, ...}
+                "required": {"distincts": dict},  # {value: weight, ...}
                 "optional": {}
             },
             "example": {
                 "device": {
                     "method": "distincts_prop",
-                    "kwargs": {"distincts_prop": {"mobile": 70, "desktop": 30}}
+                    "kwargs": {"distincts": {"mobile": 70, "desktop": 30}}
                 }
             }
         },

@@ -8,7 +8,7 @@ when provided with incorrect spec configurations.
 import pytest
 from rand_engine.main.data_generator import DataGenerator
 from rand_engine.validators.exceptions import SpecValidationError
-from tests.fixtures.f1_wrong_specs import (
+from tests.fixtures.f1_data_generator_specs_wrong import (
     wrong_spec_not_dict,
     wrong_spec_empty,
     wrong_spec_missing_method,

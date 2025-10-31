@@ -4,7 +4,7 @@ Tests data generation, column presence, data types, and value constraints
 """
 import pytest
 import pandas as pd
-from rand_engine.main.examples import RandSpecs
+from rand_engine.examples import RandSpecs
 from rand_engine import DataGenerator
 
 

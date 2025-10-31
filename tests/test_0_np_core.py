@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from rand_engine.core._np_core import NPCore
-from tests.fixtures.f1_right_specs import default_size
+from tests.fixtures.f1_data_generator_specs_right import default_size
 
 
 

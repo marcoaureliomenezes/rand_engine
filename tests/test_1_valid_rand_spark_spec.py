@@ -79,7 +79,7 @@ class TestValidSparkSpecs:
         spec = {
             "device": {
                 "method": "distincts_prop",
-                "kwargs": {"distincts_prop": {"mobile": 70, "desktop": 30}}
+                "kwargs": {"distincts": {"mobile": 70, "desktop": 30}}
             }
         }
         errors = SparkSpecValidator.validate(spec)

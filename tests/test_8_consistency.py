@@ -3,7 +3,7 @@ import time
 import pytest
 import logging
 from rand_engine.main.data_generator import DataGenerator
-from tests.fixtures.f2_consistency import ProductCategory, ClientsProductsCategoriesTransactions
+from tests.fixtures.f3_data_generator_constraints import ProductCategory, ClientsProductsCategoriesTransactions
 
 
 def configure_logger():

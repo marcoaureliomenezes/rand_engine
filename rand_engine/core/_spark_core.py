@@ -45,8 +45,8 @@ class SparkCore:
     
 
   @staticmethod
-  def gen_distincts_prop(spark, F, df, col_name, distincts_prop={}):
-    distincts_prop = [ key for key, value in distincts_prop.items() for i in range(value) ]
+  def gen_distincts_prop(spark, F, df, col_name, distincts={}):
+    distincts_prop = [ key for key, value in distincts.items() for i in range(value) ]
     return SparkCore.gen_distincts(spark, F, df, col_name, distincts=distincts_prop)
 
 
