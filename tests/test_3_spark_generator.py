@@ -305,7 +305,7 @@ class TestSparkGeneratorEdgeCases:
         
         # Empty metadata should fail validation
         with pytest.raises(SpecValidationError) as exc_info:
-            generator = SparkGenerator(spark_session, spark_functions, {})
+            SparkGenerator(spark_session, spark_functions, {})
         
         assert "cannot be empty" in str(exc_info.value).lower() or "empty" in str(exc_info.value).lower()
     
