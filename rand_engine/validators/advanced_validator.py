@@ -15,7 +15,7 @@ NOTE: SparkGenerator has dummy implementations of these methods that return NULL
 for API compatibility only.
 """
 
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 
 
 class AdvancedValidator:
