@@ -19,7 +19,6 @@ class SparkRandSpecs:
             "estimated_delivery": dict(method="dates", kwargs=dict(start="2024-01-05", end="2024-10-18", date_format="%Y-%m-%d"))
         }ark API Differences from DataGenerator:
     ---------------------------------------------------
-    - Use 'int_zfilled' instead of 'int_zfilled'
     - Use 'std' instead of 'stddev' in floats_normal
     - Use 'date_format' (unified API) in dates
     - No support for: distincts_map, distincts_multi_map, complex_distincts, distincts_map_prop
