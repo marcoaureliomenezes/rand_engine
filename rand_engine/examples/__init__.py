@@ -5,7 +5,6 @@ This module provides ready-to-use data generation specifications:
 - RandSpecs: Backward compatible alias for CommonRandSpecs (recommended)
 - CommonRandSpecs: Cross-compatible specs (DataGenerator and SparkGenerator)
 - AdvancedRandSpecs: PyCore-exclusive methods (DataGenerator only)
-- SparkRandSpecs: Legacy Spark-specific examples
 
 Usage:
 ------
@@ -24,12 +23,9 @@ Usage:
 from rand_engine.examples.advanced_rand_specs import AdvancedRandSpecs
 
 # Import cross-compatible specs
-from rand_engine.examples.spark_rand_specs import CommonRandSpecs
-
-# Import legacy Spark specs
-from rand_engine.examples.spark_examples import SparkRandSpecs
+from rand_engine.examples.common_rand_specs import CommonRandSpecs
 
 # Backward compatibility - RandSpecs now points to CommonRandSpecs (cross-compatible)
 RandSpecs = CommonRandSpecs
 
-__all__ = ["RandSpecs", "AdvancedRandSpecs", "CommonRandSpecs", "SparkRandSpecs"]
+__all__ = ["RandSpecs", "AdvancedRandSpecs", "CommonRandSpecs"]

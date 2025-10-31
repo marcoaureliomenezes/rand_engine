@@ -50,7 +50,7 @@ class AdvancedRandSpecs:
     Notes:
     ------
     - These specs work ONLY with DataGenerator (pandas)
-    - For cross-compatible specs, use CommonRandSpecs from spark_rand_specs.py
+    - For cross-compatible specs, use CommonRandSpecs from common_rand_specs.py
     - Static class - no instantiation required
     - Each spec demonstrates 1-2 advanced patterns
     - Specs range from 5-8 fields for realistic complexity

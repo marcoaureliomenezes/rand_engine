@@ -10,7 +10,7 @@ import pytest
 import pandas as pd
 from rand_engine.main.data_generator import DataGenerator
 from rand_engine.main.spark_generator import SparkGenerator
-from rand_engine.examples.spark_rand_specs import CommonRandSpecs
+from rand_engine.examples.common_rand_specs import CommonRandSpecs
 
 
 class TestCommonRandSpecsAccess:
