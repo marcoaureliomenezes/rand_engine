@@ -358,7 +358,7 @@ class SparkRandSpecs:
             "issue_date": dict(method="dates", kwargs=dict(start="2023-01-01", end="2023-12-31", date_format="%Y-%m-%d")),
             "due_date": dict(method="dates", kwargs=dict(start="2024-01-01", end="2024-12-31", date_format="%Y-%m-%d")),
             "amount": dict(method="floats", kwargs=dict(min=100, max=50000, decimals=2)),
-            "status": dict(method="distincts_prop", kwargs=dict(distincts_prop={"Paid": 60, "Pending": 30, "Overdue": 10})),
+            "status": dict(method="distincts_prop", kwargs=dict(distincts={"Paid": 60, "Pending": 30, "Overdue": 10})),
             "tax_rate": dict(method="floats", kwargs=dict(min=0, max=25, decimals=2))
         }
 
