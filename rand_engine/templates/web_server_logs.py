@@ -36,10 +36,10 @@ class WebServerLogs(IRandomSpec):
           pattern="x.x.x.x",
           replacement="x", 
           templates=[
-            {"method": "distincts", "parms": dict(distincts=["172", "192", "10"])},
-            {"method": "integers", "parms": dict(min=0, max=255)},
-            {"method": "integers", "parms": dict(min=0, max=255)},
-            {"method": "integers", "parms": dict(min=0, max=128)}
+            {"method": "distincts", "kwargs": dict(distincts=["172", "192", "10"])},
+            {"method": "integers", "kwargs": dict(min=0, max=255)},
+            {"method": "integers", "kwargs": dict(min=0, max=255)},
+            {"method": "integers", "kwargs": dict(min=0, max=128)}
           ]
         )
       ),
@@ -53,7 +53,7 @@ class WebServerLogs(IRandomSpec):
       ),
       "datetime": dict(
         method="unix_timestamps",
-        kwargs=dict(start='2024-07-05', end='2024-07-06', format="%Y-%m-%d"),
+        kwargs=dict(start='2024-07-05', end='2024-07-06', date_format="%Y-%m-%d"),
         transformers=[lambda ts: dt.fromtimestamp(ts).strftime("%d/%b/%Y:%H:%M:%S")]
       ),
       "http_version": dict(

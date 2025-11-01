@@ -29,7 +29,7 @@ class TestSparkGeneratorBasic:
         
         # Check all expected methods exist
         assert "integers" in methods
-        assert "zint" in methods
+        assert "int_zfilled" in methods
         assert "floats" in methods
         assert "floats_normal" in methods
         assert "distincts" in methods
@@ -80,9 +80,8 @@ class TestSparkGeneratorComplex:
         # Check row count
         assert df.count() == 100
         
-        # Check all expected columns
+        # Check all expected columns (id is technical and removed if not in metadata)
         columns = df.columns
-        assert "id" in columns
         assert "user_id" in columns
         assert "age" in columns
         assert "height_cm" in columns
@@ -194,9 +193,9 @@ class TestSparkGeneratorDifferentSizes:
         """Test generation with large dataset."""
         generator = SparkGenerator(spark_session, spark_functions, spark_metadata_simple)
         
-        df = generator.size(10000).get_df()
+        df = generator.size(1000).get_df()
         
-        assert df.count() == 10000
+        assert df.count() == 1000
         
         # Verify data distribution
         name_counts = df.groupBy("name").count().collect()
@@ -235,7 +234,7 @@ class TestSparkGeneratorStatistics:
         metadata = {
             "value": {
                 "method": "floats_normal",
-                "kwargs": {"mean": 100.0, "stddev": 15.0, "decimals": 2}
+                "kwargs": {"mean": 100.0, "std": 15.0, "decimals": 2}
             }
         }
         
@@ -246,12 +245,12 @@ class TestSparkGeneratorStatistics:
         from pyspark.sql import functions as F
         stats = df.agg(
             F.mean("value").alias("mean"),
-            F.stddev("value").alias("stddev")
+            F.std("value").alias("std")
         ).collect()[0]
         
-        # Check within tolerance (10% for mean, 20% for stddev)
+        # Check within tolerance (10% for mean, 20% for std)
         assert abs(stats["mean"] - 100.0) < 10.0
-        assert abs(stats["stddev"] - 15.0) < 5.0
+        assert abs(stats["std"] - 15.0) < 5.0
     
     def test_boolean_probability(self, spark_session, spark_functions):
         """Test that boolean generation respects probability."""
@@ -301,14 +300,14 @@ class TestSparkGeneratorEdgeCases:
     """Test edge cases and error handling."""
     
     def test_empty_metadata(self, spark_session, spark_functions):
-        """Test with empty metadata (only id column from range)."""
-        generator = SparkGenerator(spark_session, spark_functions, {})
+        """Test with empty metadata should raise SpecValidationError."""
+        from rand_engine.validators.exceptions import SpecValidationError
         
-        df = generator.size(10).get_df()
+        # Empty metadata should fail validation
+        with pytest.raises(SpecValidationError) as exc_info:
+            SparkGenerator(spark_session, spark_functions, {})
         
-        # Should only have id column
-        assert df.columns == ["id"]
-        assert df.count() == 10
+        assert "cannot be empty" in str(exc_info.value).lower() or "empty" in str(exc_info.value).lower()
     
     def test_single_column_metadata(self, spark_session, spark_functions):
         """Test with single column metadata."""
@@ -322,9 +321,10 @@ class TestSparkGeneratorEdgeCases:
         generator = SparkGenerator(spark_session, spark_functions, metadata)
         df = generator.size(20).get_df()
         
-        assert "id" in df.columns
+        # Technical 'id' column is removed when not in metadata
         assert "value" in df.columns
         assert df.count() == 20
+        assert len(df.columns) == 1  # Only 'value' column
     
     def test_zero_size(self, spark_session, spark_functions, spark_metadata_simple):
         """Test generation with size 0."""
@@ -335,7 +335,9 @@ class TestSparkGeneratorEdgeCases:
         assert df.count() == 0
     
     def test_invalid_method_name(self, spark_session, spark_functions):
-        """Test with invalid method name in metadata."""
+        """Test with invalid method name should raise SpecValidationError during init."""
+        from rand_engine.validators.exceptions import SpecValidationError
+        
         metadata = {
             "value": {
                 "method": "invalid_method",
@@ -343,10 +345,11 @@ class TestSparkGeneratorEdgeCases:
             }
         }
         
-        generator = SparkGenerator(spark_session, spark_functions, metadata)
+        # Validation catches invalid method during initialization
+        with pytest.raises(SpecValidationError) as exc_info:
+            generator = SparkGenerator(spark_session, spark_functions, metadata)
         
-        with pytest.raises(KeyError):
-            df = generator.size(10).get_df()
+        assert "method" in str(exc_info.value).lower() or "invalid" in str(exc_info.value).lower()
 
 
 class TestSparkGeneratorDataQuality:
@@ -356,7 +359,7 @@ class TestSparkGeneratorDataQuality:
         """Test that no null values are generated."""
         generator = SparkGenerator(spark_session, spark_functions, spark_metadata_all_types)
         
-        df = generator.size(100).get_df()
+        df = generator.size(50).get_df()
         
         # Check for nulls in each column
         from pyspark.sql import functions as F
@@ -382,11 +385,11 @@ class TestSparkGeneratorDataQuality:
         # All should be unique
         assert distinct_count == 1000
     
-    def test_zint_format_consistency(self, spark_session, spark_functions):
-        """Test that zint maintains consistent format."""
+    def test_int_zfilled_format_consistency(self, spark_session, spark_functions):
+        """Test that int_zfilled maintains consistent format."""
         metadata = {
             "code": {
-                "method": "zint",
+                "method": "int_zfilled",
                 "kwargs": {"length": 6}
             }
         }

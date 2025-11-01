@@ -7,23 +7,23 @@ from rand_engine.main._constraints_handler import ConstraintsHandler
 from rand_engine.file_handlers._writer_batch import FileBatchWriter
 from rand_engine.file_handlers._writer_stream import FileStreamWriter
 from rand_engine.utils.stream_handler import StreamHandler
-from rand_engine.validators.spec_validator import SpecValidator
+from rand_engine.validators.advanced_validator import AdvancedValidator
 from rand_engine.validators.exceptions import SpecValidationError
 
   
 class DataGenerator:
       
-  def __init__(self, random_spec: Callable[[], dict] | dict, seed: int = None, validate: bool = False):
-    # Avalia a spec se for callable
-
-    np.random.seed(seed)
+  def __init__(self, random_spec: Callable[[], dict] | dict, seed: int = None):
+    # Valida a spec SEMPRE - obrigatório para prevenir erros durante geração
     self.lazy_random_spec = random_spec
+    self.__validate_spec()
+    
+    # Configura gerador após validação bem-sucedida
+    np.random.seed(seed)
     self._constraints_db_path = ":memory:"
-    # Passa a spec avaliada como callable para manter compatibilidade
     self.write = self._writer()
     self.writeStream = self._stream_writer()
     self._transformers: List[Optional[Callable]] = []
-    self.__validate_spec() if validate else None
     self.constraints_handler = ConstraintsHandler(db_path=self._constraints_db_path)
     self._options = {}
  
@@ -36,7 +36,7 @@ class DataGenerator:
   
   def __validate_spec(self):
     evaluated_spec = self.__evaluate_spec()
-    SpecValidator.validate_and_raise(evaluated_spec)
+    AdvancedValidator.validate_and_raise(evaluated_spec)
 
   
   def wrapped_df_generator(self, size: int) -> pd.DataFrame:

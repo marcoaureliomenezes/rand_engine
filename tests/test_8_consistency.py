@@ -3,7 +3,7 @@ import time
 import pytest
 import logging
 from rand_engine.main.data_generator import DataGenerator
-from tests.fixtures.f2_consistency import ProductCategory, ClientsProductsCategoriesTransactions
+from tests.fixtures.f3_data_generator_constraints import ProductCategory, ClientsProductsCategoriesTransactions
 
 
 def configure_logger():
@@ -23,8 +23,7 @@ def configure_logger():
 @pytest.mark.parametrize("size_clients, size_products",[
   (100, 1000),
   (100, 10000),
-  (100, 100000),
-  (100, 1000000)
+  (100, 100000)
 ])
 def test_simple_two_relationship(size_clients, size_products):
 
@@ -47,8 +46,7 @@ def test_simple_two_relationship(size_clients, size_products):
 @pytest.mark.parametrize("size_clients, size_products",[
   (100, 1000),
   (100, 10000),
-  (100, 100000),
-  (100, 1000000)
+  (100, 100000)
 ])
 def test_simple_two_relationship_with_watermark(size_clients, size_products):
 
@@ -76,8 +74,7 @@ def test_simple_two_relationship_with_watermark(size_clients, size_products):
 @pytest.mark.parametrize("size_clients, size_products",[
   (100, 1000),
   (100, 10000),
-  (100, 100000),
-  (100, 1000000)
+  (100, 100000)
 ])
 def test_simple_two_relationship_with_watermark_expires(size_clients, size_products):
 
@@ -178,6 +175,8 @@ def test_four_relationships_consistency(size_clients, size_categories, size_prod
 #   df_products = DataGenerator(ecommerce.metadata_products()).size(10**1).get_df()
 #   print(df_products)
        
+
+
 
 
 

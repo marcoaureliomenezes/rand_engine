@@ -22,8 +22,8 @@ class PyCore:
       "floats_normal": NPCore.gen_floats_normal,
       "distincts": NPCore.gen_distincts,
       "unix_timestamps": NPCore.gen_unix_timestamps,
-      "unique_ids": NPCore.gen_unique_identifiers,
-      "booleans": NPCore.gen_bools,
+      "uuid4": NPCore.gen_uuid4,
+      "booleans": NPCore.gen_booleans,
     }
     
     assert pattern.count(replacement) == len(templates)
@@ -34,7 +34,7 @@ class PyCore:
         # Se for string, mapeia para o callable
         if isinstance(method, str):
           method = method_map[method]
-        list_of_lists.append(method(size, **templates[counter]["parms"]))
+        list_of_lists.append(method(size, **templates[counter]["kwargs"]))
         counter += 1
       else:
         list_of_lists.append(np.array([pattern[replacer_cursor] for i in range(size)]))

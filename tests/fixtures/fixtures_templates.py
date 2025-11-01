@@ -32,11 +32,11 @@ class RSCustomer(IRandomSpec):
     },
     "income": {
       "method": Core.gen_floats_normal,
-      "parms": dict(mean=10000, std=3000, round=2)
+      "parms": dict(mean=10000, std=3000, decimals=2)
     },
     "balance": {
       "method": Core.gen_floats_normal,
-      "parms": dict(mean=5000, std=3000, round=2)
+      "parms": dict(mean=5000, std=3000, decimals=2)
     },
     "profession": {
       "method": Core.gen_distincts,

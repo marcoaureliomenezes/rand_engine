@@ -6,7 +6,7 @@ import threading
 import pytest
 
 from rand_engine.main.data_generator import DataGenerator
-from tests.fixtures.f1_right_specs import (
+from tests.fixtures.f1_data_generator_specs_right import (
     rand_spec_with_kwargs,
     rand_spec_with_args
 )
