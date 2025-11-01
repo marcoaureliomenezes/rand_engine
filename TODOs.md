@@ -1,5 +1,25 @@
 ✅ **DOCUMENTATION UPDATE COMPLETED - October 31, 2025**
 
+## Latest Update - README.md Simplified
+
+**Objective:** Make README more concise and attractive for new users
+
+**Changes Made:**
+1. ✅ Reduced from 947 lines to 384 lines (59% reduction)
+2. ✅ Added centered header with badges and navigation links
+3. ✅ Simplified feature presentation with side-by-side tables
+4. ✅ Removed redundant detailed examples (moved to docs/BUILD_RAND_SPECS.md)
+5. ✅ Brief mention of 17+ pre-built specs instead of full listing
+6. ✅ Focused on 3 core usage examples (Local, Databricks, Custom)
+7. ✅ Added Quick Tips section in table format
+8. ✅ Clear documentation index with descriptions
+9. ✅ Added Star History Chart at bottom
+10. ✅ Professional layout with emojis for visual appeal
+
+**Result:** README is now scannable, attractive, and guides users to detailed docs for deep dives.
+
+---
+
 ## Summary of Changes
 
 ### 1. **Updated README.md (v0.7.0)**

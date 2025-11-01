@@ -182,3 +182,5 @@ def test_four_relationships_consistency(size_clients, size_categories, size_prod
 
 
 
+
+
