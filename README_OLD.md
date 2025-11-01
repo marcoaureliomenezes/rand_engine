@@ -6,7 +6,7 @@
 
 *High-performance random data generation for testing, development, and prototyping*
 
-[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.o📖 **Complete guide with examples:** [BUILD_RAND_SPECS.md](./docs/BUILD_RAND_SPECS.md)/downloads/)
 [![Tests](https://img.shields.io/badge/tests-494%20passing-brightgreen.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)]()
 [![Version](https://img.shields.io/badge/version-0.7.0-orange.svg)](https://pypi.org/project/rand-engine/)
@@ -104,8 +104,8 @@ No configuration needed! Start generating data immediately:
 | **CommonRandSpecs** (Work Everywhere) | **AdvancedRandSpecs** (Pandas Only) |
 |---------------------------------------|-------------------------------------|
 | `customers()` `products()` `orders()` | `employees()` `devices()` `invoices()` |
-| `transactions()` `sensors()` `users()` | `shipments()` `network_devices()` `vehicles()` |
-|  | `real_estate()` `healthcare()` |
+| `transactions()` `employees()` `sensors()` | `shipments()` `network_devices()` `vehicles()` |
+| `users()` | `real_estate()` `healthcare()` |
 
 ```python
 # Use any pre-built spec instantly
@@ -192,7 +192,7 @@ df = DataGenerator(custom_spec).size(50_000).get_df()
 
 ---
 
-## 📊 Performance Benchmarks
+## � Performance Benchmarks
 
 Real-world performance tests across different environments:
 
@@ -211,7 +211,7 @@ Real-world performance tests across different environments:
 
 ### 🔗 **Constraints System** - Referential Integrity
 
-Generate **multiple related tables** with Primary Keys (PK) and Foreign Keys (FK):
+Generate **multiple related tables** with Primary Keys (PK) and Foreign Keys (FK) to ensure referential integrity:
 
 ```python
 from rand_engine.main.data_generator import DataGenerator
@@ -241,16 +241,19 @@ orders_spec = {
 # Generate with referential integrity
 generator = DataGenerator({"customers": customers_spec, "orders": orders_spec})
 dfs = generator.size({"customers": 1000, "orders": 5000}).get_dfs()
+
+# Validate: All order customer_ids exist in customers
+assert set(dfs["orders"]["customer_id"]).issubset(set(dfs["customers"]["customer_id"]))
 ```
 
-📖 **Complete guide:** [CONSTRAINTS.md](./docs/CONSTRAINTS.md)
+📖 **Complete guide:** [CONSTRAINTS.md](./docs/CONSTRAINTS.md) (900+ lines with examples)
 
 ### 🎨 **Advanced Methods** - Correlated Data
 
-Generate correlated columns for realistic patterns:
+Generate correlated columns for realistic data patterns:
 
 ```python
-# Currency-Country correlations  
+# Currency-Country correlations
 orders_spec = {
     "order_id": {"method": "unique_ids", "kwargs": {"strategy": "sequence"}},
     "currency_country": {
@@ -264,15 +267,178 @@ orders_spec = {
 
 df = DataGenerator(orders_spec).size(10_000).get_df()
 # Result: USD always paired with US, EUR with DE, etc.
-```
+- `"kwargs"`: Method-specific parameters
+- **Declarative**: Define _what_ you want, not _how_ to generate it
 
-**Available Advanced Methods:**
+---
+
+## �️ How to Build Custom RandSpecs
+
+**Common Methods** (Both DataGenerator & SparkGenerator):
+- `unique_ids` - Unique identifiers (UUID, sequences, zero-padded ints)
+- `integers` - Random integers with min/max
+- `floats` - Random decimals with rounding
+- `floats_normal` - Normal distribution (bell curve)
+- `booleans` - True/False with probability
+- `distincts` - Random selection from list
+- `distincts_prop` - Weighted random selection
+- `unix_timestamps` - Date/time generation
+
+**Advanced Methods** (DataGenerator Only):
 - `distincts_map` - Correlated pairs (currency ↔ country)
 - `distincts_multi_map` - Hierarchical combinations (dept → level → role)
 - `distincts_map_prop` - Weighted correlated pairs
 - `complex_distincts` - Pattern-based strings (IPs, SKUs, URLs)
 
-📖 **Complete guide:** [BUILD_RAND_SPECS.md](./docs/BUILD_RAND_SPECS.md)
+df = DataGenerator(orders_spec).size(10_000).get_df()
+# Result: USD always paired with US, EUR with DE, etc.
+```
+
+---
+
+### Advanced Methods Summary
+
+| Method | Columns | Key Use Case | Example |
+|--------|---------|--------------|---------|
+| `distincts_map` | 2 | Currency-country, device-OS | USD → US, EUR → DE |
+| `distincts_multi_map` | N | Hierarchies (dept-level-role) | Engineering → Senior → Backend |
+| `distincts_map_prop` | 2 | Weighted correlations | Laptop → 90% new, 10% refurbished |
+| `complex_distincts` | 1 | IPs, SKUs, URLs, serial numbers | 192.168.x.x, PRD-ELEC-1234 |
+
+**⚠️ Important:** These methods are **DataGenerator only**. For Spark environments, generate with DataGenerator first, then convert:
+
+```python
+df_pandas = DataGenerator(AdvancedRandSpecs.products()).size(1_000_000).get_df()
+df_spark = spark.createDataFrame(df_pandas)
+```
+
+📖 **For complete examples:** See [AdvancedRandSpecs](./rand_engine/examples/advanced_rand_specs.py) for 10+ production-ready specs.
+
+---
+
+## 🎨 Real-World Use Cases
+
+### 🛒 E-Commerce with Referential Integrity
+
+Create **realistic multi-level datasets** with proper Primary Key (PK) and Foreign Key (FK) relationships. Rand Engine uses an internal checkpoint database (DuckDB/SQLite) to ensure 100% referential integrity.
+
+```python
+from rand_engine import DataGenerator
+
+# Level 1: Categories (Primary Key)
+spec_categories = {
+    "category_id": {
+        "method": "unique_ids", 
+        "kwargs": {"strategy": "zint", "length": 4}
+    },
+    "category_name": {
+        "method": "distincts", 
+        "kwargs": {"distincts": ["Electronics", "Books", "Clothing", "Home"]}
+    },
+    "constraints": {
+        "category_pk": {
+            "name": "category_pk",
+            "tipo": "PK",
+            "fields": ["category_id VARCHAR(4)"]
+        }
+    }
+}
+
+# Level 2: Products (Foreign Key → Categories)
+spec_products = {
+    "product_id": {
+        "method": "unique_ids", 
+        "kwargs": {"strategy": "zint", "length": 8}
+    },
+    "product_name": {
+        "method": "distincts", 
+        "kwargs": {"distincts": [f"Product {i:03d}" for i in range(100)]}
+    },
+    "price": {
+        "method": "floats", 
+        "kwargs": {"min": 10.0, "max": 1000.0, "round": 2}
+    },
+    "constraints": {
+        "product_pk": {
+            "name": "product_pk",
+            "tipo": "PK",
+            "fields": ["product_id VARCHAR(8)"]
+        },
+        "category_fk": {
+            "name": "category_pk",  # References category_pk constraint
+            "tipo": "FK",
+            "fields": ["category_id"],
+            "watermark": 60  # Only reference categories created in last 60 records
+        }
+    }
+}
+
+# Level 3: Orders (Foreign Key → Products)
+spec_orders = {
+    "order_id": {
+        "method": "unique_ids", 
+        "kwargs": {"strategy": "uuid4"}
+    },
+    "quantity": {
+        "method": "integers", 
+        "kwargs": {"min": 1, "max": 10}
+    },
+    "total": {
+        "method": "floats", 
+        "kwargs": {"min": 10.0, "max": 5000.0, "round": 2}
+    },
+    "constraints": {
+        "product_fk": {
+            "name": "product_pk",  # References product_pk constraint
+            "tipo": "FK",
+            "fields": ["product_id"],
+            "watermark": 120
+        }
+    }
+}
+
+# Generate datasets (order matters: Categories → Products → Orders)
+df_categories = DataGenerator(spec_categories).size(10).get_df()
+df_products = DataGenerator(spec_products).size(100).get_df()
+df_orders = DataGenerator(spec_orders).size(1_000).get_df()
+
+# Verify referential integrity
+print(f"✅ All products reference valid categories: {set(df_products['category_id']).issubset(set(df_categories['category_id']))}")
+print(f"✅ All orders reference valid products: {set(df_orders['product_id']).issubset(set(df_products['product_id']))}")
+```
+
+📖 **Complete constraints guide:** [CONSTRAINTS.md](./docs/CONSTRAINTS.md)
+
+---
+
+
+
+---
+
+## 🏗️ Architecture
+
+### Design Philosophy
+
+- **Declarative**: Specify what you want, not how to generate it
+- **Performance**: Built on NumPy for vectorized operations (millions of rows/second)
+- **Simplicity**: Pre-built examples for immediate use
+- **Extensibility**: Easy to create custom specifications
+
+### Public API
+
+```python
+from rand_engine import DataGenerator, RandSpecs
+
+# That's it! Simple and clean.
+```
+
+All internal modules (prefixed with `_`) are implementation details.
+
+---
+
+## 🧪 Quality & Testing
+
+📖 **Learn more:** Check the full documentation for detailed examples and advanced patterns.
 
 ---
 
@@ -328,7 +494,7 @@ pytest tests/test_8_consistency.py -v    # Test constraints
 
 ---
 
-## 📦 Requirements
+## � Requirements
 
 - **Python** >= 3.10
 - **numpy** >= 2.1.1
@@ -341,7 +507,7 @@ pytest tests/test_8_consistency.py -v    # Test constraints
 ## 🤝 Contributing
 
 Contributions are welcome! Feel free to:
-- 🐛 Report bugs via [Issues](https://github.com/marcoaureliomenezes/rand_engine/issues)
+- � Report bugs via [Issues](https://github.com/marcoaureliomenezes/rand_engine/issues)
 - 💡 Suggest features via [Discussions](https://github.com/marcoaureliomenezes/rand_engine/discussions)
 - 🔧 Submit pull requests
 
