@@ -187,7 +187,7 @@ class TestSparkCoreSelection:
         F = spark_functions
         
         distincts_prop = {"A": 70, "B": 20, "C": 10}
-        result = SparkCore.gen_distincts_prop(spark_session, F, df, "test_col", distincts_prop=distincts_prop)
+        result = SparkCore.gen_distincts_prop(spark_session, F, df, "test_col", distincts=distincts_prop)
         
         data = result.select("test_col").collect()
         values = [row["test_col"] for row in data]
@@ -243,7 +243,7 @@ class TestSparkCoreTemporal:
             spark_session, F, df, "test_col",
             start="2020-01-01",
             end="2023-12-31",
-            formato="%Y-%m-%d"
+            date_format="%Y-%m-%d"
         )
         
         data = result.select("test_col").collect()
@@ -264,7 +264,7 @@ class TestSparkCoreTemporal:
             spark_session, F, df, "test_col",
             start="2020-01-01 00:00:00",
             end="2020-01-31 23:59:59",
-            formato="%Y-%m-%d %H:%M:%S"
+            date_format="%Y-%m-%d %H:%M:%S"
         )
         
         data = result.select("test_col").collect()

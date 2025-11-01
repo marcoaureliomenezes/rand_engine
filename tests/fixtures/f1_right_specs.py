@@ -1,7 +1,6 @@
 import pytest
 import faker
 from datetime import datetime as dt, timedelta
-from rand_engine.main.examples import RandSpecs
 
 
 @pytest.fixture(scope="function")
@@ -11,20 +10,41 @@ def default_size():
 
 @pytest.fixture(scope="function")
 def rand_spec_with_kwargs():
-    """Simple spec with kwargs - Use RandSpecs.customers() instead."""
-    return RandSpecs.customers()
+    """
+    Comprehensive spec using ONLY kwargs for all methods.
+    Tests: integers, floats, floats_normal, distincts, uuid4, booleans.
+    """
+    return {
+        "id": dict(method="uuid4", kwargs={}),
+        "age": dict(method="integers", kwargs=dict(min=18, max=65)),
+        "score": dict(method="floats", kwargs=dict(min=0.0, max=100.0, decimals=2)),
+        "rating": dict(method="floats_normal", kwargs=dict(mean=7.5, std=1.5, decimals=1)),
+        "category": dict(method="distincts", kwargs=dict(distincts=["A", "B", "C", "D"])),
+        "is_active": dict(method="booleans", kwargs=dict(true_prob=0.8)),
+    }
  
 
 @pytest.fixture(scope="function")
 def rand_spec_lambda_with_kwargs():
-    """Lambda spec with kwargs - Returns callable that generates customers spec."""
-    return lambda: RandSpecs.customers()
+    """Lambda spec with kwargs - Returns callable that generates spec."""
+    return lambda: {
+        "transaction_id": dict(method="uuid4", kwargs={}),
+        "amount": dict(method="floats", kwargs=dict(min=10.0, max=1000.0, decimals=2)),
+        "status": dict(method="distincts", kwargs=dict(distincts=["pending", "completed", "failed"])),
+    }
 
 
 @pytest.fixture(scope="function")
 def rand_spec_with_args():
-    """Spec using args instead of kwargs - Use RandSpecs.customers() instead."""
-    return RandSpecs.customers()
+    """
+    Spec using ONLY args (not kwargs).
+    Tests that args parameter works correctly.
+    """
+    return {
+        "id": dict(method="int_zfilled", args=[10]),
+        "priority": dict(method="distincts", args=[["low", "medium", "high"]]),
+        "temperature": dict(method="floats", args=[20.0, 30.0, 1]),
+    }
 
 
 @pytest.fixture(scope="function")
@@ -54,18 +74,109 @@ def rand_spec_with_related_columns():
                     method="distincts_multi_map", cols = ["setor", "sub_setor", "porte", "codigo_municipio"],
                     kwargs=dict(distincts={
                       "setor_1": [
-                          ["agro", "mineração", "petróleo", "pecuária"], [0.25, 0.15], [None], ["01", "02"]], 
+                          ["agro", "mineração", "petróleo", "pecuária"],
+                          [0.25, 0.15],
+                          [None],
+                          ["01", "02"]], 
                       "setor_2": [
-                          ["indústria", "construção"], [0.30, 0.20, 0.10], ["micro", "pequena", "média"], ["03", "04", "05"]]
+                          ["indústria", "construção"],
+                          [0.30, 0.20, 0.10],
+                          ["micro", "pequena", "média"],
+                          ["03", "04", "05"]
+                    ]
         })),
     }
 
 
 @pytest.fixture(scope="function")
-def rand_spec_case_1_transformer():
-    """Spec with transformers - Use RandSpecs.users() instead (has uppercase transformer)."""
-    return RandSpecs.users()
+def rand_spec_with_transformers():
+    """
+    Spec testing embedded transformers on columns.
+    Transformers are applied after generation.
+    """
+    return {
+        "id": dict(method="int_zfilled", kwargs=dict(length=6)),
+        "timestamp": dict(
+            method="unix_timestamps",
+            kwargs=dict(start='2024-01-01', end='2024-12-31', date_format="%Y-%m-%d"),
+            transformers=[lambda ts: dt.fromtimestamp(ts).strftime("%d/%b/%Y:%H:%M:%S")]
+        ),
+        "email": dict(
+            method="distincts",
+            kwargs=dict(distincts=["john.doe", "jane.smith", "bob.jones"]),
+            transformers=[lambda name: f"{name}@example.com"]
+        ),
+        "price": dict(
+            method="floats",
+            kwargs=dict(min=10.0, max=100.0, decimals=2),
+            transformers=[
+                lambda val: val * 1.1,  # Add 10% tax
+                lambda val: round(val, 2)  # Round again after tax
+            ]
+        ),
+    }
 
+
+@pytest.fixture(scope="function")
+def rand_spec_all_methods():
+    """
+    Comprehensive spec using ALL available DataGenerator methods.
+    Tests complete coverage of all generation capabilities.
+    """
+    return {
+        # NPCore methods
+        "id": dict(method="integers", kwargs=dict(min=1, max=1000000)),
+        "code": dict(method="int_zfilled", kwargs=dict(length=8)),
+        "price": dict(method="floats", kwargs=dict(min=1.0, max=1000.0, decimals=2)),
+        "rating": dict(method="floats_normal", kwargs=dict(mean=4.0, std=0.8, decimals=1)),
+        "category": dict(method="distincts", kwargs=dict(distincts=["A", "B", "C"])),
+        "tier": dict(method="distincts_prop", kwargs=dict(distincts={"gold": 10, "silver": 30, "bronze": 60})),
+        "created_at": dict(method="unix_timestamps", kwargs=dict(start="2024-01-01", end="2024-12-31", date_format="%Y-%m-%d")),
+        "uuid": dict(method="uuid4", kwargs={}),
+        "is_verified": dict(method="booleans", kwargs=dict(true_prob=0.7)),
+        
+        # PyCore methods - correlated columns
+        "device_os": dict(
+            method="distincts_map",
+            cols=["device", "os"],
+            kwargs=dict(distincts={
+                "mobile": ["android", "ios"],
+                "desktop": ["windows", "macos", "linux"]
+            })
+        ),
+        "trade_details": dict(
+            method="distincts_map_prop",
+            cols=["trade_type", "trade_side"],
+            kwargs=dict(distincts={
+                "EQUITY": [("BUY", 6), ("SELL", 4)],
+                "FX": [("BUY", 5), ("SELL", 5)]
+            })
+        ),
+        "company_data": dict(
+            method="distincts_multi_map",
+            cols=["industry", "sub_industry", "company_size"],
+            kwargs=dict(distincts={
+                "tech": [
+                    ["software", "hardware"],
+                    [0.7, 0.3],
+                    ["small", "medium", "large"]
+                ]
+            })
+        ),
+        "ip_address": dict(
+            method="complex_distincts",
+            kwargs=dict(
+                pattern="x.x.x.x",
+                replacement="x",
+                templates=[
+                    {"method": "distincts", "kwargs": dict(distincts=["192", "172", "10"])},
+                    {"method": "integers", "kwargs": dict(min=0, max=255)},
+                    {"method": "integers", "kwargs": dict(min=0, max=255)},
+                    {"method": "integers", "kwargs": dict(min=1, max=254)}
+                ]
+            )
+        ),
+    }
 
 
 @pytest.fixture(scope="function")

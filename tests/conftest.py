@@ -5,7 +5,7 @@ Automatically loads all fixtures from the fixtures/ directory.
 
 IMPORTANT - Spark Testing Compatibility:
 - PySpark tests are automatically skipped on Windows with Python 3.12+ due to worker crashes
-- This is handled in f5_spark_fixtures.py via pytest.skip()
+- This is handled in f2_spark_generator_specs_right.py via pytest.skip()
 - For CI/CD: Use Python 3.10 or 3.11 for Spark tests on Windows
 - Linux/macOS: All Python versions supported
 """
@@ -13,11 +13,11 @@ import warnings
 import pytest
 
 pytest_plugins = [
-    "tests.fixtures.f5_spark_fixtures",
+    "tests.fixtures.f2_spark_generator_specs_right",
 ]
 
 # Note: Other fixture files can be imported here as needed
-# "tests.fixtures.f1_right_specs",
+# "tests.fixtures.f1_data_generator_specs_right",
 # "tests.fixtures.f3_integrations",
 
 

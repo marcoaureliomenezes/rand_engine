@@ -22,7 +22,8 @@ class NPCore:
 
   @classmethod
   def gen_ints(cls, size: int, min: int, max: int, int_type: str = 'int32') -> np.ndarray:
-    # Use int64 explicitly to avoid Windows int32 overflow issues
+    allowed_integers = ['int8', 'int16', 'int32', 'int64', 'uint8', 'uint16', 'uint32', 'uint64']
+    assert int_type in allowed_integers, f"int_type must be one of {allowed_integers}"
     return np.random.randint(min, max + 1, size, dtype=np.int64).astype(int_type)
   
 
@@ -62,8 +63,8 @@ class NPCore:
   
 
   @classmethod
-  def gen_unix_timestamps(cls, size: int, start: str, end: str, format: str) -> np.ndarray:
-    dt_start, dt_end = dt.strptime(start, format), dt.strptime(end, format)
+  def gen_unix_timestamps(cls, size: int, start: str, end: str, date_format: str) -> np.ndarray:
+    dt_start, dt_end = dt.strptime(start, date_format), dt.strptime(end, date_format)
     if dt_start < dt(1970, 1, 1): dt_start = dt(1970, 1, 1)
     timestamp_start, timestamp_end = int(dt_start.timestamp()), int(dt_end.timestamp())
     # Use int64 to handle large Unix timestamps on Windows
@@ -72,11 +73,22 @@ class NPCore:
   
 
   @classmethod
-  def gen_dates(cls, size: int, start: str, end: str, format: str) -> np.ndarray:
-    timestamp_array = cls.gen_unix_timestamps(size, start, end, format)
-    date_array = timestamp_array.astype('datetime64[s]')
-    print(date_array)
-    # convert to desired string format
+  def gen_dates(cls, size: int, start: str, end: str, date_format: str) -> np.ndarray:
+    """
+    Generate random dates as formatted strings.
+    
+    Args:
+        size: Number of dates to generate
+        start: Start date string
+        end: End date string
+        format: Date format (e.g., "%Y-%m-%d", "%Y-%m-%d %H:%M:%S")
+    
+    Returns:
+        numpy array of formatted date strings
+    """
+    timestamp_array = cls.gen_unix_timestamps(size, start, end, date_format)
+    # Convert to datetime64 then format as strings
+    date_array = np.array([dt.fromtimestamp(ts).strftime(date_format) for ts in timestamp_array])
     return date_array
 
 if __name__ == "__main__":

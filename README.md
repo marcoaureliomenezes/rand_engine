@@ -5,14 +5,16 @@
 A Python library for generating millions of rows of realistic synthetic data through declarative specifications. Built on NumPy and Pandas for maximum performance.
 
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-236%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-494%20passing-brightgreen.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)]()
-[![Version](https://img.shields.io/badge/version-0.6.1-orange.svg)]()
+[![Version](https://img.shields.io/badge/version-0.7.0-orange.svg)]()
 
 ---
 
-## 🔥 What's New in v0.6.1
+## 🔥 What's New in v0.7.0
 
+- ✅ **Simplified Validators**: Architecture streamlined from 4 to 2 validator files (37% code reduction)
+- ✅ **Clear Separation**: `CommonValidator` for common methods, `AdvancedValidator` for advanced patterns
 - ✅ **Constraints System**: Primary Keys (PK) and Foreign Keys (FK) for referential integrity between specs
 - ✅ **Composite Keys**: Support for multi-column primary and foreign keys
 - ✅ **Watermarks**: Temporal windows for realistic time-based relationships
@@ -42,6 +44,64 @@ pip install rand-engine
 
 ---
 
+## 🎯 Core Capabilities
+
+Rand Engine provides two powerful generators for different use cases:
+
+### 1. **DataGenerator** - Pandas DataFrames
+Generate **pandas DataFrames** for local development, testing, and data analysis. Supports all common methods **plus advanced patterns** like correlated columns, complex patterns, and foreign keys.
+
+```python
+from rand_engine.main.data_generator import DataGenerator
+from rand_engine.examples.common_rand_specs import CommonRandSpecs
+
+# Generate pandas DataFrame with 1 million rows
+df = DataGenerator(CommonRandSpecs.customers(), seed=42).size(1_000_000).get_df()
+print(df.head())
+```
+
+**Key Features:**
+- ✅ **Common Methods**: integers, floats, booleans, dates, distincts, etc.
+- ✅ **Advanced Methods**: `distincts_map`, `distincts_multi_map`, `distincts_map_prop`, `complex_distincts`
+- ✅ **Constraints System**: Primary Keys (PK) and Foreign Keys (FK) for referential integrity
+- ✅ **File Writing**: Direct export to CSV, Parquet, JSON with compression
+- ✅ **Transformers**: Apply custom functions to columns or entire DataFrames
+
+---
+
+### 2. **SparkGenerator** - Spark DataFrames
+Generate **Spark DataFrames** directly for distributed environments like **Databricks**, **AWS EMR**, or **Azure Synapse**. Perfect for testing big data pipelines.
+
+```python
+from rand_engine.main.spark_generator import SparkGenerator
+from rand_engine.examples.common_rand_specs import CommonRandSpecs
+
+# In Databricks or any Spark environment
+from pyspark.sql import functions as F
+
+df_spark = SparkGenerator(spark, F, CommonRandSpecs.orders()).size(10_000_000).get_df()
+display(df_spark)
+```
+
+**Key Features:**
+- ✅ **Common Methods**: All standard generation methods (integers, floats, dates, etc.)
+- ✅ **Distributed Generation**: Leverages Spark's parallelism for massive datasets
+- ✅ **Databricks Ready**: Works seamlessly in Databricks notebooks
+- ⚠️ **Advanced Methods**: Not yet supported (returns NULL for compatibility)
+
+**Important:** SparkGenerator uses **common methods only**. For advanced patterns (correlated columns, complex patterns), use DataGenerator and convert to Spark:
+
+```python
+# Generate with DataGenerator, then convert to Spark
+from rand_engine.main.data_generator import DataGenerator
+from rand_engine.examples.advanced_rand_specs import AdvancedRandSpecs
+
+df_pandas = DataGenerator(AdvancedRandSpecs.products()).size(100_000).get_df()
+df_spark = spark.createDataFrame(df_pandas)
+```
+
+---
+
 ## 🚀 Quick Start
 
 ### 1. Pre-Built Examples (Fastest Way to Start)
@@ -59,23 +119,22 @@ Creating 1 million rows is as simple as:
 Rand Engine includes **10+ ready-to-use RandSpecs** covering common business domains—no configuration needed.
 
 ```python
-from rand_engine import DataGenerator, RandSpecs
+from rand_engine.main.data_generator import DataGenerator
+from rand_engine.examples.common_rand_specs import CommonRandSpecs
 
 # Generate 1 million customer records in seconds
-customers_spec = RandSpecs.customers()  # Pre-built specification
-df_customers = DataGenerator(customers_spec, seed=42).size(1_000_000).get_df()
-
+df_customers = DataGenerator(CommonRandSpecs.customers(), seed=42).size(1_000_000).get_df()
 print(df_customers.head())
 ```
 
 **Output:**
 ```
-   customer_id       name  age                    email  is_active  account_balance
-0    C00000001  John Smith   42    john.smith@email.com       True         15432.50
-1    C00000002  Jane Brown   28   jane.brown@email.com       True          8721.33
-2    C00000003   Bob Wilson   56   bob.wilson@email.com      False         42156.89
-3    C00000004  Alice Davis   33  alice.davis@email.com       True         23400.12
-4    C00000005   Tom Miller   49   tom.miller@email.com       True         31245.67
+   customer_id  age           city  total_spent  is_premium registration_date
+0    uuid-001    42      São Paulo      1523.50        True        2023-05-12
+1    uuid-002    28  Rio de Janeiro       872.33        False       2024-01-08
+2    uuid-003    56  Belo Horizonte      4215.89        False       2022-11-23
+3    uuid-004    33      São Paulo      2340.12        True        2023-09-17
+4    uuid-005    49      Curitiba       3124.67        True        2024-02-05
 ```
 
 ---
@@ -83,14 +142,12 @@ print(df_customers.head())
 Size parameter can be an integer or a callable function that returns an integer.
 
 ```python
-from rand_engine import DataGenerator, RandSpecs
+from rand_engine.main.data_generator import DataGenerator
+from rand_engine.examples.common_rand_specs import CommonRandSpecs
 from random import randint
 
 lambda_size = lambda: randint(500_000, 2_000_000)
-# Generate 1 million customer records in seconds
-customers_spec = RandSpecs.customers()  # Pre-built specification
-df_customers = DataGenerator(customers_spec, seed=42).size(lambda_size).get_df()
-
+df_customers = DataGenerator(CommonRandSpecs.customers(), seed=42).size(lambda_size).get_df()
 print(df_customers.shape)
 ```
 
@@ -99,18 +156,20 @@ print(df_customers.shape)
 Seamlessly integrate with **Databricks** and other Spark environments. Generate synthetic data and convert to Spark DataFrames with zero friction.
 
 ```python
-from rand_engine import DataGenerator, RandSpecs
+from rand_engine.main.spark_generator import SparkGenerator
+from rand_engine.examples.common_rand_specs import CommonRandSpecs
+from pyspark.sql import functions as F
 
-# Generate synthetic data for Databricks
-transactions_spec = RandSpecs.transactions()
-df_pandas = DataGenerator(transactions_spec, seed=42).size(1_000_000).get_df()
-
-# Option 1: Display pandas DataFrame
-display(df_pandas)
-
-# Option 2: Convert to Spark DataFrame for distributed processing
-df_spark = spark.createDataFrame(df_pandas)
+# Option 1: Native Spark generation (common methods only)
+df_spark = SparkGenerator(spark, F, CommonRandSpecs.transactions()).size(10_000_000).get_df()
 display(df_spark)
+
+# Option 2: Generate with DataGenerator and convert (for advanced methods)
+from rand_engine.main.data_generator import DataGenerator
+from rand_engine.examples.advanced_rand_specs import AdvancedRandSpecs
+
+df_pandas = DataGenerator(AdvancedRandSpecs.orders()).size(1_000_000).get_df()
+df_spark = spark.createDataFrame(df_pandas)
 
 # Write directly to Delta Lake, Parquet, or any Spark-supported format
 df_spark.write.format("delta").mode("overwrite").save("/path/to/delta/table")
@@ -120,45 +179,92 @@ df_spark.write.format("delta").mode("overwrite").save("/path/to/delta/table")
 
 ### 3. Explore Built-In RandSpecs
 
-Rand Engine provides **10+ production-ready specifications** across multiple business domains. Each spec generates realistic, correlated data with 6+ fields.
+Rand Engine provides **two types of pre-built specifications** to cover different use cases:
+
+#### 3.1. **CommonRandSpecs** - Cross-Compatible Specs
+
+These specs work with **both DataGenerator and SparkGenerator**. They use only common methods (integers, floats, booleans, dates, distincts, etc.).
 
 ```python
-from rand_engine import DataGenerator, RandSpecs
+from rand_engine.main.data_generator import DataGenerator
+from rand_engine.main.spark_generator import SparkGenerator
+from rand_engine.examples.common_rand_specs import CommonRandSpecs
+from pyspark.sql import functions as F
 
-# 🛍️ E-Commerce & Retail
-builtin_specs = [
-    RandSpecs.customers(),    # Customer profiles with contact info
-    RandSpecs.products(),     # Product catalog with pricing
-    RandSpecs.orders(),       # Orders with currency/country correlation
-    RandSpecs.invoices(),     # Invoice records with payment details
-    RandSpecs.shipments(),    # Shipping data with carrier/destination
-]
+# Works with DataGenerator
+df_pandas = DataGenerator(CommonRandSpecs.customers(), seed=42).size(100_000).get_df()
 
-# 💰 Financial Services
-builtin_specs += [
-    RandSpecs.transactions(), # Financial transactions with amounts
-]
-
-# 👥 HR & User Management
-builtin_specs += [
-    RandSpecs.employees(),    # Employee records (dept/level/role)
-    RandSpecs.users(),        # Application users with auth data
-]
-
-# 🔧 IoT & System Monitoring
-builtin_specs += [
-    RandSpecs.devices(),      # IoT device telemetry
-    RandSpecs.events(),       # System event logs
-]
-
-# Generate millions of rows from any spec
-for spec in builtin_specs:
-    df = DataGenerator(spec, seed=42).size(1_000_000).get_df()
-    print(f"\n{spec['__meta__']['name']}:")
-    print(df.head())
+# Also works with SparkGenerator
+df_spark = SparkGenerator(spark, F, CommonRandSpecs.customers()).size(100_000).get_df()
 ```
 
-**💡 Pro Tip:** These specs include realistic correlations (e.g., `orders.currency` matches `orders.country`, `employees.level` correlates with `salary`). Perfect for testing real-world scenarios!
+**Available Common Specs (7 ready-to-use):**
+
+| Spec | Fields | Domain | Description |
+|------|--------|--------|-------------|
+| `customers()` | 6 | E-Commerce | Customer profiles with age, city, spending |
+| `products()` | 7 | Retail | Product catalog with SKU, price, stock |
+| `orders()` | 6 | E-Commerce | Orders with amounts, status, timestamps |
+| `transactions()` | 7 | Finance | Financial transactions with fees |
+| `employees()` | 8 | HR | Employee records with salary, department |
+| `sensors()` | 7 | IoT | Sensor readings with temperature, humidity |
+| `users()` | 7 | SaaS | Application users with subscription plans |
+
+---
+
+#### 3.2. **AdvancedRandSpecs** - DataGenerator Only
+
+These specs use **advanced methods** for correlated data, complex patterns, and hierarchical relationships. They work **only with DataGenerator**.
+
+```python
+from rand_engine.main.data_generator import DataGenerator
+from rand_engine.examples.advanced_rand_specs import AdvancedRandSpecs
+
+# Advanced specs with correlated columns
+df_products = DataGenerator(AdvancedRandSpecs.products()).size(100_000).get_df()
+df_orders = DataGenerator(AdvancedRandSpecs.orders()).size(500_000).get_df()
+df_employees = DataGenerator(AdvancedRandSpecs.employees()).size(1_000).get_df()
+```
+
+**Available Advanced Specs (10 ready-to-use):**
+
+| Spec | Fields | Advanced Methods Used | Key Features |
+|------|--------|----------------------|--------------|
+| `products()` | 6 | `complex_distincts` | Pattern-based SKUs (PRD-1234) |
+| `orders()` | 7 | `distincts_map` | Currency-country correlations |
+| `employees()` | 8 | `distincts_multi_map` | Department-level-role hierarchy |
+| `devices()` | 7 | `distincts_map_prop` | Status-priority weighted pairs |
+| `invoices()` | 7 | `complex_distincts` | Invoice numbering patterns |
+| `shipments()` | 8 | `distincts_map` | Carrier-destination correlations |
+| `network_devices()` | 7 | `complex_distincts` | IP address patterns (192.168.x.x) |
+| `vehicles()` | 8 | `distincts_multi_map` | Make-model-year combinations |
+| `real_estate()` | 8 | `distincts_map` | Location-type correlations |
+| `healthcare()` | 8 | `distincts_map_prop` | Diagnosis-treatment patterns |
+
+**Example - Correlated Columns:**
+
+```python
+from rand_engine.main.data_generator import DataGenerator
+from rand_engine.examples.advanced_rand_specs import AdvancedRandSpecs
+
+# Orders with currency-country correlations
+df = DataGenerator(AdvancedRandSpecs.orders()).size(10_000).get_df()
+print(df[['currency', 'country']].drop_duplicates())
+
+# Output shows realistic correlations:
+#   currency country
+# 0      USD      US
+# 1      EUR      DE
+# 2      BRL      BR
+# 3      JPY      JP
+```
+
+**💡 Pro Tip:** If you need advanced patterns in Spark, generate with DataGenerator first, then convert:
+
+```python
+df_pandas = DataGenerator(AdvancedRandSpecs.employees()).size(100_000).get_df()
+df_spark = spark.createDataFrame(df_pandas)
+```
 
 ---
 
@@ -462,6 +568,159 @@ print(df_products)
 ```
 
 📖 **For advanced examples:** See [EXAMPLES.md](./EXAMPLES.md) for correlated columns, composite keys, and more.
+
+---
+
+## 🔧 Advanced Methods (DataGenerator Only)
+
+Beyond common methods, **DataGenerator** supports advanced patterns for correlated data and complex string generation. These methods are **not available in SparkGenerator**.
+
+### 1. **`distincts_map`** - Correlated Pairs
+
+Generate **2 correlated columns** where values depend on each other (e.g., currency ↔ country).
+
+```python
+spec = {
+    "order_data": {
+        "method": "distincts_map",
+        "cols": ["currency", "country"],  # Must specify 2 columns
+        "kwargs": {
+            "distincts": {
+                "USD": ["US", "EC", "PA"],      # USD → US, Ecuador, Panama
+                "EUR": ["DE", "FR", "IT"],      # EUR → Eurozone countries
+                "BRL": ["BR"],                   # BRL → Brazil
+                "JPY": ["JP"]                    # JPY → Japan
+            }
+        }
+    }
+}
+
+df = DataGenerator(spec).size(10_000).get_df()
+print(df[['currency', 'country']].value_counts())
+```
+
+---
+
+### 2. **`distincts_multi_map`** - Hierarchical Combinations
+
+Generate **N correlated columns** with Cartesian combinations (e.g., department → level → role).
+
+```python
+spec = {
+    "employee": {
+        "method": "distincts_multi_map",
+        "cols": ["department", "level", "role"],  # 3 columns
+        "kwargs": {
+            "distincts": {
+                "Engineering": [
+                    ["Junior", "Mid", "Senior"],          # Levels
+                    ["Backend", "Frontend", "DevOps"]     # Roles
+                ],
+                "Sales": [
+                    ["Junior", "Senior"],
+                    ["Inside", "Field"]
+                ]
+            }
+        }
+    }
+}
+
+df = DataGenerator(spec).size(1_000).get_df()
+# Possible combinations: (Engineering, Junior, Backend), (Engineering, Mid, Frontend), etc.
+```
+
+---
+
+### 3. **`distincts_map_prop`** - Weighted Correlated Pairs
+
+Generate **2 correlated columns with probabilities** (e.g., product → status with weights).
+
+```python
+spec = {
+    "product_data": {
+        "method": "distincts_map_prop",
+        "cols": ["product_type", "condition"],
+        "kwargs": {
+            "distincts": {
+                "laptop": [("new", 90), ("refurbished", 10)],       # 90% new
+                "smartphone": [("new", 95), ("refurbished", 5)],    # 95% new
+                "tablet": [("new", 85), ("refurbished", 15)]        # 85% new
+            }
+        }
+    }
+}
+
+df = DataGenerator(spec).size(10_000).get_df()
+print(df.groupby(['product_type', 'condition']).size())
+```
+
+---
+
+### 4. **`complex_distincts`** - Pattern-Based Generation
+
+Generate **complex strings** by replacing placeholders (IPs, SKUs, URLs, serial numbers).
+
+**Example 1: IP Addresses**
+```python
+spec = {
+    "ip_address": {
+        "method": "complex_distincts",
+        "kwargs": {
+            "pattern": "x.x.x.x",
+            "replacement": "x",
+            "templates": [
+                {"method": "distincts", "kwargs": {"distincts": ["192", "172", "10"]}},
+                {"method": "integers", "kwargs": {"min": 0, "max": 255, "int_type": "int32"}},
+                {"method": "integers", "kwargs": {"min": 0, "max": 255, "int_type": "int32"}},
+                {"method": "integers", "kwargs": {"min": 1, "max": 254, "int_type": "int32"}}
+            ]
+        }
+    }
+}
+
+df = DataGenerator(spec).size(1_000).get_df()
+# Output: 192.168.1.45, 172.16.0.123, 10.0.1.89, ...
+```
+
+**Example 2: Product SKUs**
+```python
+spec = {
+    "sku": {
+        "method": "complex_distincts",
+        "kwargs": {
+            "pattern": "PRD-x-x",
+            "replacement": "x",
+            "templates": [
+                {"method": "distincts", "kwargs": {"distincts": ["ELEC", "CLTH", "FOOD"]}},
+                {"method": "integers", "kwargs": {"min": 1000, "max": 9999, "int_type": "int32"}}
+            ]
+        }
+    }
+}
+
+df = DataGenerator(spec).size(100).get_df()
+# Output: PRD-ELEC-1234, PRD-CLTH-5678, PRD-FOOD-9012, ...
+```
+
+---
+
+### Advanced Methods Summary
+
+| Method | Columns | Key Use Case | Example |
+|--------|---------|--------------|---------|
+| `distincts_map` | 2 | Currency-country, device-OS | USD → US, EUR → DE |
+| `distincts_multi_map` | N | Hierarchies (dept-level-role) | Engineering → Senior → Backend |
+| `distincts_map_prop` | 2 | Weighted correlations | Laptop → 90% new, 10% refurbished |
+| `complex_distincts` | 1 | IPs, SKUs, URLs, serial numbers | 192.168.x.x, PRD-ELEC-1234 |
+
+**⚠️ Important:** These methods are **DataGenerator only**. For Spark environments, generate with DataGenerator first, then convert:
+
+```python
+df_pandas = DataGenerator(AdvancedRandSpecs.products()).size(1_000_000).get_df()
+df_spark = spark.createDataFrame(df_pandas)
+```
+
+📖 **For complete examples:** See [AdvancedRandSpecs](./rand_engine/examples/advanced_rand_specs.py) for 10+ production-ready specs.
 
 ---
 

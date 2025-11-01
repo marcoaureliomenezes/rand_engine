@@ -1,9 +1,10 @@
 """
-Testes para o novo validador educativo (SpecValidator v2).
+Tests for AdvancedValidator - validates DataGenerator specs.
+Covers common methods (integers, floats, etc.) + advanced methods (distincts_map, constraints, etc.)
 """
 
 import pytest
-from rand_engine.validators.spec_validator import SpecValidator
+from rand_engine.validators.advanced_validator import AdvancedValidator
 from rand_engine.validators.exceptions import SpecValidationError
 
 
@@ -15,7 +16,7 @@ def test_valid_spec_integers():
             "kwargs": {"min": 18, "max": 65}
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 0
 
 
@@ -29,9 +30,9 @@ def test_valid_spec_with_all_basic_methods():
         "ativo": {"method": "booleans", "kwargs": {"true_prob": 0.7}},
         "plano": {"method": "distincts", "kwargs": {"distincts": ["free", "premium"]}},
         "dispositivo": {"method": "distincts_prop", "kwargs": {"distincts": {"mobile": 70, "desktop": 30}}},
-        "created_at": {"method": "unix_timestamps", "kwargs": {"start": "01-01-2024", "end": "31-12-2024", "format": "%d-%m-%Y"}},
+        "created_at": {"method": "unix_timestamps", "kwargs": {"start": "01-01-2024", "end": "31-12-2024", "date_format": "%d-%m-%Y"}},
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 0
 
 
@@ -47,7 +48,7 @@ def test_valid_spec_with_correlated_columns():
             }}
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 0
 
 
@@ -60,14 +61,14 @@ def test_valid_spec_with_transformers():
             "transformers": [lambda x: x.upper(), lambda x: x.strip()]
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 0
 
 
 def test_invalid_spec_not_dict():
     """Testa erro quando spec não é dicionário."""
     spec = ["lista", "invalida"]
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 1
     assert "must be a dictionary" in errors[0]
 
@@ -75,7 +76,7 @@ def test_invalid_spec_not_dict():
 def test_invalid_spec_empty():
     """Testa erro quando spec está vazia."""
     spec = {}
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 1
     assert "cannot be empty" in errors[0]
 
@@ -85,7 +86,7 @@ def test_invalid_column_config_not_dict():
     spec = {
         "idade": "string_invalida"
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 1
     assert "configuration must be a dictionary" in errors[0]
     assert "idade" in errors[0]
@@ -98,7 +99,7 @@ def test_invalid_missing_method():
             "kwargs": {"min": 0, "max": 100}
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 1
     assert "'method' is required" in errors[0]
 
@@ -111,7 +112,7 @@ def test_invalid_method_not_string():
             "kwargs": {"min": 0, "max": 100}
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) > 0
     assert "'method' must be string" in errors[0]
 
@@ -124,7 +125,7 @@ def test_invalid_method_unknown():
             "kwargs": {"min": 0, "max": 100}
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 1
     assert "does not exist" in errors[0]
     assert "Available methods" in errors[0]
@@ -139,7 +140,7 @@ def test_invalid_both_kwargs_and_args():
             "args": [0, 100]
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 1
     assert "cannot have both" in errors[0] and "simultaneously" in errors[0]
 
@@ -151,7 +152,7 @@ def test_invalid_missing_kwargs_and_args():
             "method": "integers"
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 1
     assert "requires" in errors[0] and ("kwargs" in errors[0] or "args" in errors[0])
 
@@ -164,7 +165,7 @@ def test_invalid_kwargs_not_dict():
             "kwargs": [0, 100]  # Lista ao invés de dict
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 1
     assert "'kwargs' must be dictionary" in errors[0]
 
@@ -177,7 +178,7 @@ def test_invalid_missing_required_param():
             "kwargs": {"min": 0}  # Falta 'max'
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 1
     assert "requires parameter 'max'" in errors[0]
     assert "Correct example" in errors[0]
@@ -191,7 +192,7 @@ def test_invalid_wrong_param_type():
             "kwargs": {"min": "zero", "max": "cem"}  # Strings ao invés de int
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 2  # min e max errados
     assert any("must be int" in e for e in errors)
 
@@ -206,7 +207,7 @@ def test_invalid_method_requires_cols():
             }}
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 1
     assert "requires" in errors[0] and "cols" in errors[0]
 
@@ -222,7 +223,7 @@ def test_invalid_cols_not_list():
             }}
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 1
     assert "'cols' must be list" in errors[0]
 
@@ -236,7 +237,7 @@ def test_invalid_transformers_not_list():
             "transformers": lambda x: x.upper()  # Função direta ao invés de lista
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 1
     assert "'transformers' must be list" in errors[0]
 
@@ -250,37 +251,37 @@ def test_invalid_transformer_not_callable():
             "transformers": ["string_invalida"]
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 1
     assert "must be callable" in errors[0]
 
 
 def test_invalid_pk_not_dict():
-    """Testa erro quando pk não é dicionário."""
+    """Legacy 'pk' field (not in constraints) is no longer validated - passes silently."""
     spec = {
         "id": {
             "method": "int_zfilled",
             "kwargs": {"length": 8},
-            "pk": "users"  # String ao invés de dict
+            "pk": "users"  # Legacy field - no longer validated
         }
     }
-    errors = SpecValidator.validate(spec)
-    assert len(errors) == 1
-    assert "'pk' must be dictionary" in errors[0]
+    errors = AdvancedValidator.validate(spec)
+    # No errors - legacy pk field is ignored in simplified validator
+    assert len(errors) == 0
 
 
 def test_invalid_pk_missing_required_fields():
-    """Tests error when pk doesn't have required fields."""
+    """Legacy 'pk' field (not in constraints) is no longer validated - passes silently."""
     spec = {
         "id": {
             "method": "int_zfilled",
             "kwargs": {"length": 8},
-            "pk": {"name": "users"}  # Missing 'datatype'
+            "pk": {"name": "users"}  # Legacy field - no longer validated
         }
     }
-    errors = SpecValidator.validate(spec)
-    assert len(errors) == 1
-    assert "requires" in errors[0] and "datatype" in errors[0]
+    errors = AdvancedValidator.validate(spec)
+    # No errors - legacy pk field is ignored in simplified validator
+    assert len(errors) == 0
 
 
 def test_validate_and_raise_valid():
@@ -292,7 +293,7 @@ def test_validate_and_raise_valid():
         }
     }
     # Não deve levantar exceção
-    SpecValidator.validate_and_raise(spec)
+    AdvancedValidator.validate_and_raise(spec)
 
 
 def test_validate_and_raise_invalid():
@@ -304,7 +305,7 @@ def test_validate_and_raise_invalid():
         }
     }
     with pytest.raises(SpecValidationError) as exc_info:
-        SpecValidator.validate_and_raise(spec)
+        AdvancedValidator.validate_and_raise(spec)
     
     assert "SPEC VALIDATION ERROR" in str(exc_info.value)
     assert "does not exist" in str(exc_info.value)
@@ -319,7 +320,7 @@ def test_multiple_errors_in_single_column():
             "transformers": "nao_eh_lista"  # Tipo errado
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     # Deve ter pelo menos 3 erros: tipo de min, falta max, transformers
     assert len(errors) >= 3
 
@@ -340,7 +341,7 @@ def test_multiple_errors_across_columns():
             "kwargs": {"true_prob": 0.7}
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) >= 3  # Pelo menos um erro por coluna
 
 
@@ -356,7 +357,7 @@ def test_warning_for_unknown_params():
             }
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 1
     assert "unknown parameters" in errors[0]
     assert "parametro_invalido" in errors[0]
@@ -371,15 +372,15 @@ def test_valid_spec_complex_distincts():
                 "pattern": "x.x.x.x",
                 "replacement": "x",
                 "templates": [
-                    {"method": "distincts", "parms": {"distincts": ["192", "10"]}},
-                    {"method": "integers", "parms": {"min": 0, "max": 255}},
-                    {"method": "integers", "parms": {"min": 0, "max": 255}},
-                    {"method": "integers", "parms": {"min": 1, "max": 254}}
+                    {"method": "distincts", "kwargs": {"distincts": ["192", "10"]}},
+                    {"method": "integers", "kwargs": {"min": 0, "max": 255}},
+                    {"method": "integers", "kwargs": {"min": 0, "max": 255}},
+                    {"method": "integers", "kwargs": {"min": 1, "max": 254}}
                 ]
             }
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 0
 
 
@@ -402,7 +403,7 @@ def test_valid_constraints_pk_simple():
             }
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 0
 
 
@@ -425,7 +426,7 @@ def test_valid_constraints_pk_composite():
             }
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 0
 
 
@@ -445,7 +446,7 @@ def test_valid_constraints_fk_with_watermark():
             }
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 0
 
 
@@ -464,7 +465,7 @@ def test_valid_constraints_fk_without_watermark():
             }
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     # Should have 1 warning about missing watermark
     assert len(errors) == 1
     assert "watermark" in errors[0].lower()
@@ -487,7 +488,7 @@ def test_valid_constraints_fk_composite():
             }
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 0
 
 
@@ -497,7 +498,7 @@ def test_invalid_constraints_not_dict():
         "id": {"method": "int_zfilled", "kwargs": {}},
         "constraints": "string_invalida"
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) >= 1
     assert any("must be dictionary" in err for err in errors)
 
@@ -508,7 +509,7 @@ def test_invalid_constraints_empty():
         "id": {"method": "int_zfilled", "kwargs": {"length": 8}},
         "constraints": {}
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 1
     assert "empty" in errors[0].lower()
 
@@ -524,7 +525,7 @@ def test_invalid_constraint_missing_name():
             }
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) >= 1
     assert any("missing required field 'name'" in err for err in errors)
 
@@ -540,7 +541,7 @@ def test_invalid_constraint_missing_tipo():
             }
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) >= 1
     assert any("missing required field 'tipo'" in err for err in errors)
 
@@ -556,7 +557,7 @@ def test_invalid_constraint_missing_fields():
             }
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) >= 1
     assert any("missing required field 'fields'" in err for err in errors)
 
@@ -573,7 +574,7 @@ def test_invalid_constraint_tipo_invalid():
             }
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) >= 1
     assert any("must be 'PK' or 'FK'" in err for err in errors)
 
@@ -590,7 +591,7 @@ def test_invalid_constraint_fields_not_list():
             }
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) >= 1
     assert any("'fields' must be list" in err for err in errors)
 
@@ -607,7 +608,7 @@ def test_invalid_constraint_fields_empty():
             }
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) >= 1
     assert any("cannot be empty" in err for err in errors)
 
@@ -625,7 +626,7 @@ def test_invalid_constraint_watermark_negative():
             }
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) >= 1
     assert any("must be positive" in err for err in errors)
 
@@ -643,7 +644,7 @@ def test_invalid_constraint_watermark_on_pk():
             }
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) >= 1
     assert any("only used for FK" in err for err in errors)
 
@@ -672,7 +673,7 @@ def test_valid_constraints_multiple():
             }
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 0
 
 
@@ -691,7 +692,7 @@ def test_constraints_not_interfere_with_columns():
             }
         }
     }
-    errors = SpecValidator.validate(spec)
+    errors = AdvancedValidator.validate(spec)
     assert len(errors) == 0
 
 

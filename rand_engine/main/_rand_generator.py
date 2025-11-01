@@ -1,7 +1,6 @@
 from typing import Dict, List, Optional, Callable
 import pandas as pd
 from rand_engine.integrations._duckdb_handler import DuckDBHandler
-from rand_engine.validators.spec_validator import SpecValidator
 from rand_engine.validators.exceptions import ColumnGenerationError, TransformerError
 from rand_engine.core._np_core import NPCore
 from rand_engine.core._py_core import PyCore
@@ -27,6 +26,7 @@ class RandGenerator:
       "unix_timestamps": NPCore.gen_unix_timestamps,
       "uuid4": NPCore.gen_uuid4,
       "booleans": NPCore.gen_booleans,
+      "dates": NPCore.gen_dates,
       "distincts_map": PyCore.gen_distincts_map,
       "distincts_multi_map": PyCore.gen_distincts_multi_map,
       "distincts_map_prop": PyCore.gen_distincts_map_prop,
