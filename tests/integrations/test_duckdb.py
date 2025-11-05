@@ -12,6 +12,7 @@ import pandas as pd
 import tempfile
 import os
 from pathlib import Path
+import logging
 from rand_engine.integrations._duckdb_handler import DuckDBHandler
 
 # Import shared fixtures
@@ -26,8 +27,8 @@ def cleanup_connections():
     for db_path, conn in list(DuckDBHandler._connections.items()):
         try:
             conn.close()
-        except:
-            pass
+        except Exception as e:
+            logging.warning(f"Error closing DuckDB connection for '{db_path}': {e}")
     DuckDBHandler._connections.clear()
 
 
