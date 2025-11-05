@@ -4,6 +4,8 @@ Tests for SQLiteHandler - Comprehensive usage examples.
 These tests demonstrate all capabilities of the SQLiteHandler class,
 including connection pooling, table operations, and data manipulation.
 They mirror the DuckDBHandler tests to ensure consistent behavior.
+
+Shared fixtures are imported from tests/fixtures/f4_database_handlers.py
 """
 
 import pytest
@@ -12,23 +14,21 @@ import tempfile
 import os
 from rand_engine.integrations._sqlite_handler import SQLiteHandler
 
+# Import shared fixtures
+pytest_plugins = ["tests.fixtures.f4_database_handlers"]
+
 
 @pytest.fixture(scope="function", autouse=True)
 def cleanup_connections():
-    """Cleanup all SQLite connections after each test."""
+    """Cleanup all SQLite connections after each test - manually close and clear pool."""
     yield
-    SQLiteHandler.close_all()
-
-
-@pytest.fixture
-def sample_dataframe():
-    """Create a sample DataFrame for testing."""
-    return pd.DataFrame({
-        "id": ["001", "002", "003", "004", "005"],
-        "name": ["Alice", "Bob", "Charlie", "Diana", "Eve"],
-        "age": [25, 30, 35, 28, 32],
-        "city": ["NYC", "LA", "Chicago", "Houston", "Phoenix"]
-    })
+    # Manually close all connections and clear the pool
+    for db_path, conn in list(SQLiteHandler._connections.items()):
+        try:
+            conn.close()
+        except Exception as e:
+            print(f"[cleanup_connections] Failed to close SQLite connection for '{db_path}': {e}")
+    SQLiteHandler._connections.clear()
 
 
 @pytest.fixture
@@ -37,9 +37,7 @@ def temp_db_path():
     # Generate path without creating the file (SQLite will create it)
     db_path = os.path.join(tempfile.gettempdir(), f"test_sqlite_{os.getpid()}_{id(object())}.db")
     yield db_path
-    # Cleanup - Close all connections first (critical for Windows)
-    SQLiteHandler.close_all()
-    # Wait a bit for Windows to release file handles
+    # Cleanup - Wait a bit for Windows to release file handles
     import time
     time.sleep(0.1)
     # Then remove file
@@ -111,7 +109,7 @@ def test_create_table():
     handler.create_table("users", "id VARCHAR(10)")
     
     # Verify table exists by querying it (should return empty DataFrame)
-    df = handler.select_all("users")
+    df = handler.query_with_pandas("SELECT * FROM users")
     assert df.empty
     assert "id" in df.columns
     print("\n✓ Table 'users' created with primary key 'id'")
@@ -129,7 +127,7 @@ def test_create_table_if_not_exists():
     handler.create_table("products", "product_id VARCHAR(20)")
     handler.create_table("products", "product_id VARCHAR(20)")
     
-    df = handler.select_all("products")
+    df = handler.query_with_pandas("SELECT * FROM products")
     assert df.empty
     print("\n✓ CREATE TABLE IF NOT EXISTS works correctly")
 
@@ -148,7 +146,7 @@ def test_drop_table():
     
     # Verify table is gone by checking if query raises error
     with pytest.raises(Exception):
-        handler.select_all("temp_table")
+        handler.query_with_pandas("SELECT * FROM temp_table")
     
     print("\n✓ Table dropped successfully")
 
@@ -172,7 +170,7 @@ def test_insert_dataframe(sample_dataframe):
     handler.insert_df("users", sample_dataframe, ["id"])
     
     # Verify insertion
-    df = handler.select_all("users")
+    df = handler.query_with_pandas("SELECT * FROM users")
     assert len(df) == 5
     assert list(df.columns) == ["id"]
     print(f"\n✓ Inserted {len(df)} rows into 'users' table")
@@ -192,30 +190,29 @@ def test_insert_duplicate_handling(sample_dataframe):
     handler.insert_df("users", sample_dataframe, ["id"])  # Duplicates ignored
     
     # Should still have only 5 rows (duplicates ignored)
-    df = handler.select_all("users")
+    df = handler.query_with_pandas("SELECT * FROM users")
     assert len(df) == 5
     print("\n✓ Duplicate keys ignored correctly (INSERT OR IGNORE)")
 
 
-def test_incremental_inserts():
+def test_incremental_inserts(simple_id_dataframe):
     """
     Example 9: Incremental data insertion.
     
     Demonstrates adding new records over multiple insert operations.
     """
     handler = SQLiteHandler(":memory:")
-    handler.create_table("events", "event_id VARCHAR(10)")
+    handler.create_table("events", "id VARCHAR(10)")
     
-    # First batch
-    df1 = pd.DataFrame({"event_id": ["E001", "E002", "E003"]})
-    handler.insert_df("events", df1, ["event_id"])
+    # First batch (3 records)
+    handler.insert_df("events", simple_id_dataframe, ["id"])
     
-    # Second batch (new records)
-    df2 = pd.DataFrame({"event_id": ["E004", "E005"]})
-    handler.insert_df("events", df2, ["event_id"])
+    # Second batch (2 new records)
+    df2 = pd.DataFrame({"id": ["004", "005"]})
+    handler.insert_df("events", df2, ["id"])
     
     # Total should be 5
-    df = handler.select_all("events")
+    df = handler.query_with_pandas("SELECT * FROM events")
     assert len(df) == 5
     print(f"\n✓ Incremental inserts: {len(df)} total records")
 
@@ -224,7 +221,7 @@ def test_incremental_inserts():
 # DATA RETRIEVAL
 # ============================================================================
 
-def test_select_all_columns(sample_dataframe):
+def test_query_all_columns(sample_dataframe):
     """
     Example 10: Select all columns from table.
     
@@ -235,7 +232,7 @@ def test_select_all_columns(sample_dataframe):
     handler.insert_df("users", sample_dataframe, ["id"])
     
     # Select all columns
-    df = handler.select_all("users")
+    df = handler.query_with_pandas("SELECT * FROM users")
     
     assert len(df) == 5
     assert "id" in df.columns
@@ -253,7 +250,7 @@ def test_select_specific_columns(sample_dataframe):
     handler.insert_df("users", sample_dataframe, ["id"])
     
     # Select only specific columns
-    df = handler.select_all("users", columns=["id"])
+    df = handler.query_with_pandas("SELECT id FROM users")
     
     assert len(df) == 5
     assert list(df.columns) == ["id"]
@@ -278,7 +275,7 @@ def test_invalid_table_name_create():
     
     # This should still work in SQLite (it's very permissive)
     # but we test the basic functionality
-    df = handler.select_all("valid_table_name")
+    df = handler.query_with_pandas("SELECT * FROM valid_table_name")
     assert df is not None
     
     print("\n✓ Table creation with valid names works correctly")
@@ -286,36 +283,40 @@ def test_invalid_table_name_create():
 
 def test_invalid_table_name_select():
     """
-    Example 13: SQL injection protection - select_all.
+    Example 13: Query with pandas - basic usage.
     
-    Table name validation prevents malicious queries.
+    Demonstrates querying data with query_with_pandas method.
     """
     handler = SQLiteHandler(":memory:")
-    handler.create_table("safe_table", "id INTEGER")
+    handler.create_table("safe_table", "id VARCHAR(10)")
     
-    # Valid table name
-    df = handler.select_all("safe_table")
+    # Insert test data
+    test_df = pd.DataFrame({"id": ["001", "002", "003"]})
+    handler.insert_df("safe_table", test_df, ["id"])
+    
+    # Valid query
+    df = handler.query_with_pandas("SELECT * FROM safe_table")
     assert df is not None
+    assert len(df) == 3
     
-    # Invalid table name with special characters
-    with pytest.raises(ValueError, match="Invalid table name"):
-        handler.select_all("malicious'; DROP TABLE safe_table; --")
+    # Query with WHERE clause (string comparison)
+    df_filtered = handler.query_with_pandas("SELECT * FROM safe_table WHERE id > '001'")
+    assert len(df_filtered) == 2
     
-    print("\n✓ SQL injection protection working for select_all")
+    print("\n✓ query_with_pandas working correctly")
 
 
-def test_invalid_table_name_insert():
+def test_invalid_table_name_insert(simple_int_dataframe):
     """
     Example 14: SQL injection protection - insert_df.
     
     Insertion operations also validate table names.
     """
     handler = SQLiteHandler(":memory:")
-    df = pd.DataFrame({"id": [1, 2, 3]})
     
     # Invalid table name
     with pytest.raises(ValueError, match="Invalid table name"):
-        handler.insert_df("bad_table'; DROP TABLE users; --", df, ["id"])
+        handler.insert_df("bad_table'; DROP TABLE users; --", simple_int_dataframe, ["id"])
     
     print("\n✓ SQL injection protection working for insert_df")
 
@@ -324,7 +325,7 @@ def test_invalid_table_name_insert():
 # REAL-WORLD SCENARIOS
 # ============================================================================
 
-def test_complete_workflow():
+def test_complete_workflow(products_batch1, products_batch2):
     """
     Example 15: Complete workflow - Create, Insert, Query, Update.
     
@@ -335,31 +336,21 @@ def test_complete_workflow():
     # Step 1: Create table
     handler.create_table("products", "product_id VARCHAR(20)")
     
-    # Step 2: Insert initial data
-    batch1 = pd.DataFrame({
-        "product_id": ["P001", "P002", "P003"],
-        "name": ["Laptop", "Mouse", "Keyboard"],
-        "price": [999.99, 29.99, 79.99]
-    })
-    handler.insert_df("products", batch1, ["product_id"])
+    # Step 2: Insert initial data (3 products)
+    handler.insert_df("products", products_batch1, ["product_id"])
     
-    # Step 3: Insert more data
-    batch2 = pd.DataFrame({
-        "product_id": ["P004", "P005"],
-        "name": ["Monitor", "Webcam"],
-        "price": [299.99, 89.99]
-    })
-    handler.insert_df("products", batch2, ["product_id"])
+    # Step 3: Insert more data (2 more products)
+    handler.insert_df("products", products_batch2, ["product_id"])
     
     # Step 4: Query data
-    df = handler.select_all("products")
+    df = handler.query_with_pandas("SELECT * FROM products")
     
     assert len(df) == 5
     assert "product_id" in df.columns
     print(f"\n✓ Complete workflow successful: {len(df)} products in database")
 
 
-def test_multiple_tables():
+def test_multiple_tables(simple_id_dataframe):
     """
     Example 16: Working with multiple tables.
     
@@ -367,26 +358,25 @@ def test_multiple_tables():
     """
     handler = SQLiteHandler(":memory:")
     
-    # Create users table
-    handler.create_table("users", "user_id VARCHAR(10)")
-    users_df = pd.DataFrame({"user_id": ["U001", "U002", "U003"]})
-    handler.insert_df("users", users_df, ["user_id"])
+    # Create users table with 3 records
+    handler.create_table("users", "id VARCHAR(10)")
+    handler.insert_df("users", simple_id_dataframe, ["id"])
     
-    # Create orders table
-    handler.create_table("orders", "order_id VARCHAR(10)")
-    orders_df = pd.DataFrame({"order_id": ["O001", "O002"]})
-    handler.insert_df("orders", orders_df, ["order_id"])
+    # Create orders table with 2 records
+    handler.create_table("orders", "id VARCHAR(10)")
+    orders_df = pd.DataFrame({"id": ["001", "002"]})
+    handler.insert_df("orders", orders_df, ["id"])
     
     # Query both tables
-    users = handler.select_all("users")
-    orders = handler.select_all("orders")
+    users = handler.query_with_pandas("SELECT * FROM users")
+    orders = handler.query_with_pandas("SELECT * FROM orders")
     
     assert len(users) == 3
     assert len(orders) == 2
     print(f"\n✓ Multiple tables: {len(users)} users, {len(orders)} orders")
 
 
-def test_persistent_database(temp_db_path):
+def test_persistent_database(temp_db_path, simple_id_dataframe):
     """
     Example 17: Persistent database across handler instances.
     
@@ -395,17 +385,15 @@ def test_persistent_database(temp_db_path):
     # First handler: Create and insert data
     handler1 = SQLiteHandler(temp_db_path)
     handler1.create_table("persistent_data", "id VARCHAR(10)")
-    df1 = pd.DataFrame({"id": ["D001", "D002", "D003"]})
-    handler1.insert_df("persistent_data", df1, ["id"])
-    handler1.close()
+    handler1.insert_df("persistent_data", simple_id_dataframe, ["id"])
     
     # Second handler: Read existing data
     handler2 = SQLiteHandler(temp_db_path)
-    df2 = handler2.select_all("persistent_data")
+    df2 = handler2.query_with_pandas("SELECT * FROM persistent_data")
     
     assert len(df2) == 3
     # Order is not guaranteed without ORDER BY clause
-    assert set(df2["id"]) == {"D001", "D002", "D003"}
+    assert set(df2["id"]) == {"001", "002", "003"}
     print(f"\n✓ Data persisted across handler instances: {len(df2)} rows")
 
 
@@ -415,75 +403,38 @@ def test_connection_sharing_preserves_state():
     
     Critical for :memory: databases - multiple handlers see the same data.
     """
-    # Handler 1: Create table and insert data
+    # Handler 1: Create table and insert data (2 records)
     handler1 = SQLiteHandler(":memory:")
     handler1.create_table("shared_data", "id VARCHAR(10)")
-    df1 = pd.DataFrame({"id": ["S001", "S002"]})
+    df1 = pd.DataFrame({"id": ["001", "002"]})
     handler1.insert_df("shared_data", df1, ["id"])
     
     # Handler 2: Can see the data from handler1
     handler2 = SQLiteHandler(":memory:")
-    df2 = handler2.select_all("shared_data")
+    df2 = handler2.query_with_pandas("SELECT * FROM shared_data")
     
     assert len(df2) == 2
     # Order is not guaranteed, so check as set
-    assert set(df2["id"]) == {"S001", "S002"}
+    assert set(df2["id"]) == {"001", "002"}
     print("\n✓ Connection pooling preserves state across handlers")
-
-
-# ============================================================================
-# CLEANUP & CONNECTION MANAGEMENT
-# ============================================================================
-
-def test_close_connection():
-    """
-    Example 19: Close specific database connection.
-    
-    Properly cleanup resources when done with a database.
-    """
-    handler = SQLiteHandler(":memory:")
-    assert ":memory:" in SQLiteHandler._connections
-    
-    handler.close()
-    assert ":memory:" not in SQLiteHandler._connections
-    print("\n✓ Connection closed and removed from pool")
-
-
-def test_close_all_connections(temp_db_path):
-    """
-    Example 20: Close all pooled connections.
-    
-    Useful for test cleanup or application shutdown.
-    """
-    # Create multiple handlers with different databases
-    handler1 = SQLiteHandler(":memory:")
-    handler2 = SQLiteHandler(temp_db_path)  # Use temp file instead of ":memory:2"
-    
-    assert len(SQLiteHandler._connections) == 2
-    
-    # Close all
-    SQLiteHandler.close_all()
-    assert len(SQLiteHandler._connections) == 0
-    print("\n✓ All connections closed successfully")
 
 
 # ============================================================================
 # EDGE CASES & ERROR HANDLING
 # ============================================================================
 
-def test_empty_dataframe_insert():
+def test_empty_dataframe_insert(empty_dataframe):
     """
-    Example 21: Insert empty DataFrame.
+    Example 19: Insert empty DataFrame.
     
     Tests behavior with edge case of no data.
     """
     handler = SQLiteHandler(":memory:")
     handler.create_table("empty_table", "id VARCHAR(10)")
     
-    empty_df = pd.DataFrame({"id": []})
-    handler.insert_df("empty_table", empty_df, ["id"])
+    handler.insert_df("empty_table", empty_dataframe, ["id"])
     
-    df = handler.select_all("empty_table")
+    df = handler.query_with_pandas("SELECT * FROM empty_table")
     assert len(df) == 0
     print("\n✓ Empty DataFrame insertion handled correctly")
 
@@ -503,7 +454,7 @@ def test_large_dataset():
     })
     handler.insert_df("large_table", large_df, ["id"])
     
-    df = handler.select_all("large_table")
+    df = handler.query_with_pandas("SELECT * FROM large_table")
     assert len(df) == 10000
     print(f"\n✓ Large dataset handled: {len(df):,} rows")
 

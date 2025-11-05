@@ -48,16 +48,26 @@ class BaseDBHandler(ABC):
         pass
     
     @abstractmethod
-    def select_all(self, table_name: str, columns: Optional[List[str]] = None) -> pd.DataFrame:
+    def query_with_pandas(self, query: str, params: Optional[dict] = None) -> pd.DataFrame:
         """
-        Select data from table.
+        Execute a SQL query and return results as a pandas DataFrame.
         
         Args:
-            table_name: Name of the table to query
-            columns: Optional list of columns to select. If None, select all columns.
+            query: SQL query string
+            params: Optional dictionary of parameters for parameterized queries
             
         Returns:
             DataFrame with query results
+        """
+        pass
+    
+    @abstractmethod
+    def list_tables(self) -> List[str]:
+        """
+        List all tables in the database.
+        
+        Returns:
+            List of table names
         """
         pass
     
@@ -68,12 +78,5 @@ class BaseDBHandler(ABC):
         
         Args:
             table_name: Name of the table to drop
-        """
-        pass
-    
-    @abstractmethod
-    def close(self):
-        """
-        Close database connection and cleanup resources.
         """
         pass
