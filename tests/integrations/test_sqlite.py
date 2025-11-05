@@ -26,8 +26,8 @@ def cleanup_connections():
     for db_path, conn in list(SQLiteHandler._connections.items()):
         try:
             conn.close()
-        except:
-            pass
+        except Exception as e:
+            print(f"[cleanup_connections] Failed to close SQLite connection for '{db_path}': {e}")
     SQLiteHandler._connections.clear()
 
 
