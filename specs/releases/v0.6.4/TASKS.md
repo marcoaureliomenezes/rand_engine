@@ -11,7 +11,7 @@ Marks: `[ ]` OPEN, `[-]` IN PROGRESS, `[x]` DONE.
 
 ### T-SEC-01 - Upgrade vulnerable Poetry and pytest dependency surfaces
 
-- **Status:** [-]
+- **Status:** [x]
 - **Owner:** Codex
 - **Write set:**
   - `requirements.txt`
