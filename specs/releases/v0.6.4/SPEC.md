@@ -21,6 +21,9 @@ GitHub Dependabot reports four open alerts:
 - `pytest` in `requirements.txt`: `GHSA-6w46-j5rx-g56g` /
   `CVE-2025-71176`, medium severity, fixed in pytest `9.0.3`.
 - `pytest` in `poetry.lock`: same pytest advisory, fixed in pytest `9.0.3`.
+- Local `pip-audit` also reports vulnerable runtime packages absent from the
+  initial Dependabot push message: `pyarrow 19.0.0` fixed in `23.0.1`, and
+  `duckdb 1.4.1` fixed in `1.4.2`.
 
 The operator decision for this release is zero tolerance for Dependabot
 vulnerabilities.
@@ -31,8 +34,9 @@ In scope:
 
 - Upgrade vulnerable dependency declarations and lock entries so Dependabot has
   no open alerts for the default branch.
-- Keep dependency changes minimal: Poetry `>=2.3.4`, pytest `>=9.0.3`, and any
-  lockfile metadata required by the resolver.
+- Keep dependency changes minimal: Poetry `>=2.3.4`, pytest `>=9.0.3`,
+  pyarrow `>=23.0.1`, duckdb `>=1.4.2`, and any lockfile metadata required by
+  the resolver.
 - Run dependency/security and test validation.
 - Publish a new stable release after QA, code review, and security review
   approve the implementation commit.
@@ -47,7 +51,7 @@ Out of scope:
 ## 4. Acceptance Criteria
 
 - `requirements.txt`, `pyproject.toml`, and `poetry.lock` no longer reference
-  vulnerable Poetry or pytest versions.
+  vulnerable Poetry, pytest, pyarrow, or DuckDB versions.
 - Dependabot open alerts for the default branch are zero or only remain pending
   GitHub rescans after fixed manifests are pushed.
 - Full pytest suite passes.

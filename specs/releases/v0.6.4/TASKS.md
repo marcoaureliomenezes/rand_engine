@@ -23,7 +23,10 @@ Marks: `[ ]` OPEN, `[-]` IN PROGRESS, `[x]` DONE.
     Dependabot reads it.
   - pytest is pinned or constrained to a patched version `>=9.0.3` wherever
     Dependabot reads it.
+  - pyarrow is pinned or constrained to a patched version `>=23.0.1`.
+  - DuckDB is pinned or constrained to a patched version `>=1.4.2`.
   - Lockfile is regenerated/updated consistently.
+  - `pip-audit -r requirements.txt` reports no known vulnerabilities.
   - Full test suite passes with cache disabled or redirected outside the repo.
   - Security review reports zero tolerated Dependabot vulnerabilities.
   - QA, code review, and security review approve before marking this task done.
