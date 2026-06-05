@@ -1,0 +1,181 @@
+{
+  "generated_at": "2026-06-05T05:48:25Z",
+  "context": "rand-engine",
+  "features": [
+    {
+      "rank": 1,
+      "slug": "constraints-duckdb-checkpoints",
+      "title": "constraints and DuckDB checkpoints",
+      "category": "product",
+      "tldr": "PK/FK consistency uses DuckDB checkpoint tables and watermarks; checkpoint persistence lifecycle has known defects.",
+      "summary": "Current constraints feature: DuckDB stores generated PK candidates in checkpoint tables, then FK generation samples eligible rows by watermark.",
+      "path": "specs/memory/product/constraints-duckdb-checkpoints.md",
+      "tags": [
+        "constraints",
+        "duckdb",
+        "checkpoint",
+        "referential-integrity"
+      ],
+      "token_estimate": 145,
+      "agent_tier": "self-pull",
+      "depends_on": []
+    },
+    {
+      "rank": 2,
+      "slug": "correlation-model",
+      "title": "correlation model",
+      "category": "product",
+      "tldr": "Current correlations are in-memory advanced methods; DuckDB-backed correlation is future design work, not current behavior.",
+      "summary": "Correlation truth for restart: PyCore supports in-memory correlated values today; DuckDB is not yet a correlation engine and requires a first-class design spec.",
+      "path": "specs/memory/product/correlation-model.md",
+      "tags": [
+        "correlation",
+        "duckdb",
+        "advanced-methods"
+      ],
+      "token_estimate": 170,
+      "agent_tier": "self-pull",
+      "depends_on": []
+    },
+    {
+      "rank": 3,
+      "slug": "data-generator",
+      "title": "DataGenerator",
+      "category": "product",
+      "tldr": "Pandas/NumPy composition root for deterministic dataframe generation, transforms, constraints, writers, and streams.",
+      "summary": "Current DataGenerator behavior: validates specs, seeds NumPy, generates Pandas dataframes, applies transforms, wires writers/streams, and applies DuckDB-backed constraints.",
+      "path": "specs/memory/product/data-generator.md",
+      "tags": [
+        "pandas",
+        "numpy",
+        "generator",
+        "dataframe"
+      ],
+      "token_estimate": 160,
+      "agent_tier": "self-pull",
+      "depends_on": []
+    },
+    {
+      "rank": 4,
+      "slug": "method-registry",
+      "title": "method registry",
+      "category": "product",
+      "tldr": "Current method support is duplicated across validators, Pandas runtime, Spark runtime, examples, and docs; a canonical registry is future work.",
+      "summary": "Generation method support must become a single source of truth with per-engine metadata for Pandas, Spark, advanced/correlation status, determinism, and validation.",
+      "path": "specs/memory/product/method-registry.md",
+      "tags": [
+        "methods",
+        "validators",
+        "spark",
+        "pandas"
+      ],
+      "token_estimate": 120,
+      "agent_tier": "self-pull",
+      "depends_on": []
+    },
+    {
+      "rank": 5,
+      "slug": "public-api",
+      "title": "public API",
+      "category": "product",
+      "tldr": "Supported import surface is DataGenerator, SparkGenerator, and RandSpecs; runtime version policy is unresolved.",
+      "summary": "Current public API truth for rand-engine, including exported names, compatibility expectations, and release metadata gaps.",
+      "path": "specs/memory/product/public-api.md",
+      "tags": [
+        "api",
+        "semver",
+        "package"
+      ],
+      "token_estimate": 130,
+      "agent_tier": "self-pull",
+      "depends_on": []
+    },
+    {
+      "rank": 6,
+      "slug": "qa-and-release-governance",
+      "title": "QA and release governance",
+      "category": "product",
+      "tldr": "Current suite passes 494 tests at 85.98% coverage; release/version/security gates need explicit restart decisions.",
+      "summary": "Current quality and release truth from QA and DevOps audits: tests are strong, SDD was not, and release metadata/pipeline gates need normalization.",
+      "path": "specs/memory/product/qa-and-release-governance.md",
+      "tags": [
+        "qa",
+        "release",
+        "pypi",
+        "ci"
+      ],
+      "token_estimate": 140,
+      "agent_tier": "self-pull",
+      "depends_on": []
+    },
+    {
+      "rank": 7,
+      "slug": "rand-spec-grammar",
+      "title": "RandSpec grammar",
+      "category": "product",
+      "tldr": "Declarative dictionary grammar validated by common and advanced validators before generation.",
+      "summary": "Current RandSpec grammar truth: common methods, advanced methods, transforms, constraints, lazy sizing, validation, and known validator/runtime drift.",
+      "path": "specs/memory/product/rand-spec-grammar.md",
+      "tags": [
+        "spec",
+        "validation",
+        "grammar"
+      ],
+      "token_estimate": 150,
+      "agent_tier": "self-pull",
+      "depends_on": []
+    },
+    {
+      "rank": 8,
+      "slug": "spark-generator",
+      "title": "SparkGenerator",
+      "category": "product",
+      "tldr": "Spark supports common methods through expressions; advanced methods are null stubs and must not be treated as implemented behavior.",
+      "summary": "Current Spark support boundary: SparkGenerator is public, common methods are real, advanced methods are compatibility stubs until an approved release changes them.",
+      "path": "specs/memory/product/spark-generator.md",
+      "tags": [
+        "spark",
+        "pyspark",
+        "generator"
+      ],
+      "token_estimate": 125,
+      "agent_tier": "self-pull",
+      "depends_on": []
+    },
+    {
+      "rank": 9,
+      "slug": "templates-and-examples",
+      "title": "templates and examples",
+      "category": "product",
+      "tldr": "Built-in common/advanced specs and web-server-log template are product assets that require compatibility tests.",
+      "summary": "Current examples/templates truth: RandSpecs examples and templates are part of the user-facing value and must stay synchronized with validators/runtime.",
+      "path": "specs/memory/product/templates-and-examples.md",
+      "tags": [
+        "templates",
+        "examples",
+        "rand-specs"
+      ],
+      "token_estimate": 90,
+      "agent_tier": "self-pull",
+      "depends_on": []
+    },
+    {
+      "rank": 10,
+      "slug": "writers-and-streaming",
+      "title": "writers and streaming",
+      "category": "product",
+      "tldr": "Batch and stream writers support file outputs, but tests must prove read-back correctness and artifact hygiene.",
+      "summary": "Current writer truth: batch and streaming facades produce files in common formats; restart work must define correctness, cleanup, overwrite, and tmp-path policy.",
+      "path": "specs/memory/product/writers-and-streaming.md",
+      "tags": [
+        "writers",
+        "streaming",
+        "files",
+        "qa"
+      ],
+      "token_estimate": 110,
+      "agent_tier": "self-pull",
+      "depends_on": []
+    }
+  ]
+}
