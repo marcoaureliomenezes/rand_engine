@@ -44,13 +44,18 @@ class SQLiteHandler(BaseDBHandler):
         self.conn = self._connections[db_path]
 
 
+    def list_tables(self) -> List[str]:
+        """List all tables in the database."""
+        query = "SELECT name FROM sqlite_master WHERE type='table'"
+        cursor = self.conn.execute(query)
+        return [row[0] for row in cursor.fetchall()]
+
     def create_table(self, table_name: str, pk_def: str):
         """Create table with primary key definition. Creates if not exists."""
+        cols_pk = ",".join([col.split()[0] for col in pk_def.split(',')])
         query = f"""
         CREATE TABLE IF NOT EXISTS {table_name} (
-            {pk_def} PRIMARY KEY
-        )
-        """
+            {pk_def}, PRIMARY KEY ({cols_pk}) )"""
         self.conn.execute(query)
         self.conn.commit()
 
@@ -81,58 +86,25 @@ class SQLiteHandler(BaseDBHandler):
         self.conn.executemany(query, records)
         self.conn.commit()
 
-
-    def select_all(self, table_name: str, columns: Optional[List[str]] = None) -> pd.DataFrame:
+    def query_with_pandas(self, query: str, params: Optional[Dict] = None) -> pd.DataFrame:
         """
-        Select data from table.
+        Execute a SQL query and return results as a pandas DataFrame.
         
         Args:
-            table_name: Name of the table to query
-            columns: Optional list of columns to select. If None, select all columns.
+            query: SQL query string
+            params: Optional dictionary of parameters for parameterized queries
             
         Returns:
             DataFrame with query results
         """
-        # Validate table_name to prevent SQL injection
-        if not table_name.replace('_', '').isalnum():
-            raise ValueError(f"Invalid table name: {table_name}")
-        
-        if columns:
-            columns_str = ", ".join(columns)
-            query = f"SELECT {columns_str} FROM {table_name}"  # nosec B608
-        else:
-            query = f"SELECT * FROM {table_name}"  # nosec B608
-        
-        df = pd.read_sql(query, self.conn)
+        df = pd.read_sql(query, self.conn, params=params)
         return df
-
 
     def drop_table(self, table_name: str):
         """Drop table if exists."""
         query = f"DROP TABLE IF EXISTS {table_name}"
         self.conn.execute(query)
         self.conn.commit()
-
-
-    def close(self):
-        """
-        Close database connection and remove from pool.
-        Note: This closes the connection for ALL handlers using the same db_path.
-        """
-        if self.db_path in self._connections:
-            self._connections[self.db_path].close()
-            del self._connections[self.db_path]
-            logger.info(f"Database connection closed and removed from pool: {self.db_path}")
-
-
-    @classmethod
-    def close_all(cls):
-        """Close all pooled connections. Useful for cleanup in tests."""
-        for db_path, conn in cls._connections.items():
-            conn.close()
-            logger.debug(f"Closed connection: {db_path}")
-        cls._connections.clear()
-        logger.info("All SQLite connections closed")
 
 
 if __name__ == "__main__":

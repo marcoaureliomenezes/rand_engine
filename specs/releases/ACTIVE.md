@@ -1,2 +1,2 @@
-release: reset-specs-rebuild
-phase: SPEC
+release: v0.6.4
+phase: TASKS

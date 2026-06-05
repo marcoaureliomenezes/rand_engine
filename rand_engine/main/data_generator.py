@@ -9,7 +9,8 @@ from rand_engine.file_handlers._writer_stream import FileStreamWriter
 from rand_engine.utils.stream_handler import StreamHandler
 from rand_engine.validators.advanced_validator import AdvancedValidator
 from rand_engine.validators.exceptions import SpecValidationError
-
+from rand_engine.integrations._duckdb_handler import DuckDBHandler
+from rand_engine.integrations._sqlite_handler import SQLiteHandler
   
 class DataGenerator:
       
@@ -24,7 +25,8 @@ class DataGenerator:
     self.write = self._writer()
     self.writeStream = self._stream_writer()
     self._transformers: List[Optional[Callable]] = []
-    self.constraints_handler = ConstraintsHandler(db_path=self._constraints_db_path)
+    self.aux_db_conn = SQLiteHandler(db_path=":memory:")
+    self.constraints_handler = ConstraintsHandler(db_conn=self.aux_db_conn)
     self._options = {}
  
 
@@ -71,8 +73,8 @@ class DataGenerator:
     return self
   
 
-  def checkpoint(self, db_path: str):
-    self._constraints_db_path = db_path
+  def db_checkpoint(self, db_conn: Any):
+    self.aux_db_conn = db_conn
     return self
 
 

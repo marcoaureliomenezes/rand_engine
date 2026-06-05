@@ -9,7 +9,7 @@
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Tests](https://img.shields.io/badge/tests-494%20passing-brightgreen.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)]()
-[![Version](https://img.shields.io/badge/version-0.7.0-orange.svg)](https://pypi.org/project/rand-engine/)
+[![Version](https://img.shields.io/badge/version-0.6.4-orange.svg)](https://pypi.org/project/rand-engine/)
 [![PyPI](https://img.shields.io/badge/PyPI-rand--engine-blue.svg)](https://pypi.org/project/rand-engine/)
 
 [Quick Start](#-quick-start) • [Features](#-key-features) • [Examples](#-usage-examples) • [Documentation](#-documentation) • [Benchmarks](#-performance-benchmarks)
@@ -120,22 +120,28 @@ df_employees = DataGenerator(AdvancedRandSpecs.employees()).size(1_000).get_df()
 
 ```python
 # Write to CSV, Parquet, JSON with compression
-DataGenerator(spec).size(1_000_000).write() \
+DataGenerator(spec).size(1_000_000).write \
     .format("parquet") \
-    .compression("snappy") \
     .mode("overwrite") \
+    .option("compression", "snappy") \
     .save("./data/customers")
 ```
+
+📖 **Complete guide:** [3_WRITING_FILES.md](./docs/3_WRITING_FILES.md)
 
 ### 🌊 **Stream Data**
 
 ```python
 # Simulate real-time data streams
-DataGenerator(spec).stream() \
-    .throughput(min=1000, max=5000) \
+DataGenerator(spec).size(100).writeStream \
     .format("json") \
+    .mode("overwrite") \
+    .trigger(5) \
+    .option("timeout", 60) \
     .start("./data/stream/events")
 ```
+
+📖 **Complete guide:** [3_WRITING_FILES.md](./docs/3_WRITING_FILES.md)
 
 ---
 
@@ -188,7 +194,7 @@ custom_spec = {
 df = DataGenerator(custom_spec).size(50_000).get_df()
 ```
 
-📖 **Learn more:** [BUILD_RAND_SPECS.md](./docs/BUILD_RAND_SPECS.md) | [50+ Examples](./EXAMPLES.md)
+📖 **Learn more:** [DataGenerator Guide](./docs/1_DATA_GENERATOR.md) | [SparkGenerator Guide](./docs/2_SPARK_GENERATOR.md) | [50+ Examples](./EXAMPLES.md)
 
 ---
 
@@ -243,7 +249,7 @@ generator = DataGenerator({"customers": customers_spec, "orders": orders_spec})
 dfs = generator.size({"customers": 1000, "orders": 5000}).get_dfs()
 ```
 
-📖 **Complete guide:** [CONSTRAINTS.md](./docs/CONSTRAINTS.md)
+📖 **Complete guide:** [4_CONSTRAINTS.md](./docs/4_CONSTRAINTS.md)
 
 ### 🎨 **Advanced Methods** - Correlated Data
 
@@ -272,7 +278,7 @@ df = DataGenerator(orders_spec).size(10_000).get_df()
 - `distincts_map_prop` - Weighted correlated pairs
 - `complex_distincts` - Pattern-based strings (IPs, SKUs, URLs)
 
-📖 **Complete guide:** [BUILD_RAND_SPECS.md](./docs/BUILD_RAND_SPECS.md)
+📖 **Complete guide:** [1_DATA_GENERATOR.md](./docs/1_DATA_GENERATOR.md) | [BUILD_RAND_SPECS.md](./docs/BUILD_RAND_SPECS.md)
 
 ---
 
@@ -305,11 +311,19 @@ df = DataGenerator(orders_spec).size(10_000).get_df()
 
 ## 📚 Documentation
 
+### Core Documentation
+| Document | Description |
+|----------|-------------|
+| **[1_DATA_GENERATOR.md](./docs/1_DATA_GENERATOR.md)** | Pandas-based data generation with all features |
+| **[2_SPARK_GENERATOR.md](./docs/2_SPARK_GENERATOR.md)** | Spark DataFrame generation at scale |
+| **[3_WRITING_FILES.md](./docs/3_WRITING_FILES.md)** | Batch and streaming file writers |
+| **[4_CONSTRAINTS.md](./docs/4_CONSTRAINTS.md)** | PK/FK constraints with automatic cleanup |
+
+### Additional Resources
 | Document | Description |
 |----------|-------------|
 | **[BUILD_RAND_SPECS.md](./docs/BUILD_RAND_SPECS.md)** | Complete guide to building custom specifications |
 | **[EXAMPLES.md](./EXAMPLES.md)** | 50+ production-ready examples |
-| **[CONSTRAINTS.md](./docs/CONSTRAINTS.md)** | PK/FK system and referential integrity |
 | **[API_REFERENCE.md](./docs/API_REFERENCE.md)** | Full method reference |
 | **[LOGGING.md](./docs/LOGGING.md)** | Logging configuration |
 

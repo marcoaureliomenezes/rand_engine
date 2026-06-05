@@ -74,47 +74,9 @@ class DuckDBHandler(BaseDBHandler):
         query = f"INSERT OR IGNORE INTO {table_name} SELECT {columns} FROM df"  # nosec B608
         self.conn.execute(query)
 
-
-
-    def select_all(self, table_name: str, columns: Optional[List[str]] = None) -> pd.DataFrame:
-        # Validate table_name to prevent SQL injection
-        if not table_name.replace('_', '').isalnum():
-            raise ValueError(f"Invalid table name: {table_name}")
-        
-        if columns:
-            columns_str = ", ".join(columns)
-            query = f"SELECT {columns_str} FROM {table_name}"  # nosec B608
-        else:
-            query = f"SELECT * FROM {table_name}"  # nosec B608
-        
-        # DuckDB pode retornar diretamente um pandas DataFrame
-        df = self.conn.execute(query).df()
-        return df
-
     def query_with_pandas(self, query: str, params: Optional[Dict] = None) -> pd.DataFrame:
         df = self.conn.execute(query).df()
         return df
-
-    def close(self):
-        """
-        Close database connection and remove from pool.
-        Note: This closes the connection for ALL handlers using the same db_path.
-        """
-        if self.db_path in self._connections:
-            self._connections[self.db_path].close()
-            del self._connections[self.db_path]
-            logger.info(f"Database connection closed and removed from pool: {self.db_path}")
-
-
-    @classmethod
-    def close_all(cls):
-        """Close all pooled connections. Useful for cleanup in tests."""
-        for db_path, conn in cls._connections.items():
-            conn.close()
-            logger.debug(f"Closed connection: {db_path}")
-        cls._connections.clear()
-        logger.info("All DuckDB connections closed")
-
 
     def drop_table(self, table_name: str):
         """Drop table if exists."""
