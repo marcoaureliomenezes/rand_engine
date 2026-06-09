@@ -1,3 +1,6 @@
+---
+specs_pattern_version: 1
+---
 # Constitution: rand-engine
 
 > This document defines the non-negotiable rules for rand-engine development.
