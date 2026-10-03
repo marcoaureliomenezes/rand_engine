@@ -19,7 +19,7 @@
 
 ## 2. Objective
 
-- Related tables are correct by construction — every key is a pure function of the seed and the row index, with no database and no clock — and a newcomer, human or AI agent, reaches a working related-tables example from PyPI in one read.
+- Related tables are correct by construction — every key is a pure function of its column definition, the seed and the row index, with no database and no clock — and a newcomer, human or AI agent, reaches a working related-tables example from PyPI in one read.
 
 ## 3. Scope
 
@@ -28,11 +28,11 @@
 - **RandSpec**, **column spec**: memory `rand-spec-grammar`; a column spec is `{method, kwargs|args, cols?, transformers?}`.
 - **Row index**: the 0-based position of a row in a generator's output. `get_df` and `write` cover `[0, size)` on every call. A stream's microbatch k covers `[c_k, c_k + n_k)`, `c_0 = 0`, `c_{k+1} = c_k + n_k`; with a constant size n, `[k·n, (k+1)·n)`.
 - **Key column**: a column whose method is `pk` or `fk`.
-- **PK column** (`pk`): row i's value is a pure function of the generator seed, the column's kwargs and i; unique by construction.
-- **Key style**: `sequence` (`start + i·step`) or `permuted` (a bijection of the row index over a declared **domain**, shifted by `start`); `format` renders either as a string.
+- **PK column** (`pk`): row i's value is a pure function of the column's kwargs and i — never of the generator seed; unique by construction.
+- **Key style**: `sequence` (`start + i·step`) or `permuted` (a bijection of the row index over a declared **domain**, shifted by `start`, depending only on `domain` and an optional `key`); `format` renders either as a string.
 - **FK column** (`fk`): child row j's value is the parent PK value of a **parent index** `p(j) ∈ [0, parent_size)`, a pure function of the generator seed and j; the parent key is rebuilt, never looked up or stored.
 - **Parent**: the PK column spec an FK names (`parent`) plus the parent row count (`parent_size`).
-- **Skew**: one Zipf exponent applied to the parent index; absent means uniform.
+- **Skew**: one Zipf exponent over permuted parent ranks, so hot parents are scattered, not the first row indices; 0 (the default) means uniform.
 - **rng**: the `numpy.random.Generator` a generator owns, built once from its seed and passed to the core as the keyword `rng`.
 - _Avoid_ for relations: "checkpoint", "watermark", "references", "unique_ids" — retired by this candidate.
 
@@ -46,33 +46,41 @@
   - D5 "sequence + permuted + format (Recommended)" — random-digit PKs are rejected.
   - Visibility "Lean, tested docs (Recommended)" — no docs site, no benchmark page.
   - Bugs "ALL confirmed" — the twelve independent defects are Arm B, outside this candidate (§5).
-- ADR 0002 (proposed) records the relations decision; only the operator accepts it.
-- A key style is admitted only when the FK side can rebuild it from the column spec alone (D5's rule applied to every key input).
+- Operator, rulings on this SPEC's open questions, 2026-10-03, verbatim answers:
+  - Permuted keying "The pk kwargs only (Recommended)" — the bijection depends only on the pk definition (`domain`, optional `key`); FK ⊂ PK holds for any parent and child seeds, `seed=None` included.
+  - Skew "Yes, one `skew` kwarg (Recommended)" — `skew` 0 is uniform (default); `skew` > 0 is Zipf over permuted ranks.
+  - Event-time ordering "Backlog it (Recommended)" — deferred (§5).
+- Settled by inspection, 2026-10-03: the version is 0.7.0 (grill Q2); `auto_tag_publish_master.yml` tags and publishes the `pyproject.toml` version from `master`, and past versions were hand-edited, so the bump is a requirement (AC9.4) and the pipeline mints tag and publish at promote.
+- ADR 0002 (proposed) records the relations decision; only the operator accepts it (§6 names the paired constitution and memory hunks).
+- Inferred by the product engineer, shown for the operator's approval:
+  - A key is admitted only when the FK side can rebuild it from the column spec alone (D5's rule applied to every key input), so `transformers` on a `pk` column or an fk `parent` are rejected (AC1.7, AC2.6).
+  - `DataGenerator.option` leaves with `reset_checkpoint`, its only key (AC5.3).
 
 ### FR1 — PK column (`pk`)
 
-- kwargs only (no `args`): `style` (`sequence` | `permuted`), `start`, `step` (sequence), `domain` (permuted), `format` (optional, a `str.format` template with exactly one replacement field). Defaults are the PLAN's.
+- kwargs only (no `args`): `style` (`sequence` | `permuted`), `start`, `step` (sequence), `domain` and `key` (permuted; `key` an optional integer), `format` (optional, a `str.format` template with exactly one replacement field). Defaults are the PLAN's.
 - AC1.1 `{"method": "pk", "kwargs": {"style": "sequence", "start": 1, "step": 1}}` at size 10^6 yields exactly `1..10^6` in row order, integer dtype.
 - AC1.2 `permuted`, `domain` 10^7, `start` 0, size 10^6: values unique, all in `[0, 10^7)`, not monotone in row index.
 - AC1.3 `permuted`, `domain` 10^15: the keys of row indices `0..10^6−1` and `10^15−1` are unique and inside `[start, start + domain)` — no silent int64 overflow.
 - AC1.4 `format` (e.g. `"C-{:08d}"`) over each style at size 10^6: string values unique.
-- AC1.5 Two generators with the same integer seed and kwargs yield identical PK columns, in one process and across two processes.
+- AC1.5 Two generators with the same kwargs and different seeds (one of them `seed=None`) yield identical PK columns, in one process and across two processes; a different `key` changes the `permuted` order.
 - AC1.6 A `permuted` PK asked for row index ≥ `domain` raises a `RandEngineError` naming the column and the domain; no duplicate key is ever emitted.
-- AC1.7 `SpecValidationError` for: an unknown `style` (the message lists `sequence` and `permuted`); `domain` < 1; a `format` without exactly one replacement field; `args`; `transformers` on a `pk` column.
+- AC1.7 `SpecValidationError` for: an unknown `style` (the message lists `sequence` and `permuted`); `domain` < 1; a non-integer `key`; a `format` without exactly one replacement field; `args`; `transformers` on a `pk` column.
 
 ### FR2 — FK column (`fk`)
 
-- kwargs only: `parent` (a `pk` column spec), `parent_size` (int ≥ 1), `skew` (optional float > 0).
-- AC2.1 Integer keys: parent of 10^4 rows (once `sequence`, once `permuted`), child of 10^6 rows, both generators on the same seed: every FK value ∈ the parent PK set.
+- kwargs only: `parent` (a `pk` column spec), `parent_size` (int ≥ 1), `skew` (float ≥ 0, default 0 = uniform).
+- AC2.1 Integer keys: parent of 10^4 rows (once `sequence`, once `permuted`), child of 10^6 rows: every FK value ∈ the parent PK set.
 - AC2.2 String keys (`format` on the parent): every FK value ∈ the parent PK set.
-- AC2.3 Parent written to Parquet by one Python process, child generated by a second process with the same seed: every FK value ∈ the PK column read back.
+- AC2.3 Parent written to Parquet by one Python process, child generated by a second process: every FK value ∈ the PK column read back.
 - AC2.4 Uniform, 10^3 parents, 10^6 children: every parent index is referenced at least once.
-- AC2.5 `skew` 1.2, 10^4 parents, 10^6 children: the most-referenced 1% of parents receive ≥ 20% of children; uniform, ≤ 2%; every FK value still ∈ the parent PK set.
-- AC2.6 `SpecValidationError` for: `parent` not a `pk` column spec; `parent` carrying `transformers`; `parent_size` < 1; `parent_size` > the parent's `domain`; `skew` ≤ 0; `args`.
+- AC2.5 `skew` 1.2, 10^4 parents, 10^6 children: the most-referenced 1% of parents receive ≥ 20% of children; uniform, ≤ 2%; fewer than half of the most-referenced 1% sit among the lowest 1% of parent indices; every FK value still ∈ the parent PK set.
+- AC2.6 `SpecValidationError` for: `parent` not a `pk` column spec; `parent` carrying `transformers`; `parent_size` < 1; `parent_size` > the parent's `domain`; `skew` < 0; `args`.
+- AC2.7 Parent and child generators on different seeds — integer vs integer, and `seed=None` on either side — and each style: every FK value ∈ the parent PK set.
 
 ### FR3 — Keys across batches and streams
 
-- AC3.1 1 batch vs N chunks: for k = 10 and size n, the PK and FK values of the first k·n records of `stream_dict` equal those of one `get_df` at size k·n; the same holds for 10 `writeStream` microbatches read back.
+- AC3.1 1 batch vs N chunks, one generator: for k = 10 and size n, the PK and FK values of the first k·n records of `stream_dict` equal those of one `get_df` at size k·n; the same holds for 10 `writeStream` microbatches read back.
 - AC3.2 PK values are unique across 10 microbatches of `stream_dict` and of `writeStream`.
 - AC3.3 Two `get_df` calls on one generator return identical key columns.
 - AC3.4 A streamed child's FK values ∈ the PK set of parent rows `[0, parent_size)`, whichever process generated them.
@@ -116,6 +124,7 @@
 - AC9.1 `LICENSE` at the repo root carries the MIT text with the author as copyright holder.
 - AC9.2 The built distribution's metadata carries: licence MIT (`pyproject.toml` `license`); a summary stating the identity without "v2"; keywords; `License :: OSI Approved :: MIT License` among the classifiers; project URLs Homepage, Documentation, Repository, Issues, Changelog; `twine check` passes.
 - AC9.3 `CHANGELOG.md` carries 0.6.1, 0.6.2, 0.6.3, 0.6.4 and 0.7.0; 0.7.0 lists every break: `constraints` removed, `pk`/`fk` added, `db_checkpoint` and `option` removed, Spark rejects keys, `duckdb` dropped, same-seed values differ from 0.6.x.
+- AC9.4 `pyproject.toml` `version` is `0.7.0`, delivered by the last task of TASKS; tag and publish stay the project pipeline's, at promote.
 
 ### FR10 — Repo hygiene
 
@@ -138,15 +147,14 @@
 ## 5. Out of scope
 
 - Arm B, operator-confirmed, fixed in parallel bug worktrees — not tasks of this candidate: D5 writer size, D7 stream `timeout`/`trigger`, D8 `numFiles` consumed, D9 warnings raised as errors, D10 `integers.dtype`, D11 `distincts_external`, D12 timezone, D14 `int_type` overflow, D15 float bounds and Spark exclusive max, D17 dead CDC module, D18 unused dependencies (`fastavro`, `fastparquet`) and `PyCore`'s DuckDB import, D20 `uuid4` kwargs and `length`.
-- Deferred to the backlog through the main thread's intake: Spark `pk`/`fk` parity; a DB key-sink writer.
-- Not offered: composite keys, fan-out per parent, event-time ordering of children after parents, orphan or bad-data rates, hash-UUID keys, Spark seeding, a single method registry, a multi-spec container (`get_dfs`), a docs site, a benchmark page, Python 3.13/3.14 and pandas 3 support, CI security-scan hardening.
+- Deferred to the backlog through the main thread's intake: Spark `pk`/`fk` parity; a DB key-sink writer (output only); an event-time-ordered FK (`born_before`).
+- Not offered: composite keys, fan-out per parent, orphan or bad-data rates, hash-UUID keys, Spark seeding, a single method registry, a multi-spec container (`get_dfs`), a docs site, a benchmark page, Python 3.13/3.14 and pandas 3 support, CI security-scan hardening.
 
 ## 6. Dependencies and risks
 
 - Order: FR4 (rng) and FR1–FR3, FR5, FR6 before FR7–FR8, whose examples call `pk`/`fk`; the README `write` example needs D5's fix merged first.
 - Arm B fixes on the same units (`NPCore.gen_uuid4` D20, the writers D5/D7/D8, both validators D9–D11, `PyCore` D18) land on the work branch through bug worktrees; the PLAN's Parallel schedule orders this candidate's tasks around them.
-- Constitution: this SPEC revises invariant 4's seed contract (per-generator rng, values differ from 0.6.x); invariant 8 and the first Exclusion lose their subject (no SQLite/DuckDB state remains).
-- Invariant 11: the change dropping `duckdb` updates `specs/memory/ARCHITECTURE.md` `## Tech Stack` in the same change.
+- Constitution and Tech Stack: the ADR 0002 accept commit, at SPEC approval in this release worktree (an `impl` worktree cannot write `specs/`), carries the paired canonical hunks: invariant 8 rewritten (no SQL surface remains), Exclusion 1 rewritten (relations are stateless keys; a database is only ever an output sink), invariant 4 kept (this approved SPEC is the revision it requires), and `ARCHITECTURE.md` `## Tech Stack` without `duckdb`, `fastavro`, `fastparquet` (invariant 11).
 - Memory pass at closure: `pk-fk-constraints` (rewritten for keys), `data-generator`, `rand-spec-grammar`, `spark-generator`, `generation-methods`, `public-api`; `ARCHITECTURE.md` Structure and Tech Stack; `QUALITY.md` Test architecture.
 
 | risk | mitigation |
@@ -157,10 +165,3 @@
 | README examples drift again | executed in CI; AC7.2, AC8.3 |
 | an Arm B fix and a task edit the same function | the Parallel schedule serialises them |
 
-### Open questions — answered before `Approved`
-
-1. Permuted keys and the seed: is a `permuted` permutation keyed by the generator seed (FK ⊂ PK only when parent and child share an integer seed; what does `seed=None` do for a `permuted` parent?) or by the PK kwargs alone (FK ⊂ PK for any seeds)? AC1.5, AC2.1–AC2.3 hold under both.
-2. `skew`: carried as one optional parameter per the main thread's brief; the grill holds no operator answer on it.
-3. The `pyproject.toml` version 0.6.4 → 0.7.0: which act moves it (the releases law: no agent mints a version)?
-4. Constitution invariants 4, 8 and the first Exclusion: amended at closure by the memory pass, or in an operator act before implementation? Invariant 11 asks for Tech Stack in the task's own change, while atoms are written at closure.
-5. Event-time ordering (a child references only parents already generated, the old watermark's intent): a third backlog entry, or dropped?
