@@ -1,6 +1,6 @@
 # SPEC — Release: 0.7.0, candidate 1 (relations core + visibility)
 
-**Status:** Draft
+**Status:** Approved
 **Release ID:** 0.7.0
 **Owner:** dd-product-engineer
 **Opened:** 2026-10-03
@@ -52,7 +52,8 @@
   - Event-time ordering "Backlog it (Recommended)" — deferred (§5).
 - Settled by inspection, 2026-10-03: the version is 0.7.0 (grill Q2); `auto_tag_publish_master.yml` tags and publishes the `pyproject.toml` version from `master`, and past versions were hand-edited, so the bump is a requirement (AC9.4) and the pipeline mints tag and publish at promote.
 - ADR 0002 (proposed) records the relations decision; only the operator accepts it (§6 names the paired constitution and memory hunks).
-- Inferred by the product engineer, shown for the operator's approval:
+- Operator, approval 2026-10-03, verbatim: "Approve + AC10.4 + ADR 0002 (Recommended)" — the SPEC is approved with AC10.4 added, ADR 0002 is accepted, and the two inferred rules below are approved with it.
+- Inferred by the product engineer, approved with the SPEC:
   - A key is admitted only when the FK side can rebuild it from the column spec alone (D5's rule applied to every key input), so `transformers` on a `pk` column or an fk `parent` are rejected (AC1.7, AC2.6).
   - `DataGenerator.option` leaves with `reset_checkpoint`, its only key (AC5.3).
 
@@ -131,6 +132,7 @@
 - AC10.1 `tests/AGENTS.md` is calibrated for rand-engine from the audit draft, carries no `<…>` placeholder, and names no deleted test file.
 - AC10.2 `git ls-files specs_bkp` prints nothing.
 - AC10.3 No test imports a deleted module; the relation ACs (FR1–FR3, AC5.2) are asserted by contract tests in the file that owns relations, on the output read back, never on the run alone (constitution invariant 5).
+- AC10.4 The repo `AGENTS.md` carries no checkpoint stop condition and no `integrations/` or `_constraints_handler.py` key path; it states that relations are stateless `pk`/`fk` columns.
 
 ## 4. Replaces
 
