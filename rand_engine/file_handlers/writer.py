@@ -11,7 +11,6 @@ class FileWriter:
     self.microbatch_def = microbatch_def
     self.write_format = "csv"
     self.write_mode = "overwrite"
-    self._size = 1000
     self.write_options = {}
     self.writer_method = self._FileWriter__map_methods()
 
@@ -24,12 +23,6 @@ class FileWriter:
       "json": FileHandler.to_json
     }
   
-
-  def size(self, size: int):
-    """Set the size of the dataframe to be generated."""
-    self._size = size
-    return self
-
 
   def mode(self, write_mode: str) -> Callable:
     """Set the write mode (overwrite, append, etc)."""

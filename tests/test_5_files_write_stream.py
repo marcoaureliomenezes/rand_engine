@@ -1,4 +1,4 @@
-"""Intent: CONTRACT — writer-options-consumed-by-use (timeout/trigger read with defaults, never consumed)."""
+"""Intent: CONTRACT — writer-options-consumed-by-use (timeout/trigger read with defaults, never consumed); writer-size-not-from-generator (callable generator size reaches the stream; no size fails before overwrite deletes anything)."""
 import os
 import pandas as pd
 import glob
@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from rand_engine.file_handlers import _writer_stream
 
 from rand_engine.main.data_generator import DataGenerator
+from rand_engine.validators.exceptions import RandEngineError
 from tests.fixtures.f1_data_generator_specs_right import (
     rand_spec_with_kwargs,
     rand_spec_with_args
@@ -52,8 +53,8 @@ def test_writing_multiple_files(
   start_time = time.time()
   _ = (
     DataGenerator(rand_spec_with_kwargs)
-      .writeStream
       .size(10**1)
+      .writeStream
       .mode("overwrite")
       .format(format_type)
       .option("compression", compression)
@@ -95,8 +96,8 @@ def test_writing_multiple_files_append(
   start_time = time.time()
   writer = (
     DataGenerator(rand_spec_with_kwargs)
-      .writeStream
       .size(10**1)
+      .writeStream
       .format(format_type)
       .option("compression", compression)
       .option("timeout", 0.1)
@@ -116,7 +117,16 @@ def test_stream_defaults_timeout_20s_trigger_1s(rand_spec_with_kwargs, base_path
   def sleep(seconds): clock["now"] += seconds
   monkeypatch.setattr(_writer_stream, "time", SimpleNamespace(time=lambda: clock["now"], sleep=sleep))
   path = f"{base_path_files_test}/csv/streaming/defaults/clients"
-  DataGenerator(rand_spec_with_kwargs).writeStream.size(7).format("csv").start(path)
-  files = glob.glob(f"{path}/*")
-  assert len(files) == 21  # one file per 1 s tick until the clock passes 20 s
-  assert len(pd.read_csv(files[0])) == 7
+  sizes = iter(range(1, 100))
+  DataGenerator(rand_spec_with_kwargs).size(lambda: next(sizes)).writeStream.format("csv").start(path)
+  # one file per 1 s tick until the clock passes 20 s; the callable size is re-read per microbatch
+  assert sorted(len(pd.read_csv(f)) for f in glob.glob(f"{path}/*")) == list(range(1, 22))
+
+
+def test_no_size_fails_before_overwrite_deletes(rand_spec_with_kwargs, base_path_files_test):
+  path = f"{base_path_files_test}/csv/streaming/no_size/clients"
+  os.makedirs(path, exist_ok=True)
+  open(f"{path}/keep.csv", "w").close()
+  with pytest.raises(RandEngineError, match=r"\.size\(n\)"):
+    DataGenerator(rand_spec_with_kwargs).writeStream.mode("overwrite").start(path)
+  assert os.listdir(path) == ["keep.csv"]

@@ -1,4 +1,4 @@
-"""Intent: CONTRACT — writer-options-consumed-by-use (a reused writer keeps numFiles)."""
+"""Intent: CONTRACT — writer-size-not-from-generator (generator size, int or callable re-evaluated per file, reaches the file; no size fails before overwrite deletes anything); writer-options-consumed-by-use (a reused writer keeps numFiles)."""
 import pytest
 import os
 import pandas as pd
@@ -7,6 +7,7 @@ import time
 import threading
 
 from rand_engine.main.data_generator import DataGenerator
+from rand_engine.validators.exceptions import RandEngineError
 from tests.fixtures.f1_data_generator_specs_right import (
     rand_spec_with_kwargs,
     rand_spec_with_args,
@@ -23,6 +24,8 @@ from tests.fixtures.f3_integrations import (
     base_path_files_test,
     size_in_mb
 )
+
+READERS = {"csv": pd.read_csv, "json": lambda f: pd.read_json(f, lines=True), "parquet": pd.read_parquet}
 
 
 @pytest.mark.parametrize("format_type,compression,file_path", [
@@ -54,14 +57,15 @@ def test_writing_single_file(
   path = f"{base_path_files_test}/{format_type}/{file_path}"
   _ = (
     DataGenerator(rand_spec_with_kwargs)
+      .size(lambda: df_size)
       .write
-      .size(df_size)
       .format(format_type)
       .option("compression", compression)
       .mode("overwrite")
       .save(path)
   )
-  assert True
+  [file] = glob.glob(f"{os.path.dirname(path)}/clients*")
+  assert len(READERS[format_type](file)) == df_size
  
 
 @pytest.mark.parametrize("format_type,compression,file_path", [
@@ -94,8 +98,8 @@ def test_writing_multiple_files(
   path = f"{base_path_files_test}/{format_type}/{file_path}"
   _ = (
     DataGenerator(rand_spec_with_kwargs)
-      .write
       .size(df_size)
+      .write
       .format(format_type)
       .option("compression", compression)
       .option("numFiles", 2)
@@ -104,8 +108,8 @@ def test_writing_multiple_files(
   )
   _ = (
     DataGenerator(rand_spec_with_kwargs)
-      .write
       .size(df_size)
+      .write
       .format(format_type)
       .option("compression", compression)
       .option("numFiles", 2)
@@ -146,10 +150,11 @@ def test_writing_multiple_files_append(
   file_path
 ):
   path = f"{base_path_files_test}/{format_type}/{file_path}"
+  sizes = iter([1, 2, 3, 4])
   writer = (
     DataGenerator(rand_spec_with_kwargs)
+      .size(lambda: next(sizes))
       .write
-      .size(df_size)
       .format(format_type)
       .option("compression", compression)
       .option("numFiles", 2)
@@ -158,6 +163,14 @@ def test_writing_multiple_files_append(
   writer.mode("append").save(path)
   base_path = os.path.dirname(path)
   file_name = os.path.basename(path).split(".")[0]
-  full_path = f"{base_path}/{file_name}"
-  files = glob.glob(f"{full_path}/part_*")
-  assert len(files) == 4
+  files = glob.glob(f"{base_path}/{file_name}/part_*")
+  assert sorted(len(READERS[format_type](f)) for f in files) == [1, 2, 3, 4]  # callable size re-read per file
+
+
+def test_no_size_fails_before_overwrite_deletes(rand_spec_with_kwargs, base_path_files_test):
+  path = f"{base_path_files_test}/csv/no_size/clients"
+  os.makedirs(path, exist_ok=True)
+  open(f"{path}/keep.csv", "w").close()
+  with pytest.raises(RandEngineError, match=r"\.size\(n\)"):
+    DataGenerator(rand_spec_with_kwargs).write.option("numFiles", 2).mode("overwrite").save(path)
+  assert os.listdir(path) == ["keep.csv"]

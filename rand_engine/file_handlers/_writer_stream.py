@@ -23,14 +23,14 @@ class FileStreamWriter(FileWriter):
     while True:
       yield f"{path}/part-{str(uuid.uuid4())}.{ext}"
 
-  def __generate_file(self, path, write_options):
-    dataframe = self.microbatch_def(self._size)
+  def __generate_file(self, path, dataframe, write_options):
     self.writer_method[self.write_format](dataframe, path, write_options)()
     
 
   def start(self, path):
     base_path, file_name_cleaned, ext = FileHandler.handle_path(path, self.write_format, self.write_options)
     path = f"{base_path}/{file_name_cleaned}"
+    dataframe = self.microbatch_def()
     os.makedirs(path, exist_ok=True)
     if self.write_mode == "overwrite":
       if os.path.exists(path):
@@ -41,6 +41,7 @@ class FileStreamWriter(FileWriter):
     start_time = time.time()
     file_gen = self.__handle_filenames(path, ext)
     for file in file_gen:
-      self.__generate_file(file, write_options)
+      self.__generate_file(file, dataframe, write_options)
       time.sleep(self.freq)
       if time.time() - start_time > timeout: break
+      dataframe = self.microbatch_def()

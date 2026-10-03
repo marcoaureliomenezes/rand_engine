@@ -8,7 +8,7 @@ from rand_engine.file_handlers._writer_batch import FileBatchWriter
 from rand_engine.file_handlers._writer_stream import FileStreamWriter
 from rand_engine.utils.stream_handler import StreamHandler
 from rand_engine.validators.advanced_validator import AdvancedValidator
-from rand_engine.validators.exceptions import SpecValidationError
+from rand_engine.validators.exceptions import SpecValidationError, RandEngineError
 from rand_engine.integrations._duckdb_handler import DuckDBHandler
 from rand_engine.integrations._sqlite_handler import SQLiteHandler
   
@@ -21,6 +21,7 @@ class DataGenerator:
     
     # Configura gerador após validação bem-sucedida
     np.random.seed(seed)
+    self._size = None
     self._constraints_db_path = ":memory:"
     self.write = self._writer()
     self.writeStream = self._stream_writer()
@@ -68,9 +69,15 @@ class DataGenerator:
     return self
   
 
-  def size(self, size: int):
+  def size(self, size: int | Callable[[], int]):
     self._size = size
     return self
+
+
+  def _resolve_size(self) -> int:
+    if self._size is None:
+      raise RandEngineError("No size set: call .size(n) with an int or a callable returning one.")
+    return self._size() if callable(self._size) else self._size
   
 
   def db_checkpoint(self, db_conn: Any):
@@ -88,16 +95,14 @@ class DataGenerator:
   def get_df(self):
     if self._options.get("reset_checkpoint"):
       self.constraints_handler.delete_state()
-    size = self._size if not callable(self._size) else self._size()
-    lazy_dataframe = self.wrapped_df_generator(size=size)
+    lazy_dataframe = self.wrapped_df_generator(size=self._resolve_size())
     assert lazy_dataframe is not None, "You need to generate a DataFrame first."
     assert callable(lazy_dataframe), "wrapped_df_generator must return a callable"
     return lazy_dataframe()
 
 
   def stream_dict(self, min_throughput: int=1, max_throughput: int = 10) -> Generator:
-    size = self._size() if callable(self._size) else self._size
-    lazy_dataframe = self.wrapped_df_generator(size=size)
+    lazy_dataframe = self.wrapped_df_generator(size=self._resolve_size())
     assert lazy_dataframe is not None, "You need to generate a DataFrame first."
     assert callable(lazy_dataframe), "wrapped_df_generator must return a callable"
     while True:
@@ -111,14 +116,12 @@ class DataGenerator:
   
 
   def _writer(self):
-    #size = self._size() if callable(self._size) else self._size
-    microbatch_def = lambda size: self.wrapped_df_generator(size=size)
+    microbatch_def = lambda: self.wrapped_df_generator(size=self._resolve_size())
     return FileBatchWriter(microbatch_def)
    
 
   def _stream_writer(self):
-    #size = self._size() if callable(self._size) else self._size
-    microbatch_def = lambda size: self.wrapped_df_generator(size=size)
+    microbatch_def = lambda: self.wrapped_df_generator(size=self._resolve_size())
     return FileStreamWriter(microbatch_def)
 
 

@@ -1,6 +1,7 @@
 
 from datetime import datetime as dt    
-import time
+from itertools import islice
+import pytest
 
 from rand_engine.main.data_generator import DataGenerator
 from tests.fixtures.f2_templates import update_transformer
@@ -8,7 +9,6 @@ from tests.fixtures.f1_data_generator_specs_right import rand_spec_with_args
 
 from tests.fixtures.f3_integrations import (
     df_size,
-    microbatch_size,
     batch_size,
 )
 
@@ -24,13 +24,9 @@ def test_pandas_df_kwargs(df_size, rand_spec_with_args):
 
 
 
-def test_create_stream_dict(microbatch_size, rand_spec_with_args):
-  counter, start_time = 0, time.time()
-  stream = DataGenerator(rand_spec_with_args).size(microbatch_size).stream_dict(min_throughput=5, max_throughput=10)
-  for record in stream:
-    elapsed_time = time.time() - start_time
-    counter += 1
-    if elapsed_time > 1: break
-#   assert counter > 5
-#   assert counter <= 10
-#   assert type(record) == dict
+@pytest.mark.parametrize("size", [3, lambda: 3])
+def test_create_stream_dict(size, rand_spec_with_args):
+  """Intent: CONTRACT — writer-size-not-from-generator: stream_dict resolves int and callable size."""
+  stream = DataGenerator(rand_spec_with_args).size(size).stream_dict(min_throughput=1000, max_throughput=1000)
+  records = list(islice(stream, 3))
+  assert [set(r) for r in records] == [set(rand_spec_with_args) | {"timestamp_created"}] * 3
