@@ -14,7 +14,7 @@ Bug ledger: Arm B records D5/D7/D8 (fixed on `wt/0.7.0b-bug`, pending merge) and
 |---|---|---|---|---|
 | `main/_constraints_handler.py` `ConstraintsHandler` | PK rows into a checkpoint DB with `creation_time`; FK sampled from rows inside a wall-clock watermark | D1, D2, D16, D19 (3/1) | DELETE | contract contradicts the SPEC (stateless keys); deletion test: complexity vanishes, replaced by arithmetic |
 | `integrations/_sqlite_handler.py`, `_duckdb_handler.py`, `_base_handler.py`, `__init__.py` | class-level connection pool; int64 stored as BLOB; ABC with two adapters used only by the checkpoint | D1, D3, D18, D19 (7/1) | DELETE | no caller after the handler goes; the shared `:memory:` pool is hidden global state; `duckdb` leaves |
-| `main/data_generator.py` `DataGenerator` | `np.random.seed(seed)` global; `del spec["constraints"]`; `db_checkpoint`; `option("reset_checkpoint")` | D3, D4, D13 (31/6, the most-fixed unit) | REBUILD (seams only) | ≥ 2 bugs; keep the fluent surface (`size`, `transformers`, `get_df`, `stream_dict`, `write`, `writeStream`); delete `db_checkpoint`, `option`, the `del`; holds one `SeedSequence`, one `rng`, a row counter per stream |
+| `main/data_generator.py` `DataGenerator` | `np.random.seed(seed)` global; `del spec["constraints"]`; `db_checkpoint`; `option("reset_checkpoint")` | D3, D4, D13 (31/6, the most-fixed unit) | REBUILD | seams only; ≥ 2 bugs; keep the fluent surface (`size`, `transformers`, `get_df`, `stream_dict`, `write`, `writeStream`); delete `db_checkpoint`, `option`, the `del`; holds one `SeedSequence`, one `rng`, a row counter per stream |
 | `main/_rand_generator.py` `RandGenerator` | one dispatch dict; unused `DuckDBHandler` import; dead `validate` param | D11 (16/1) | UPDATE | `map_methods(rng, offset, key_seed)` binds the per-call inputs with `functools.partial`; the column loop is unchanged; dead import/param leave |
 | `core/_np_core.py` `NPCore` | operator-written vectorised core over global `np.random` | D12, D13, D14, D15, D20 (9/1) | UPDATE | `rng` keyword per function, `np.random.x` → `rng.x`; bodies otherwise kept; D12/D14/D15/D20 are Arm B |
 | `core/_py_core.py` `PyCore` | Python-loop correlated methods; `gen_distincts_untyped` serves `gen_distincts_map` | D13, D18 (9/0) | UPDATE | `rng` keyword; `gen_distincts_untyped` KEEPs (caller `gen_distincts_map`); the DuckDB import is D18 (Arm B) |
@@ -23,12 +23,14 @@ Bug ledger: Arm B records D5/D7/D8 (fixed on `wt/0.7.0b-bug`, pending merge) and
 | `validators/advanced_validator.py` | `validate_constraints` (PK/FK/watermark); `METHOD_SPECS` | D9, D11 (3/1) | UPDATE | `pk`/`fk` entries + their rules (AC1.7, AC2.6); `validate_constraints` becomes the AC5.1 refusal naming `pk` and `fk` |
 | `validators/common_validator.py` `_validate_spark_column` | Spark spec rules | D9, D10, D20 (3/1) | UPDATE | one refusal for `pk`/`fk` (AC6.1) |
 | `utils/update.py` `Changer` | `np.random.seed(None)` reseed; imported by `templates/web_server_logs.py`, never called | D13 | DELETE | global-state writer with no call site |
-| `main/_cdc_generator.py` | unimportable | D17 | DELETE (Arm B) | not a task here |
+| `main/_cdc_generator.py` | unimportable | D17 | DELETE | Arm B D17, not a task here |
 | `README.md` | `unique_ids`/`references`/`get_dfs`/`splitable` examples; six dead links; stale timing | D6 | REBUILD | every `python` block executed by the suite |
-| `docs/4_CONSTRAINTS.md`; `docs/1..3_*.md` | drifted API; checkpoint guide | D6 | REBUILD (4), UPDATE (1–3) | keys guide; blocks executed |
+| `docs/4_CONSTRAINTS.md` | checkpoint guide | D6 | REBUILD | keys guide; blocks executed |
+| `docs/1..3_*.md` | drifted API | D6 | UPDATE | blocks executed |
 | `docs/5_RECIPES.md`, `llms.txt`, `LICENSE` | — | — | ADD | AC8.2, AC8.4, AC9.1: nothing carries them |
 | `pyproject.toml`, `poetry.lock`, `requirements.txt`, `CHANGELOG.md` | v2 summary, no licence, one URL, `duckdb`; changelog stops at 0.6.0 | D18 | UPDATE | AC5.4, AC9.2–AC9.4 |
-| `AGENTS.md` (repo), `tests/AGENTS.md`, `specs_bkp/` | checkpoint stop condition and key paths; uncalibrated test law; tracked backup | — | UPDATE, UPDATE, DELETE | AC10.1, AC10.2, AC10.4 |
+| `AGENTS.md` (repo), `tests/AGENTS.md` | checkpoint stop condition and key paths; uncalibrated test law | — | UPDATE | AC10.1, AC10.4 |
+| `specs_bkp/` | tracked backup | — | DELETE | AC10.2 |
 | `tests/integrations/test_sqlite.py`, `test_duckdb.py`, `test_constraints_cleanup.py`, `tests/fixtures/f4_database_handlers.py` | test the deleted adapters | — | DELETE | feature removed |
 | `tests/test_8_consistency.py` + `tests/fixtures/f3_data_generator_constraints.py` | VARCHAR-only FK, commented subset asserts | — | REBUILD | the relations contract file (AC10.3); fixture deleted |
 | `tests/test_0_*_core.py`, `test_1_*_validator.py`, `test_2_data_generator.py`, `test_5_files_write_*.py` | run checks | — | UPDATE | each owns its RED; no new file except `tests/test_docs.py` (no file owns docs) |
