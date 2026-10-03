@@ -11,6 +11,7 @@ class FileStreamWriter(FileWriter):
 
   def __init__(self, microbatch_def):
     super().__init__(microbatch_def)
+    self.freq = 1
   
 
   def trigger(self, frequency: int):
@@ -22,9 +23,9 @@ class FileStreamWriter(FileWriter):
     while True:
       yield f"{path}/part-{str(uuid.uuid4())}.{ext}"
 
-  def __generate_file(self, path):
+  def __generate_file(self, path, write_options):
     dataframe = self.microbatch_def(self._size)
-    self.writer_method[self.write_format](dataframe, path, self.write_options)()
+    self.writer_method[self.write_format](dataframe, path, write_options)()
     
 
   def start(self, path):
@@ -35,11 +36,11 @@ class FileStreamWriter(FileWriter):
       if os.path.exists(path):
         for f in os.listdir(path):
           os.remove(os.path.join(path, f))
-    timeout = self.write_options.get("timeout", 20)
-    del self.write_options["timeout"]
+    write_options = dict(self.write_options)
+    timeout = write_options.pop("timeout", 20)
     start_time = time.time()
     file_gen = self.__handle_filenames(path, ext)
     for file in file_gen:
-      self.__generate_file(file)
+      self.__generate_file(file, write_options)
       time.sleep(self.freq)
       if time.time() - start_time > timeout: break

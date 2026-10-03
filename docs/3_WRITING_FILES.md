@@ -215,7 +215,7 @@ spec = {
 ### Methods
 
 #### `trigger(frequency: int)`
-Sets the time interval (in seconds) between file generations.
+Sets the time interval (in seconds) between file generations (default: 1).
 
 **Example:**
 ```python
@@ -380,8 +380,8 @@ df = SparkGenerator(spark, F, spec).size(1_000_000).get_df()
 df.write.format("parquet").mode("overwrite").save("/path/to/output")
 ```
 
-### 2. Streaming Timeout is Required
-Without `timeout`, streaming runs indefinitely (default 20 seconds):
+### 2. Streaming Timeout is Optional
+`timeout` is optional, default 20 s:
 
 ```python
 # Runs for 20 seconds (default)
@@ -415,7 +415,7 @@ File extension is automatically adjusted for compression:
 | **Execution** | Returns immediately | Blocks until timeout |
 | **Use Case** | One-time exports | Continuous data simulation |
 | **Trigger** | N/A | Time-based (seconds) |
-| **Timeout** | N/A | Required (default 20s) |
+| **Timeout** | N/A | Optional, default 20 s |
 | **File Count** | Fixed (1 or N via numFiles) | Grows over time |
 
 ---

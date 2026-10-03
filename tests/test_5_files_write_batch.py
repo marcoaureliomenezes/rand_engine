@@ -1,3 +1,4 @@
+"""Intent: CONTRACT — writer-options-consumed-by-use (a reused writer keeps numFiles)."""
 import pytest
 import os
 import pandas as pd
@@ -145,26 +146,16 @@ def test_writing_multiple_files_append(
   file_path
 ):
   path = f"{base_path_files_test}/{format_type}/{file_path}"
-  _ = (
+  writer = (
     DataGenerator(rand_spec_with_kwargs)
       .write
       .size(df_size)
       .format(format_type)
       .option("compression", compression)
       .option("numFiles", 2)
-      .mode("overwrite")
-      .save(path)
   )
-  _ = (
-    DataGenerator(rand_spec_with_kwargs)
-      .write
-      .size(df_size)
-      .format(format_type)
-      .option("compression", compression)
-      .option("numFiles", 2)
-      .mode("append")
-      .save(path)
-  )
+  writer.mode("overwrite").save(path)
+  writer.mode("append").save(path)
   base_path = os.path.dirname(path)
   file_name = os.path.basename(path).split(".")[0]
   full_path = f"{base_path}/{file_name}"
