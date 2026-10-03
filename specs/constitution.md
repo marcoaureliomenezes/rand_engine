@@ -23,14 +23,14 @@ gitflow: {"principal": "master", "integration": "development", "work": "feature/
 5. A writer writes exactly what was asked — row count, format, compression and file count — and tests assert the output read back, not only that a write ran.
 6. Credentials, PyPI or GitHub tokens, API keys and generated local state are never committed; PyPI publishing uses Trusted Publishing (OIDC) only.
 7. Examples, templates, tests, fixtures and evidence use synthetic, sanitized or license-safe data only — never production data or PII.
-8. A spec-supplied SQL identifier is validated or quoted before it reaches SQLite or DuckDB; raw query surfaces stay internal.
+8. The library holds no database state and runs no SQL; a database sink, if one is ever added, validates or quotes every spec-supplied identifier before it reaches the database.
 9. Tests write output to pytest `tmp_path` or the workspace `.dadaia/tmp/`, never to a persistent directory in the repo tree.
 10. The core generates data with Python, NumPy and pandas alone: Spark, Faker, a message broker or a database server is never required to generate data.
 11. A runtime dependency, build tool, supported Python range or release mechanism changes only through an approved SPEC, with `specs/memory/ARCHITECTURE.md` `## Tech Stack` updated in the same change.
 
 ## Exclusions
 
-- Not a correlation engine on a database: SQLite and DuckDB hold PK/FK checkpoint state only; DB-backed correlation needs its own approved SPEC and security review.
+- Not a correlation engine on a database: relations are stateless keys computed from the column definition, the seed and the row index; a database is only ever an output sink, never a lookup, and a sink needs its own approved SPEC and security review.
 - Never ingests real data: no external table, persisted checkpoint, example, test, log or template reads production data or PII.
 
 <!-- dadaia:fixed slop-law -->

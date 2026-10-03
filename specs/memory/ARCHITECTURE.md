@@ -18,12 +18,9 @@ commit that carries its accepted ADR.
 ## Tech Stack
 
 - Python `^3.10` library `rand_engine`, built by Poetry (`poetry-core`) and published to PyPI as `rand-engine`; `pyproject.toml` holds the one version.
-- NumPy `^2.1` — the vectorized column engine (`NPCore`) and the process-global seed.
+- NumPy `^2.1` — the vectorized column engine (`NPCore`); each generator owns one `np.random.default_rng(seed)`, passed to the core as `rng`; keys are computed from the column definition, the seed and the row index.
 - pandas `^2.2` — DataFrame assembly, transformers, CSV/JSON/Parquet output.
 - PyArrow `^23.0` — the Parquet engine of the batch and stream writers.
-- SQLite (stdlib `sqlite3`) — the default checkpoint store behind PK/FK constraints.
-- DuckDB `^1.4` — the alternative checkpoint handler; a required runtime dependency.
-- fastavro, fastparquet — declared runtime dependencies; no module imports them.
 - PySpark `^3.5` (test group only) — `SparkGenerator` runs on the caller's `SparkSession` and `pyspark.sql.functions`; the package never imports PySpark.
 - pytest `^9.0`, pytest-cov, Faker (test group) — the suite and its fixture data.
 - GitHub Actions — test matrix, security scans, RC and stable publishing through PyPI Trusted Publishing.
