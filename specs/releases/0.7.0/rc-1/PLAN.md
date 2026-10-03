@@ -1,9 +1,10 @@
 # PLAN — Release: 0.7.0, candidate 1 (relations core + visibility)
 
-**Status:** Draft
+**Status:** Approved
 **Release ID:** 0.7.0
 **Owner:** dd-software-engineer
 **SPEC:** `specs/releases/0.7.0/rc-1/SPEC.md` (Approved); ADR 0002 accepted.
+**Approval:** operator, 2026-10-03, verbatim: "Approve trio + 4 fills (Recommended)" — PLAN and TASKS approved with the four fills: the fk seed mixes the fk kwargs; every `docs/*.md` executed; pk defaults `sequence`/`start` 0/`step` 1/`key` 0; T-070-10/11 checked by build + `twine check` evidence.
 
 ## 1. As-is review
 
