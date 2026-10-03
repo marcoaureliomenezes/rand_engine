@@ -31,7 +31,7 @@ gitflow: {"principal": "master", "integration": "development", "work": "feature/
 ## Exclusions
 
 - Not a correlation engine on a database: relations are stateless keys computed from the column definition, the seed and the row index; a database is only ever an output sink, never a lookup, and a sink needs its own approved SPEC and security review.
-- Never ingests real data: no external table, persisted checkpoint, example, test, log or template reads production data or PII.
+- Never ingests real data: no external table, example, test, log or template reads production data or PII.
 
 <!-- dadaia:fixed slop-law -->
 ## Slop — workspace law (fixed)
