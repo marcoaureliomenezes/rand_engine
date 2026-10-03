@@ -23,6 +23,12 @@
       "milestone": "defined",
       "sha": "56b854b74796768a9292aa4f70da5af8fef87659",
       "text": "Candidate defined at 56b854b74796768a9292aa4f70da5af8fef87659; phase IMPLEMENTATION."
+    },
+    {
+      "ts": "2026-10-03T21:10:00Z",
+      "agent": "main-thread",
+      "kind": "note",
+      "text": "rc-1 amended per definition review (dd-code-reviewer REJECTED 464e5f7) and re-approved by the operator at 04cbffc (\"Re-approve all three (Recommended)\"); the defined stamp 56b854b predates the amendment because release.py phase writes IMPLEMENTATION once."
     }
   ]
 }
