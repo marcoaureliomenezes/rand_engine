@@ -8,27 +8,28 @@ Every commit touching `.py` carries `test-audit:` and `mutation:` lines (PLAN §
 
 - [ ] T-070-1 — Tracer: `pk` sequence + `fk` uniform through `get_df` (FR1, FR2 slice). `W:` `rand_engine/core/_keys.py`, `rand_engine/main/_rand_generator.py`, `rand_engine/main/data_generator.py`, `rand_engine/validators/advanced_validator.py`, `tests/test_8_consistency.py`, `tests/fixtures/f3_data_generator_constraints.py`
   blocked by: none. delivers: the operator generates a parent and a child frame whose integer FK values all sit in the parent PK set.
-  `Keys.gen_pk` (sequence), `Keys.gen_fk` (uniform, `cell_hash` port); `map_methods(offset, key_seed)` binds them by `partial`; `DataGenerator._key_seed` from `SeedSequence`; `pk`/`fk` in `METHOD_SPECS`. `test_8` rebuilt (old cases and the f3 fixture deleted: their target leaves in T-070-2).
-  RED: `tests/test_8_consistency.py` — AC1.1, AC2.1 (sequence parent), AC3.3.
-- [ ] T-070-2 — DELETE the checkpoint (FR5, AC10.4). `W:` `rand_engine/main/_constraints_handler.py`, `rand_engine/integrations/__init__.py`, `rand_engine/integrations/_base_handler.py`, `rand_engine/integrations/_sqlite_handler.py`, `rand_engine/integrations/_duckdb_handler.py`, `rand_engine/main/data_generator.py`, `rand_engine/main/_rand_generator.py`, `rand_engine/validators/advanced_validator.py`, `pyproject.toml`, `poetry.lock`, `requirements.txt`, `AGENTS.md`, `tests/integrations/test_sqlite.py`, `tests/integrations/test_duckdb.py`, `tests/integrations/test_constraints_cleanup.py`, `tests/fixtures/f4_database_handlers.py`, `tests/test_1_advanced_validator.py`, `tests/test_2_data_generator.py`
+  `Keys.gen_pk` (sequence), `Keys.gen_fk` (uniform, `cell_hash` port); `map_methods(offset, key_seed)` binds them by `partial`; `DataGenerator._key_seed` from `SeedSequence`; the loop builds `map_methods` per column; `pk`/`fk` in `METHOD_SPECS`. `test_8` rebuilt (old cases and the f3 fixture deleted: their target leaves in T-070-2).
+  RED: `tests/test_8_consistency.py` — AC1.1, AC2.1 (sequence parent), AC3.3; asserts on the output read back (AC10.3).
+- [ ] T-070-2 — DELETE the checkpoint (FR5, AC10.4). `W:` `rand_engine/main/_constraints_handler.py`, `rand_engine/integrations/__init__.py`, `rand_engine/integrations/_base_handler.py`, `rand_engine/integrations/_sqlite_handler.py`, `rand_engine/integrations/_duckdb_handler.py`, `rand_engine/main/data_generator.py`, `rand_engine/main/_rand_generator.py`, `rand_engine/validators/advanced_validator.py`, `pyproject.toml`, `poetry.lock`, `requirements.txt`, `AGENTS.md`, `tests/integrations/test_sqlite.py`, `tests/integrations/test_duckdb.py`, `tests/integrations/test_constraints_cleanup.py`, `tests/fixtures/f4_database_handlers.py`, `tests/integrations/test_public_api.py`, `rand_engine/validators/__init__.py`, `tests/test_1_advanced_validator.py`, `tests/test_2_data_generator.py`
   blocked by: T-070-1. delivers: the operator installs rand-engine without `duckdb`, and an old `constraints` spec fails with a message naming `pk` and `fk`.
-  Deletes `db_checkpoint`, `option`, the `del spec["constraints"]`, the handler, the adapters and their tests; `validate_constraints` becomes the AC5.1 refusal; repo `AGENTS.md` loses the checkpoint stop condition and key paths.
+  Deletes `db_checkpoint`, `option`, the `del spec["constraints"]`, the handler, the adapters and their tests; `validate_constraints` becomes the AC5.1 refusal; repo `AGENTS.md` loses the checkpoint stop condition and key paths; `test_public_api.py` and the `validators` docstring drop the deleted names; no test imports a deleted module (AC10.3).
   RED: `tests/test_1_advanced_validator.py` — AC5.1; `tests/test_2_data_generator.py` — AC5.3; AC5.4 grep in the commit body.
 - [ ] T-070-3 — One rng per generator (FR4). `W:` `rand_engine/main/data_generator.py`, `rand_engine/main/_rand_generator.py`, `rand_engine/core/_np_core.py`, `rand_engine/core/_py_core.py`, `rand_engine/utils/update.py`, `rand_engine/templates/web_server_logs.py`, `tests/test_0_np_core.py`, `tests/test_0_py_core.py`, `tests/test_2_data_generator.py`
   blocked by: T-070-1. delivers: the operator's NumPy state survives a generator, and two same-seed generators agree.
-  `rng` keyword on every `NPCore`/`PyCore` method, `np.random.x` → `rng.x`, bodies kept; `map_methods` binds `rng`; `np.random.seed` and `Changer` deleted.
-  RED: `tests/test_2_data_generator.py` — AC4.1, AC4.2, AC4.3; AC4.4 grep in the commit body.
+  `rng` keyword on every `NPCore`/`PyCore` method, bodies kept: `np.random.randint` → `rng.integers` (exclusive high, `dtype` kept), `choice`/`normal` → `rng.choice`/`rng.normal`; `gen_uuid4` builds RFC 4122 v4 from `rng.bytes` (version/variant bits set vectorised, PLAN §3); `map_methods` binds `rng`; `np.random.seed` and `Changer` deleted.
+  RED: `tests/test_2_data_generator.py` — AC4.1, AC4.2 (`uuid4` included), AC4.3; `tests/test_0_np_core.py` — AC4.5; AC4.4 grep in the commit body.
 - [ ] T-070-4 — PK complete: `permuted`, `format`, domain guard (FR1). `W:` `rand_engine/core/_keys.py`, `rand_engine/validators/advanced_validator.py`, `tests/test_8_consistency.py`, `tests/test_1_advanced_validator.py`
   blocked by: T-070-1. delivers: the operator generates random-looking unique ids, as integers or formatted strings.
-  Feistel cycle-walk port (`proto/feistel.py`), never the affine form (int64 wrap, PLAN §3).
-  RED: `tests/test_8_consistency.py` — AC1.2–AC1.6; `tests/test_1_advanced_validator.py` — AC1.7.
+  Feistel cycle-walk port (`proto/feistel.py`), never the affine form (int64 wrap, PLAN §3). AC1.3's row 10^15−1 is reached through the internal seam `Keys.gen_pk(..., offset=10**15-1)`, not a 10^15-row frame. A `sequence` leaving int64 raises `RandEngineError` in `Keys.gen_pk` at generation time.
+  RED: `tests/test_8_consistency.py` — AC1.2–AC1.6, read back (AC10.3); `tests/test_1_advanced_validator.py` — AC1.7.
 - [ ] T-070-5 — FK complete: string and permuted parents, `skew`, cross-process (FR2). `W:` `rand_engine/core/_keys.py`, `rand_engine/validators/advanced_validator.py`, `tests/test_8_consistency.py`, `tests/test_1_advanced_validator.py`
   blocked by: T-070-4. delivers: the operator skews children toward scattered hot parents and joins tables generated by separate processes.
-  RED: `tests/test_8_consistency.py` — AC2.1 (permuted), AC2.2–AC2.5, AC2.7; `tests/test_1_advanced_validator.py` — AC2.6.
-- [ ] T-070-6 — Row index across batches and streams (FR3, AC5.2). `W:` `rand_engine/main/data_generator.py`, `tests/test_8_consistency.py`
+  The parent-index hash mixes the spec column name, the key seed and the fk kwargs (AC2.8).
+  RED: `tests/test_8_consistency.py` — AC2.1 (permuted), AC2.2–AC2.5, AC2.7, AC2.8, read back (AC10.3); `tests/test_1_advanced_validator.py` — AC2.6.
+- [ ] T-070-6 — Row index across batches, streams and files (FR3, AC5.2). `W:` `rand_engine/main/data_generator.py`, `rand_engine/file_handlers/_writer_batch.py`, `rand_engine/file_handlers/_writer_stream.py`, `tests/test_8_consistency.py`
   blocked by: T-070-1. delivers: the operator streams a child whose keys match a single batch of the same rows.
-  Row counter per `stream_dict` / `writeStream` closure; `get_df` and `write` at offset 0.
-  RED: `tests/test_8_consistency.py` — AC3.1, AC3.2, AC3.4, AC5.2.
+  Row counter per `stream_dict` / `writeStream` closure; `get_df` and `write` at offset 0; each file of a `numFiles` save gets offset `c_f`. Waits for bug `writer-numfiles-rows-per-file` (PLAN §5).
+  RED: `tests/test_8_consistency.py` — AC3.1, AC3.2, AC3.4, AC3.5, AC5.2, read back (AC10.3).
 - [ ] T-070-7 — Spark refuses keys (FR6). `W:` `rand_engine/validators/common_validator.py`, `tests/test_1_common_validator.py`
   blocked by: none. delivers: the operator gets "NumPy engine only in 0.7.0" naming `DataGenerator` for a Spark spec with keys.
   RED: `tests/test_1_common_validator.py` — AC6.1, AC6.2.
@@ -36,7 +37,7 @@ Every commit touching `.py` carries `test-audit:` and `mutation:` lines (PLAN §
   blocked by: T-070-2, T-070-3, T-070-5, T-070-6, T-070-7. delivers: the operator follows any guide and every example runs.
   RED: `tests/test_docs.py` — AC8.1, AC8.2, AC8.3 over `docs/*.md`.
 - [ ] T-070-9 — README and `llms.txt` (FR7, AC8.4). `W:` `README.md`, `llms.txt`, `tests/test_docs.py`
-  blocked by: T-070-8. delivers: a newcomer, human or agent, reaches a working related-tables example from PyPI in one read.
+  blocked by: T-070-8, T-070-10. delivers: a newcomer, human or agent, reaches a working related-tables example from PyPI in one read.
   RED: `tests/test_docs.py` — AC7.2–AC7.5, AC8.4 (README blocks executed; README and `llms.txt` links resolve).
 - [ ] T-070-10 — Licence, metadata, changelog, test law, backup (FR9 less AC9.4, AC10.1, AC10.2). `W:` `LICENSE`, `pyproject.toml`, `CHANGELOG.md`, `tests/AGENTS.md`, `specs_bkp/**`
   blocked by: T-070-2, T-070-3, T-070-7. delivers: the operator sees MIT, the identity summary and the 0.7.0 break list on PyPI.

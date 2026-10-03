@@ -1,14 +1,15 @@
 # PLAN — Release: 0.7.0, candidate 1 (relations core + visibility)
 
-**Status:** Approved
+**Status:** In review
 **Release ID:** 0.7.0
 **Owner:** dd-software-engineer
-**SPEC:** `specs/releases/0.7.0/rc-1/SPEC.md` (Approved); ADR 0002 accepted.
+**SPEC:** `specs/releases/0.7.0/rc-1/SPEC.md` (In review: amended per the definition review, commits bb0cbb8..19600df); ADR 0002 accepted.
 **Approval:** operator, 2026-10-03, verbatim: "Approve trio + 4 fills (Recommended)" — PLAN and TASKS approved with the four fills: the fk seed mixes the fk kwargs; every `docs/*.md` executed; pk defaults `sequence`/`start` 0/`step` 1/`key` 0; T-070-10/11 checked by build + `twine check` evidence.
+**Amended:** per the dd-code-reviewer definition REJECT at 464e5f7 (F1–F18) and the operator's rulings recorded in the SPEC; awaiting re-review and re-approval.
 
 ## 1. As-is review
 
-Bug ledger: Arm B records D5/D7/D8 (fixed on `wt/0.7.0b-bug`, pending merge) and D9–D20 (registered, fix pending). Fix history = `git log --follow` commit counts (total/`fix`). Evidence: audit 0.6.4, `probes/`, `proto/` under `.dadaia/reports/rand-engine/20261003-revival/`.
+Bug ledger: B1 (`wt/0.7.0b-bug`) holds `writer-options-consumed-by-use` and `writer-size-not-from-generator`, pending re-review; operator-confirmed, not yet registered: D9–D12, D14, D15, D17, D18, D20, `writer-state-shared-across-chains`, `writer-numfiles-rows-per-file`, `memory-atom-ignored-by-output-glob`. Fix history = `git log --follow` commit counts (total/`fix`). Evidence: audit 0.6.4, `probes/`, `proto/` under `.dadaia/reports/rand-engine/20261003-revival/`.
 
 | unit | today | bugs | verdict | why |
 |---|---|---|---|---|
@@ -22,6 +23,8 @@ Bug ledger: Arm B records D5/D7/D8 (fixed on `wt/0.7.0b-bug`, pending merge) and
 | — `core/_keys.py` `Keys` | — | — | ADD | no unit can carry a pure `pk(i)` / `fk(j)`: sequence, Feistel cycle-walk permutation, uniform and Zipf parent index; port of `proto/core.py` (`xxh64_long`, `cell_hash`, `zipf_index`) + `proto/feistel.py`, NumPy only, ~70 LOC |
 | `validators/advanced_validator.py` | `validate_constraints` (PK/FK/watermark); `METHOD_SPECS` | D9, D11 (3/1) | UPDATE | `pk`/`fk` entries + their rules (AC1.7, AC2.6); `validate_constraints` becomes the AC5.1 refusal naming `pk` and `fk` |
 | `validators/common_validator.py` `_validate_spark_column` | Spark spec rules | D9, D10, D20 (3/1) | UPDATE | one refusal for `pk`/`fk` (AC6.1) |
+| `file_handlers/writer.py` `FileWriter.size` | a second row count beside the generator's | D5 | DELETE | delivered by B1 (8a28805, operator ruling "Delete `.write.size()`"); no task |
+| `file_handlers/_writer_batch.py`, `_writer_stream.py` | one `save`/microbatch over `numFiles` files | `writer-numfiles-rows-per-file` | UPDATE | after that bug splits `size` across files, each file call carries its row offset `c_f` (AC3.5) |
 | `utils/update.py` `Changer` | `np.random.seed(None)` reseed; imported by `templates/web_server_logs.py`, never called | D13 | DELETE | global-state writer with no call site |
 | `main/_cdc_generator.py` | unimportable | D17 | DELETE | Arm B D17, not a task here |
 | `README.md` | `unique_ids`/`references`/`get_dfs`/`splitable` examples; six dead links; stale timing | D6 | REBUILD | every `python` block executed by the suite |
@@ -32,6 +35,7 @@ Bug ledger: Arm B records D5/D7/D8 (fixed on `wt/0.7.0b-bug`, pending merge) and
 | `AGENTS.md` (repo), `tests/AGENTS.md` | checkpoint stop condition and key paths; uncalibrated test law | — | UPDATE | AC10.1, AC10.4 |
 | `specs_bkp/` | tracked backup | — | DELETE | AC10.2 |
 | `tests/integrations/test_sqlite.py`, `test_duckdb.py`, `test_constraints_cleanup.py`, `tests/fixtures/f4_database_handlers.py` | test the deleted adapters | — | DELETE | feature removed |
+| `tests/integrations/test_public_api.py`, `validators/__init__.py` | assert/describe the checkpoint surface ("constraints validation") | — | UPDATE | drop the deleted names (AC5.3, AC10.3) |
 | `tests/test_8_consistency.py` + `tests/fixtures/f3_data_generator_constraints.py` | VARCHAR-only FK, commented subset asserts | — | REBUILD | the relations contract file (AC10.3); fixture deleted |
 | `tests/test_0_*_core.py`, `test_1_*_validator.py`, `test_2_data_generator.py`, `test_5_files_write_*.py` | run checks | — | UPDATE | each owns its RED; no new file except `tests/test_docs.py` (no file owns docs) |
 
@@ -44,7 +48,8 @@ Bug ledger: Arm B records D5/D7/D8 (fixed on `wt/0.7.0b-bug`, pending merge) and
 | is a key spec admissible | `AdvancedValidator` `pk`/`fk` rules | `DataGenerator.__init__` | `validate_constraints` watermark rules |
 | does Spark accept a key | `CommonValidator._validate_spark_column` | `SparkGenerator.__init__` | — |
 | where randomness comes from | `DataGenerator` (`SeedSequence` → `rng`, `key_seed`) | `NPCore`, `PyCore`, `Keys` | `np.random.seed(seed)`, `Changer` reseed |
-| which row index a batch starts at | `DataGenerator` row counter per stream | `RandGenerator.map_methods` | — |
+| which row index a batch starts at | `DataGenerator` row counter per stream; the batch writer's file offset `c_f` | `RandGenerator.map_methods` | — |
+| how many rows one call writes | `DataGenerator._resolve_size` (B1) | `FileBatchWriter`, `FileStreamWriter` | `FileWriter.size` |
 | is a doc example true | `tests/test_docs.py` | `README.md`, `llms.txt`, `docs/*.md` | hand-written test counts and timings |
 | licence | `LICENSE` | `pyproject.toml` `license` | — |
 
@@ -55,18 +60,19 @@ Bug surface: net reduction — ~370 LOC (handler + three adapters) and `Changer`
 - Core problem: a key must be a pure function of its column definition, a seed and the row index; nothing else may be read.
 - Tracer first (T-070-1): `pk` sequence + `fk` uniform through `DataGenerator.get_df`, contract FK ⊂ PK in `tests/test_8_consistency.py`; every later task widens that path.
 - DELETE before ADD where expand–contract allows: the checkpoint leaves (T-070-2) once `pk`/`fk` exist, before the key surface grows (T-070-4, T-070-5).
-- Seam: `RandGenerator.map_methods(rng, offset, key_seed)` binds per-call inputs with `functools.partial` — `rng` for every core method, `offset`/`key_seed` for the two key methods. The column loop gains no branch.
+- Seam: `RandGenerator.map_methods(rng, offset, key_seed, column)` binds per-call inputs with `functools.partial` — `rng` for every core method, `offset`/`key_seed`/`column` for the two key methods; the loop builds the table once per column (it already knows `k`) and gains no branch.
+- `rng` mapping in the core (T-070-3), the only non-literal renames: `np.random.randint(a, b, n, dtype=d)` → `rng.integers(a, b, n, dtype=d)` (high stays exclusive); `np.random.choice` → `rng.choice`; `np.random.normal` → `rng.normal`. `NPCore.gen_uuid4` body changes (operator "Build from rng bytes"): `b = np.frombuffer(rng.bytes(16*size), np.uint8).reshape(size, 16)`; `b[:,6] = b[:,6] & 0x0F | 0x40`; `b[:,8] = b[:,8] & 0x3F | 0x80` (vectorised); render `str(uuid.UUID(bytes=row.tobytes()))` per row; signature and format kept (AC4.2, AC4.5). Arm B D20 (kwargs, `length`) touches the same function and merges first.
 - Operator-written core: tasks change signatures (`rng` keyword) and `np.random.x` → `rng.x`; no body rewrite, naming and style kept. Every task's diff holds or shrinks the touched unit; `Keys` is the only ADD.
 
 ## 3. Design
 
 - `DataGenerator.__init__`: `ss = np.random.SeedSequence(seed)`; `self._rng = np.random.default_rng(ss)`; `self._key_seed = int(ss.generate_state(1)[0])` — `seed=None` draws fresh entropy, never the global state (AC4.1). The tracer lands `_key_seed`; T-070-3 adds `_rng`.
 - `pk` kwargs and defaults: `style="sequence"`, `start=0`, `step=1`; `permuted` requires `domain`, `key=0`; `format=None`. Row i = `start + i*step`, or `start + feistel(i, domain, key)`.
-- `feistel`: balanced Feistel over `2·half` bits (`half = ceil(bits/2)`), 4 rounds of `cell_hash(key + r, ·)` on `uint64`, cycle-walk until `< domain`. Overflow: the prototype's affine `i*a % n` wraps silently in int64 (measured) — not ported; Feistel halves are ≤ 31 bits for `domain < 2^62`, `uint64` hashing wraps by design under `np.errstate(over="ignore")`; the validator refuses `start + domain` or `start + size*step` past int64 (AC1.3). Expected walks < 4 (domain ≥ ¼ of the bit range).
+- `feistel`: balanced Feistel over `2·half` bits (`half = ceil(bits/2)`), 4 rounds of `cell_hash(key + r, ·)` on `uint64`, cycle-walk until `< domain`. Overflow: the prototype's affine `i*a % n` wraps silently in int64 (measured) — not ported; Feistel halves are ≤ 31 bits for `domain < 2^62`, `uint64` hashing wraps by design under `np.errstate(over="ignore")`; the validator refuses `start + domain` past int64 (static); a `sequence` whose `start + (offset+size-1)*step` leaves int64 raises `RandEngineError` in `Keys.gen_pk` at generation time, like AC1.6 (size is unknown to the validator) (AC1.3). Expected walks < 4 (domain ≥ ¼ of the bit range).
 - Row index ≥ `domain` → `RandEngineError` naming column and domain (AC1.6); the loop's `ColumnGenerationError` already names the column.
 - `format` renders after the integer is computed (`np.char.mod` is not `str.format`; use `[fmt.format(v) for v in ...]`, the existing PyCore style) (AC1.4).
-- `fk` row j: `h = cell_hash(fk_seed, offset + j)`; uniform `p = h mod parent_size`; `skew > 0`: `rank = zipf_index(h, parent_size, skew)`, `p = feistel(rank, parent_size, key=fk_seed)` so hot parents scatter (AC2.5); value = `gen_pk` of the parent spec at indices `p`. `fk_seed = crc32(key_seed, canonical JSON of the fk kwargs)` — keys never read `rng` (AC3.1).
-- Row index: `get_df` and `write` use offset 0 every call (AC3.3); `stream_dict` and `writeStream` keep a counter `c_k` in the closure that advances by `n_k` (AC3.1, AC3.2).
+- `fk` row j: `h = cell_hash(fk_seed, offset + j)`; uniform `p = h mod parent_size`; `skew > 0`: `rank = zipf_index(h, parent_size, skew)`, `p = feistel(rank, parent_size, key=fk_seed)` so hot parents scatter (AC2.5); value = `gen_pk` of the parent spec at indices `p`. `fk_seed = crc32(key_seed, spec column name, canonical JSON of the fk kwargs)` (AC2.8) — keys never read `rng` (AC3.1).
+- Row index: `get_df` and `write` use offset 0 every call (AC3.3); a `save` over `numFiles` files calls the microbatch with `(n_f, offset=c_f)`, and a stream microbatch split across files adds `c_f` to `c_k` (AC3.5); `stream_dict` and `writeStream` keep a counter `c_k` in the closure that advances by `n_k` (AC3.1, AC3.2).
 - Spec immutability: the spec is evaluated per call and never mutated (AC5.2); the `del` leaves with T-070-2.
 
 ## 4. Tests and the test stack
@@ -79,19 +85,19 @@ Bug surface: net reduction — ~370 LOC (handler + three adapters) and `Changer`
 
 ## 5. Parallel schedule
 
-Arm B bug worktrees run one at a time beside the tasks; a task opens only after the bug owning a shared file merged. Order: B1 D5/D7/D8 (`file_handlers/*`, `main/data_generator.py`; fixed, pending merge) → B3 D9/D10/D11/D20 (both validators, `core/_np_core.py` `gen_uuid4`) → B4 D17/D18 (`main/_cdc_generator.py`, `pyproject.toml`, `poetry.lock`, `requirements.txt`, `core/_py_core.py`) → B2 D12/D14/D15 (`core/_np_core.py`, `core/_spark_core.py`).
+Arm B bug worktrees run one at a time beside the tasks; a task opens only after the bug owning a shared file merged. Order: B1 writers `writer-options-consumed-by-use`, `writer-size-not-from-generator` (`file_handlers/*`, `main/data_generator.py`; pending re-review) → B5 `writer-state-shared-across-chains` (`file_handlers/*`, `main/data_generator.py`) → B6 `writer-numfiles-rows-per-file` (`file_handlers/_writer_batch.py`, `_writer_stream.py`) → B3 validators D9/D10/D11/D20 (both validators, `core/_np_core.py` `gen_uuid4`) → B4 dead code D17/D18 (`main/_cdc_generator.py`, `pyproject.toml`, `poetry.lock`, `requirements.txt`, `core/_py_core.py`) → B2 values D12/D14/D15 (`core/_np_core.py`, `core/_spark_core.py`) → B7 `memory-atom-ignored-by-output-glob` (`.gitignore`; any slot, disjoint from every task).
 
 | step | tasks open together | width | how |
 |---|---|---|---|
-| 1 | T-070-1, T-070-7 | 2 | one impl worktree each; after B1 and B3 merged; B4 runs |
+| 1 | T-070-1, T-070-7 | 2 | one impl worktree each; after B1, B5, B6, B3 merged; B4 runs |
 | 2 | T-070-2 | 1 | impl worktree; after B4 merged; B2 runs |
-| 3 | T-070-3, T-070-4 | 2 | one impl worktree each; T-070-3 after B2 merged |
+| 3 | T-070-3, T-070-4 | 2 | one impl worktree each; T-070-3 after B2 (and D20 in B3) merged |
 | 4 | T-070-5 | 1 | impl worktree |
 | 5 | T-070-6 | 1 | impl worktree |
 | 6 | T-070-8, T-070-10 | 2 | one impl worktree each |
-| 7 | T-070-9 | 1 | impl worktree |
+| 7 | T-070-9 | 1 | impl worktree; after T-070-10 (the README links `LICENSE`) |
 | 8 | T-070-11 | 1 | impl worktree; the version bump, last |
 
-- Critical path: B1 → B3 → T-070-1 → T-070-2 → T-070-4 → T-070-5 → T-070-6 → T-070-8 → T-070-9 → T-070-11 = 8 task steps after two bug merges.
-- File-sharing order (not `blocked by:` edges): T-070-2 after T-070-1 (`data_generator.py`, `advanced_validator.py`); T-070-4 after T-070-2 (`advanced_validator.py`); T-070-5, T-070-6 serial on `tests/test_8_consistency.py`; T-070-11 after T-070-10 (`pyproject.toml`).
+- Critical path: B1 → B5 → B6 → B3 → T-070-1 → T-070-2 → T-070-4 → T-070-5 → T-070-6 → T-070-8 → T-070-9 → T-070-11 = 8 task steps after four bug merges.
+- File-sharing order (not `blocked by:` edges): T-070-2 after T-070-1 (`data_generator.py`, `_rand_generator.py`, `advanced_validator.py`); T-070-3 after T-070-2 (`data_generator.py`, `_rand_generator.py`, `tests/test_2_data_generator.py`); T-070-4 after T-070-2 (`advanced_validator.py`, `tests/test_1_advanced_validator.py`); T-070-5 after T-070-4 (`_keys.py`, `advanced_validator.py`, `test_8`); T-070-6 after T-070-3 (`data_generator.py`) and T-070-5 (`test_8`); T-070-9 after T-070-8 (`tests/test_docs.py`); T-070-11 after T-070-10 (`pyproject.toml`). Bug waits: T-070-6 after B6 (`_writer_batch.py`, `_writer_stream.py`); T-070-3 after D20 and B2 (`_np_core.py`) and B4 (`_py_core.py`); T-070-2 after B4 (`pyproject.toml`, `poetry.lock`, `requirements.txt`).
 - Overlap check: disjoint within each step except `TASKS.md` and the `*.jsonl` ledgers.
