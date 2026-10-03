@@ -1,6 +1,6 @@
 # SPEC — Release: 0.7.0, candidate 1 (relations core + visibility)
 
-**Status:** In review
+**Status:** Approved
 **Release ID:** 0.7.0
 **Owner:** dd-product-engineer
 **Opened:** 2026-10-03
@@ -58,6 +58,7 @@
   - "Mix the column name (Recommended)" — the FK parent-index draw hashes the spec column name with the seed and the fk kwargs (AC2.8).
   - "Build from rng bytes (Recommended)" — `uuid4` values are RFC 4122 v4 UUIDs built from the generator rng's bytes (FR4, AC4.5).
   - "Delete `.write.size()` (Recommended)" — the writer's own `size` leaves; the generator's `size` is the one row count.
+- Operator re-approval of the amended trio, 2026-10-03, verbatim: "Re-approve all three (Recommended)".
 - Inferred by the product engineer, approved with the SPEC:
   - A key is admitted only when the FK side can rebuild it from the column spec alone (D5's rule applied to every key input), so `transformers` on a `pk` column or an fk `parent` are rejected (AC1.7, AC2.6).
   - `DataGenerator.option` leaves with `reset_checkpoint`, its only key (AC5.3).
