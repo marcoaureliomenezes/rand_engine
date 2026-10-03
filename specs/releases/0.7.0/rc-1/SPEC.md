@@ -1,6 +1,6 @@
 # SPEC — Release: 0.7.0, candidate 1 (relations core + visibility)
 
-**Status:** Approved
+**Status:** In review
 **Release ID:** 0.7.0
 **Owner:** dd-product-engineer
 **Opened:** 2026-10-03
@@ -26,11 +26,11 @@
 ### Terms
 
 - **RandSpec**, **column spec**: memory `rand-spec-grammar`; a column spec is `{method, kwargs|args, cols?, transformers?}`.
-- **Row index**: the 0-based position of a row in a generator's output. `get_df` and `write` cover `[0, size)` on every call. A stream's microbatch k covers `[c_k, c_k + n_k)`, `c_0 = 0`, `c_{k+1} = c_k + n_k`; with a constant size n, `[k·n, (k+1)·n)`.
+- **Row index**: the 0-based position of a row in a generator's output. `get_df` and one batch `save` cover `[0, size)` on every call; a `save` over `numFiles` files splits that range into contiguous file ranges — file f covers `[c_f, c_f + n_f)`, `c_0 = 0`, `c_{f+1} = c_f + n_f`, the counter rule below applied to files, and a stream microbatch written to several files splits its range the same way. A stream's microbatch k covers `[c_k, c_k + n_k)`, `c_0 = 0`, `c_{k+1} = c_k + n_k`; with a constant size n, `[k·n, (k+1)·n)`.
 - **Key column**: a column whose method is `pk` or `fk`.
 - **PK column** (`pk`): row i's value is a pure function of the column's kwargs and i — never of the generator seed; unique by construction.
 - **Key style**: `sequence` (`start + i·step`) or `permuted` (a bijection of the row index over a declared **domain**, shifted by `start`, depending only on `domain` and an optional `key`); `format` renders either as a string.
-- **FK column** (`fk`): child row j's value is the parent PK value of a **parent index** `p(j) ∈ [0, parent_size)`, a pure function of the generator seed and j; the parent key is rebuilt, never looked up or stored.
+- **FK column** (`fk`): child row j's value is the parent PK value of a **parent index** `p(j) ∈ [0, parent_size)`, a pure function of the generator seed, the spec column name, the fk kwargs and j; the parent key is rebuilt, never looked up or stored.
 - **Parent**: the PK column spec an FK names (`parent`) plus the parent row count (`parent_size`).
 - **Skew**: one Zipf exponent over permuted parent ranks, so hot parents are scattered, not the first row indices; 0 (the default) means uniform.
 - **rng**: the `numpy.random.Generator` a generator owns, built once from its seed and passed to the core as the keyword `rng`.
@@ -53,6 +53,11 @@
 - Settled by inspection, 2026-10-03: the version is 0.7.0 (grill Q2); `auto_tag_publish_master.yml` tags and publishes the `pyproject.toml` version from `master`, and past versions were hand-edited, so the bump is a requirement (AC9.4) and the pipeline mints tag and publish at promote.
 - ADR 0002 (proposed) records the relations decision; only the operator accepts it (§6 names the paired constitution and memory hunks).
 - Operator, approval 2026-10-03, verbatim: "Approve + AC10.4 + ADR 0002 (Recommended)" — the SPEC is approved with AC10.4 added, ADR 0002 is accepted, and the two inferred rules below are approved with it.
+- Operator, rulings on the definition review (2026-10-03), verbatim:
+  - "Bug: split size (Recommended)" — confirmed bug `writer-numfiles-rows-per-file`: `size` is the total row count of one `save`, split across `numFiles`; keys follow the file ranges (Row index, AC3.5).
+  - "Mix the column name (Recommended)" — the FK parent-index draw hashes the spec column name with the seed and the fk kwargs (AC2.8).
+  - "Build from rng bytes (Recommended)" — `uuid4` values are RFC 4122 v4 UUIDs built from the generator rng's bytes (FR4, AC4.5).
+  - "Delete `.write.size()` (Recommended)" — the writer's own `size` leaves; the generator's `size` is the one row count.
 - Inferred by the product engineer, approved with the SPEC:
   - A key is admitted only when the FK side can rebuild it from the column spec alone (D5's rule applied to every key input), so `transformers` on a `pk` column or an fk `parent` are rejected (AC1.7, AC2.6).
   - `DataGenerator.option` leaves with `reset_checkpoint`, its only key (AC5.3).
@@ -78,6 +83,7 @@
 - AC2.5 `skew` 1.2, 10^4 parents, 10^6 children: the most-referenced 1% of parents receive ≥ 20% of children; uniform, ≤ 2%; fewer than half of the most-referenced 1% sit among the lowest 1% of parent indices; every FK value still ∈ the parent PK set.
 - AC2.6 `SpecValidationError` for: `parent` not a `pk` column spec; `parent` carrying `transformers`; `parent_size` < 1; `parent_size` > the parent's `domain`; `skew` < 0; `args`.
 - AC2.7 Parent and child generators on different seeds — integer vs integer, and `seed=None` on either side — and each style: every FK value ∈ the parent PK set.
+- AC2.8 Two `fk` columns of one child spec with identical kwargs (same parent) yield different value sequences.
 
 ### FR3 — Keys across batches and streams
 
@@ -85,13 +91,16 @@
 - AC3.2 PK values are unique across 10 microbatches of `stream_dict` and of `writeStream`.
 - AC3.3 Two `get_df` calls on one generator return identical key columns.
 - AC3.4 A streamed child's FK values ∈ the PK set of parent rows `[0, parent_size)`, whichever process generated them.
+- AC3.5 One batch `save` with `numFiles` > 1: PK values are unique across all its files, read back; a child written in N files has every FK value ∈ the parent PK set.
 
 ### FR4 — One rng per generator
 
+- `NPCore.gen_uuid4` builds its values from the generator rng's bytes, vectorised where possible; its signature and output format are kept.
 - AC4.1 `np.random.get_state()` is identical before and after constructing a `DataGenerator`, `get_df`, one `stream_dict` microbatch and one batch `write`.
 - AC4.2 Two generators with the same integer seed and spec return identical `get_df` frames, every NumPy-engine method included (`uuid4` too), on one machine.
 - AC4.3 Generator A's `get_df` frame is unchanged when generator B (another seed) generates between A's construction and A's `get_df`.
 - AC4.4 `git grep -nE 'np\.random\.(seed|rand|randn|randint|random|choice|uniform|normal|shuffle|permutation)\b' -- rand_engine` prints nothing; `Changer` is gone.
+- AC4.5 Every `uuid4` value parses as a `uuid.UUID` with version 4 and the RFC 4122 variant.
 
 ### FR5 — The relations surface; the checkpoint leaves
 
@@ -158,6 +167,8 @@
 - Arm B fixes on the same units (`NPCore.gen_uuid4` D20, the writers D5/D7/D8, both validators D9–D11, `PyCore` D18) land on the work branch through bug worktrees; the PLAN's Parallel schedule orders this candidate's tasks around them.
 - Constitution and Tech Stack: the ADR 0002 accept commit, at SPEC approval in this release worktree (an `impl` worktree cannot write `specs/`), carries the paired canonical hunks: invariant 8 rewritten (no SQL surface remains), Exclusion 1 rewritten (relations are stateless keys; a database is only ever an output sink), invariant 4 kept (this approved SPEC is the revision it requires), and `ARCHITECTURE.md` `## Tech Stack` without `duckdb`, `fastavro`, `fastparquet` (invariant 11).
 - Memory pass at closure: `pk-fk-constraints` (rewritten for keys), `data-generator`, `rand-spec-grammar`, `spark-generator`, `generation-methods`, `public-api`; `ARCHITECTURE.md` Structure and Tech Stack; `QUALITY.md` Test architecture.
+- Also at closure: `writers-and-streaming` (the writer `size` text leaves by ruling; `numFiles` now splits `size`); `ARCHITECTURE.md`'s frontmatter `summary` and `## Structure` still describe the checkpoint and are rewritten; the Tech Stack removal of `fastavro`/`fastparquet` anticipates the Arm B fix of D18.
+- Constitution Exclusion 2 drops "persisted checkpoint" in its own commit (owner: `specs/AGENTS.md` canon table; no `### P-NN` statement, so no ADR).
 
 | risk | mitigation |
 |---|---|
