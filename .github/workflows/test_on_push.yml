@@ -18,8 +18,9 @@ jobs:
         id: check
         env:
           GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.ref_name }}
         run: |
-          PR_COUNT=$(gh pr list --repo ${{ github.repository }} --head ${{ github.ref_name }} --json number --jq length)
+          PR_COUNT=$(gh pr list --repo ${{ github.repository }} --head "$BRANCH" --json number --jq length)
           if [ "$PR_COUNT" -gt 0 ]; then
             echo "has_pr=true" >> $GITHUB_OUTPUT
             echo "⏭️  Skipping - PR exists for this branch"
@@ -105,8 +106,10 @@ jobs:
     if: always()
     steps:
       - name: Generate Test Summary
+        env:
+          BRANCH: ${{ github.ref_name }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
-          BRANCH="${{ github.ref_name }}"
           HAS_PR="${{ needs.check_pr.outputs.has_pr }}"
           
           echo "# 🧪 Test Results - Feature Branch" >> $GITHUB_STEP_SUMMARY
@@ -120,7 +123,7 @@ jobs:
           echo "| **Branch** | \`$BRANCH\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Commit** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Author** | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Commit Message** | ${{ github.event.head_commit.message }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit Message** | ${COMMIT_MESSAGE%%$'\n'*} |" >> $GITHUB_STEP_SUMMARY
           
           if [ "$HAS_PR" == "true" ]; then
             echo "| **PR Status** | ⏭️ PR exists - tests skipped (will run on PR) |" >> $GITHUB_STEP_SUMMARY
