@@ -1,6 +1,6 @@
 # PLAN — Release: 0.7.0, candidate 1 (relations core + visibility)
 
-**Status:** Approved
+**Status:** In review
 **Release ID:** 0.7.0
 **Owner:** dd-software-engineer
 **SPEC:** `specs/releases/0.7.0/rc-1/SPEC.md` (In review: amended per the definition review, commits bb0cbb8..19600df); ADR 0002 accepted.
@@ -82,7 +82,9 @@ Bug surface: net reduction — ~370 LOC (handler + three adapters) and `Changer`
 - Docs (AC7.2, AC8.3): `tests/test_docs.py` extracts the fenced `python` blocks of `docs/*.md` (T-070-8; a superset of the linked docs) and of `README.md` (T-070-9), runs each file's blocks in order in one namespace with `monkeypatch.chdir(tmp_path)`, skips only `python no-run`, and asserts every link of `README.md` and `llms.txt` resolves (AC7.4, AC8.4); docs land before the README so its links resolve on arrival. Stdlib `re` + `exec`; no new dependency.
 - AC9.2: evidence `poetry build && pipx run twine check dist/*` (tool run, not a dependency) plus `importlib.metadata` read of the built wheel in the reviewer's evidence.
 - Every task commit touching `.py` carries `test-audit: …` and `mutation: K/N killed; kept survivors: …` lines (`~/.claude/rules/private-test-stack.md`); `mutation-diff` runs on the task worktree before commit.
-- Language gate per task: `ruff check` and the full `pytest -q -p no:cacheprovider` green.
+- Light by default (AC10.5): a default test generates ≤ 10^4 rows; each AC's `Stress:` variant carries `@pytest.mark.stress`, deselected by `addopts = "-m 'not stress'"` in `pyproject.toml`, and runs only in the one CI job `stress` (ubuntu-latest, Python 3.12) with the benchmarks (T-070-12).
+- Test-run discipline, every task: iterate on the owning test file only; run the full default suite once before the commit; never run `-m stress` locally; at most 2 test-running agents at once on this machine.
+- Language gate per task: `ruff check` and the full default `pytest -q -p no:cacheprovider` green.
 
 ## 5. Parallel schedule
 
@@ -90,7 +92,7 @@ Arm B bug worktrees run one at a time beside the tasks; a task opens only after 
 
 | step | tasks open together | width | how |
 |---|---|---|---|
-| 1 | T-070-1, T-070-7 | 2 | one impl worktree each; after B1, B5, B6, B3 merged; B4 runs |
+| 1 | T-070-12, T-070-1 | 2 | one impl worktree each; T-070-1 already open (`0.7.0a-impl`) and merges after T-070-12 (its `Stress:` variants need the registered marker); T-070-7 done (5197718); B4 runs |
 | 2 | T-070-2 | 1 | impl worktree; after B4 merged; B2 runs |
 | 3 | T-070-3, T-070-4 | 2 | one impl worktree each; T-070-3 after B2 (and D20 in B3) merged |
 | 4 | T-070-5 | 1 | impl worktree |
@@ -99,6 +101,6 @@ Arm B bug worktrees run one at a time beside the tasks; a task opens only after 
 | 7 | T-070-9 | 1 | impl worktree; after T-070-10 (the README links `LICENSE`) |
 | 8 | T-070-11 | 1 | impl worktree; the version bump, last |
 
-- Critical path: B1 → B5 → B6 → B3 → T-070-1 → T-070-2 → T-070-4 → T-070-5 → T-070-6 → T-070-8 → T-070-9 → T-070-11 = 8 task steps after four bug merges.
-- File-sharing order (not `blocked by:` edges): T-070-2 after T-070-1 (`data_generator.py`, `_rand_generator.py`, `advanced_validator.py`); T-070-3 after T-070-2 (`data_generator.py`, `_rand_generator.py`, `tests/test_2_data_generator.py`); T-070-4 after T-070-2 (`advanced_validator.py`, `tests/test_1_advanced_validator.py`); T-070-5 after T-070-4 (`_keys.py`, `advanced_validator.py`, `test_8`); T-070-6 after T-070-3 (`data_generator.py`) and T-070-5 (`test_8`); T-070-9 after T-070-8 (`tests/test_docs.py`); T-070-11 after T-070-10 (`pyproject.toml`). Bug waits: T-070-6 after B6 (`_writer_batch.py`, `_writer_stream.py`); T-070-3 after D20 and B2 (`_np_core.py`) and B4 (`_py_core.py`); T-070-2 after B4 (`pyproject.toml`, `poetry.lock`, `requirements.txt`).
+- Critical path: B1 → B5 → B6 → B3 → T-070-12 → T-070-1 (merge) → T-070-2 → T-070-4 → T-070-5 → T-070-6 → T-070-8 → T-070-9 → T-070-11 = 8 task steps after four bug merges; T-070-12 sits inside step 1, so it adds no step.
+- File-sharing order (not `blocked by:` edges): T-070-1 merges after T-070-12 (marker registration; W disjoint); T-070-2, T-070-10, T-070-11 after T-070-12 (`pyproject.toml`); T-070-3 after T-070-12 (`tests/test_0_np_core.py`); T-070-2 after T-070-1 (`data_generator.py`, `_rand_generator.py`, `advanced_validator.py`); T-070-3 after T-070-2 (`data_generator.py`, `_rand_generator.py`, `tests/test_2_data_generator.py`); T-070-4 after T-070-2 (`advanced_validator.py`, `tests/test_1_advanced_validator.py`); T-070-5 after T-070-4 (`_keys.py`, `advanced_validator.py`, `test_8`); T-070-6 after T-070-3 (`data_generator.py`) and T-070-5 (`test_8`); T-070-9 after T-070-8 (`tests/test_docs.py`); T-070-11 after T-070-10 (`pyproject.toml`); `.github/workflows/test_on_push.yml` is T-070-12's alone. Bug waits: T-070-6 after B6 (`_writer_batch.py`, `_writer_stream.py`); T-070-3 after D20 and B2 (`_np_core.py`) and B4 (`_py_core.py`); T-070-2 after B4 (`pyproject.toml`, `poetry.lock`, `requirements.txt`); T-070-12 after B4 if B4 is in flight (`pyproject.toml`).
 - Overlap check: disjoint within each step except `TASKS.md` and the `*.jsonl` ledgers.
