@@ -23,8 +23,6 @@ class DataGenerator:
     np.random.seed(seed)
     self._size = None
     self._constraints_db_path = ":memory:"
-    self.write = self._writer()
-    self.writeStream = self._stream_writer()
     self._transformers: List[Optional[Callable]] = []
     self.aux_db_conn = SQLiteHandler(db_path=":memory:")
     self.constraints_handler = ConstraintsHandler(db_conn=self.aux_db_conn)
@@ -115,14 +113,14 @@ class DataGenerator:
         StreamHandler.sleep_to_contro_throughput(min_throughput, max_throughput)
   
 
-  def _writer(self):
-    microbatch_def = lambda: self.wrapped_df_generator(size=self._resolve_size())
-    return FileBatchWriter(microbatch_def)
-   
+  @property
+  def write(self):
+    return FileBatchWriter(lambda: self.wrapped_df_generator(size=self._resolve_size()))
 
-  def _stream_writer(self):
-    microbatch_def = lambda: self.wrapped_df_generator(size=self._resolve_size())
-    return FileStreamWriter(microbatch_def)
+
+  @property
+  def writeStream(self):
+    return FileStreamWriter(lambda: self.wrapped_df_generator(size=self._resolve_size()))
 
 
 

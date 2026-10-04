@@ -1,4 +1,4 @@
-"""Intent: CONTRACT — writer-options-consumed-by-use (timeout/trigger read with defaults, never consumed); writer-size-not-from-generator (callable generator size reaches the stream; no size fails before overwrite deletes anything)."""
+"""Intent: CONTRACT — writer-options-consumed-by-use (timeout/trigger read with defaults, never consumed); writer-state-shared-across-chains (each .writeStream access is a fresh writer); writer-size-not-from-generator (callable generator size reaches the stream; no size fails before overwrite deletes anything)."""
 import os
 import pandas as pd
 import glob
@@ -118,7 +118,9 @@ def test_stream_defaults_timeout_20s_trigger_1s(rand_spec_with_kwargs, base_path
   monkeypatch.setattr(_writer_stream, "time", SimpleNamespace(time=lambda: clock["now"], sleep=sleep))
   path = f"{base_path_files_test}/csv/streaming/defaults/clients"
   sizes = iter(range(1, 100))
-  DataGenerator(rand_spec_with_kwargs).size(lambda: next(sizes)).writeStream.format("csv").start(path)
+  g = DataGenerator(rand_spec_with_kwargs).size(lambda: next(sizes))
+  g.writeStream.format("parquet").option("timeout", 1)  # an abandoned chain must not leak (fresh writer per access)
+  g.writeStream.start(path)
   # one file per 1 s tick until the clock passes 20 s; the callable size is re-read per microbatch
   assert sorted(len(pd.read_csv(f)) for f in glob.glob(f"{path}/*")) == list(range(1, 22))
 

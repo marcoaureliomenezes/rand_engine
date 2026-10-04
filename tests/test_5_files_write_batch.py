@@ -1,4 +1,4 @@
-"""Intent: CONTRACT — writer-size-not-from-generator (generator size, int or callable re-evaluated per file, reaches the file; no size fails before overwrite deletes anything); writer-options-consumed-by-use (a reused writer keeps numFiles)."""
+"""Intent: CONTRACT — writer-size-not-from-generator (generator size, int or callable re-evaluated per file, reaches the file; no size fails before overwrite deletes anything); writer-options-consumed-by-use (a reused writer keeps numFiles); writer-state-shared-across-chains (each .write access is a fresh writer)."""
 import pytest
 import os
 import pandas as pd
@@ -55,10 +55,10 @@ def test_writing_single_file(
   file_path
 ):
   path = f"{base_path_files_test}/{format_type}/{file_path}"
+  g = DataGenerator(rand_spec_with_kwargs).size(lambda: df_size)
+  g.write.format("parquet").option("numFiles", 2)  # an abandoned chain must not leak (fresh writer per access)
   _ = (
-    DataGenerator(rand_spec_with_kwargs)
-      .size(lambda: df_size)
-      .write
+    g.write
       .format(format_type)
       .option("compression", compression)
       .mode("overwrite")
