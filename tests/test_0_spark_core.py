@@ -53,6 +53,17 @@ class TestSparkCoreNumeric:
         
         assert all(-50 <= v <= -10 for v in values)
     
+    @pytest.mark.parametrize("min, max", [(0, 1), (-1, 0)])
+    def test_gen_ints_max_inclusive(self, spark_session, spark_functions, empty_spark_df, min, max):
+        result = SparkCore.gen_ints(spark_session, spark_functions, empty_spark_df, "test_col", min=min, max=max)
+        assert {row["test_col"] for row in result.select("test_col").collect()} == {min, max}
+    
+    def test_gen_unix_timestamps_end_exclusive(self, spark_session, spark_functions, empty_spark_df):
+        result = SparkCore.gen_unix_timestamps(spark_session, spark_functions, empty_spark_df, "ts",
+                                               start="2024-01-01 00:00:00", end="2024-01-01 00:00:01",
+                                               date_format="%Y-%m-%d %H:%M:%S")
+        assert len({row["ts"] for row in result.select("ts").collect()}) == 1
+    
     def test_gen_ints_zfill(self, spark_session, spark_functions, small_spark_df):
         """Test zero-filled integer generation."""
         df = small_spark_df

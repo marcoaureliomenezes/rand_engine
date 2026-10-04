@@ -42,7 +42,7 @@ class SparkCore:
     
     allowed_integers = ["int", "bigint", "long", "integer"]
     assert spark_type in allowed_integers, f"int_type must be one of {allowed_integers} or NPCore types {list(np_to_spark_mapping.keys())}"
-    return df.withColumn(col_name, (F.rand() * (max - min) + min).cast(spark_type))
+    return df.withColumn(col_name, F.floor(F.rand() * (max - min + 1) + min).cast(spark_type))
 
   @staticmethod
   def gen_ints_zfilled(spark, F, df, col_name, length=10):
@@ -93,7 +93,7 @@ class SparkCore:
     dt_start, dt_end = dt.strptime(start, date_format), dt.strptime(end, date_format)
     if dt_start < dt(1970, 1, 1): dt_start = dt(1970, 1, 1)
     timestamp_start, timestamp_end = int(dt_start.timestamp()), int(dt_end.timestamp())
-    df = SparkCore.gen_ints(spark, F, df, col_name, min=timestamp_start, max=timestamp_end)
+    df = SparkCore.gen_ints(spark, F, df, col_name, min=timestamp_start, max=timestamp_end - 1)
     return df
 
 
