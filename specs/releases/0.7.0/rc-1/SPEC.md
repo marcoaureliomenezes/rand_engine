@@ -68,6 +68,7 @@
   - Urgency: "Pelo que entendi isso é um grande problema dado nosso grande objetivo de sermos rapidos, correto? ... Se sim, precisamos adicionar urgente". Placement: "Emenda rápida na rc-1 (Recomendado)". Order: "Baseline, T-070-3, depois golden (Recomendado)".
   - Grill 2026-10-04 G1–G4, G15, G16 (FR11–FR14); research 6d7755b5: ≥ 80% of `get_df` time is per-row Python in generators; Polars/DuckDB rejected (no generation gain, new dependencies). G1 overrides the Visibility ruling for `docs/BENCHMARKS.md` only.
   - Table delivery: "Artefato + commit no work branch (Recomendado)". Triggers: "Também em PR para development (Recomendado)". Main thread, by inspection: time median of 3, speed mean (G1, G3 both stand); the SPEC size stays.
+  - First baseline: "PR rascunho feature→development (Recomendado)". Main thread, by inspection after planning: csv `zip`/`xz` map through stdlib file objects (probed), parquet `engine` is dead since D18; FR11 gains sink rows; goldens wait for the timezone fix.
 - Inferred by the product engineer, approved with the SPEC:
   - A key is admitted only when the FK side can rebuild it from the column spec alone (D5's rule applied to every key input), so `transformers` on a `pk` column or an fk `parent` are rejected (AC1.7, AC2.6).
   - `DataGenerator.option` leaves with `reset_checkpoint`, its only key (AC5.3).
@@ -157,7 +158,8 @@
 ### FR11 — Speed benchmark (the official CI job)
 
 - A script outside pytest collection runs each `RandGenerator.map_methods` method (one fixed kwargs set each, versioned with the script) as a one-column spec at 10^6 and 10^7 rows: core array time, `DataGenerator.get_df` time, peak memory, speed in rows/µs. Each time is the median of 3 runs; speed is rows ÷ the mean `get_df` µs of the 3 runs.
-- AC11.1 One workflow job runs it on `pull_request` to `master`, `pull_request` to `development` and `workflow_dispatch`; no other trigger.
+- Sink rows: one fixed multi-column spec (`CommonRandSpecs.customers`, versioned with the script) at 10^6 rows times `.write` to csv, parquet and json, and `stream_dict` records/µs with the throughput sleep excluded; same record fields where they apply, `sink` in place of `method`, same 1.3× gate.
+- AC11.1 One workflow job runs it on `pull_request` to `master`, `pull_request` to `development` and `workflow_dispatch` (usable once the workflow is on `master`); no other trigger.
 - AC11.2 `docs/benchmarks.json` holds one record per method and size — `method`, `rows`, `core_s`, `get_df_s`, `peak_mib`, `rows_per_us` — and top-level `commit`, `python`, `numpy`, `runner`; the script renders `docs/BENCHMARKS.md` from it.
 - AC11.3 The job fails when any method's `get_df_s` exceeds 1.3× its baseline at the same size; a method absent from the baseline is recorded, not failed. The job never pushes and holds no `contents: write`: it uploads `docs/benchmarks.json` and `docs/BENCHMARKS.md` as a workflow artifact, and the agent commits both on the work branch with the change measured.
 - AC11.4 A default-suite unit test of the comparison function on literal fake numbers: 1.29× passes, 1.31× fails, a method without baseline passes and is reported.
@@ -165,21 +167,21 @@
 ### FR12 — Speed gate on generation changes
 
 - A change to an existing method lands only when its FR11 rows are ≤ 1.3× baseline; the gate fires on the PR to `development`, and `workflow_dispatch` stays available on the work branch; the operator sees the rows before and after.
-- AC12.1 The FR11 baseline lands before T-070-3; T-070-3 (FR4) is the first change under the gate: a method over 1.3× under `Generator(PCG64)` switches the bit generator (e.g. `SFC64`) with FR4's ACs re-run, else T-070-3 is reverted.
+- AC12.1 The release PR `feature/0.7.0` → `development` opens now as a draft; its first benchmark run's artifact is the baseline, committed on the work branch before T-070-3; the PR merges only at rc-1 closure, reviewed APPROVED and CI green. T-070-3 (FR4) is the first change under the gate: a method over 1.3× under `Generator(PCG64)` switches the bit generator (e.g. `SFC64`) with FR4's ACs re-run, else T-070-3 is reverted.
 - Rule for later additions (rc-2): a new method ≤ 1.5× its closest existing sibling in the same run; a modifier key ≤ +25% over its base method.
 
 ### FR13 — Golden seeded output
 
-- AC13.1 Right after T-070-3 merges, every NumPy-engine method has a seeded golden test at 10^3 rows asserting literal values or a literal hash of its output.
+- AC13.1 Right after T-070-3 and the fix of `timestamps-depend-on-local-timezone` merge, every NumPy-engine method has a seeded golden test at 10^3 rows asserting literal values or a literal hash of its output.
 - AC13.2 From then on, a spec without keys added later yields bit-identical output for the same seed; a deliberate change rewrites its golden in the same commit, the body stating why.
 
 ### FR14 — Vectorised hot paths, output unchanged
 
 - pyarrow is already a runtime dependency: nothing is added (G4); JSON output stays on pandas (pyarrow has no JSON writer).
 - AC14.1 `dates` formats without a per-row Python loop; its strings equal the per-row `strftime` strings for the same timestamps in UTC (the timezone bug's fix); FR13 goldens unchanged.
-- AC14.2 `csv` and `parquet` files are written through pyarrow; each file read back equals the pandas-written file of the same frame (values; dtypes per format), for every option and compression `docs/3_WRITING_FILES.md` lists for those formats.
+- AC14.2 `csv` and `parquet` files are written through pyarrow; each file read back equals the pandas-written file of the same frame (values; dtypes per format), for every option and compression `docs/3_WRITING_FILES.md` lists for those formats except the dead parquet `engine` (the docs drop it); csv `zip` and `xz` go through stdlib file objects like `gzip` and `bz2`.
 - AC14.3 `stream_dict` builds its records through Arrow (`Table.to_pylist` or equivalent); each equals (`==`) today's `to_dict('records')` record.
-- AC14.4 Each of AC14.1–AC14.3 lands with its FR11 rows before and after shown to the operator (FR12).
+- AC14.4 Each of AC14.1–AC14.3 lands with its FR11 rows before and after shown to the operator (FR12): the `dates` method row for AC14.1, the sink rows for AC14.2 and AC14.3.
 
 ## 4. Replaces
 
