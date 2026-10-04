@@ -221,6 +221,8 @@ class TestValidateAndRaise:
         ({"method": "distincts_external", "kwargs": {}}, "does not exist"),
         ({"method": "integers", "kwargs": {"min": 1, "max": 5, "dtype": "int"}}, "unknown parameters: 'dtype'"),
         ({"method": "uuid4", "args": []}, "does not support 'args'"),
+        ({"method": "pk", "kwargs": {"style": "sequence"}}, "(?s)^(?!.*does not exist).*'pk'.*NumPy engine only in 0.7.0.*DataGenerator"),
+        ({"method": "fk", "kwargs": {}}, "(?s)^(?!.*does not exist).*'fk'.*NumPy engine only in 0.7.0.*DataGenerator"),
     ])
     def test_validate_and_raise_unsupported_advanced_spec(self, config, message):
         """Specs Spark cannot run raise at validation, not in get_df."""

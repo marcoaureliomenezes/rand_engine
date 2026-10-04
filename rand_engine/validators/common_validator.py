@@ -432,6 +432,13 @@ class CommonValidator:
                 )
             return errors
         
+        if method in ("pk", "fk"):
+            errors.append(
+                f"❌ Column '{col_name}': method '{method}' is NumPy engine only in 0.7.0\n"
+                f"   Use DataGenerator for specs with pk/fk key columns"
+            )
+            return errors
+
         # Check if method exists in CommonValidator (SparkGenerator only uses common methods)
         if method not in cls.METHOD_SPECS:
             # Allow advanced methods with warning (they return NULL in Spark)
