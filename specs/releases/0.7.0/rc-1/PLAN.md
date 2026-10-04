@@ -1,6 +1,6 @@
 # PLAN — Release: 0.7.0, candidate 1 (relations core + visibility)
 
-**Status:** In review
+**Status:** Approved
 **Release ID:** 0.7.0
 **Owner:** dd-software-engineer
 **SPEC:** `specs/releases/0.7.0/rc-1/SPEC.md`; ADR 0002 accepted.
@@ -8,7 +8,8 @@
 **Re-approval:** operator, 2026-10-03, verbatim: "Re-approve all three (Recommended)" — SPEC, PLAN and TASKS as amended per the definition review (5fc0fd8, bb0cbb8).
 **Re-approval (light tests):** operator, 2026-10-04, verbatim: "Re-approve (Recommended)" — SPEC 84fae68, ADR repair 85f0a46, PLAN/TASKS 66734c1.
 **Re-approval (AC1.7 step 0):** operator, 2026-10-04, verbatim: "Re-approve (Recommended)" — SPEC 815ac0e, PLAN/TASKS 32d8fc7.
-**Amended (speed program):** SPEC 92efb99 FR11–FR14 → As-is rows, authorities, §3–§5 and T-070-13..16 (2026-10-04; review of 5f097db fixed), pending re-approval.
+**Re-approval (speed program):** operator, 2026-10-04, verbatim: "Re-aprovo (Recomendado)" — SPEC 875ea71, PLAN/TASKS c29eb1b; reviewed APPROVED at 875ea71 (N5 folded in c29eb1b).
+**Amended (speed program):** SPEC FR11–FR14 → As-is rows, authorities, §3–§5 and T-070-13..16 (2026-10-04).
 **Amended:** SPEC AC1.7 (815ac0e, T-070-1 review MEDIUM); §5 step 1 and T-070-12 wording (definition review L3–L5, review LOW-3).
 
 ## 1. As-is review

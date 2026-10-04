@@ -1,6 +1,6 @@
 # SPEC — Release: 0.7.0, candidate 1 (relations core + visibility)
 
-**Status:** In review
+**Status:** Approved
 **Release ID:** 0.7.0
 **Owner:** dd-product-engineer
 **Opened:** 2026-10-03
@@ -71,6 +71,7 @@
   - First baseline: "PR rascunho feature→development (Recomendado)". Main thread, by inspection after planning: csv `zip`/`xz` map through stdlib file objects (probed), parquet `engine` is dead since D18; FR11 gains sink rows; goldens wait for the timezone fix.
   - Summary delivery: "Job summary + comentário no PR (Recomendado)". Goal (/goal): "eu ver testes de benchmark de CI funcionando e publicandu um summary no actions que me é mandado que posso ver + merge de benchmarks na documentação".
   - Review of 5f097db: CSV through pyarrow "Aceitar a quebra, documentada"; `stream_dict` through Arrow "Tirar da rc-1 (Recomendado)". Main thread, by inspection: a change is measured after it reaches PR #42 by a `chore(bench)` follow-up, and "lands" is the merge to `development` at closure (M2, L3); the shown ratio is the gated ratio, the baseline rolls (L6); each candidate opens its draft release PR at implementation start (L4); the memory pass covers FR11–FR14 (L8); an undocumented writer option raises (G5 bug 1: unknown kwargs are errors).
+- Operator re-approval of the speed-program amendment, 2026-10-04, verbatim: "Re-aprovo (Recomendado)".
 - Inferred by the product engineer, approved with the SPEC:
   - A key is admitted only when the FK side can rebuild it from the column spec alone (D5's rule applied to every key input), so `transformers` on a `pk` column or an fk `parent` are rejected (AC1.7, AC2.6).
   - `DataGenerator.option` leaves with `reset_checkpoint`, its only key (AC5.3).
