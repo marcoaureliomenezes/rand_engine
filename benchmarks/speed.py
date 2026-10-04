@@ -1,4 +1,8 @@
-"""FR11 speed benchmark: one row per map_methods method and size, one per sink. CI-only (benchmarks.yml)."""
+"""FR11 speed benchmark, same-runner A/B: one row per map_methods method and size, one per sink. CI-only (benchmarks.yml).
+
+Base pass: PYTHONPATH=<base tree> python benchmarks/speed.py --base-pass <base tree> --out <dir>
+Head pass: python benchmarks/speed.py --baseline <dir>/benchmarks.json --out docs/
+"""
 import argparse
 import itertools
 import json
@@ -13,7 +17,7 @@ from pathlib import Path
 
 import numpy as np
 
-from rand_engine.examples.common_rand_specs import CommonRandSpecs
+import rand_engine
 from rand_engine.main._rand_generator import RandGenerator
 from rand_engine.main.data_generator import DataGenerator
 from rand_engine.utils.stream_handler import StreamHandler
@@ -41,6 +45,16 @@ SAMPLE_KWARGS = {
   "pk": PK["kwargs"],
   "fk": {"parent": PK, "parent_size": 1000},
 }
+# CommonRandSpecs.customers, copied so both passes write one spec
+SINK_SPEC = {
+  "customer_id": {"method": "uuid4", "kwargs": {}},
+  "age": {"method": "integers", "kwargs": {"min": 18, "max": 80, "int_type": "int32"}},
+  "city": {"method": "distincts", "kwargs": {"distincts": [
+    "São Paulo", "Rio de Janeiro", "Belo Horizonte", "Salvador", "Brasília", "Curitiba", "Porto Alegre"]}},
+  "total_spent": {"method": "floats_normal", "kwargs": {"mean": 1500.0, "std": 500.0, "decimals": 2}},
+  "is_premium": {"method": "booleans", "kwargs": {"true_prob": 0.15}},
+  "registration_date": {"method": "dates", "kwargs": {"start": "2020-01-01", "end": "2025-10-30", "date_format": "%Y-%m-%d"}},
+}
 COLS = {"distincts_map": ["a", "b"], "distincts_map_prop": ["a", "b"], "distincts_multi_map": ["a", "b", "c"]}
 RUNS, LIMIT = 3, 1.3
 
@@ -52,16 +66,18 @@ def timed(fn):
   return elapsed
 
 
-def method_row(method, rows):
+def method_row(method, rows, base_pass):
   col = {"method": method, "kwargs": SAMPLE_KWARGS[method]}
   if method in COLS: col["cols"] = COLS[method]
   gen = DataGenerator({"c": col}, seed=42).size(rows)
+  get_df_s = [timed(gen.get_df) for _ in range(RUNS)]
+  row = {"method": method, "rows": rows, "get_df_s": statistics.median(get_df_s)}
+  if base_pass: return row  # the base times the public path only
   core = RandGenerator({"c": col}).map_methods(0, 0, "c")[method]
   core_s = [timed(lambda: core(rows, **SAMPLE_KWARGS[method])) for _ in range(RUNS)]
-  get_df_s = [timed(gen.get_df) for _ in range(RUNS)]
   tracemalloc.start(); gen.get_df(); peak = tracemalloc.get_traced_memory()[1]; tracemalloc.stop()
-  return {"method": method, "rows": rows, "core_s": statistics.median(core_s), "get_df_s": statistics.median(get_df_s),
-          "peak_mib": peak / 2**20, "rows_per_us": rows / (statistics.mean(get_df_s) * 1e6)}
+  return {**row, "core_s": statistics.median(core_s), "peak_mib": peak / 2**20,
+          "rows_per_us": rows / (statistics.mean(get_df_s) * 1e6)}
 
 
 def drain_stream(gen, rows):
@@ -69,14 +85,17 @@ def drain_stream(gen, rows):
   for _ in itertools.islice(gen.stream_dict(), rows): pass
 
 
-def sink_rows(rows):
-  gen = DataGenerator(CommonRandSpecs.customers(), seed=42).size(rows)
+def sink_rows(rows, absent):
+  gen = DataGenerator(SINK_SPEC, seed=42).size(rows)
   out = []
   with tempfile.TemporaryDirectory() as d:
     sinks = {fmt: (lambda fmt=fmt: gen.write.format(fmt).save(f"{d}/{fmt}")) for fmt in ("csv", "parquet", "json")}
     sinks["stream_dict"] = lambda: drain_stream(gen, rows)
     for sink, fn in sinks.items():
-      s = [timed(fn) for _ in range(RUNS)]
+      try: s = [timed(fn) for _ in range(RUNS)]
+      except Exception as e:
+        if absent is None: raise
+        absent[sink] = f"base raised {type(e).__name__}: {e}"; continue
       out.append({"sink": sink, "rows": rows, "sink_s": statistics.median(s), "rows_per_us": rows / (statistics.mean(s) * 1e6)})
   return out
 
@@ -95,37 +114,81 @@ def compare(current, baseline, limit=LIMIT):
   return failed, [key(r) for r in current if key(r) not in base]
 
 
-def render(report, baseline):
-  base = {key(r): metric(r) for r in baseline}
-  failed, _ = compare(report["records"], baseline)
-  lines = [f"# Speed benchmark\n\ncommit `{report['commit']}` · Python {report['python']} · NumPy {report['numpy']} · {report['runner']}\n",
-           "| method / sink | rows | rows/µs | median s | baseline s | ratio | peak MiB |", "|---|---|---|---|---|---|---|"]
+def check_tree(module_file, expected):
+  if Path(module_file).resolve().parents[1] != Path(expected).resolve():
+    print(f"rand_engine imported from {module_file}, expected tree {expected}", file=sys.stderr)
+    sys.exit(3)
+
+
+def plan_keys(sample_keys, tree_keys, base_pass):
+  if not base_pass and set(tree_keys) - set(sample_keys):
+    sys.exit(f"SAMPLE_KWARGS lacks map_methods keys: {sorted(set(tree_keys) - set(sample_keys))}")
+  absent = {k: "deleted in head" for k in tree_keys if k not in sample_keys}
+  return [k for k in sample_keys if k in tree_keys], absent
+
+
+def attach_base(records, base_records):
+  base_t = {key(r): metric(r) for r in base_records}
+  for r in records:
+    if key(r) in base_t: r["base_get_df_s" if "method" in r else "base_sink_s"] = base_t[key(r)]
+
+
+def render(report, base):
+  failed, _ = compare(report["records"], base.get("records", []))
+  absent = base.get("absent", {})
+  covered = sum("base_get_df_s" in r or "base_sink_s" in r for r in report["records"])
+  lines = [(f"# Speed benchmark (same-runner A/B)\n\nhead `{report['commit']}` · base `{report['base_commit'] or 'none'}` · "
+            f"Python {report['python']} · NumPy {report['numpy']} · {report['runner']}\n"),
+           f"base rows {covered}/{len(report['records'])}" + (f" · base pass failed: {base['error']}" if base.get("error") else ""),
+           *(f"- `{k}`: {why}" for k, why in absent.items()), "",
+           "| method / sink | rows | rows/µs | base s | head s | ratio | peak MiB |", "|---|---|---|---|---|---|---|"]
   for r in report["records"]:
-    k, b = key(r), base.get(key(r))
+    k, b = key(r), r.get("base_get_df_s", r.get("base_sink_s"))
     ratio = f"{metric(r) / b:.2f}" + (f" ❌ > {LIMIT}" if k in failed else "") if b else "absent → recorded"
     peak = f"{r['peak_mib']:.1f}" if "peak_mib" in r else "—"
-    lines.append(f"| {k[0]} | {k[1]:,} | {r['rows_per_us']:.3f} | {metric(r):.3f} | {f'{b:.3f}' if b else '—'} | {ratio} | {peak} |")
+    lines.append(f"| {k[0]} | {k[1]:,} | {r['rows_per_us']:.3f} | {f'{b:.3f}' if b else '—'} | {metric(r):.3f} | {ratio} | {peak} |")
   return "\n".join(lines) + "\n"
+
+
+def read_base(path):
+  base = json.loads(path.read_text()) if path.exists() else {}
+  err = path.with_name("error.txt")
+  if err.exists(): base["error"] = err.read_text().strip()
+  return base
 
 
 def main(argv=None):
   p = argparse.ArgumentParser()
-  p.add_argument("--baseline", default="docs/benchmarks.json")
+  p.add_argument("--baseline", type=Path, default=Path("docs/benchmarks.json"))
+  p.add_argument("--base-pass", metavar="TREE", help="measure the base tree at TREE (on PYTHONPATH)")
   p.add_argument("--out", default="docs/")
   p.add_argument("--sizes", type=int, nargs="+", default=[10**6, 10**7], help="method sizes; the first is the sink size")
   a = p.parse_args(argv)
+  base_pass = a.base_pass is not None
+  check_tree(rand_engine.__file__, a.base_pass if base_pass else Path(__file__).parents[1])
   StreamHandler.sleep_to_contro_throughput = staticmethod(lambda *a: None)
-  gap = set(SAMPLE_KWARGS) ^ set(RandGenerator({}).map_methods())
-  if gap: sys.exit(f"SAMPLE_KWARGS and map_methods differ: {sorted(gap)}")
-  records = [method_row(m, n) for n in a.sizes for m in SAMPLE_KWARGS] + sink_rows(a.sizes[0])
+  methods, absent = plan_keys(list(SAMPLE_KWARGS), list(RandGenerator({}).map_methods()), base_pass)
+  records = []
+  for n in a.sizes:
+    for m in methods:
+      try: records.append(method_row(m, n, base_pass))
+      except Exception as e:
+        if not base_pass: raise
+        absent[m] = f"base raised {type(e).__name__}: {e}"
+  records += sink_rows(a.sizes[0], absent if base_pass else None)
   report = {"commit": os.environ.get("HEAD_SHA", "local"), "python": platform.python_version(), "numpy": np.__version__,
             "runner": os.environ.get("RUNNER_NAME", platform.node()), "records": records}
-  baseline = json.loads(Path(a.baseline).read_text())["records"] if os.path.exists(a.baseline) else []
   os.makedirs(a.out, exist_ok=True)
+  if base_pass:
+    with open(os.path.join(a.out, "benchmarks.json"), "w") as f: json.dump({**report, "absent": absent}, f, indent=2)
+    return
+  base = read_base(a.baseline)
+  attach_base(records, base.get("records", []))
+  report["base_commit"] = base.get("commit")
   with open(os.path.join(a.out, "benchmarks.json"), "w") as f: json.dump(report, f, indent=2)
-  with open(os.path.join(a.out, "BENCHMARKS.md"), "w") as f: f.write(render(report, baseline))
-  failed, _ = compare(records, baseline)
-  if failed: sys.exit(f"over {LIMIT}x baseline: {failed}")
+  with open(os.path.join(a.out, "BENCHMARKS.md"), "w") as f: f.write(render(report, base))
+  failed, _ = compare(records, base.get("records", []))
+  if failed: sys.exit(f"over {LIMIT}x base: {failed}")
 
 
 if __name__ == "__main__":

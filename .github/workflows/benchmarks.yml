@@ -21,6 +21,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-python@v5
         with:
@@ -33,11 +35,27 @@ jobs:
         run: poetry install --with test --no-interaction
       - name: Run stress tests
         run: poetry run pytest -m stress --durations=20
-      - name: Speed benchmark
+      # Same-runner A/B: base = the commit of the committed docs/benchmarks.json. Only exit 3
+      # (the wrong rand_engine imported) fails here; any other base failure is rendered, rows absent.
+      - name: Base pass
+        if: ${{ !cancelled() }}
+        run: |
+          mkdir -p ../base-out
+          BASE=$(jq -r '.commit // empty' docs/benchmarks.json 2>/dev/null || true)
+          if [ -z "$BASE" ] || ! git rev-parse --verify --quiet "$BASE^{commit}" >/dev/null || ! git worktree add --detach ../base "$BASE"; then
+            echo "no base tree for commit '$BASE'" > ../base-out/error.txt
+            exit 0
+          fi
+          rc=0
+          HEAD_SHA="$BASE" PYTHONPATH=../base poetry run python benchmarks/speed.py --base-pass ../base --out ../base-out 2> ../base-out/stderr.txt || rc=$?
+          cat ../base-out/stderr.txt >&2
+          if [ "$rc" -ne 0 ]; then tail -n 1 ../base-out/stderr.txt > ../base-out/error.txt; fi
+          [ "$rc" -ne 3 ]
+      - name: Head pass
         if: ${{ !cancelled() }}
         env:
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: poetry run python -m benchmarks.speed --baseline docs/benchmarks.json --out docs/
+        run: poetry run python benchmarks/speed.py --baseline ../base-out/benchmarks.json --out docs/
       - name: Job summary
         if: ${{ !cancelled() }}
         run: cat docs/BENCHMARKS.md >> "$GITHUB_STEP_SUMMARY"
