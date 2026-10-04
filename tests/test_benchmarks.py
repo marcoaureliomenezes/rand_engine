@@ -100,13 +100,13 @@ def shas(monkeypatch):
   monkeypatch.setenv("HEAD_SHA", "h1"); monkeypatch.setenv("BASE_SHA", "b1"); monkeypatch.setenv("RUNNER_NAME", "r")
 
 
-def test_run_alternates_six_timed_calls_per_row_then_head_extras(tmp_path):
+def test_run_alternates_six_timed_calls_per_row_then_head_extras_after_the_last_row(tmp_path):
   log = []
   report, md = ab(log, Fake("B", log), out=tmp_path)
   m, c = {"row": "integers", "rows": 10}, {"row": "csv", "rows": 10}
-  assert log[:13] == [("B", m), ("H", m), ("B", m), ("H", m), ("B", m), ("H", m), ("H", {"extra": "integers", "rows": 10}),
+  assert log[:12] == [("B", m), ("H", m), ("B", m), ("H", m), ("B", m), ("H", m),
                       ("H", c), ("B", c), ("H", c), ("B", c), ("H", c), ("B", c)]
-  assert len(log) == 13 + 3 * 6
+  assert len(log) == 5 * 6 + 1 and log[30] == ("H", {"extra": "integers", "rows": 10})
   assert report["commit"] == "h1" and report["base_commit"] == "b1"
   assert report["records"][0] == {"method": "integers", "rows": 10, "get_df_s": 1.2, "rows_per_us": 10 / 1.8e6,
                                   "base_get_df_s": 1.0, "core_s": 0.5, "peak_mib": 2.0}
@@ -114,26 +114,32 @@ def test_run_alternates_six_timed_calls_per_row_then_head_extras(tmp_path):
   assert "base rows 5/5\n" in md
 
 
-def test_run_sends_no_base_request_for_a_head_only_key(tmp_path, monkeypatch):
+def test_run_times_a_head_only_key_after_every_shared_row_with_no_base_request(tmp_path, monkeypatch):
   log = []
   monkeypatch.setattr("benchmarks.speed.SINKS", ())
-  report, md = ab(log, Fake("B", log), Fake("H", log, keys=("integers", "uuid4")), out=tmp_path)
-  assert [req["row"] for side, req in log if side == "B"] == ["integers"] * 3
-  assert "uuid4" not in report["records"][1] and "base_get_df_s" not in report["records"][1]
+  report, md = ab(log, Fake("B", log, keys=("integers", "booleans")), Fake("H", log, keys=("integers", "uuid4", "booleans")),
+                  out=tmp_path)
+  i, b, u = ({"row": k, "rows": 10} for k in ("integers", "booleans", "uuid4"))
+  assert log == [("B", i), ("H", i), ("B", i), ("H", i), ("B", i), ("H", i),
+                 ("H", b), ("B", b), ("H", b), ("B", b), ("H", b), ("B", b),
+                 ("H", u), ("H", u), ("H", u),
+                 ("H", {"extra": "integers", "rows": 10}), ("H", {"extra": "booleans", "rows": 10}),
+                 ("H", {"extra": "uuid4", "rows": 10})]
+  assert "base_get_df_s" not in report["records"][2] and report["records"][2]["core_s"] == 0.5
   assert "- `uuid4`: added in head\n" in md
 
 
 def test_base_error_reply_leaves_that_row_absent_and_the_next_row_alternating(tmp_path):
   log = []
   report, md = ab(log, Fake("B", log, fail={(1, "B"): {"row": "integers", "rows": 10, "error": "ValueError: x"}}), out=tmp_path)
-  assert [s for s, _ in log[:11]] == ["B", "H", "H", "H", "H", "H", "B", "H", "B", "H", "B"]
+  assert [s for s, _ in log[:11]] == ["B", "H", "H", "H", "H", "B", "H", "B", "H", "B", "B"]
   assert "base_get_df_s" not in report["records"][0] and report["records"][1]["base_sink_s"] == 1.0
   assert "base rows 4/5\n- `integers`: base raised ValueError: x\n" in md
 
 
 def test_base_eof_leaves_every_remaining_row_absent_with_base_pass_failed(tmp_path):
   log = []
-  report, md = ab(log, Fake("B", log, fail={(9, "B"): None}), out=tmp_path)
+  report, md = ab(log, Fake("B", log, fail={(8, "B"): None}), out=tmp_path)
   assert [s for s, _ in log].count("B") == 4
   assert [("base_get_df_s" in r or "base_sink_s" in r) for r in report["records"]] == [True, False, False, False, False]
   assert "base rows 1/5 · base pass failed: MemoryError: boom\n" in md

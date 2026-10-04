@@ -127,7 +127,8 @@ class Worker:
   def __init__(self, tree):
     self.err = tempfile.TemporaryFile("w+", encoding="utf-8")
     self.proc = subprocess.Popen([sys.executable, "-u", __file__, "--worker", str(tree)], stdin=subprocess.PIPE,
-                                 stdout=subprocess.PIPE, stderr=self.err, encoding="utf-8", env={**os.environ, "PYTHONPATH": str(tree)})
+                                 stdout=subprocess.PIPE, stderr=self.err, encoding="utf-8",
+                                 env={**os.environ, "PYTHONPATH": str(tree), "PYTHONIOENCODING": "utf-8"})
     self.keys = (self.read({}) or {}).get("keys")
 
   @property
@@ -227,10 +228,12 @@ def run(head, base, sizes, out, error=None):
   if head.keys is None: sys.exit(3 if head.returncode == 3 else f"head worker failed: {head.reason()}")
   if error is None and base.keys is None: error = base.reason()
   methods, absent = plan_keys(list(SAMPLE_KWARGS), head.keys, None if error else base.keys)
+  def shared(row): return error is None and (row in SINKS or row in base.keys)
+  rows = sorted([(m, n) for n in sizes for m in methods] + [(s, sizes[0]) for s in SINKS], key=lambda rn: not shared(rn[0]))
   records = []
-  for i, (row, n) in enumerate([(m, n) for n in sizes for m in methods] + [(s, sizes[0]) for s in SINKS]):
+  for i, (row, n) in enumerate(rows):  # head-only rows last: both workers share one call history while shared rows time
     req, times = {"row": row, "rows": n}, {"head": [], "base": []}
-    base_ok = error is None and (row in SINKS or row in base.keys)
+    base_ok = shared(row)
     for side in (["base", "head"] if i % 2 == 0 else ["head", "base"]) * RUNS:
       if side == "head": times["head"].append(ask_head(req)["s"]); continue
       if not base_ok: continue
@@ -242,10 +245,11 @@ def run(head, base, sizes, out, error=None):
     r[field(r)] = statistics.median(times["head"])
     r["rows_per_us"] = n / (statistics.mean(times["head"]) * 1e6)
     if base_ok: r["base_" + field(r)] = statistics.median(times["base"])
-    if row not in SINKS:
-      extra = ask_head({"extra": row, "rows": n})
-      r.update(core_s=extra["core_s"], peak_mib=extra["peak_mib"])
     records.append(r)
+  for r in records:  # extras after the last timed row, so they never skew a timed call's history
+    if "method" in r:
+      extra = ask_head({"extra": r["method"], "rows": r["rows"]})
+      r.update(core_s=extra["core_s"], peak_mib=extra["peak_mib"])
   report = {"commit": os.environ.get("HEAD_SHA", "local"), "base_commit": os.environ.get("BASE_SHA") or None,
             "python": platform.python_version(), "numpy": np.__version__,
             "runner": os.environ.get("RUNNER_NAME", platform.node()), "records": records}
