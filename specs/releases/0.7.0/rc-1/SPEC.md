@@ -69,6 +69,7 @@
   - Grill 2026-10-04 G1–G4, G15, G16 (FR11–FR14); research 6d7755b5: ≥ 80% of `get_df` time is per-row Python in generators; Polars/DuckDB rejected (no generation gain, new dependencies). G1 overrides the Visibility ruling for `docs/BENCHMARKS.md` only.
   - Table delivery: "Artefato + commit no work branch (Recomendado)". Triggers: "Também em PR para development (Recomendado)". Main thread, by inspection: time median of 3, speed mean (G1, G3 both stand); the SPEC size stays.
   - First baseline: "PR rascunho feature→development (Recomendado)". Main thread, by inspection after planning: csv `zip`/`xz` map through stdlib file objects (probed), parquet `engine` is dead since D18; FR11 gains sink rows; goldens wait for the timezone fix.
+  - Summary delivery: "Job summary + comentário no PR (Recomendado)". Goal (/goal): "eu ver testes de benchmark de CI funcionando e publicandu um summary no actions que me é mandado que posso ver + merge de benchmarks na documentação".
 - Inferred by the product engineer, approved with the SPEC:
   - A key is admitted only when the FK side can rebuild it from the column spec alone (D5's rule applied to every key input), so `transformers` on a `pk` column or an fk `parent` are rejected (AC1.7, AC2.6).
   - `DataGenerator.option` leaves with `reset_checkpoint`, its only key (AC5.3).
@@ -161,8 +162,9 @@
 - Sink rows: one fixed multi-column spec (`CommonRandSpecs.customers`, versioned with the script) at 10^6 rows times `.write` to csv, parquet and json, and `stream_dict` records/µs with the throughput sleep excluded; same record fields where they apply, `sink` in place of `method`, same 1.3× gate.
 - AC11.1 One workflow job runs it on `pull_request` to `master`, `pull_request` to `development` and `workflow_dispatch` (usable once the workflow is on `master`); no other trigger.
 - AC11.2 `docs/benchmarks.json` holds one record per method and size — `method`, `rows`, `core_s`, `get_df_s`, `peak_mib`, `rows_per_us` — and top-level `commit`, `python`, `numpy`, `runner`; the script renders `docs/BENCHMARKS.md` from it.
-- AC11.3 The job fails when any method's `get_df_s` exceeds 1.3× its baseline at the same size; a method absent from the baseline is recorded, not failed. The job never pushes and holds no `contents: write`: it uploads `docs/benchmarks.json` and `docs/BENCHMARKS.md` as a workflow artifact, and the agent commits both on the work branch with the change measured.
+- AC11.3 The job fails when any method's `get_df_s` exceeds 1.3× its baseline at the same size; a method absent from the baseline is recorded, not failed. The job never pushes; its permissions are `contents: read` and `pull-requests: write` only. It uploads `docs/benchmarks.json` and `docs/BENCHMARKS.md` as a workflow artifact, and the agent commits both on the work branch with the change measured.
 - AC11.4 A default-suite unit test of the comparison function on literal fake numbers: 1.29× passes, 1.31× fails, a method without baseline passes and is reported.
+- AC11.5 Every run writes the rendered table to the job summary (`$GITHUB_STEP_SUMMARY`) — per method and sink row: rows/µs, baseline, ratio, every row over 1.3× marked; a `pull_request` run creates or updates one PR comment with the same table, edited in place, never one per push.
 
 ### FR12 — Speed gate on generation changes
 
