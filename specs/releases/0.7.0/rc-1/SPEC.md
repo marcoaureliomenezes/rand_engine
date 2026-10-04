@@ -1,6 +1,6 @@
 # SPEC — Release: 0.7.0, candidate 1 (relations core + visibility)
 
-**Status:** In review
+**Status:** Approved
 **Release ID:** 0.7.0
 **Owner:** dd-product-engineer
 **Opened:** 2026-10-03
@@ -79,6 +79,7 @@
 - Operator ruling replacing it, 2026-10-04, verbatim: "A/B na mesma máquina (Recomendado)" — same-runner A/B against the last measured commit, as `asv continuous` (AC11.2, FR12).
 - Operator re-approval of the same-runner A/B gate amendment, 2026-10-04, verbatim: "Re-aprovo (Recomendado)".
 - Operator ruling, 2026-10-04, verbatim: "Per-row interleaving (Recommended)" — T-070-18 validation run 1 (37224272664, docs-only 73f4530 vs 6691fb4) left 4 short rows below 0.85, all head-faster (pk 0.73/0.54, floats 0.74/0.84), median 0.983; run 37219291673 (9d5a096→59dd49f, different keys code) repeats it on floats 0.81: the whole base pass runs first, so intra-job drift favours the head and a ~1.8× slowdown could pass 1.3; base and head now alternate per row (FR12).
+- Operator re-approval of the per-row interleaving amendment, 2026-10-04, verbatim: "Re-aprovo (Recomendado)".
 - Inferred by the product engineer, approved with the SPEC:
   - A key is admitted only when the FK side can rebuild it from the column spec alone (D5's rule applied to every key input), so `transformers` on a `pk` column or an fk `parent` are rejected (AC1.7, AC2.6).
   - `DataGenerator.option` leaves with `reset_checkpoint`, its only key (AC5.3).
