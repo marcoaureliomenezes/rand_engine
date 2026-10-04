@@ -10,10 +10,8 @@ class NPCore:
 
 
   @classmethod
-  def gen_uuid4(cls, size: int, length=None) -> np.ndarray:
-    
-    lambda_uuid = lambda: str(uuid.uuid4()) if not length else str(uuid.uuid4())
-    return np.array([lambda_uuid() for _ in range(size)])
+  def gen_uuid4(cls, size: int) -> np.ndarray:
+    return np.array([str(uuid.uuid4()) for _ in range(size)])
     
   @classmethod
   def gen_booleans(cls, size: int, true_prob=0.5) -> np.ndarray:

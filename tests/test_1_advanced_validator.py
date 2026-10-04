@@ -4,6 +4,7 @@ Covers common methods (integers, floats, etc.) + advanced methods (distincts_map
 """
 
 import pytest
+from rand_engine.main.data_generator import DataGenerator
 from rand_engine.validators.advanced_validator import AdvancedValidator
 from rand_engine.validators.exceptions import SpecValidationError
 
@@ -146,15 +147,15 @@ def test_invalid_both_kwargs_and_args():
 
 
 def test_invalid_missing_kwargs_and_args():
-    """Tests error when neither kwargs nor args are present."""
+    """A spec without kwargs is checked against the method's required parameters."""
     spec = {
         "idade": {
             "method": "integers"
         }
     }
     errors = AdvancedValidator.validate(spec)
-    assert len(errors) == 1
-    assert "requires" in errors[0] and ("kwargs" in errors[0] or "args" in errors[0])
+    assert len(errors) == 2
+    assert "requires parameter 'min'" in errors[0]
 
 
 def test_invalid_kwargs_not_dict():
@@ -694,6 +695,22 @@ def test_constraints_not_interfere_with_columns():
     }
     errors = AdvancedValidator.validate(spec)
     assert len(errors) == 0
+
+
+@pytest.mark.parametrize("config, message", [
+    ({"method": "integers", "kwargs": {"min": 1, "max": 5, "dtype": "int"}}, "unknown parameters: 'dtype'"),
+    ({"method": "distincts_external", "kwargs": {"name": "t", "fields": ["id"], "watermark": "1 DAY"}}, "does not exist"),
+    ({"method": "distincts_map", "cols": ["device", "os"]}, "requires parameter 'distincts'"),
+])
+def test_spec_the_engine_cannot_run_is_rejected(config, message):
+    """validator-engine-schema-drift: no spec validates that DataGenerator then fails to generate."""
+    with pytest.raises(SpecValidationError, match=message):
+        DataGenerator({"c": config})
+
+
+def test_validated_spec_without_kwargs_generates():
+    """The validator's own uuid4 example (no kwargs) validates and generates."""
+    assert len(DataGenerator({"id": {"method": "uuid4"}}).size(3).get_df()) == 3
 
 
 if __name__ == "__main__":

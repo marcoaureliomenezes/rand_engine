@@ -9,7 +9,6 @@ Methods validated here:
 - distincts_multi_map: Cartesian combinations - generates N columns
 - distincts_map_prop: Correlated pairs with weights - generates 2 columns
 - complex_distincts: Complex string patterns (IPs, URLs, etc.)
-- distincts_external: Values from external DuckDB tables
 
 NOTE: SparkGenerator has dummy implementations of these methods that return NULL values
 for API compatibility only.
@@ -108,24 +107,6 @@ class AdvancedValidator:
                             {"method": "integers", "kwargs": {"min": 0, "max": 255}},
                             {"method": "integers", "kwargs": {"min": 1, "max": 254}}
                         ]
-                    }
-                }
-            }
-        },
-        "distincts_external": {
-            "description": "Selects random values from an external database table (DuckDB)",
-            "params": {
-                "required": {"name": str, "fields": list, "watermark": str},
-                "optional": {"db_path": str}  # Default: ":memory:"
-            },
-            "example": {
-                "category_id": {
-                    "method": "distincts_external",
-                    "kwargs": {
-                        "name": "categories",
-                        "fields": ["category_id"],
-                        "watermark": "1 DAY",
-                        "db_path": "warehouse.duckdb"
                     }
                 }
             }
@@ -340,20 +321,6 @@ class AdvancedValidator:
                             f"⚠️  Column '{col_name}': Template {idx} missing 'kwargs' field"
                         )
         
-        # 12. Special validation for distincts_external
-        if method == "distincts_external":
-            if "fields" in kwargs:
-                fields = kwargs["fields"]
-                if not isinstance(fields, list):
-                    errors.append(
-                        f"⚠️  Column '{col_name}': 'fields' must be a list\n"
-                        f"   Got: {type(fields).__name__}"
-                    )
-                elif len(fields) == 0:
-                    errors.append(
-                        f"⚠️  Column '{col_name}': 'fields' list cannot be empty"
-                    )
-        
         return errors
     
     @classmethod
@@ -481,12 +448,6 @@ class AdvancedValidator:
             )
             return errors
         
-        if not has_kwargs and not has_args:
-            errors.append(
-                f"❌ Column '{col_name}': method '{method}' requires 'kwargs' or 'args'"
-            )
-            return errors
-        
         # Convert legacy 'args' to 'kwargs' for validation
         if has_args:
             if not isinstance(col_config["args"], (list, tuple)):
@@ -498,18 +459,13 @@ class AdvancedValidator:
             # Legacy format - skip detailed validation
             return errors
         
-        # Use delegated validators for kwargs validation
-        validation_config = {"method": method, "kwargs": col_config["kwargs"]}
-        if "cols" in col_config:
-            validation_config["cols"] = col_config["cols"]
-        
         # Try CommonValidator first
-        common_errors = CommonValidator.validate_column(col_name, validation_config)
+        common_errors = CommonValidator.validate_column(col_name, col_config)
         if common_errors:
             errors.extend(common_errors)
         
         # Try AdvancedValidator if method wasn't found in common
-        advanced_errors = cls.validate_column(col_name, validation_config)
+        advanced_errors = cls.validate_column(col_name, col_config)
         if advanced_errors:
             errors.extend(advanced_errors)
         

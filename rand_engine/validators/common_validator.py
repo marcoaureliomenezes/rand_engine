@@ -14,9 +14,9 @@ Methods validated here:
 
 IMPORTANT DIFFERENCES HANDLED:
 ------------------------------
-1. integers: Accepts both 'int_type' (NPCore) and 'dtype' (SparkCore)
+1. integers: 'int_type' for both cores
    - NPCore int_type: ['int8', 'int16', 'int32', 'int64', 'uint8', 'uint16', 'uint32', 'uint64']
-   - SparkCore dtype: ["int", "bigint", "long", "integer"]
+   - SparkCore maps these to Spark types
 
 2. dates/unix_timestamps: Unified to use 'date_format' parameter
    - Both cores now accept 'date_format' parameter
@@ -38,16 +38,15 @@ class CommonValidator:
             "description": "Generates random integers within a range",
             "params": {
                 "required": {"min": int, "max": int},
-                "optional": {"int_type": str, "dtype": str}  # NPCore uses int_type, SparkCore uses dtype
+                "optional": {"int_type": str}
             },
             "validation": {
-                "int_type": ['int8', 'int16', 'int32', 'int64', 'uint8', 'uint16', 'uint32', 'uint64'],
-                "dtype": ["int", "bigint", "long", "integer"]
+                "int_type": ['int8', 'int16', 'int32', 'int64', 'uint8', 'uint16', 'uint32', 'uint64']
             },
             "example": {
                 "age": {
                     "method": "integers",
-                    "kwargs": {"min": 18, "max": 65, "int_type": "int32"}  # or dtype="int" for Spark
+                    "kwargs": {"min": 18, "max": 65, "int_type": "int32"}
                 }
             }
         },
@@ -268,7 +267,7 @@ class CommonValidator:
                         f"   Got: {type(value).__name__}"
                     )
         
-        # 7. Special validation for integers method (int_type vs dtype)
+        # 7. Special validation for integers method (int_type)
         if method == "integers":
             validation = spec.get("validation", {})
             
@@ -281,24 +280,7 @@ class CommonValidator:
                         f"   Got: '{kwargs['int_type']}'\n"
                         f"   Allowed for NPCore: {allowed}"
                     )
-            
-            # Check dtype if present
-            if "dtype" in kwargs:
-                allowed = validation["dtype"]
-                if kwargs["dtype"] not in allowed:
-                    errors.append(
-                        f"⚠️  Column '{col_name}': Invalid 'dtype' value\n"
-                        f"   Got: '{kwargs['dtype']}'\n"
-                        f"   Allowed for SparkCore: {allowed}"
-                    )
-            
-            # Both int_type and dtype present (unusual but valid for cross-compatibility)
-            if "int_type" in kwargs and "dtype" in kwargs:
-                errors.append(
-                    f"⚠️  Column '{col_name}': Both 'int_type' and 'dtype' specified\n"
-                    f"   This is allowed but unusual. Use 'int_type' for DataGenerator, 'dtype' for SparkGenerator"
-                )
-        
+
         # 8. Special validation for booleans true_prob range
         if method == "booleans" and "true_prob" in kwargs:
             prob = kwargs["true_prob"]
@@ -468,39 +450,14 @@ class CommonValidator:
                 )
                 return errors
         
-        # Validate kwargs vs args format
-        has_kwargs = "kwargs" in col_config
-        has_args = "args" in col_config
-        
-        if has_kwargs and has_args:
+        if "args" in col_config:
             errors.append(
-                f"❌ Column '{col_name}': cannot have both 'kwargs' and 'args' simultaneously\n"
-                f"   Use only 'kwargs' (recommended)"
+                f"❌ Column '{col_name}': SparkGenerator does not support 'args'\n"
+                f"   Use 'kwargs' (recommended)"
             )
             return errors
         
-        if not has_kwargs and not has_args:
-            errors.append(
-                f"❌ Column '{col_name}': method '{method}' requires 'kwargs' or 'args'"
-            )
-            return errors
-        
-        # Convert legacy 'args' to 'kwargs' for validation
-        if has_args:
-            if not isinstance(col_config["args"], (list, tuple)):
-                errors.append(
-                    f"❌ Column '{col_name}': 'args' must be list or tuple, got {type(col_config['args']).__name__}\n"
-                    f"   Or better yet, use 'kwargs' (recommended format)"
-                )
-                return errors
-            # Legacy format - skip detailed validation
-            return errors
-        
-        # Use validate_column for kwargs validation
-        validation_config = {"method": method, "kwargs": col_config["kwargs"]}
-        column_errors = cls.validate_column(col_name, validation_config)
-        errors.extend(column_errors)
-        
+        errors.extend(cls.validate_column(col_name, col_config))
         return errors
     
     @classmethod

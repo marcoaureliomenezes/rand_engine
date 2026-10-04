@@ -219,9 +219,17 @@ class TestValidateAndRaise:
 
     @pytest.mark.parametrize("config, message", [
         ({"method": "distincts_external", "kwargs": {}}, "does not exist"),
-        ({"method": "distincts_map", "cols": ["device", "os"]}, "requires 'kwargs' or 'args'"),
+        ({"method": "integers", "kwargs": {"min": 1, "max": 5, "dtype": "int"}}, "unknown parameters: 'dtype'"),
+        ({"method": "uuid4", "args": []}, "does not support 'args'"),
     ])
     def test_validate_and_raise_unsupported_advanced_spec(self, config, message):
-        """Advanced specs Spark cannot run still raise at validation, not in get_df."""
+        """Specs Spark cannot run raise at validation, not in get_df."""
         with pytest.raises(SpecValidationError, match=message):
             CommonValidator.validate_spark_and_raise({"c": config})
+
+
+def test_validated_spec_without_kwargs_generates(spark_session, spark_functions):
+    """The validator's own uuid4 example (no kwargs) validates and generates (validator-engine-schema-drift)."""
+    from rand_engine.main.spark_generator import SparkGenerator
+    df = SparkGenerator(spark_session, spark_functions, {"id": {"method": "uuid4"}}).size(3).get_df()
+    assert df.count() == 3
