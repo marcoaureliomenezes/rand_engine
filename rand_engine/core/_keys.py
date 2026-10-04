@@ -2,6 +2,8 @@ import zlib
 
 import numpy as np
 
+from rand_engine.validators.exceptions import RandEngineError
+
 
 class Keys:
 
@@ -35,17 +37,45 @@ class Keys:
 
 
   @classmethod
-  def _pk_at(cls, idx: np.ndarray, style: str = "sequence", start: int = 0, step: int = 1) -> np.ndarray:
-    return start + idx * step
+  def _feistel(cls, idx: np.ndarray, domain: int, key: int, rounds: int = 4) -> np.ndarray:
+    """Bijection on [0, domain): balanced Feistel on 2*half bits, cycle-walked back into the domain."""
+    bits = max(2, int(domain - 1).bit_length()); bits += bits & 1; half = bits // 2
+    mask = np.int64((1 << half) - 1)
+    seeds = [cls.xxh64_long(np.int64(key + k), np.int64(42)) for k in range(rounds)]
+    x = idx.copy()
+    pos, v = np.arange(x.size), x
+    while pos.size:
+      l, r = v >> half, v & mask
+      for s in seeds:
+        l, r = r, l ^ (cls.xxh64_long(r, s) & mask)
+      v = (l << half) | r
+      x[pos] = v
+      walk = v >= domain
+      pos, v = pos[walk], v[walk]
+    return x
 
 
   @classmethod
-  def gen_pk(cls, size: int, offset: int = 0, **kwargs) -> np.ndarray:
+  def _pk_at(cls, idx: np.ndarray, style: str = "sequence", start: int = 0, step: int = 1,
+             domain: int = 0, key: int = 0, format: str = None) -> np.ndarray | list:
+    if style == "permuted":
+      if idx.size and idx.max() >= domain:
+        raise RandEngineError(f"pk row index {idx.max()} is outside the permuted domain {domain}")
+      values = start + cls._feistel(idx, domain, key)
+    else:
+      if idx.size and not all(-2**63 <= start + int(i) * step < 2**63 for i in (idx.min(), idx.max())):
+        raise RandEngineError(f"pk sequence start={start} step={step} leaves int64 at row index {idx.max()}")
+      values = start + idx * step
+    return values if format is None else list(map(format.format, values.tolist()))
+
+
+  @classmethod
+  def gen_pk(cls, size: int, offset: int = 0, **kwargs) -> np.ndarray | list:
     return cls._pk_at(np.arange(offset, offset + size, dtype=np.int64), **kwargs)
 
 
   @classmethod
-  def gen_fk(cls, size: int, parent: dict, parent_size: int, offset: int = 0, key_seed: int = 0, column: str = "") -> np.ndarray:
+  def gen_fk(cls, size: int, parent: dict, parent_size: int, offset: int = 0, key_seed: int = 0, column: str = "") -> np.ndarray | list:
     fk_seed = zlib.crc32(f"{key_seed}/{column}".encode())
     h = cls.cell_hash(fk_seed, np.arange(offset, offset + size, dtype=np.int64))
     return cls._pk_at(h % np.int64(parent_size), **parent.get("kwargs", {}))

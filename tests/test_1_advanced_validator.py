@@ -417,5 +417,41 @@ def test_validated_spec_without_kwargs_generates():
     assert len(DataGenerator({"id": {"method": "uuid4"}}).size(3).get_df()) == 3
 
 
+@pytest.mark.parametrize("column, match", [
+    ({"method": "pk", "kwargs": {"style": "random"}}, r"(?s)style.*sequence.*permuted"),
+    ({"method": "pk", "kwargs": {"style": "permuted"}}, r"integer .domain."),
+    ({"method": "pk", "kwargs": {"style": "permuted", "domain": 0}}, r"integer .domain."),
+    ({"method": "pk", "kwargs": {"step": 0}}, r"step"),
+    ({"method": "pk", "kwargs": {"start": 1.5}}, r"start"),
+    ({"method": "pk", "kwargs": {"step": "2"}}, r"step"),
+    ({"method": "pk", "kwargs": {"style": "permuted", "domain": 10, "key": 0.5}}, r"key"),
+    ({"method": "pk", "kwargs": {"format": "C-{}-{}"}}, r"format"),
+    ({"method": "pk", "kwargs": {"format": "C-"}}, r"format"),
+    ({"method": "pk", "kwargs": {"format": "C-{x}"}}, r"format"),
+    ({"method": "pk", "kwargs": {"format": "C-{1}"}}, r"format"),
+    ({"method": "pk", "kwargs": {"format": "{:s}"}}, r"format"),
+    ({"method": "pk", "kwargs": {"format": "{:.0e}"}}, r"format"),
+    ({"method": "pk", "kwargs": {"start": 2**60, "format": "{:.0%}"}}, r"format"),
+    ({"method": "pk", "kwargs": {"format": "{:.2d}"}}, r"format"),
+    ({"method": "pk", "kwargs": {"format": "{!s:.1}"}}, r"format"),
+    ({"method": "pk", "kwargs": {"domain": 5, "key": 3}}, r"(?s)'sequence' does not take.*domain.*key"),
+    ({"method": "pk", "kwargs": {"style": "permuted", "domain": 5, "step": 2}}, r"(?s)'permuted' does not take.*step"),
+    ({"method": "pk", "kwargs": {"style": "permuted", "domain": 2**62, "start": 2**62 + 1}}, r"int64"),
+    ({"method": "pk", "kwargs": {"style": "permuted", "domain": 2**62 + 1}}, r"int64"),
+    ({"method": "pk", "args": [1]}, r"args"),
+    ({"method": "pk", "kwargs": {}, "transformers": [lambda x: x]}, r"transformers"),
+])
+def test_pk_spec_is_refused(column, match):
+    """AC1.7: every unbuildable or non-unique pk spec fails before generation."""
+    with pytest.raises(SpecValidationError, match=match):
+        DataGenerator({"id": column})
+
+
+def test_pk_permuted_with_format_and_key_is_accepted():
+    spec = {"id": {"method": "pk", "kwargs": {"style": "permuted", "domain": 100, "key": 3, "format": "C-{0:,}"}},
+            "top": {"method": "pk", "kwargs": {"style": "permuted", "domain": 2**62, "start": 2**62 - 1}}}
+    assert AdvancedValidator.validate(spec) == []
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

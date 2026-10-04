@@ -14,6 +14,7 @@ NOTE: SparkGenerator has dummy implementations of these methods that return NULL
 for API compatibility only.
 """
 
+import string
 from typing import Dict, List, Any
 from rand_engine.validators.common_validator import CommonValidator
 from rand_engine.validators.exceptions import SpecValidationError
@@ -112,10 +113,10 @@ class AdvancedValidator:
             }
         },
         "pk": {
-            "description": "Primary key: start + row_index * step, unique by construction",
+            "description": "Primary key: start + row_index * step, or start + a bijection of the row index over domain, unique by construction",
             "params": {
                 "required": {},
-                "optional": {"style": str, "start": int, "step": int}
+                "optional": {"style": str, "start": int, "step": int, "domain": int, "key": int, "format": str}
             },
             "example": {
                 "id": {"method": "pk", "kwargs": {"style": "sequence", "start": 1, "step": 1}}
@@ -347,6 +348,42 @@ class AdvancedValidator:
         return errors
     
     @classmethod
+    def _pk_errors(cls, col_name: str, col_config: Dict[str, Any]) -> List[str]:
+        """Refuses a pk the FK side cannot rebuild from the spec alone, or one that is not unique."""
+        kw = col_config.get("kwargs", {})
+        if "args" in col_config or "transformers" in col_config:
+            return [f"❌ Column '{col_name}': 'pk' takes only 'kwargs', never 'args' or 'transformers'"]
+        if not isinstance(kw, dict):
+            return []
+        errors = []
+        style = kw.get("style", "sequence")
+        if style not in ("sequence", "permuted"):
+            errors.append(f"❌ Column '{col_name}': pk style {style!r} is unknown; use 'sequence' or 'permuted'")
+        if style == "permuted":
+            domain, start = kw.get("domain"), kw.get("start", 0)
+            if not isinstance(domain, int) or not 1 <= domain <= 2**62:
+                errors.append(f"❌ Column '{col_name}': pk 'permuted' needs an integer 'domain' in [1, 2**62] (int64 Feistel)")
+            elif isinstance(start, int) and not -2**63 <= start <= start + domain - 1 < 2**63:
+                errors.append(f"❌ Column '{col_name}': pk start + domain leaves int64")
+        foreign = sorted(set(kw) & ({"step"} if style == "permuted" else {"domain", "key"}))
+        if foreign:
+            errors.append(f"❌ Column '{col_name}': pk style {style!r} does not take {foreign}")
+        if kw.get("step", 1) == 0:
+            errors.append(f"❌ Column '{col_name}': pk 'step' must not be 0 (keys would repeat)")
+        if "format" in kw:
+            try:
+                fields = [(f, spec, conv) for _, f, spec, conv in string.Formatter().parse(kw["format"]) if f is not None]
+                ok = (len(fields) == 1 and fields[0][0] in ("", "0") and fields[0][2] is None
+                      and (fields[0][1][-1:] if fields[0][1][-1:].isalpha() or fields[0][1][-1:] == "%" else "") in "bdoxXn")
+                if ok:
+                    kw["format"].format(0)
+            except (ValueError, TypeError):
+                ok = False
+            if not ok:
+                errors.append(f"❌ Column '{col_name}': pk 'format' needs exactly one integer replacement field, e.g. 'C-{{:08d}}'")
+        return errors
+
+    @classmethod
     def _check_type(cls, value: Any, expected_type) -> bool:
         """
         Check if value matches expected type.
@@ -468,6 +505,9 @@ class AdvancedValidator:
             )
             return errors
         
+        if method == "pk":
+            errors.extend(cls._pk_errors(col_name, col_config))
+
         # Convert legacy 'args' to 'kwargs' for validation
         if has_args:
             if not isinstance(col_config["args"], (list, tuple)):
