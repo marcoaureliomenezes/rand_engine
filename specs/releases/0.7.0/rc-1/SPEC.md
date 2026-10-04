@@ -1,6 +1,6 @@
 # SPEC — Release: 0.7.0, candidate 1 (relations core + visibility)
 
-**Status:** In review
+**Status:** Approved
 **Release ID:** 0.7.0
 **Owner:** dd-product-engineer
 **Opened:** 2026-10-03
@@ -73,6 +73,7 @@
   - Review of 5f097db: CSV through pyarrow "Aceitar a quebra, documentada"; `stream_dict` through Arrow "Tirar da rc-1 (Recomendado)". Main thread, by inspection: a change is measured after it reaches PR #42 by a `chore(bench)` follow-up, and "lands" is the merge to `development` at closure (M2, L3); the shown ratio is the gated ratio, the baseline rolls (L6); each candidate opens its draft release PR at implementation start (L4); the memory pass covers FR11–FR14 (L8); an undocumented writer option raises (G5 bug 1: unknown kwargs are errors).
 - Operator re-approval of the speed-program amendment, 2026-10-04, verbatim: "Re-aprovo (Recomendado)".
 - Main thread, by inspection, T-070-4 review 2026-10-04 (LOW-1, LOW-2, MEDIUM-1, NEW-M1 at 9b3ef12): four pk guards join AC1.7, operator re-approval pending — `domain` ≤ 2**62 (PLAN §3; the Feistel halves overflow int64 above it, 1362 of 2000 keys negative at 2**62+1); `start + domain` inside int64; the other style's kwargs refused (G5 bug 1); the `format` grammar, since any other template fails at generation (`{x}`, `{1}`, `{:s}`, `{:.2d}`) or emits duplicates (`{:.0e}` 1 unique in 1000 at start 2**60, `{!s:.1}` truncates), breaking constitution invariant 3.
+- Operator re-approval of the AC1.7 pk-guards amendment, 2026-10-04, verbatim: "Re-aprovo (Recomendado)".
 - Inferred by the product engineer, approved with the SPEC:
   - A key is admitted only when the FK side can rebuild it from the column spec alone (D5's rule applied to every key input), so `transformers` on a `pk` column or an fk `parent` are rejected (AC1.7, AC2.6).
   - `DataGenerator.option` leaves with `reset_checkpoint`, its only key (AC5.3).
