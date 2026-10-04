@@ -1,6 +1,6 @@
 # SPEC — Release: 0.7.0, candidate 1 (relations core + visibility)
 
-**Status:** In review
+**Status:** Approved
 **Release ID:** 0.7.0
 **Owner:** dd-product-engineer
 **Opened:** 2026-10-03
@@ -77,6 +77,7 @@
 - Operator ruling, 2026-10-04, verbatim: "Calibrar por carga NumPy fixa (Recomendado)" — run 2 (37213856198, docs-only 2f283ba) ran every row at 0.37–0.73× of run 1's baseline (37212164213, 9d5a096; median ≈ 0.58×) on a faster runner, so raw time cannot gate; ratios are normalized by `calib_s` (AC11.2, FR12).
 - Review of adfbbf1 (HIGH), 2026-10-04: the calibration ruling is rejected on run-2 evidence — vectorised rows sped to ≈ 0.37–0.5×, Python and I/O rows to ≈ 0.65–0.73×, consistent across 1M/10M; no single scalar calibrates both (best leaves no-change rows up to 1.25×).
 - Operator ruling replacing it, 2026-10-04, verbatim: "A/B na mesma máquina (Recomendado)" — same-runner A/B against the last measured commit, as `asv continuous` (AC11.2, FR12).
+- Operator re-approval of the same-runner A/B gate amendment, 2026-10-04, verbatim: "Re-aprovo (Recomendado)".
 - Inferred by the product engineer, approved with the SPEC:
   - A key is admitted only when the FK side can rebuild it from the column spec alone (D5's rule applied to every key input), so `transformers` on a `pk` column or an fk `parent` are rejected (AC1.7, AC2.6).
   - `DataGenerator.option` leaves with `reset_checkpoint`, its only key (AC5.3).

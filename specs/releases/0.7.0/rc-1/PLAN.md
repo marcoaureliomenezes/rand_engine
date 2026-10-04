@@ -1,6 +1,6 @@
 # PLAN — Release: 0.7.0, candidate 1 (relations core + visibility)
 
-**Status:** In review
+**Status:** Approved
 **Release ID:** 0.7.0
 **Owner:** dd-software-engineer
 **SPEC:** `specs/releases/0.7.0/rc-1/SPEC.md`; ADR 0002 accepted.
@@ -9,6 +9,7 @@
 **Re-approval (light tests):** operator, 2026-10-04, verbatim: "Re-approve (Recommended)" — SPEC 84fae68, ADR repair 85f0a46, PLAN/TASKS 66734c1.
 **Re-approval (AC1.7 step 0):** operator, 2026-10-04, verbatim: "Re-approve (Recommended)" — SPEC 815ac0e, PLAN/TASKS 32d8fc7.
 **Re-approval (speed program):** operator, 2026-10-04, verbatim: "Re-aprovo (Recomendado)" — SPEC 875ea71, PLAN/TASKS c29eb1b; reviewed APPROVED at 875ea71 (N5 folded in c29eb1b).
+**Re-approval (same-runner A/B gate):** operator, 2026-10-04, verbatim: "Re-aprovo (Recomendado)" — SPEC 71d0c12, PLAN/TASKS 5af4a71; reviewed APPROVED at 4fa6c8d (L-e folded in 5af4a71).
 **Amended (same-runner A/B gate):** SPEC 83920a7 (AC11.2–AC11.5, FR12, AC12.1) → §1.1, §3, §4, §5 and T-070-18; replaces the calibrated gate of 96a6608 (review H1) (2026-10-04).
 **Amended (speed program):** SPEC FR11–FR14 → As-is rows, authorities, §3–§5 and T-070-13..16 (2026-10-04).
 **Amended:** SPEC AC1.7 (815ac0e, T-070-1 review MEDIUM); §5 step 1 and T-070-12 wording (definition review L3–L5, review LOW-3).
