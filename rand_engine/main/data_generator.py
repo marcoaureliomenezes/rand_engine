@@ -115,12 +115,12 @@ class DataGenerator:
 
   @property
   def write(self):
-    return FileBatchWriter(lambda: self.wrapped_df_generator(size=self._resolve_size()))
+    return FileBatchWriter(self._resolve_size, self.wrapped_df_generator)
 
 
   @property
   def writeStream(self):
-    return FileStreamWriter(lambda: self.wrapped_df_generator(size=self._resolve_size()))
+    return FileStreamWriter(self._resolve_size, self.wrapped_df_generator)
 
 
 

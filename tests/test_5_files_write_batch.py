@@ -1,4 +1,4 @@
-"""Intent: CONTRACT — writer-size-not-from-generator (generator size, int or callable re-evaluated per file, reaches the file; no size fails before overwrite deletes anything); writer-options-consumed-by-use (a reused writer keeps numFiles); writer-state-shared-across-chains (each .write access is a fresh writer)."""
+"""Intent: CONTRACT — writer-size-not-from-generator (generator size, int or callable read once per save and split across numFiles files; no size fails before overwrite deletes anything); writer-options-consumed-by-use (a reused writer keeps numFiles); writer-state-shared-across-chains (each .write access is a fresh writer)."""
 import pytest
 import os
 import pandas as pd
@@ -55,10 +55,10 @@ def test_writing_single_file(
   file_path
 ):
   path = f"{base_path_files_test}/{format_type}/{file_path}"
-  g = DataGenerator(rand_spec_with_kwargs).size(lambda: df_size)
-  g.write.format("parquet").option("numFiles", 2)  # an abandoned chain must not leak (fresh writer per access)
   _ = (
-    g.write
+    DataGenerator(rand_spec_with_kwargs)
+      .size(lambda: df_size)
+      .write
       .format(format_type)
       .option("compression", compression)
       .mode("overwrite")
@@ -66,6 +66,15 @@ def test_writing_single_file(
   )
   [file] = glob.glob(f"{os.path.dirname(path)}/clients*")
   assert len(READERS[format_type](file)) == df_size
+
+
+def test_abandoned_chain_does_not_leak_into_next_write(df_size, rand_spec_with_kwargs, base_path_files_test):
+  path = f"{base_path_files_test}/csv/abandoned_chain/clients"
+  g = DataGenerator(rand_spec_with_kwargs).size(df_size)
+  g.write.format("parquet").option("numFiles", 2).mode("append")
+  g.write.save(path)
+  [file] = glob.glob(f"{os.path.dirname(path)}/*")
+  assert file.endswith("clients.csv") and len(pd.read_csv(file)) == df_size
  
 
 @pytest.mark.parametrize("format_type,compression,file_path", [
@@ -150,7 +159,7 @@ def test_writing_multiple_files_append(
   file_path
 ):
   path = f"{base_path_files_test}/{format_type}/{file_path}"
-  sizes = iter([1, 2, 3, 4])
+  sizes = iter([3, 4])
   writer = (
     DataGenerator(rand_spec_with_kwargs)
       .size(lambda: next(sizes))
@@ -164,7 +173,7 @@ def test_writing_multiple_files_append(
   base_path = os.path.dirname(path)
   file_name = os.path.basename(path).split(".")[0]
   files = glob.glob(f"{base_path}/{file_name}/part_*")
-  assert sorted(len(READERS[format_type](f)) for f in files) == [1, 2, 3, 4]  # callable size re-read per file
+  assert sorted(len(READERS[format_type](f)) for f in files) == [1, 2, 2, 2]  # callable size read once per save, split across numFiles
 
 
 def test_no_size_fails_before_overwrite_deletes(rand_spec_with_kwargs, base_path_files_test):

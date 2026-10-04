@@ -9,8 +9,8 @@ from rand_engine.file_handlers.writer import FileWriter
 class FileStreamWriter(FileWriter):
 
 
-  def __init__(self, microbatch_def):
-    super().__init__(microbatch_def)
+  def __init__(self, size_def, microbatch_def):
+    super().__init__(size_def, microbatch_def)
     self.freq = 1
   
 
@@ -30,7 +30,7 @@ class FileStreamWriter(FileWriter):
   def start(self, path):
     base_path, file_name_cleaned, ext = FileHandler.handle_path(path, self.write_format, self.write_options)
     path = f"{base_path}/{file_name_cleaned}"
-    dataframe = self.microbatch_def()
+    dataframe = self.microbatch_def(self.size_def())
     os.makedirs(path, exist_ok=True)
     if self.write_mode == "overwrite":
       if os.path.exists(path):
@@ -44,4 +44,4 @@ class FileStreamWriter(FileWriter):
       self.__generate_file(file, dataframe, write_options)
       time.sleep(self.freq)
       if time.time() - start_time > timeout: break
-      dataframe = self.microbatch_def()
+      dataframe = self.microbatch_def(self.size_def())
