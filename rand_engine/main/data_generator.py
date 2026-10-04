@@ -21,6 +21,7 @@ class DataGenerator:
     
     # Configura gerador após validação bem-sucedida
     np.random.seed(seed)
+    self._key_seed = int(np.random.SeedSequence(seed).generate_state(1)[0])
     self._size = None
     self._constraints_db_path = ":memory:"
     self._transformers: List[Optional[Callable]] = []
@@ -54,7 +55,7 @@ class DataGenerator:
         del evaluated_spec["constraints"]
       rand_generator = RandGenerator(evaluated_spec)
       
-      df_pandas = rand_generator.generate_first_level(size=size)
+      df_pandas = rand_generator.generate_first_level(size=size, key_seed=self._key_seed)
       df_pandas = rand_generator.apply_embedded_transformers(df_pandas)
       df_pandas = rand_generator.apply_global_transformers(df_pandas, self._transformers)
       df_pandas = self.constraints_handler.generate_consistency(df_pandas, constraints)

@@ -1,7 +1,9 @@
+from functools import partial
 from typing import Dict, List, Optional, Callable
 import pandas as pd
 from rand_engine.integrations._duckdb_handler import DuckDBHandler
 from rand_engine.validators.exceptions import ColumnGenerationError, TransformerError
+from rand_engine.core._keys import Keys
 from rand_engine.core._np_core import NPCore
 from rand_engine.core._py_core import PyCore
 from rand_engine.core._spark_core import SparkCore
@@ -15,7 +17,7 @@ class RandGenerator:
     self.random_spec = random_spec
 
 
-  def map_methods(self):
+  def map_methods(self, offset: int = 0, key_seed: int = 0, column: str = ""):
     return {
       "integers": NPCore.gen_ints,
       "int_zfilled": NPCore.gen_ints_zfilled,
@@ -31,14 +33,15 @@ class RandGenerator:
       "distincts_multi_map": PyCore.gen_distincts_multi_map,
       "distincts_map_prop": PyCore.gen_distincts_map_prop,
       "complex_distincts": PyCore.gen_complex_distincts,
+      "pk": partial(Keys.gen_pk, offset=offset),
+      "fk": partial(Keys.gen_fk, offset=offset, key_seed=key_seed, column=column),
     }
  
-  def generate_first_level(self, size: int):
+  def generate_first_level(self, size: int, key_seed: int = 0):
     dict_data = {}
-    mapped_methods = self.map_methods()
     for k, v in self.random_spec.items():
       columns = v.get("cols", [k])
-      generator_method = mapped_methods[v["method"]]
+      generator_method = self.map_methods(0, key_seed, k)[v["method"]]
       try:
         if "args" in v: values = generator_method(size , *v["args"])
         else: values = generator_method(size , **v.get("kwargs", {}))

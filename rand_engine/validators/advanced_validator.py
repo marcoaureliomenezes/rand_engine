@@ -110,9 +110,32 @@ class AdvancedValidator:
                     }
                 }
             }
+        },
+        "pk": {
+            "description": "Primary key: start + row_index * step, unique by construction",
+            "params": {
+                "required": {},
+                "optional": {"style": str, "start": int, "step": int}
+            },
+            "example": {
+                "id": {"method": "pk", "kwargs": {"style": "sequence", "start": 1, "step": 1}}
+            }
+        },
+        "fk": {
+            "description": "Foreign key: a parent pk value picked from the seed and the row index",
+            "params": {
+                "required": {"parent": dict, "parent_size": int},
+                "optional": {}
+            },
+            "example": {
+                "parent_id": {"method": "fk", "kwargs": {
+                    "parent": {"method": "pk", "kwargs": {"start": 1}},
+                    "parent_size": 1000
+                }}
+            }
         }
     }
-    
+
     @classmethod
     def validate_column(cls, col_name: str, col_config: Dict[str, Any]) -> List[str]:
         """
