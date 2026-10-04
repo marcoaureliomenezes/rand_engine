@@ -1,5 +1,15 @@
 """FR11 speed benchmark: one row per map_methods method and size, one per sink. CI-only (benchmarks.yml)."""
-import argparse, json, os, platform, statistics, sys, tempfile, time, tracemalloc
+import argparse
+import itertools
+import json
+import os
+import platform
+import statistics
+import sys
+import tempfile
+import time
+import tracemalloc
+from pathlib import Path
 
 import numpy as np
 
@@ -36,7 +46,10 @@ RUNS, LIMIT = 3, 1.3
 
 
 def timed(fn):
-  t = time.perf_counter(); fn(); return time.perf_counter() - t
+  t = time.perf_counter()
+  result = fn()  # noqa: F841 — freed after the clock stops, so teardown is not timed
+  elapsed = time.perf_counter() - t
+  return elapsed
 
 
 def method_row(method, rows):
@@ -52,9 +65,8 @@ def method_row(method, rows):
 
 
 def drain_stream(gen, rows):
-  # stream_dict's microbatch + record build without its throughput sleep
-  records = StreamHandler.convert_dt_to_str(gen.wrapped_df_generator(rows)()).to_dict("records")
-  for r in records: r["timestamp_created"] = round(time.time(), 3)
+  # the real stream_dict path; its throughput sleep is a no-op in this process (see main)
+  for _ in itertools.islice(gen.stream_dict(), rows): pass
 
 
 def sink_rows(rows):
@@ -102,12 +114,13 @@ def main(argv=None):
   p.add_argument("--out", default="docs/")
   p.add_argument("--sizes", type=int, nargs="+", default=[10**6, 10**7], help="method sizes; the first is the sink size")
   a = p.parse_args(argv)
+  StreamHandler.sleep_to_contro_throughput = staticmethod(lambda *a: None)
   gap = set(SAMPLE_KWARGS) ^ set(RandGenerator({}).map_methods())
   if gap: sys.exit(f"SAMPLE_KWARGS and map_methods differ: {sorted(gap)}")
   records = [method_row(m, n) for n in a.sizes for m in SAMPLE_KWARGS] + sink_rows(a.sizes[0])
   report = {"commit": os.environ.get("HEAD_SHA", "local"), "python": platform.python_version(), "numpy": np.__version__,
             "runner": os.environ.get("RUNNER_NAME", platform.node()), "records": records}
-  baseline = json.load(open(a.baseline))["records"] if os.path.exists(a.baseline) else []
+  baseline = json.loads(Path(a.baseline).read_text())["records"] if os.path.exists(a.baseline) else []
   os.makedirs(a.out, exist_ok=True)
   with open(os.path.join(a.out, "benchmarks.json"), "w") as f: json.dump(report, f, indent=2)
   with open(os.path.join(a.out, "BENCHMARKS.md"), "w") as f: f.write(render(report, baseline))

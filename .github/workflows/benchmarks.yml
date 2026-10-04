@@ -17,8 +17,11 @@ jobs:
   benchmarks:
     name: Stress tests and speed benchmark
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
