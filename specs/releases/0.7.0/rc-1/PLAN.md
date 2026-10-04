@@ -1,12 +1,13 @@
 # PLAN — Release: 0.7.0, candidate 1 (relations core + visibility)
 
-**Status:** In review
+**Status:** Approved
 **Release ID:** 0.7.0
 **Owner:** dd-software-engineer
 **SPEC:** `specs/releases/0.7.0/rc-1/SPEC.md`; ADR 0002 accepted.
 **Approval:** operator, 2026-10-03, verbatim: "Approve trio + 4 fills (Recommended)" — PLAN and TASKS approved with the four fills: the fk seed mixes the fk kwargs; every `docs/*.md` executed; pk defaults `sequence`/`start` 0/`step` 1/`key` 0; T-070-10/11 checked by build + `twine check` evidence.
 **Re-approval:** operator, 2026-10-03, verbatim: "Re-approve all three (Recommended)" — SPEC, PLAN and TASKS as amended per the definition review (5fc0fd8, bb0cbb8).
 **Re-approval (light tests):** operator, 2026-10-04, verbatim: "Re-approve (Recommended)" — SPEC 84fae68, ADR repair 85f0a46, PLAN/TASKS 66734c1.
+**Re-approval (AC1.7 step 0):** operator, 2026-10-04, verbatim: "Re-approve (Recommended)" — SPEC 815ac0e, PLAN/TASKS 32d8fc7.
 **Amended:** SPEC AC1.7 (815ac0e, T-070-1 review MEDIUM); §5 step 1 and T-070-12 wording (definition review L3–L5, review LOW-3).
 
 ## 1. As-is review
