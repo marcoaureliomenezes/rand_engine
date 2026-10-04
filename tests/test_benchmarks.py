@@ -1,4 +1,5 @@
 import json
+import time
 from pathlib import Path
 
 import pytest
@@ -178,3 +179,20 @@ def test_worker_on_a_foreign_rand_engine_exits_3_naming_the_tree(tmp_path):
   assert w.keys is None
   assert w.reason().endswith(f"expected tree {tmp_path}")
   assert w.returncode == 3
+
+
+def test_worker_crashing_on_import_reports_its_last_stderr_line_and_exit_1(tmp_path):
+  (tmp_path / "rand_engine").mkdir()
+  (tmp_path / "rand_engine" / "__init__.py").write_text('raise RuntimeError("boom")\n')
+  w = Worker(tmp_path)
+  assert (w.keys, w.reason(), w.returncode) == (None, "RuntimeError: boom", 1)
+
+
+def test_worker_hung_past_the_cap_is_killed_at_the_cap(tmp_path, monkeypatch):
+  monkeypatch.setattr("benchmarks.speed.CAP_S", 1)
+  (tmp_path / "rand_engine").mkdir()
+  (tmp_path / "rand_engine" / "__init__.py").write_text("import time\ntime.sleep(60)\n")
+  t = time.monotonic()
+  w = Worker(tmp_path)
+  assert (w.keys, w.returncode) == (None, -9)
+  assert time.monotonic() - t < 10
