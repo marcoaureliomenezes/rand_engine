@@ -361,5 +361,22 @@ def test_every_shipped_module_imports():
         importlib.import_module(".".join(("rand_engine", *path.relative_to(root).with_suffix("").parts)))
 
 
+def test_py_core_import_does_not_load_duckdb():
+    """The pure-python core uses no DB; importing it must not pull duckdb in."""
+    import subprocess
+    import sys
+
+    import rand_engine.core
+
+    # Load the module file alone: the package __init__ legitimately loads duckdb via DataGenerator.
+    path = f"{rand_engine.core.__path__[0]}/_py_core.py"
+    code = (
+        "import importlib.util as u, sys; s = u.spec_from_file_location('m', sys.argv[1]);"
+        " s.loader.exec_module(u.module_from_spec(s)); print('duckdb' in sys.modules)"
+    )
+    out = subprocess.run([sys.executable, "-c", code, path], capture_output=True, text=True, check=True)
+    assert out.stdout.strip() == "False"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])

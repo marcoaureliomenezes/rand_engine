@@ -3,7 +3,6 @@ import time
 from typing import Dict, List, Any
 import numpy as np
 from functools import reduce
-from rand_engine.integrations._duckdb_handler import DuckDBHandler
 
 class PyCore:
 
