@@ -26,6 +26,24 @@
       "description": "The old watermark's intent, rebuilt statelessly (load-realism phase). Design: event time is a function of the row index (born(i) = start + i/rate) for parent and child; an fk kwarg born_before limits the child's parent index range to parents born at or before the child's event time \u2014 alive(j) = number of parent indices with born(p) <= t(j), p = sampler(hash(seed, j)) mod alive(j), skew applied over permuted ranks as in 0.7.0. No clock, no database; parent and child producers need no coordination across processes. Market study prototype: no child before its parent, identical output for 1 or N chunks.",
       "provenance": "operator grill 2026-10-03 (main thread, release 0.7.0 rc-1), SPEC 0.7.0 rc-1 open question 5: \"Backlog it (Recommended)\"",
       "relates": []
+    },
+    {
+      "id": "stream-dict-via-arrow",
+      "title": "stream_dict via Arrow \u2014 build streamed records through pyarrow instead of df.to_dict('records')",
+      "opened": "2026-10-04",
+      "status": "idea",
+      "description": "Deferred from 0.7.0 rc-1 (SPEC out-of-scope line: \"stream_dict via Arrow \u2192 backlog (break needs its own ruling)\"). Design: build each microbatch's records with pyarrow.Table.from_pandas(df, preserve_index=False).to_pylist() instead of df.to_dict('records'); a probe measured about 4x faster. Same native types, but two breaks: a mixed-type transformer output column raises ArrowInvalid, and NaN becomes None. Before it enters a candidate it needs (1) an operator ruling on that break and (2) its FR11 stream_dict sink row measured before and after. pyarrow is already a runtime dependency; nothing is added.",
+      "provenance": "operator ruling 2026-10-04 (main thread, review of 5f097db, release 0.7.0 rc-1): \"Tirar da rc-1 (Recomendado)\"",
+      "relates": []
+    },
+    {
+      "id": "rc3-documentation-first",
+      "title": "rc-3: documentation-first \u2014 discovery, onboarding and trying features for humans and AI agents",
+      "opened": "2026-10-04",
+      "status": "idea",
+      "description": "Operator demand: a 0.7.0 rc-3 aimed at documenting rand-engine so users, agents or humans, discover it, onboard and test features easily, with APIs and use cases well documented. Design direction: the API reference for every public method and option; use cases and recipes; executed doc examples; llms.txt and agent-facing docs; a quickstart. Builds on rc-1's FR7/FR8 docs and rc-2's features. The operator defines its scope after rc-2 closes; nothing beyond the quoted demand is scoped here.",
+      "provenance": "operator demand, /goal 2026-10-04 (main thread), verbatim: \"ao final serei capaz de definir a rc3 que visar\u00e1, ja registre isso, o objetivo de documentarmos o rand-engine da melhor forma possivel para que nossos usu\u00e1rios sejam eles agents ou humanos, possam descobrir a rand-engine facilmente, fazer onboarding facilmente e testar features. E tudo muito bem documentado, APIs, casos de uso. Para que nossos usu\u00e1rios possam usar a rand-engine da melhor forma\"",
+      "relates": []
     }
   ]
 }
