@@ -121,7 +121,7 @@ def test_pk_permuted_past_its_domain_raises_naming_column_and_domain():
     _pk({"style": "permuted", "domain": 10}, 11)
 
 
-@pytest.mark.parametrize("offset, start, step", [(2, 2**62, 2**61), (0, 2**63 + 10, -100)])
+@pytest.mark.parametrize("offset, start, step", [(2, 2**62, 2**61), (0, 2**63 + 10, -100), (0, 2**63 - 2, 1), (0, -2**63 + 1, -1), (np.int64(2), 2**62, 2**61)])
 def test_pk_sequence_leaving_int64_raises(offset, start, step):
   with pytest.raises(RandEngineError, match="int64"):
     Keys.gen_pk(3, offset=offset, start=start, step=step)
@@ -139,7 +139,7 @@ def _fk(parent_kwargs, parent_size, size, seed=2, skew=None, col="parent_id"):
 
 
 @pytest.mark.parametrize("parent_kwargs, parent_size, child_size", [
-  (PERM, 10**3, 10**4), ({**PERM, "format": "C-{:08d}"}, 10**3, 10**4), (FMT, 10**3, 10**4),
+  (PERM, 10**3, 10**4), ({"style": "permuted", "domain": 10**3}, 10**3, 10**4), ({**PERM, "format": "C-{:08d}"}, 10**3, 10**4), (FMT, 10**3, 10**4),
   pytest.param(PERM, 10**4, 10**6, marks=pytest.mark.stress)])
 def test_fk_over_permuted_and_string_parents_sits_in_the_parent_pk_set(parent_kwargs, parent_size, child_size):
   """AC2.1 (permuted), AC2.2 (format)."""
@@ -213,3 +213,25 @@ def test_fk_child_from_a_second_process_joins_the_parent_parquet(tmp_path):
   import pandas as pd
   parent, child = pd.read_parquet(tmp_path / "parent")["id"], pd.read_parquet(tmp_path / "child")["pid"]
   assert len(child) == 10**4 and child.isin(parent).all()
+
+
+def test_pk_permuted_empty_batch_past_the_domain_is_empty():
+  assert Keys.gen_pk(0, offset=20, style="permuted", domain=10).tolist() == []
+
+
+def test_pk_sequence_empty_batch_at_the_int64_edge_is_empty():
+  assert Keys.gen_pk(0, start=-2**63).tolist() == []
+
+
+def test_pk_sequence_reaches_the_int64_minimum_exactly():
+  assert Keys.gen_pk(3, start=-2**63 + 2, step=-1).tolist() == [-2**63 + 2, -2**63 + 1, -2**63]
+
+
+def test_pk_sequence_numpy_int_size_leaving_int64_raises():
+  with pytest.raises(RandEngineError, match="int64"):
+    DataGenerator({"id": {"method": "pk", "kwargs": {"start": 2**63 - 2}}}).size(np.int64(3)).get_df()
+
+
+def test_fk_over_a_parent_leaving_int64_raises():
+  with pytest.raises(RandEngineError, match="int64"):
+    _fk({"start": 2**63 - 5}, 100, 10)

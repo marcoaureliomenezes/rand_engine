@@ -57,22 +57,23 @@ class Keys:
 
 
   @classmethod
-  def _pk_at(cls, idx: np.ndarray, style: str = "sequence", start: int = 0, step: int = 1,
+  def _pk_at(cls, idx: np.ndarray, lo: int, hi: int, style: str = "sequence", start: int = 0, step: int = 1,
              domain: int = 0, key: int = 0, format: str = None) -> np.ndarray | list:
+    lo, hi = int(lo), int(hi)  # NumPy ints would wrap silently in the guards
     if style == "permuted":
-      if idx.size and idx.max() >= domain:
-        raise RandEngineError(f"pk row index {idx.max()} is outside the permuted domain {domain}")
+      if lo <= hi and hi >= domain:
+        raise RandEngineError(f"pk row index {hi} is outside the permuted domain {domain}")
       values = start + cls._feistel(idx, domain, key)
     else:
-      if idx.size and not all(-2**63 <= start + int(i) * step < 2**63 for i in (idx.min(), idx.max())):
-        raise RandEngineError(f"pk sequence start={start} step={step} leaves int64 at row index {idx.max()}")
+      if lo <= hi and not all(-2**63 <= start + i * step < 2**63 for i in (lo, hi)):
+        raise RandEngineError(f"pk sequence start={start} step={step} leaves int64 at row index {hi}")
       values = start + idx * step
     return values if format is None else list(map(format.format, values.tolist()))
 
 
   @classmethod
   def gen_pk(cls, size: int, offset: int = 0, **kwargs) -> np.ndarray | list:
-    return cls._pk_at(np.arange(offset, offset + size, dtype=np.int64), **kwargs)
+    return cls._pk_at(np.arange(offset, offset + size, dtype=np.int64), offset, offset + size - 1, **kwargs)
 
 
   @classmethod
@@ -96,4 +97,4 @@ class Keys:
       idx = cls._feistel(cls._zipf_rank(h, parent_size, skew), parent_size, fk_seed)
     else:
       idx = h % np.int64(parent_size)
-    return cls._pk_at(idx, **parent.get("kwargs", {}))
+    return cls._pk_at(idx, 0, parent_size - 1, **parent.get("kwargs", {}))
