@@ -98,6 +98,23 @@ jobs:
         run: |
           echo "✅ Tests completed for Python ${{ matrix.python-version }} on ${{ matrix.os }}"
 
+  stress:
+    name: Stress and benchmarks (pytest -m stress)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Install dependencies
+        run: poetry install --with test --no-interaction
+      - name: Run stress tests
+        run: poetry run pytest -m stress --durations=20
+
   # Summary job
   summary:
     name: Test Summary

@@ -23,6 +23,10 @@ pyspark = "^3.5.0"
 setuptools = "^78.1.1"  # Required for PySpark on Python 3.12+ (distutils replacement) - Fixed CVE path traversal
 
 [tool.pytest.ini_options]
+addopts = "-m 'not stress'"
+markers = [
+    "stress: large-volume run, CI-only (pytest -m stress)",
+]
 filterwarnings = [
     "ignore::DeprecationWarning:pyspark.sql.pandas.utils",
     "ignore::DeprecationWarning:pyspark.sql.pandas.conversion",

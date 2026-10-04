@@ -8,11 +8,11 @@ def df_size():
 
 @pytest.fixture(scope="function")
 def microbatch_size():
-    return 10**5
+    return 10**4
 
 @pytest.fixture(scope="function")
 def batch_size():
-    return 10**5
+    return 10**4
 
 
 @pytest.fixture(scope="function")

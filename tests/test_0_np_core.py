@@ -303,3 +303,17 @@ def test_gen_booleans_edge_case_all_false():
   size = 100
   result = NPCore.gen_booleans(size=size, true_prob=0.0)
   assert not any(result)
+
+@pytest.mark.stress
+@pytest.mark.parametrize("method, kwargs, dtype_kind", [
+  (NPCore.gen_ints, dict(min=0, max=10**6, int_type='int64'), 'i'),
+  (NPCore.gen_ints_zfilled, dict(length=10), 'U'),
+  (NPCore.gen_floats, dict(min=0, max=10**6), 'f'),
+  (NPCore.gen_floats_normal, dict(mean=0, std=10**6), 'f'),
+  (NPCore.gen_unix_timestamps, dict(start="01-01-1970", end="01-01-2021", date_format="%d-%m-%Y"), 'i'),
+  (NPCore.gen_distincts, dict(distincts=list(range(1, 11))), 'i'),
+])
+def test_bulk_generation_at_10_7(method, kwargs, dtype_kind):
+  result = method(size=10**7, **kwargs)
+  assert len(result) == 10**7
+  assert result.dtype.kind == dtype_kind

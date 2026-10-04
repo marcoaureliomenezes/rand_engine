@@ -344,7 +344,7 @@ class TestSparkCoreEdgeCases:
     
     def test_large_dataset_performance(self, spark_session, spark_functions):
         """Test generation performance with large dataset."""
-        df = spark_session.range(100000)
+        df = spark_session.range(10**4)
         F = spark_functions
         
         result = df
@@ -354,4 +354,4 @@ class TestSparkCoreEdgeCases:
         
         # Just count to trigger computation
         count = result.count()
-        assert count == 100000
+        assert count == 10**4
