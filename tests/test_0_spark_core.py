@@ -61,6 +61,7 @@ class TestSparkCoreNumeric:
 
     @pytest.mark.parametrize("method, kwargs", [
         ("gen_ints", {"min": 1, "max": 0}),
+        ("gen_floats", {"min": 1.01, "max": 1.0}),
         ("gen_unix_timestamps", {"start": "9999-12-31", "end": "9999-12-31"}),
         ("gen_dates", {"start": "1960-01-01", "end": "1965-01-01"}),
     ])

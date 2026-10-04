@@ -54,6 +54,7 @@ class SparkCore:
 
   @staticmethod
   def gen_floats(spark, F, df, col_name, min=0.0, max=10.0, decimals=2):
+    if min > max: raise ValueError(f"min ({min}) must be <= max ({max})")
     return df.withColumn(col_name, F.round(F.rand() * (max - min) + min, decimals))
 
   @staticmethod
