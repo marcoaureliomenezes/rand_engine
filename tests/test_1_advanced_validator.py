@@ -456,5 +456,39 @@ def test_pk_permuted_with_format_and_key_is_accepted():
     assert AdvancedValidator.validate(spec) == []
 
 
+FK_PARENT = {"method": "pk", "kwargs": {"style": "permuted", "domain": 100}}
+
+
+@pytest.mark.parametrize("kwargs, match", [
+  ({"parent": {"method": "integers", "kwargs": {"min": 0, "max": 9}}, "parent_size": 10}, r"'parent'.*pk column spec"),
+  ({"parent": {"kwargs": {}}, "parent_size": 10}, r"'parent'.*pk column spec"),
+  ({"parent": {"method": "pk", "kwargs": {}, "transformers": [str]}, "parent_size": 10}, r"pid\.parent.*transformers"),
+  ({"parent": {"method": "pk", "kwargs": {"step": 0}}, "parent_size": 10}, r"step"),
+  ({"parent": {"method": "pk", "kwargs": {}, "cols": ["a"]}, "parent_size": 10}, r"'parent'.*\['cols'\]"),
+  ({"parent": FK_PARENT, "parent_size": 0}, r"parent_size.*>= 1"),
+  ({"parent": FK_PARENT, "parent_size": 101}, r"parent_size 101.*domain 100"),
+  ({"parent": FK_PARENT, "parent_size": 10, "skew": -0.1}, r"skew.*>= 0"),
+  ({"parent": FK_PARENT, "parent_size": 10, "skew": "1"}, r"skew"),
+  ({"parent": FK_PARENT, "parent_size": 10, "skew": True}, r"skew.*number"),
+  ({"parent": FK_PARENT, "parent_size": 10, "skew": float("nan")}, r"skew.*finite"),
+  ({"parent": FK_PARENT, "parent_size": 10, "skew": float("inf")}, r"skew.*finite"),
+  ({"parent": FK_PARENT, "parent_size": True}, r"parent_size.*integer"),
+  ({"parent": FK_PARENT, "parent_size": 10, "seed": 1}, r"Unknown parameter 'seed'"),
+])
+def test_fk_spec_is_refused(kwargs, match):
+  """AC2.6."""
+  with pytest.raises(SpecValidationError, match=match):
+    AdvancedValidator.validate_and_raise({"pid": {"method": "fk", "kwargs": kwargs}})
+
+
+def test_fk_args_are_refused():
+  with pytest.raises(SpecValidationError, match=r"'fk' takes only 'kwargs'"):
+    AdvancedValidator.validate_and_raise({"pid": {"method": "fk", "args": [FK_PARENT, 10]}})
+
+
+def test_fk_with_domain_sized_parent_and_skew_is_accepted():
+  AdvancedValidator.validate_and_raise({"pid": {"method": "fk", "kwargs": {"parent": FK_PARENT, "parent_size": 100, "skew": 1}}})
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

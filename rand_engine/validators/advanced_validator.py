@@ -123,10 +123,10 @@ class AdvancedValidator:
             }
         },
         "fk": {
-            "description": "Foreign key: a parent pk value picked from the seed and the row index",
+            "description": "Foreign key: a parent pk value picked from the seed and the row index; skew > 0 is Zipf over scattered parents",
             "params": {
                 "required": {"parent": dict, "parent_size": int},
-                "optional": {}
+                "optional": {"skew": (int, float)}
             },
             "example": {
                 "parent_id": {"method": "fk", "kwargs": {
@@ -385,6 +385,29 @@ class AdvancedValidator:
         return errors
 
     @classmethod
+    def _fk_errors(cls, col_name: str, col_config: Dict[str, Any]) -> List[str]:
+        """Refuses an fk whose parent pk cannot be rebuilt, or whose parent_size or skew is out of range."""
+        if "args" in col_config:
+            return [f"❌ Column '{col_name}': 'fk' takes only 'kwargs', never 'args'"]
+        kw = col_config.get("kwargs", {})
+        if not isinstance(kw, dict):
+            return []
+        parent, size, skew = kw.get("parent"), kw.get("parent_size"), kw.get("skew", 0)
+        if not isinstance(parent, dict) or parent.get("method") != "pk":
+            return [f"❌ Column '{col_name}': fk 'parent' must be a pk column spec, e.g. {{'method': 'pk', 'kwargs': {{'start': 1}}}}"]
+        foreign = sorted(set(parent) - {"method", "kwargs", "args", "transformers"})
+        errors = [f"❌ Column '{col_name}': fk 'parent' takes only 'method' and 'kwargs', not {foreign}"] if foreign else []
+        errors += cls._pk_errors(f"{col_name}.parent", parent)
+        if isinstance(size, bool) or (isinstance(size, int) and size < 1):
+            errors.append(f"❌ Column '{col_name}': fk 'parent_size' must be an integer >= 1")
+        domain = parent.get("kwargs", {}).get("domain") if isinstance(parent.get("kwargs"), dict) else None
+        if isinstance(size, int) and isinstance(domain, int) and size > domain:
+            errors.append(f"❌ Column '{col_name}': fk parent_size {size} exceeds the parent's domain {domain}")
+        if isinstance(skew, bool) or not isinstance(skew, (int, float)) or not 0 <= skew < float("inf"):
+            errors.append(f"❌ Column '{col_name}': fk 'skew' must be a finite number >= 0 (0 is uniform)")
+        return errors
+
+    @classmethod
     def _check_type(cls, value: Any, expected_type) -> bool:
         """
         Check if value matches expected type.
@@ -506,8 +529,9 @@ class AdvancedValidator:
             )
             return errors
         
-        if method == "pk":
-            errors.extend(cls._pk_errors(col_name, col_config))
+        key_errors = {"pk": cls._pk_errors, "fk": cls._fk_errors}.get(method)
+        if key_errors:
+            errors.extend(key_errors(col_name, col_config))
 
         # Convert legacy 'args' to 'kwargs' for validation
         if has_args:

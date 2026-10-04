@@ -1,3 +1,4 @@
+import json
 import zlib
 
 import numpy as np
@@ -75,7 +76,24 @@ class Keys:
 
 
   @classmethod
-  def gen_fk(cls, size: int, parent: dict, parent_size: int, offset: int = 0, key_seed: int = 0, column: str = "") -> np.ndarray | list:
-    fk_seed = zlib.crc32(f"{key_seed}/{column}".encode())
+  def _zipf_rank(cls, h: np.ndarray, n: int, s: float) -> np.ndarray:
+    """Bounded power-law rank in [0, n): inverse CDF of the continuous x^-s on [1, n+1]."""
+    u = (h % np.int64(1 << 53)) / float(1 << 53)
+    if s == 1.0:
+      x = np.exp(u * np.log(n + 1.0)) - 1.0
+    else:
+      x = ((n + 1.0) ** (1 - s) * u + (1 - u)) ** (1 / (1 - s)) - 1.0
+    return np.minimum(x.astype(np.int64), n - 1)
+
+
+  @classmethod
+  def gen_fk(cls, size: int, parent: dict, parent_size: int, skew: float = 0.0, offset: int = 0,
+             key_seed: int = 0, column: str = "") -> np.ndarray | list:
+    kwargs = json.dumps({"parent": parent, "parent_size": parent_size, "skew": float(skew)}, sort_keys=True)
+    fk_seed = zlib.crc32(f"{key_seed}/{column}/{kwargs}".encode())
     h = cls.cell_hash(fk_seed, np.arange(offset, offset + size, dtype=np.int64))
-    return cls._pk_at(h % np.int64(parent_size), **parent.get("kwargs", {}))
+    if skew:  # Zipf over ranks, ranks permuted so the hot parents are not the first row indices
+      idx = cls._feistel(cls._zipf_rank(h, parent_size, skew), parent_size, fk_seed)
+    else:
+      idx = h % np.int64(parent_size)
+    return cls._pk_at(idx, **parent.get("kwargs", {}))
