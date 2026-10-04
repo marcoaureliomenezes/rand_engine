@@ -136,7 +136,7 @@ class Worker:
 
   def ask(self, req):
     try: self.proc.stdin.write(json.dumps(req) + "\n"); self.proc.stdin.flush()
-    except OSError: return None
+    except OSError: return self.end()
     return self.read(req)
 
   def read(self, req):
@@ -144,11 +144,16 @@ class Worker:
     t = threading.Thread(target=lambda: line.append(self.proc.stdout.readline()), daemon=True)
     t.start(); t.join(CAP_S)
     reply = parse_reply(req, line[0]) if line else None
-    if reply is None: self.proc.kill(); t.join()
-    return reply
+    if reply is None and (not line or line[0]): self.proc.kill()  # alive and misbehaving: hung past the cap, or garbled
+    return reply if reply is not None else self.end()
+
+  def end(self):
+    """The one death path: the worker's real exit status (a bounded wait, then kill); always None."""
+    try: self.proc.wait(timeout=30)
+    except subprocess.TimeoutExpired: self.proc.kill(); self.proc.wait()
 
   def reason(self):
-    self.proc.wait(); self.err.seek(0)
+    self.end(); self.err.seek(0)
     lines = self.err.read().strip().splitlines()
     return lines[-1] if lines else f"exit {self.proc.returncode}"
 
@@ -215,10 +220,11 @@ def run(head, base, sizes, out, error=None):
   def ask_head(req):
     reply = head.ask(req)
     if reply is None or "error" in reply:
+      if head.returncode == 3: sys.exit(3)
       sys.exit(f"head worker failed on {req}: {reply['error'] if reply else head.reason()}")
     return reply
 
-  if head.keys is None: sys.exit(f"head worker failed: {head.reason()}")
+  if head.keys is None: sys.exit(3 if head.returncode == 3 else f"head worker failed: {head.reason()}")
   if error is None and base.keys is None: error = base.reason()
   methods, absent = plan_keys(list(SAMPLE_KWARGS), head.keys, None if error else base.keys)
   records = []

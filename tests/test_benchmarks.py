@@ -1,8 +1,9 @@
 import json
+from pathlib import Path
 
 import pytest
 
-from benchmarks.speed import baseline, check_tree, compare, parse_reply, plan_keys, run
+from benchmarks.speed import baseline, check_tree, compare, parse_reply, plan_keys, run, Worker
 
 BASE = [
   {"method": "integers", "rows": 10**6, "get_df_s": 1.0},
@@ -153,11 +154,27 @@ def test_base_returncode_3_exits_3_after_writing_the_table(tmp_path):
   assert "base pass failed: MemoryError: boom" in (tmp_path / "BENCHMARKS.md").read_text()
 
 
-@pytest.mark.parametrize("head", [{"fail": {(2, "H"): None}}, {"keys": None},
+@pytest.mark.parametrize("head", [{"fail": {(2, "H"): None}}, {"keys": None}, {"keys": None, "returncode": 1},
                                   {"fail": {(2, "H"): {"row": "integers", "rows": 10, "error": "ValueError: x"}}}])
 def test_head_error_or_eof_exits_non_zero(tmp_path, head):
   log = []
   with pytest.raises(SystemExit) as e:
     ab(log, Fake("B", log), Fake("H", log, **head), out=tmp_path)
-  assert e.value.code not in (0, None)
+  assert e.value.code not in (0, None, 3)
   assert not (tmp_path / "benchmarks.json").exists()
+
+
+@pytest.mark.parametrize("head", [{"keys": None}, {"fail": {(2, "H"): None}}])
+def test_head_worker_exit_3_exits_3(tmp_path, head):
+  log = []
+  with pytest.raises(SystemExit) as e:
+    ab(log, Fake("B", log), Fake("H", log, returncode=3, **head), out=tmp_path)
+  assert e.value.code == 3
+
+
+def test_worker_on_a_foreign_rand_engine_exits_3_naming_the_tree(tmp_path):
+  (tmp_path / "rand_engine").symlink_to(Path(__file__).parents[1] / "rand_engine")
+  w = Worker(tmp_path)
+  assert w.keys is None
+  assert w.reason().endswith(f"expected tree {tmp_path}")
+  assert w.returncode == 3
