@@ -1,42 +1,44 @@
-# Speed benchmark
+# Speed benchmark (same-runner A/B)
 
-commit `9d5a0963f5c066d7a3391da1b407146388a3ff45` · Python 3.12.14 · NumPy 2.1.1 · GitHub Actions 1000032270
+head `6691fb4bbf2d8490432a344ea6ff7f1f6ca040be` · base `9d5a0963f5c066d7a3391da1b407146388a3ff45` · Python 3.12.14 · NumPy 2.1.1 · GitHub Actions 1000032414
 
-| method / sink | rows | rows/µs | median s | baseline s | ratio | peak MiB |
+base rows 36/36
+
+| method / sink | rows | rows/µs | base s | head s | ratio | peak MiB |
 |---|---|---|---|---|---|---|
-| integers | 1,000,000 | 155.144 | 0.006 | — | absent → recorded | 15.3 |
-| int_zfilled | 1,000,000 | 3.402 | 0.294 | — | absent → recorded | 125.9 |
-| floats | 1,000,000 | 67.585 | 0.015 | — | absent → recorded | 30.6 |
-| floats_normal | 1,000,000 | 42.195 | 0.024 | — | absent → recorded | 15.3 |
-| distincts | 1,000,000 | 39.588 | 0.025 | — | absent → recorded | 19.1 |
-| distincts_prop | 1,000,000 | 13.499 | 0.074 | — | absent → recorded | 82.8 |
-| unix_timestamps | 1,000,000 | 104.049 | 0.010 | — | absent → recorded | 15.3 |
-| uuid4 | 1,000,000 | 0.306 | 3.286 | — | absent → recorded | 226.0 |
-| booleans | 1,000,000 | 62.155 | 0.016 | — | absent → recorded | 22.9 |
-| dates | 1,000,000 | 0.351 | 2.850 | — | absent → recorded | 102.5 |
-| distincts_map | 1,000,000 | 5.414 | 0.184 | — | absent → recorded | 87.1 |
-| distincts_multi_map | 1,000,000 | 3.859 | 0.260 | — | absent → recorded | 102.8 |
-| distincts_map_prop | 1,000,000 | 5.305 | 0.188 | — | absent → recorded | 87.1 |
-| complex_distincts | 1,000,000 | 0.839 | 1.191 | — | absent → recorded | 438.7 |
-| pk | 1,000,000 | 450.323 | 0.002 | — | absent → recorded | 22.9 |
-| fk | 1,000,000 | 33.422 | 0.030 | — | absent → recorded | 45.8 |
-| integers | 10,000,000 | 121.051 | 0.083 | — | absent → recorded | 152.6 |
-| int_zfilled | 10,000,000 | 3.419 | 2.926 | — | absent → recorded | 1258.9 |
-| floats | 10,000,000 | 66.928 | 0.149 | — | absent → recorded | 305.2 |
-| floats_normal | 10,000,000 | 36.769 | 0.272 | — | absent → recorded | 152.6 |
-| distincts | 10,000,000 | 35.558 | 0.282 | — | absent → recorded | 190.7 |
-| distincts_prop | 10,000,000 | 13.035 | 0.768 | — | absent → recorded | 827.8 |
-| unix_timestamps | 10,000,000 | 105.198 | 0.095 | — | absent → recorded | 152.6 |
-| uuid4 | 10,000,000 | 0.304 | 32.823 | — | absent → recorded | 2260.2 |
-| booleans | 10,000,000 | 62.183 | 0.161 | — | absent → recorded | 228.9 |
-| dates | 10,000,000 | 0.349 | 28.626 | — | absent → recorded | 1029.1 |
-| distincts_map | 10,000,000 | 5.440 | 1.836 | — | absent → recorded | 884.3 |
-| distincts_multi_map | 10,000,000 | 3.791 | 2.612 | — | absent → recorded | 1045.6 |
-| distincts_map_prop | 10,000,000 | 5.319 | 1.882 | — | absent → recorded | 884.3 |
-| complex_distincts | 10,000,000 | 0.834 | 12.002 | — | absent → recorded | 4386.9 |
-| pk | 10,000,000 | 264.401 | 0.038 | — | absent → recorded | 228.9 |
-| fk | 10,000,000 | 19.565 | 0.512 | — | absent → recorded | 457.8 |
-| csv | 1,000,000 | 0.114 | 8.790 | — | absent → recorded | — |
-| parquet | 1,000,000 | 0.146 | 6.840 | — | absent → recorded | — |
-| json | 1,000,000 | 0.127 | 7.884 | — | absent → recorded | — |
-| stream_dict | 1,000,000 | 0.106 | 9.438 | — | absent → recorded | — |
+| integers | 1,000,000 | 154.860 | 0.008 | 0.006 | 0.83 | 15.3 |
+| int_zfilled | 1,000,000 | 3.429 | 0.291 | 0.289 | 0.99 | 125.9 |
+| floats | 1,000,000 | 132.169 | 0.018 | 0.007 | 0.41 | 15.3 |
+| floats_normal | 1,000,000 | 43.738 | 0.025 | 0.022 | 0.88 | 15.3 |
+| distincts | 1,000,000 | 36.716 | 0.029 | 0.026 | 0.90 | 19.1 |
+| distincts_prop | 1,000,000 | 13.344 | 0.077 | 0.075 | 0.98 | 82.8 |
+| unix_timestamps | 1,000,000 | 100.082 | 0.010 | 0.010 | 0.96 | 15.3 |
+| uuid4 | 1,000,000 | 0.275 | 3.656 | 3.621 | 0.99 | 226.0 |
+| booleans | 1,000,000 | 66.267 | 0.015 | 0.015 | 0.99 | 22.9 |
+| dates | 1,000,000 | 0.318 | 2.911 | 3.136 | 1.08 | 102.5 |
+| distincts_map | 1,000,000 | 4.904 | 0.232 | 0.203 | 0.88 | 87.1 |
+| distincts_multi_map | 1,000,000 | 3.667 | 0.281 | 0.273 | 0.97 | 102.8 |
+| distincts_map_prop | 1,000,000 | 4.863 | 0.210 | 0.204 | 0.97 | 87.1 |
+| complex_distincts | 1,000,000 | 0.850 | 1.165 | 1.172 | 1.01 | 438.7 |
+| pk | 1,000,000 | 585.085 | 0.002 | 0.001 | 0.81 | 22.9 |
+| fk | 1,000,000 | 41.993 | 0.024 | 0.024 | 0.98 | 45.8 |
+| integers | 10,000,000 | 186.559 | 0.064 | 0.054 | 0.84 | 152.6 |
+| int_zfilled | 10,000,000 | 3.460 | 2.818 | 2.890 | 1.03 | 1258.9 |
+| floats | 10,000,000 | 124.547 | 0.159 | 0.081 | 0.51 | 152.6 |
+| floats_normal | 10,000,000 | 41.381 | 0.237 | 0.239 | 1.01 | 152.6 |
+| distincts | 10,000,000 | 37.050 | 0.268 | 0.270 | 1.01 | 190.7 |
+| distincts_prop | 10,000,000 | 12.581 | 0.763 | 0.789 | 1.03 | 827.8 |
+| unix_timestamps | 10,000,000 | 102.328 | 0.107 | 0.098 | 0.92 | 152.6 |
+| uuid4 | 10,000,000 | 0.277 | 36.225 | 36.110 | 1.00 | 2260.2 |
+| booleans | 10,000,000 | 66.124 | 0.162 | 0.147 | 0.91 | 228.9 |
+| dates | 10,000,000 | 0.316 | 28.818 | 31.595 | 1.10 | 1029.1 |
+| distincts_map | 10,000,000 | 4.911 | 2.247 | 2.032 | 0.90 | 884.3 |
+| distincts_multi_map | 10,000,000 | 3.590 | 2.715 | 2.733 | 1.01 | 1045.6 |
+| distincts_map_prop | 10,000,000 | 4.897 | 2.018 | 2.040 | 1.01 | 884.3 |
+| complex_distincts | 10,000,000 | 0.836 | 11.578 | 11.911 | 1.03 | 4386.9 |
+| pk | 10,000,000 | 499.847 | 0.036 | 0.020 | 0.55 | 228.9 |
+| fk | 10,000,000 | 35.602 | 0.287 | 0.280 | 0.98 | 457.8 |
+| csv | 1,000,000 | 0.108 | 9.077 | 9.267 | 1.02 | — |
+| parquet | 1,000,000 | 0.134 | 7.241 | 7.506 | 1.04 | — |
+| json | 1,000,000 | 0.116 | 8.543 | 8.635 | 1.01 | — |
+| stream_dict | 1,000,000 | 0.098 | 10.006 | 10.215 | 1.02 | — |
