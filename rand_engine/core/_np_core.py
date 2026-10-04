@@ -3,7 +3,7 @@ import uuid
 import numpy as np
 
 from typing import List, Any, Dict
-from datetime import datetime as dt
+from datetime import datetime as dt, timezone
 
 
 class NPCore:
@@ -64,7 +64,7 @@ class NPCore:
   def gen_unix_timestamps(cls, size: int, start: str, end: str, date_format: str) -> np.ndarray:
     dt_start, dt_end = dt.strptime(start, date_format), dt.strptime(end, date_format)
     if dt_start < dt(1970, 1, 1): dt_start = dt(1970, 1, 1)
-    timestamp_start, timestamp_end = int(dt_start.timestamp()), int(dt_end.timestamp())
+    timestamp_start, timestamp_end = (int(d.replace(tzinfo=timezone.utc).timestamp()) for d in (dt_start, dt_end))
     # Use int64 to handle large Unix timestamps on Windows
     int_array = np.random.randint(timestamp_start, timestamp_end, size, dtype=np.int64)
     return int_array
@@ -86,7 +86,7 @@ class NPCore:
     """
     timestamp_array = cls.gen_unix_timestamps(size, start, end, date_format)
     # Convert to datetime64 then format as strings
-    date_array = np.array([dt.fromtimestamp(ts).strftime(date_format) for ts in timestamp_array])
+    date_array = np.array([dt.fromtimestamp(ts, timezone.utc).strftime(date_format) for ts in timestamp_array])
     return date_array
 
 if __name__ == "__main__":

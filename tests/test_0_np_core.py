@@ -1,3 +1,4 @@
+import time
 import pytest
 import numpy as np
 from rand_engine.core._np_core import NPCore
@@ -303,3 +304,16 @@ def test_gen_booleans_edge_case_all_false():
   size = 100
   result = NPCore.gen_booleans(size=size, true_prob=0.0)
   assert not any(result)
+
+@pytest.mark.skipif(not hasattr(time, "tzset"), reason="time.tzset is Unix-only")
+@pytest.mark.parametrize("tz", ["UTC", "America/Sao_Paulo", "Asia/Tokyo"])
+def test_gen_unix_timestamps_and_dates_ignore_process_timezone(tz, monkeypatch):
+  monkeypatch.setenv("TZ", tz)
+  time.tzset()
+  try:
+    args = (3, "2024-01-01 00:00:00", "2024-01-01 00:00:01", "%Y-%m-%d %H:%M:%S")
+    assert NPCore.gen_unix_timestamps(*args).tolist() == [1704067200] * 3
+    assert NPCore.gen_dates(*args).tolist() == ["2024-01-01 00:00:00"] * 3
+  finally:
+    monkeypatch.undo()
+    time.tzset()
