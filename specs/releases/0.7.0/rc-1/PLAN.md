@@ -1,6 +1,6 @@
 # PLAN — Release: 0.7.0, candidate 1 (relations core + visibility)
 
-**Status:** In review
+**Status:** Approved
 **Release ID:** 0.7.0
 **Owner:** dd-software-engineer
 **SPEC:** `specs/releases/0.7.0/rc-1/SPEC.md`; ADR 0002 accepted.
@@ -12,6 +12,7 @@
 **Re-approval (same-runner A/B gate):** operator, 2026-10-04, verbatim: "Re-aprovo (Recomendado)" — SPEC 71d0c12, PLAN/TASKS 5af4a71; reviewed APPROVED at 4fa6c8d (L-e folded in 5af4a71).
 **Re-approval (per-row interleaving):** operator, 2026-10-04, verbatim: "Re-aprovo (Recomendado)" — SPEC 98bc2f0 + e2c3a1e, PLAN/TASKS e3ff864 + c887046 + fad928a; reviewed APPROVED at fad928a.
 **Amended (head extras after all timed rows):** operator, 2026-10-04, verbatim: "Extras after all rows (Recommended)" — run 37231315766 (head f421fe4 vs base 6691fb4, NumPy code identical): median 0.984, pk 10M 0.59, fk 10M 0.72, floats 1M 0.81, floats_normal 10M 1.21, only big-allocation rows; the head-only extras ran between rows, so the two workers' heap states differed while timed → §3, §4 and T-070-18; SPEC unchanged (FR12 says nothing on extras ordering).
+**Re-approval (head extras after all timed rows):** operator, 2026-10-04, verbatim: "Re-aprovo (Recomendado)" — PLAN/TASKS f987d32 + fc36c25; reviewed APPROVED at fc36c25; SPEC unchanged (Approved).
 **Amended (same-runner A/B gate):** SPEC 83920a7 (AC11.2–AC11.5, FR12, AC12.1) → §1.1, §3, §4, §5 and T-070-18; replaces the calibrated gate of 96a6608 (review H1) (2026-10-04).
 **Amended (speed program):** SPEC FR11–FR14 → As-is rows, authorities, §3–§5 and T-070-13..16 (2026-10-04).
 **Amended:** SPEC AC1.7 (815ac0e, T-070-1 review MEDIUM); §5 step 1 and T-070-12 wording (definition review L3–L5, review LOW-3).
