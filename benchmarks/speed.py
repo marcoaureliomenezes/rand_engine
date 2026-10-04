@@ -88,7 +88,7 @@ def serve(req):
       return {"s": timed(fn)}
   gen = DataGenerator({"c": column(row)}, seed=42).size(rows)
   if "extra" not in req: return {"s": timed(gen.get_df)}
-  core = RandGenerator({"c": column(row)}).map_methods(0, 0, "c")[row]
+  core = RandGenerator({"c": column(row)}).map_methods(np.random.default_rng(42), 0, 0, "c")[row]
   core_s = statistics.median(timed(lambda: core(rows, **SAMPLE_KWARGS[row])) for _ in range(RUNS))
   tracemalloc.start(); gen.get_df(); peak = tracemalloc.get_traced_memory()[1]; tracemalloc.stop()
   return {"core_s": core_s, "peak_mib": peak / 2**20}

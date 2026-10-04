@@ -17,8 +17,9 @@ class DataGenerator:
     self.__validate_spec()
     
     # Configura gerador após validação bem-sucedida
-    np.random.seed(seed)
-    self._key_seed = int(np.random.SeedSequence(seed).generate_state(1)[0])
+    seed_sequence = np.random.SeedSequence(seed)
+    self._rng = np.random.default_rng(seed_sequence)
+    self._key_seed = int(seed_sequence.generate_state(1)[0])
     self._size = None
     self._transformers: List[Optional[Callable]] = []
  
@@ -45,7 +46,7 @@ class DataGenerator:
       evaluated_spec = self.__evaluate_spec()
       rand_generator = RandGenerator(evaluated_spec)
       
-      df_pandas = rand_generator.generate_first_level(size=size, key_seed=self._key_seed)
+      df_pandas = rand_generator.generate_first_level(size=size, rng=self._rng, key_seed=self._key_seed)
       df_pandas = rand_generator.apply_embedded_transformers(df_pandas)
       df_pandas = rand_generator.apply_global_transformers(df_pandas, self._transformers)
       return df_pandas

@@ -4,7 +4,6 @@ from itertools import islice
 import pytest
 
 from rand_engine.main.data_generator import DataGenerator
-from tests.fixtures.f2_templates import update_transformer
 from tests.fixtures.f1_data_generator_specs_right import rand_spec_with_args
 
 from tests.fixtures.f3_integrations import (

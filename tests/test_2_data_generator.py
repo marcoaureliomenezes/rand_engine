@@ -1,8 +1,9 @@
 from random import randint
+import pickle
+import numpy as np
 import time
 import pytest
 from rand_engine.main.data_generator import DataGenerator
-from tests.fixtures.f2_templates import update_transformer
 from tests.fixtures.f1_right_specs import (
     rand_spec_with_kwargs,
     rand_spec_with_args,
@@ -205,3 +206,50 @@ def test_checkpoint_surface_is_gone():
   g = DataGenerator({"id": {"method": "pk"}})
   assert not hasattr(g, "db_checkpoint")
   assert not hasattr(g, "option")
+
+
+@pytest.fixture
+def every_np_method(rand_spec_all_methods):
+  dates = dict(method="dates", kwargs=dict(start="2024-01-01", end="2024-12-31", date_format="%Y-%m-%d"))
+  return {**rand_spec_all_methods, "day": dates}
+
+
+def test_generator_leaves_global_numpy_state_untouched(every_np_method, tmp_path):
+  """AC4.1: construct, get_df, one stream_dict microbatch, one batch write."""
+  before = pickle.dumps(np.random.get_state())
+  gen = DataGenerator(every_np_method, seed=1).size(10)
+  gen.get_df()
+  next(gen.stream_dict())
+  gen.write.format("csv").save(str(tmp_path / "out"))
+  assert pickle.dumps(np.random.get_state()) == before
+
+
+def test_same_seed_generators_return_identical_frames(every_np_method):
+  """AC4.2: uuid4 included; one generator's rng advances across batches."""
+  gen = DataGenerator(every_np_method, seed=5).size(200)
+  one = gen.get_df()
+  assert one.equals(DataGenerator(every_np_method, seed=5).size(200).get_df())
+  assert not gen.get_df().equals(one)
+  assert not one.equals(DataGenerator(every_np_method, seed=6).size(200).get_df())
+
+
+def test_another_generator_running_in_between_does_not_change_a(every_np_method):
+  """AC4.3"""
+  expected = DataGenerator(every_np_method, seed=5).size(200).get_df()
+  a = DataGenerator(every_np_method, seed=5).size(200)
+  DataGenerator(every_np_method, seed=6).size(200).get_df()
+  assert a.get_df().equals(expected)
+
+
+def test_callable_spec_is_evaluated_once_per_get_df_and_per_microbatch():
+  """Lazy-spec guard (PLAN §3): validation evaluates it once, then once per batch."""
+  calls = []
+  def spec():
+    calls.append(1)
+    return {"n": dict(method="integers", kwargs=dict(min=0, max=9))}
+  gen = DataGenerator(spec, seed=1).size(2)
+  gen.get_df()
+  assert len(calls) == 2
+  stream = gen.stream_dict(min_throughput=10**4, max_throughput=10**4)
+  for _ in range(4): next(stream)
+  assert len(calls) == 4

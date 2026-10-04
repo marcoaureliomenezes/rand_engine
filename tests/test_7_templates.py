@@ -2,10 +2,7 @@ import time
 import pytest
 
 from rand_engine.main.data_generator import DataGenerator
-from tests.fixtures.f2_templates import (
-    web_server_logs,
-    update_transformer
-)
+from tests.fixtures.f2_templates import web_server_logs
 
 
 from tests.fixtures.f3_integrations import (

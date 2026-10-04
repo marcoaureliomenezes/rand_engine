@@ -8,7 +8,7 @@ class PyCore:
 
 
   @classmethod
-  def gen_complex_distincts(cls, size: int, pattern="x.x.x-x", replacement="x", templates=None):
+  def gen_complex_distincts(cls, size: int, pattern="x.x.x-x", replacement="x", templates=None, *, rng: np.random.Generator):
     if templates is None:
       templates = []
     from rand_engine.core._np_core import NPCore
@@ -33,7 +33,7 @@ class PyCore:
         # Se for string, mapeia para o callable
         if isinstance(method, str):
           method = method_map[method]
-        list_of_lists.append(method(size, **templates[counter]["kwargs"]))
+        list_of_lists.append(method(size, rng=rng, **templates[counter]["kwargs"]))
         counter += 1
       else:
         list_of_lists.append(np.array([pattern[replacer_cursor] for i in range(size)]))
@@ -41,33 +41,33 @@ class PyCore:
 
 
   @classmethod  
-  def gen_distincts_untyped(cls, size: int, distinct: List[Any]) -> List[Any]:
-    return list(map(lambda x: distinct[x], np.random.randint(0, len(distinct), size)))
+  def gen_distincts_untyped(cls, size: int, distinct: List[Any], *, rng: np.random.Generator) -> List[Any]:
+    return list(map(lambda x: distinct[x], rng.integers(0, len(distinct), size)))
   
 
   @classmethod
-  def gen_distincts_map(cls, size: int, distincts: Dict[str, List[Any]]) -> np.ndarray:
+  def gen_distincts_map(cls, size: int, distincts: Dict[str, List[Any]], *, rng: np.random.Generator) -> np.ndarray:
     distincts_map = [(i, j) for j in distincts for i in distincts[j]]
     assert len(list(set([type(x) for x in distincts]))) == 1
-    return cls.gen_distincts_untyped(size, distincts_map)
+    return cls.gen_distincts_untyped(size, distincts_map, rng=rng)
 
 
   @classmethod
-  def gen_distincts_multi_map(cls, size: int, distincts: Dict[str, List[Any]]) -> np.ndarray:
+  def gen_distincts_multi_map(cls, size: int, distincts: Dict[str, List[Any]], *, rng: np.random.Generator) -> np.ndarray:
     combinations = [list(itertools.product([k], *v)) for k, v in distincts.items()]
     combinations = [[[i for i in tupla] for tupla in sublist] for sublist in combinations]
     distincts = [i for sublist in combinations for i in sublist]
-    return cls.gen_distincts_untyped(size, distincts)
+    return cls.gen_distincts_untyped(size, distincts, rng=rng)
 
   @classmethod
-  def gen_distincts_map_prop(cls, size: int, distincts: Dict[str, List[Any]]) -> np.ndarray:
+  def gen_distincts_map_prop(cls, size: int, distincts: Dict[str, List[Any]], *, rng: np.random.Generator) -> np.ndarray:
     distincts_map_prop = [
       (category, value)
       for category, value_weight_pairs in distincts.items()
       for value, weight in value_weight_pairs
       for _ in range(weight)
     ]
-    return cls.gen_distincts_untyped(size, distincts_map_prop)
+    return cls.gen_distincts_untyped(size, distincts_map_prop, rng=rng)
 
 
 

@@ -1,5 +1,6 @@
 from functools import partial
 from typing import Dict, List, Optional, Callable
+import numpy as np
 import pandas as pd
 from rand_engine.validators.exceptions import ColumnGenerationError, TransformerError
 from rand_engine.core._keys import Keys
@@ -16,8 +17,8 @@ class RandGenerator:
     self.random_spec = random_spec
 
 
-  def map_methods(self, offset: int = 0, key_seed: int = 0, column: str = ""):
-    return {
+  def map_methods(self, rng: Optional[np.random.Generator] = None, offset: int = 0, key_seed: int = 0, column: str = ""):
+    core = {
       "integers": NPCore.gen_ints,
       "int_zfilled": NPCore.gen_ints_zfilled,
       "floats": NPCore.gen_floats,
@@ -32,15 +33,18 @@ class RandGenerator:
       "distincts_multi_map": PyCore.gen_distincts_multi_map,
       "distincts_map_prop": PyCore.gen_distincts_map_prop,
       "complex_distincts": PyCore.gen_complex_distincts,
+    }
+    return {
+      **{name: partial(method, rng=rng) for name, method in core.items()},
       "pk": partial(Keys.gen_pk, offset=offset),
       "fk": partial(Keys.gen_fk, offset=offset, key_seed=key_seed, column=column),
     }
  
-  def generate_first_level(self, size: int, key_seed: int = 0):
+  def generate_first_level(self, size: int, rng: np.random.Generator, key_seed: int = 0):
     dict_data = {}
     for k, v in self.random_spec.items():
       columns = v.get("cols", [k])
-      generator_method = self.map_methods(0, key_seed, k)[v["method"]]
+      generator_method = self.map_methods(rng, 0, key_seed, k)[v["method"]]
       try:
         if "args" in v: values = generator_method(size , *v["args"])
         else: values = generator_method(size , **v.get("kwargs", {}))
