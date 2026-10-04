@@ -1,6 +1,6 @@
 # SPEC — Release: 0.7.0, candidate 1 (relations core + visibility)
 
-**Status:** Approved
+**Status:** In review
 **Release ID:** 0.7.0
 **Owner:** dd-product-engineer
 **Opened:** 2026-10-03
@@ -78,6 +78,7 @@
 - Review of adfbbf1 (HIGH), 2026-10-04: the calibration ruling is rejected on run-2 evidence — vectorised rows sped to ≈ 0.37–0.5×, Python and I/O rows to ≈ 0.65–0.73×, consistent across 1M/10M; no single scalar calibrates both (best leaves no-change rows up to 1.25×).
 - Operator ruling replacing it, 2026-10-04, verbatim: "A/B na mesma máquina (Recomendado)" — same-runner A/B against the last measured commit, as `asv continuous` (AC11.2, FR12).
 - Operator re-approval of the same-runner A/B gate amendment, 2026-10-04, verbatim: "Re-aprovo (Recomendado)".
+- Operator ruling, 2026-10-04, verbatim: "Per-row interleaving (Recommended)" — T-070-18 validation run 1 (37224272664, docs-only 73f4530 vs 6691fb4) left 4 short rows below 0.85, all head-faster (pk 0.73/0.54, floats 0.74/0.84), median 0.983; run 37219291673 repeats the bias (pk 0.79, floats 0.81, fk 0.76): the whole base pass runs first, so intra-job drift favours the head and a ~1.8× slowdown could pass 1.3; base and head now alternate per row (FR12).
 - Inferred by the product engineer, approved with the SPEC:
   - A key is admitted only when the FK side can rebuild it from the column spec alone (D5's rule applied to every key input), so `transformers` on a `pk` column or an fk `parent` are rejected (AC1.7, AC2.6).
   - `DataGenerator.option` leaves with `reset_checkpoint`, its only key (AC5.3).
@@ -177,7 +178,7 @@
 ### FR12 — Speed gate on generation changes
 
 - A change to an existing method or sink is measured once it reaches PR #42: its feat commit lands first; after the PR #42 run, a fresh `impl` worktree commits the artifact json and table as `chore(T-070-N): FR11 rows — <run URL>`, reviewed APPROVED and merged on its own, and the operator sees the rows before and after.
-- Same-runner A/B: the base is the `commit` of the committed `docs/benchmarks.json`; each job measures the base tree, then the head tree, on one runner, by the head's script with the same `SAMPLE_KWARGS` and sizes. The ratio shown and gated is the head's median `get_df_s` (a sink row: `sink_s`) over the base's from the same job; a method the base tree lacks is absent → recorded; rows/µs is the head's, raw; `peak_mib` is the head's, from its separate untimed run; the committed artifact holds the head's numbers and its `commit` is the next base.
+- Same-runner A/B: the base is the `commit` of the committed `docs/benchmarks.json`; for each row the job alternates base and head timings (base, head, base, head, base, head) on one runner, each tree timed by its own process with the head's script, `SAMPLE_KWARGS` and sizes. The ratio shown and gated is the head's median `get_df_s` (a sink row: `sink_s`) over the base's from the same job; a method the base tree lacks is absent → recorded; rows/µs is the head's, raw; `peak_mib` is the head's, from its separate untimed run; the committed artifact holds the head's numbers and its `commit` is the next base.
 - A change lands at the merge to `development` at closure, only with every FR11 row's ratio ≤ 1.3 (FR12); a change over it is fixed or reverted before closure.
 - AC12.1 The release PR `feature/0.7.0` → `development` opens now as a draft; its first benchmark run's artifact is the first base, committed on the work branch before T-070-3; the PR merges only at rc-1 closure, reviewed APPROVED and CI green; each later candidate opens its own draft release PR when its implementation starts. T-070-3 (FR4) is the first change under the gate: a method with ratio > 1.3 (FR12) under `Generator(PCG64)` switches the bit generator (e.g. `SFC64`) with FR4's ACs re-run, else T-070-3 is reverted.
 - Rule for later additions (rc-2): a new method ≤ 1.5× its closest existing sibling in the same run; a modifier key ≤ +25% over its base method.
@@ -234,6 +235,6 @@
 | README examples drift again | executed in CI; AC7.2, AC8.3 |
 | an Arm B fix and a task edit the same function | the Parallel schedule serialises them |
 | CSV through pyarrow changes users' files | ruled break; each divergence asserted (AC14.2) and listed (AC9.3) |
-| shared-runner noise trips or hides the speed gate | same-runner A/B (FR12); median of 3; every before/after shown (FR12). Residual: intra-job drift on a shared runner (noisy neighbours) |
+| shared-runner noise trips or hides the speed gate | same-runner A/B (FR12); median of 3; every before/after shown (FR12). per-row base/head interleaving (FR12). Residual: drift faster than one row's alternation |
 | the A/B doubles the benchmark job (≈ 22 → ≈ 45 min) | inside the job's 90-minute timeout |
 
