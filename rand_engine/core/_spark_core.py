@@ -43,6 +43,7 @@ class SparkCore:
     
     allowed_integers = ["int", "bigint", "long", "integer"]
     assert spark_type in allowed_integers, f"int_type must be one of {allowed_integers} or NPCore types {list(np_to_spark_mapping.keys())}"
+    if min > max: raise ValueError(f"min ({min}) must be <= max ({max})")
     return df.withColumn(col_name, F.floor(F.rand() * (max - min + 1) + min).cast(spark_type))
 
   @staticmethod

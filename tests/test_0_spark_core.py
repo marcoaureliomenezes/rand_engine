@@ -58,7 +58,16 @@ class TestSparkCoreNumeric:
     def test_gen_ints_max_inclusive(self, spark_session, spark_functions, empty_spark_df, min, max):
         result = SparkCore.gen_ints(spark_session, spark_functions, empty_spark_df, "test_col", min=min, max=max)
         assert {row["test_col"] for row in result.select("test_col").collect()} == {min, max}
-    
+
+    @pytest.mark.parametrize("method, kwargs", [
+        ("gen_ints", {"min": 1, "max": 0}),
+        ("gen_unix_timestamps", {"start": "9999-12-31", "end": "9999-12-31"}),
+        ("gen_dates", {"start": "1960-01-01", "end": "1965-01-01"}),
+    ])
+    def test_empty_range_raises_like_npcore(self, spark_session, spark_functions, empty_spark_df, method, kwargs):
+        with pytest.raises(ValueError, match=r"must be <= max"):
+            getattr(SparkCore, method)(spark_session, spark_functions, empty_spark_df, "c", **kwargs)
+
     def test_gen_unix_timestamps_end_exclusive(self, spark_session, spark_functions, empty_spark_df):
         result = SparkCore.gen_unix_timestamps(spark_session, spark_functions, empty_spark_df, "ts",
                                                start="2024-01-01 00:00:00", end="2024-01-01 00:00:01",
