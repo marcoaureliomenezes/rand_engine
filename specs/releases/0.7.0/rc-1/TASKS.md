@@ -30,7 +30,7 @@ Every commit touching `.py` carries `test-audit:` and `mutation:` lines (PLAN §
   blocked by: T-070-1. delivers: the operator streams a child whose keys match a single batch of the same rows.
   Row counter per `stream_dict` / `writeStream` closure; `get_df` and `write` at offset 0; each file of a `numFiles` save gets offset `c_f`. Waits for bug `writer-numfiles-rows-per-file` (PLAN §5).
   RED: `tests/test_8_consistency.py` — AC3.1, AC3.2, AC3.4, AC3.5, AC5.2, read back (AC10.3).
-- [ ] T-070-7 — Spark refuses keys (FR6). `W:` `rand_engine/validators/common_validator.py`, `tests/test_1_common_validator.py`
+- [-] T-070-7 — Spark refuses keys (FR6). `W:` `rand_engine/validators/common_validator.py`, `tests/test_1_common_validator.py`
   blocked by: none. delivers: the operator gets "NumPy engine only in 0.7.0" naming `DataGenerator` for a Spark spec with keys.
   RED: `tests/test_1_common_validator.py` — AC6.1, AC6.2.
 - [ ] T-070-8 — Docs rebuilt and executed (FR8 docs). `W:` `docs/1_DATA_GENERATOR.md`, `docs/2_SPARK_GENERATOR.md`, `docs/3_WRITING_FILES.md`, `docs/4_CONSTRAINTS.md`, `docs/5_RECIPES.md`, `tests/test_docs.py`
