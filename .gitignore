@@ -125,7 +125,7 @@ $RECYCLE.BIN/
 # ================================
 # Test outputs
 test_outputs/
-output/
+/output/
 outputs/
 
 # Temporary files
