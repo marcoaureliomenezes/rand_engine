@@ -374,6 +374,7 @@ class AdvancedValidator:
             try:
                 fields = [(f, spec, conv) for _, f, spec, conv in string.Formatter().parse(kw["format"]) if f is not None]
                 ok = (len(fields) == 1 and fields[0][0] in ("", "0") and fields[0][2] is None
+                      and "{" not in fields[0][1]
                       and (fields[0][1][-1:] if fields[0][1][-1:].isalpha() or fields[0][1][-1:] == "%" else "") in "bdoxXn")
                 if ok:
                     kw["format"].format(0)
