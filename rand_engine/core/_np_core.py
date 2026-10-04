@@ -35,10 +35,8 @@ class NPCore:
   
   @classmethod
   def gen_floats(cls, size: int, min: int, max: int, decimals: int = 2) -> np.ndarray:
-    # Use int64 for integer parts to avoid Windows overflow
-    sig_part = np.random.randint(min, max, size, dtype=np.int64)
-    decimal = np.random.randint(0, 10 ** decimals, size, dtype=np.int64)
-    return sig_part + (decimal / 10 ** decimals) if decimals > 0 else sig_part
+    if min > max: raise ValueError(f"min ({min}) must be <= max ({max})")
+    return np.round(np.random.uniform(min, max, size), decimals)
 
 
   @classmethod

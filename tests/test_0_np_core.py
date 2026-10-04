@@ -69,6 +69,17 @@ def test_gen_floats(size, min, max, decimals):
   assert real_result.dtype == np.float64
 
 
+def test_gen_floats_stay_within_fractional_bounds():
+  values = NPCore.gen_floats(size=10**4, min=9.99, max=10.5, decimals=2)
+  assert values.min() >= 9.99 and values.max() <= 10.5
+  assert values.max() > 10
+  assert np.array_equal(values, values.round(2))
+
+
+def test_gen_floats_with_equal_bounds_returns_that_value():
+  assert NPCore.gen_floats(size=10, min=5.25, max=5.25, decimals=2).tolist() == [5.25] * 10
+
+
 # Test for float generation with inconsistent parameters
 @pytest.mark.parametrize("size, min, max", [
     (10, 10**5, 10**1),
