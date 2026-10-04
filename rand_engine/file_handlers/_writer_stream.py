@@ -30,7 +30,8 @@ class FileStreamWriter(FileWriter):
   def start(self, path):
     base_path, file_name_cleaned, ext = FileHandler.handle_path(path, self.write_format, self.write_options)
     path = f"{base_path}/{file_name_cleaned}"
-    dataframe = self.microbatch_def(self.size_def())
+    size = self.size_def()
+    dataframe, offset = self.microbatch_def(size, 0), size
     os.makedirs(path, exist_ok=True)
     if self.write_mode == "overwrite":
       if os.path.exists(path):
@@ -44,4 +45,5 @@ class FileStreamWriter(FileWriter):
       self.__generate_file(file, dataframe, write_options)
       time.sleep(self.freq)
       if time.time() - start_time > timeout: break
-      dataframe = self.microbatch_def(self.size_def())
+      size = self.size_def()
+      dataframe, offset = self.microbatch_def(size, offset), offset + size

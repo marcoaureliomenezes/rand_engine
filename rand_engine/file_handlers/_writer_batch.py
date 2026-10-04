@@ -26,7 +26,8 @@ class FileBatchWriter(FileWriter):
       files = self.__handle_filenames(path, num_files, ext)
     else: files = [f"{base_path}/{file_name}.{ext}"]
     rows, extra = divmod(self.size_def(), len(files))
-    dataframes = [self.microbatch_def(rows + (f < extra)) for f in range(len(files))]
+    sizes = [rows + (f < extra) for f in range(len(files))]
+    dataframes = [self.microbatch_def(n, sum(sizes[:f])) for f, n in enumerate(sizes)]
     os.makedirs(os.path.dirname(files[0]), exist_ok=True)
     if num_files > 1 and self.write_mode == "overwrite":
       if os.path.exists(path):

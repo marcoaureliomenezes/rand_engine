@@ -40,11 +40,11 @@ class RandGenerator:
       "fk": partial(Keys.gen_fk, offset=offset, key_seed=key_seed, column=column),
     }
  
-  def generate_first_level(self, size: int, rng: np.random.Generator, key_seed: int = 0):
+  def generate_first_level(self, size: int, rng: np.random.Generator, key_seed: int = 0, offset: int = 0):
     dict_data = {}
     for k, v in self.random_spec.items():
       columns = v.get("cols", [k])
-      generator_method = self.map_methods(rng, 0, key_seed, k)[v["method"]]
+      generator_method = self.map_methods(rng, offset, key_seed, k)[v["method"]]
       try:
         if "args" in v: values = generator_method(size , *v["args"])
         else: values = generator_method(size , **v.get("kwargs", {}))

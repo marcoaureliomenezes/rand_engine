@@ -235,3 +235,73 @@ def test_pk_sequence_numpy_int_size_leaving_int64_raises():
 def test_fk_over_a_parent_leaving_int64_raises():
   with pytest.raises(RandEngineError, match="int64"):
     _fk({"start": 2**63 - 5}, 100, 10)
+
+
+FK100 = {"method": "fk", "kwargs": {"parent": PK, "parent_size": 100}}
+KEYS = {"id": PK, "parent_id": FK100}
+
+
+def _fake_clock(monkeypatch):
+  from types import SimpleNamespace
+  from rand_engine.file_handlers import _writer_stream
+  clock = {"now": 0.0}
+  def sleep(seconds): clock["now"] += seconds
+  monkeypatch.setattr(_writer_stream, "time", SimpleNamespace(time=lambda: clock["now"], sleep=sleep))
+
+
+def _read_dir(path):
+  import glob
+  import pandas as pd
+  files = glob.glob(f"{path}/*")
+  return len(files), pd.concat([pd.read_parquet(f) for f in files]).sort_values("id", ignore_index=True)
+
+
+def test_stream_dict_keys_continue_across_microbatches():
+  """AC3.1, AC3.2: 10 microbatches of 100 records carry the keys of one 1000-row get_df."""
+  generator = DataGenerator(KEYS, seed=7).size(100)
+  stream = generator.stream_dict(min_throughput=10**6, max_throughput=10**6)
+  records = [next(stream) for _ in range(1000)]
+  batch = DataGenerator(KEYS, seed=7).size(1000).get_df()
+  assert [r["id"] for r in records] == list(range(1, 1001))
+  assert [r["parent_id"] for r in records] == batch["parent_id"].tolist()
+
+
+def test_write_stream_keys_continue_across_microbatches(tmp_path, monkeypatch):
+  """AC3.1, AC3.2 on writeStream, read back: 10 files of 100 rows = one 1000-row get_df."""
+  _fake_clock(monkeypatch)
+  path = tmp_path / "stream"
+  DataGenerator(KEYS, seed=7).size(100).writeStream.format("parquet").option("timeout", 9.5).trigger(1).start(str(path))
+  num_files, written = _read_dir(f"{path}")
+  batch = DataGenerator(KEYS, seed=7).size(1000).get_df()
+  assert num_files == 10
+  assert written["id"].tolist() == list(range(1, 1001))
+  assert written["parent_id"].tolist() == batch["parent_id"].tolist()
+
+
+def test_streamed_child_fk_sits_in_the_parent_pk_set():
+  """AC3.4: a streamed child's FK values past its first microbatch stay in parent rows [0, 100)."""
+  child = DataGenerator({"parent_id": FK100}, seed=3).size(50).stream_dict(min_throughput=10**6, max_throughput=10**6)
+  values = {next(child)["parent_id"] for _ in range(500)}
+  assert values <= set(range(1, 101)) and len(values) > 50
+
+
+def test_save_over_num_files_continues_keys_across_files(tmp_path):
+  """AC3.5, read back: 4 uneven files of one save hold PKs 1..1003 once each; the child's FKs sit in the parent set."""
+  path = tmp_path / "keys"
+  DataGenerator(KEYS, seed=7).size(1003).write.format("parquet").option("numFiles", 4).save(str(path))
+  num_files, written = _read_dir(f"{path}")
+  assert num_files == 4
+  assert written["id"].tolist() == list(range(1, 1004))
+  assert written["parent_id"].isin(range(1, 101)).all()
+
+
+def test_spec_with_keys_is_unchanged_by_generation(tmp_path):
+  """AC5.2: get_df, a stream_dict microbatch and a batch write leave the dict spec deep-equal to its copy."""
+  import copy
+  spec = {"id": {"method": "pk", "kwargs": {"style": "permuted", "domain": 10**4, "format": "C-{:05d}"}}, "parent_id": FK100}
+  before = copy.deepcopy(spec)
+  generator = DataGenerator(spec, seed=1).size(10)
+  generator.get_df()
+  next(generator.stream_dict(min_throughput=10**6, max_throughput=10**6))
+  generator.write.format("parquet").option("numFiles", 2).save(str(tmp_path / "spec"))
+  assert spec == before

@@ -35,10 +35,11 @@ class DataGenerator:
     AdvancedValidator.validate_and_raise(evaluated_spec)
 
   
-  def wrapped_df_generator(self, size: int) -> pd.DataFrame:
+  def wrapped_df_generator(self, size: int, offset: int = 0) -> pd.DataFrame:
     """
     This method generates a pandas DataFrame based on random data specified in the metadata parameter.
     :param size: int: Number of rows to be generated.
+    :param offset: int: Row index of the first row (keys continue across batches).
     :param transformer: Optional[Callable]: Function to transform the generated data.
     :return: pd.DataFrame: DataFrame with the generated data.
     """
@@ -46,7 +47,7 @@ class DataGenerator:
       evaluated_spec = self.__evaluate_spec()
       rand_generator = RandGenerator(evaluated_spec)
       
-      df_pandas = rand_generator.generate_first_level(size=size, rng=self._rng, key_seed=self._key_seed)
+      df_pandas = rand_generator.generate_first_level(size=size, rng=self._rng, key_seed=self._key_seed, offset=offset)
       df_pandas = rand_generator.apply_embedded_transformers(df_pandas)
       df_pandas = rand_generator.apply_global_transformers(df_pandas, self._transformers)
       return df_pandas
@@ -77,11 +78,10 @@ class DataGenerator:
 
 
   def stream_dict(self, min_throughput: int=1, max_throughput: int = 10) -> Generator:
-    lazy_dataframe = self.wrapped_df_generator(size=self._resolve_size())
-    assert lazy_dataframe is not None, "You need to generate a DataFrame first."
-    assert callable(lazy_dataframe), "wrapped_df_generator must return a callable"
+    size, offset = self._resolve_size(), 0
     while True:
-      df_data_microbatch = lazy_dataframe()
+      df_data_microbatch = self.wrapped_df_generator(size, offset)()
+      offset += size
       df_data_parsed = StreamHandler.convert_dt_to_str(df_data_microbatch)
       list_of_records = df_data_parsed.to_dict('records')
       for record in list_of_records:
