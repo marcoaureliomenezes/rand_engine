@@ -1,6 +1,6 @@
 # TASKS — Release: 0.7.0, candidate 1 (relations core + visibility)
 
-**Status:** Approved
+**Status:** In review
 **Release ID:** 0.7.0
 **Owner:** dd-software-engineer
 
@@ -19,7 +19,7 @@ Test stack and light-tests rule: PLAN §4, binding on every task that touches te
   Deletes `db_checkpoint`, `option`, the `del spec["constraints"]`, the handler, the adapters and their tests; `validate_constraints` becomes the AC5.1 refusal; repo `AGENTS.md` loses the checkpoint stop condition and key paths; `test_public_api.py` and the `validators` docstring drop the deleted names; no test imports a deleted module (AC10.3).
   RED: `tests/test_1_advanced_validator.py` — AC5.1; `tests/test_2_data_generator.py` — AC5.3; AC5.4 grep in the commit body.
 - [ ] T-070-3 — One rng per generator, under the speed gate (FR4, FR12). `W:` `rand_engine/main/data_generator.py`, `rand_engine/main/_rand_generator.py`, `rand_engine/core/_np_core.py`, `rand_engine/core/_py_core.py`, `rand_engine/utils/update.py`, `rand_engine/templates/web_server_logs.py`, `tests/test_0_np_core.py`, `tests/test_0_py_core.py`, `tests/test_2_data_generator.py`, `benchmarks/speed.py`, `docs/benchmarks.json`, `docs/BENCHMARKS.md`
-  blocked by: T-070-1, T-070-13. delivers: the operator's NumPy state survives a generator, two same-seed generators agree, and no method got slower than 1.3× baseline.
+  blocked by: T-070-1, T-070-13, T-070-18. delivers: the operator's NumPy state survives a generator, two same-seed generators agree, and no method got slower than 1.3× baseline.
   `rng` keyword on every `NPCore`/`PyCore` method, bodies kept: `np.random.randint` → `rng.integers` (exclusive high, `dtype` kept), `choice`/`normal` → `rng.choice`/`rng.normal`; `gen_uuid4` builds RFC 4122 v4 from `rng.bytes` (version/variant bits set vectorised, PLAN §3); `map_methods` binds `rng`; `np.random.seed` and `Changer` deleted.
   `map_methods` gains `rng`: `benchmarks/speed.py`'s core call follows. Gate (AC12.1, FR12): PR #42's rows after the merge vs the baseline, before/after shown to the operator, then the `chore(T-070-N): FR11 rows` follow-up; a method > 1.3× → `SFC64` bit generator and FR4's ACs re-run; still over → revert. Adds the lazy-spec guard (PLAN §3).
   RED: `tests/test_2_data_generator.py` — AC4.1, AC4.2 (`uuid4` included), AC4.3, a callable spec evaluated once per `get_df` and per `stream_dict` microbatch; `tests/test_0_np_core.py` — AC4.5; AC4.4 grep in the commit body; FR11 rows and run URL in the `chore(T-070-N): FR11 rows` follow-up.
@@ -55,6 +55,10 @@ Test stack and light-tests rule: PLAN §4, binding on every task that touches te
   blocked by: none. delivers: the operator reads every method's rows/µs at 10^6 and 10^7 in `docs/BENCHMARKS.md`, and every sink's at 10^6, in the Actions job summary and one PR comment updated in place (a red run publishes too), and a PR slower than 1.3× baseline goes red.
   The script (method and sink rows) and `benchmarks.yml` (`contents: read`, `pull-requests: write`, never pushes, `GH_TOKEN` via `env:`, one `concurrency` group per PR) per PLAN §3; `SAMPLE_KWARGS` asserts its keys equal `map_methods`'s; `peak_mib` from a separate untimed run; the `stress` job leaves `test_on_push.yml` whole into `benchmarks.yml` (AC10.5 one job); the 10^7 `stress` benchmark in `tests/test_0_np_core.py` is deleted (the matrix runs only here). Baseline: this task's run on draft PR #42 (every row absent → recorded, not failed), artifact downloaded and committed on the work branch before T-070-3 starts (AC12.1).
   RED: `tests/test_benchmarks.py` — AC11.4 (1.29 passes, 1.31 fails, on a method and a `sink_s` row; unbaselined reported); AC11.1–AC11.3, AC11.5 evidence: two PR #42 runs leaving one comment, their URLs and job summary, the committed JSON — in the `chore(T-070-13): FR11 rows` baseline commit body.
+- [ ] T-070-18 — Calibrated speed gate (FR11 AC11.2, AC11.3, AC11.5; FR12). `W:` `benchmarks/speed.py`, `tests/test_benchmarks.py`, `docs/benchmarks.json`, `docs/BENCHMARKS.md` (derived, follow-up only)
+  blocked by: T-070-13. delivers: the gate ignores runner hardware speed, so a red build means a real regression.
+  `calib_s` from the versioned NumPy workload per PLAN §3; `compare` gates `(t / calib_s) / (t_base / calib_s_base)`; the table shows both `calib_s`. Closes with the `chore(T-070-18): FR11 rows — <run URL>` follow-up; that run is the first calibrated baseline.
+  RED: `tests/test_benchmarks.py` — identical normalized times with `calib_s` 1.7× apart pass; a 1.31 normalized ratio fails; a baseline without `calib_s` is absent → recorded.
 - [ ] T-070-14 — Golden seeded output (FR13). `W:` `tests/test_2_data_generator.py`
   blocked by: T-070-3, bug `timestamps-depend-on-local-timezone`. delivers: the operator changes generation code and learns at once whether any seeded output moved.
   One seeded `get_df` at 10^3 rows per NumPy-engine method, `pk`/`fk` excluded (AC13.2), specs from `benchmarks/speed.py` `SAMPLE_KWARGS`, asserting its keys minus `pk`/`fk` equal `map_methods`'s; literal values or a literal sha256; expected literals from a UTC run after B8 (`timestamps-depend-on-local-timezone`) merged (AC13.1, PLAN §5).
