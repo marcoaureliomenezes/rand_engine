@@ -23,6 +23,7 @@ IMPORTANT DIFFERENCES HANDLED:
    - SparkCore maintains backward compatibility with 'formato'
 """
 
+import warnings
 from typing import Dict, List, Any
 
 
@@ -381,6 +382,7 @@ class CommonValidator:
         
         Returns:
             List of strings describing found errors with correction examples
+            (advanced methods emit a UserWarning instead of an error)
         """
         errors = []
         
@@ -451,14 +453,13 @@ class CommonValidator:
         # Check if method exists in CommonValidator (SparkGenerator only uses common methods)
         if method not in cls.METHOD_SPECS:
             # Allow advanced methods with warning (they return NULL in Spark)
-            advanced_methods = ["distincts_map", "distincts_multi_map", "distincts_map_prop", "complex_distincts", "distincts_external"]
+            advanced_methods = ["distincts_map", "distincts_multi_map", "distincts_map_prop", "complex_distincts"]
             if method in advanced_methods:
-                errors.append(
+                warnings.warn(
                     f"⚠️  Column '{col_name}': method '{method}' is a dummy in SparkGenerator (returns NULL)\n"
                     f"   This method is only fully implemented in DataGenerator\n"
                     f"   Available SparkGenerator methods: {', '.join(sorted(cls.METHOD_SPECS.keys()))}"
                 )
-                return errors
             else:
                 available_methods = ", ".join(f"'{m}'" for m in sorted(cls.METHOD_SPECS.keys()))
                 errors.append(

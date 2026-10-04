@@ -209,3 +209,19 @@ class TestValidateAndRaise:
     
         assert "SPARKGENERATOR SPEC VALIDATION ERROR" in str(exc_info.value)
         assert "does not exist" in str(exc_info.value)
+
+    def test_validate_and_raise_advanced_method_only_warns(self):
+        """Advanced methods are allowed in SparkGenerator with a warning (docs/2_SPARK_GENERATOR.md)."""
+        spec = {"device_os": {"method": "distincts_map", "cols": ["device", "os"],
+                              "kwargs": {"distincts": {"smartphone": ["android", "ios"]}}}}
+        with pytest.warns(UserWarning, match="'distincts_map' is a dummy in SparkGenerator"):
+            CommonValidator.validate_spark_and_raise(spec)
+
+    @pytest.mark.parametrize("config, message", [
+        ({"method": "distincts_external", "kwargs": {}}, "does not exist"),
+        ({"method": "distincts_map", "cols": ["device", "os"]}, "requires 'kwargs' or 'args'"),
+    ])
+    def test_validate_and_raise_unsupported_advanced_spec(self, config, message):
+        """Advanced specs Spark cannot run still raise at validation, not in get_df."""
+        with pytest.raises(SpecValidationError, match=message):
+            CommonValidator.validate_spark_and_raise({"c": config})
