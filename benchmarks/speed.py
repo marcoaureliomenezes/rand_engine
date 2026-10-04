@@ -95,7 +95,7 @@ def serve(req):
 
 
 def worker(tree):
-  reply = os.fdopen(os.dup(1), "w")
+  reply = os.fdopen(os.dup(1), "w", encoding="utf-8")
   os.dup2(2, 1)  # a print or C-level write lands in stderr, never in the protocol
   import rand_engine
   from rand_engine.main._rand_generator import RandGenerator
@@ -125,9 +125,9 @@ class Worker:
   """One tree's worker process; ask() returns the reply, or None once the worker is dead."""
 
   def __init__(self, tree):
-    self.err = tempfile.TemporaryFile("w+")
+    self.err = tempfile.TemporaryFile("w+", encoding="utf-8")
     self.proc = subprocess.Popen([sys.executable, "-u", __file__, "--worker", str(tree)], stdin=subprocess.PIPE,
-                                 stdout=subprocess.PIPE, stderr=self.err, text=True, env={**os.environ, "PYTHONPATH": str(tree)})
+                                 stdout=subprocess.PIPE, stderr=self.err, encoding="utf-8", env={**os.environ, "PYTHONPATH": str(tree)})
     self.keys = (self.read({}) or {}).get("keys")
 
   @property
@@ -250,8 +250,8 @@ def run(head, base, sizes, out, error=None):
             "python": platform.python_version(), "numpy": np.__version__,
             "runner": os.environ.get("RUNNER_NAME", platform.node()), "records": records}
   os.makedirs(out, exist_ok=True)
-  with open(os.path.join(out, "benchmarks.json"), "w") as f: json.dump(report, f, indent=2)
-  with open(os.path.join(out, "BENCHMARKS.md"), "w") as f: f.write(render(report, absent, error))
+  with open(os.path.join(out, "benchmarks.json"), "w", encoding="utf-8") as f: json.dump(report, f, indent=2)
+  with open(os.path.join(out, "BENCHMARKS.md"), "w", encoding="utf-8") as f: f.write(render(report, absent, error))
   if base is not None and base.returncode == 3: sys.exit(3)
   failed, _ = compare(records, baseline(records))
   if failed: sys.exit(f"over {LIMIT}x base: {failed}")

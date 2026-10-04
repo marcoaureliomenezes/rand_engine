@@ -1,4 +1,5 @@
 import json
+import os
 import time
 from pathlib import Path
 
@@ -91,7 +92,7 @@ class Fake:
 
 def ab(log, base=None, head=None, error=None, out=None, sizes=(10,)):
   run(head or Fake("H", log), base, list(sizes), out, error)
-  return json.loads((out / "benchmarks.json").read_text()), (out / "BENCHMARKS.md").read_text()
+  return json.loads((out / "benchmarks.json").read_text(encoding="utf-8")), (out / "BENCHMARKS.md").read_text(encoding="utf-8")
 
 
 @pytest.fixture(autouse=True)
@@ -152,7 +153,7 @@ def test_base_returncode_3_exits_3_after_writing_the_table(tmp_path):
   with pytest.raises(SystemExit) as e:
     ab(log, Fake("B", log, keys=None, returncode=3), out=tmp_path)
   assert e.value.code == 3
-  assert "base pass failed: MemoryError: boom" in (tmp_path / "BENCHMARKS.md").read_text()
+  assert "base pass failed: MemoryError: boom" in (tmp_path / "BENCHMARKS.md").read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize("head", [{"fail": {(2, "H"): None}}, {"keys": None}, {"keys": None, "returncode": 1},
@@ -183,7 +184,7 @@ def test_worker_on_a_foreign_rand_engine_exits_3_naming_the_tree(tmp_path):
 
 def test_worker_crashing_on_import_reports_its_last_stderr_line_and_exit_1(tmp_path):
   (tmp_path / "rand_engine").mkdir()
-  (tmp_path / "rand_engine" / "__init__.py").write_text('raise RuntimeError("boom")\n')
+  (tmp_path / "rand_engine" / "__init__.py").write_text('raise RuntimeError("boom")\n', encoding="utf-8")
   w = Worker(tmp_path)
   assert (w.keys, w.reason(), w.returncode) == (None, "RuntimeError: boom", 1)
 
@@ -191,8 +192,8 @@ def test_worker_crashing_on_import_reports_its_last_stderr_line_and_exit_1(tmp_p
 def test_worker_hung_past_the_cap_is_killed_at_the_cap(tmp_path, monkeypatch):
   monkeypatch.setattr("benchmarks.speed.CAP_S", 1)
   (tmp_path / "rand_engine").mkdir()
-  (tmp_path / "rand_engine" / "__init__.py").write_text("import time\ntime.sleep(60)\n")
+  (tmp_path / "rand_engine" / "__init__.py").write_text("import time\ntime.sleep(60)\n", encoding="utf-8")
   t = time.monotonic()
   w = Worker(tmp_path)
-  assert (w.keys, w.returncode) == (None, -9)
+  assert (w.keys, w.returncode) == (None, -9 if os.name != "nt" else 1)  # Windows kill = TerminateProcess(1)
   assert time.monotonic() - t < 10
