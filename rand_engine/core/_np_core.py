@@ -22,7 +22,7 @@ class NPCore:
   def gen_ints(cls, size: int, min: int, max: int, int_type: str = 'int32') -> np.ndarray:
     allowed_integers = ['int8', 'int16', 'int32', 'int64', 'uint8', 'uint16', 'uint32', 'uint64']
     assert int_type in allowed_integers, f"int_type must be one of {allowed_integers}"
-    return np.random.randint(min, max + 1, size, dtype=np.int64).astype(int_type)
+    return np.random.randint(min, max + 1, size, dtype=int_type)
   
 
   @classmethod

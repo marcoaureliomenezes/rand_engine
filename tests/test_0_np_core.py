@@ -29,6 +29,12 @@ def test_gen_ints(min, max, int_type):
   assert total_size == item_size * kwargs["size"]
 
 
+@pytest.mark.parametrize("min, max, int_type", [(0, 1000, 'int8'), (-1, 10, 'uint8')])
+def test_gen_ints_bounds_not_fitting_int_type_are_rejected(min, max, int_type):
+  with pytest.raises(ValueError):
+    _ = NPCore.gen_ints(size=10, min=min, max=max, int_type=int_type)
+
+
 # Test for integer generation with size 0
 def test_gen_ints_with_size_0(default_size):
   kwargs = dict(size=0, min=0, max=10)
