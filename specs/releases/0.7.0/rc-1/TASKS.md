@@ -40,7 +40,7 @@ Test stack and light-tests rule: PLAN §4, binding on every task that touches te
   RED: `tests/test_1_common_validator.py` — AC6.1, AC6.2.
 - [ ] T-070-8 — Docs rebuilt and executed (FR8 docs). `W:` `docs/1_DATA_GENERATOR.md`, `docs/2_SPARK_GENERATOR.md`, `docs/3_WRITING_FILES.md`, `docs/4_CONSTRAINTS.md`, `docs/5_RECIPES.md`, `tests/test_docs.py`
   blocked by: T-070-2, T-070-3, T-070-5, T-070-6, T-070-7, T-070-16. delivers: the operator follows any guide and every example runs.
-  `docs/3_WRITING_FILES.md` drops the dead parquet `engine` option (AC14.2).
+  `docs/3_WRITING_FILES.md` drops the dead parquet `engine` option and writes the writer contract (AC14.2, review N5): csv and parquet through pyarrow, json through pandas; the documented options per format, any other raising `RandEngineError`; the AC14.2 CSV divergences.
   RED: `tests/test_docs.py` — AC8.1, AC8.2, AC8.3 over `docs/*.md`.
 - [ ] T-070-9 — README and `llms.txt` (FR7, AC8.4). `W:` `README.md`, `llms.txt`, `tests/test_docs.py`
   blocked by: T-070-8, T-070-10. delivers: a newcomer, human or agent, reaches a working related-tables example from PyPI in one read.
