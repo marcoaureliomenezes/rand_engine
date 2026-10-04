@@ -6,6 +6,7 @@ Each method is tested in isolation with direct Spark DataFrame manipulation.
 
 Note: PySpark is a test-only dependency.
 """
+import time
 import pytest
 from rand_engine.core._spark_core import SparkCore
 
@@ -64,6 +65,33 @@ class TestSparkCoreNumeric:
                                                date_format="%Y-%m-%d %H:%M:%S")
         assert len({row["ts"] for row in result.select("ts").collect()}) == 1
     
+    @pytest.mark.skipif(not hasattr(time, "tzset"), reason="time.tzset is Unix-only")
+    @pytest.mark.parametrize("tz", ["UTC", "America/New_York", "Asia/Tokyo"])
+    @pytest.mark.parametrize("start, end, fmt, ts, rendered", [
+        ("2024-07-01 00:00:00", "2024-07-01 00:00:01", "%Y-%m-%d %H:%M:%S", range(1719792000, 1719792001), "2024-07-01 00:00:00"),
+        ("2024-03-10 02:30:00", "2024-03-10 02:30:01", "%Y-%m-%d %H:%M:%S", range(1710037800, 1710037801), "2024-03-10 02:30:00"),
+        ("2024-03-10 05:00:00", "2024-03-10 05:00:01", "%Y-%m-%d %H:%M:%S", range(1710046800, 1710046801), "2024-03-10 05:00:00"),
+        ("2024-07-01T00:00:00", "2024-07-01T00:00:01", "%Y-%m-%dT%H:%M:%S", range(1719792000, 1719792001), "2024-07-01T00:00:00"),
+        ("01/07/2024 000000.000000", "01/07/2024 000001.000000", "%d/%m/%Y %H%M%S.%f", range(1719792000, 1719792001), "01/07/2024 000000.000000"),
+        ("2100-06-01 00:00:00", "2100-06-01 00:00:01", "%Y-%m-%d %H:%M:%S", range(4115491200, 4115491201), "2100-06-01 00:00:00"),
+        ("01/07/2024", "02/07/2024", "%d/%m/%Y", range(1719792000, 1719878400), "01/07/2024"),
+    ])
+    def test_gen_unix_timestamps_and_dates_ignore_timezone(self, spark_session, spark_functions, small_spark_df, tz, monkeypatch,
+                                                         start, end, fmt, ts, rendered):
+        session_tz = spark_session.conf.get("spark.sql.session.timeZone")
+        monkeypatch.setenv("TZ", tz)
+        time.tzset()
+        spark_session.conf.set("spark.sql.session.timeZone", tz)
+        try:
+            args = (spark_session, spark_functions, small_spark_df, "c")
+            kwargs = dict(start=start, end=end, date_format=fmt)
+            assert {r["c"] for r in SparkCore.gen_unix_timestamps(*args, **kwargs).collect()} <= set(ts)
+            assert {r["c"] for r in SparkCore.gen_dates(*args, **kwargs).collect()} == {rendered}
+        finally:
+            spark_session.conf.set("spark.sql.session.timeZone", session_tz)
+            monkeypatch.undo()
+            time.tzset()
+
     def test_gen_ints_zfill(self, spark_session, spark_functions, small_spark_df):
         """Test zero-filled integer generation."""
         df = small_spark_df

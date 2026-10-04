@@ -1,4 +1,5 @@
-from datetime import datetime as dt
+import re
+from datetime import datetime as dt, timezone
 import pandas as pd
 
 
@@ -92,7 +93,7 @@ class SparkCore:
     """
     dt_start, dt_end = dt.strptime(start, date_format), dt.strptime(end, date_format)
     if dt_start < dt(1970, 1, 1): dt_start = dt(1970, 1, 1)
-    timestamp_start, timestamp_end = int(dt_start.timestamp()), int(dt_end.timestamp())
+    timestamp_start, timestamp_end = (int(d.replace(tzinfo=timezone.utc).timestamp()) for d in (dt_start, dt_end))
     df = SparkCore.gen_ints(spark, F, df, col_name, min=timestamp_start, max=timestamp_end - 1)
     return df
 
@@ -100,15 +101,13 @@ class SparkCore:
   @staticmethod
   def gen_dates(spark, F, df, col_name, start="1970-01-01", end="2023-01-01", date_format="%Y-%m-%d"):
 
-    # Support legacy parameter names for backwards compatibility
-
-    map_formats = {"%Y": "yyyy", "%m": "MM", "%d": "dd","%H": "HH", "%M": "mm", "%S": "ss", "%f": "SSSSSS"}
-    spark_format = date_format
-    for k, v in map_formats.items():
-      spark_format = spark_format.replace(k, v)
     df = SparkCore.gen_unix_timestamps(spark, F, df, col_name, start=start, end=end, date_format=date_format)
-    return df.withColumn(col_name,
-      F.date_format(F.from_unixtime(F.col(col_name), spark_format).cast("timestamp"), spark_format))
+    # NTZ cast to string is TZ-free: "yyyy-MM-dd HH:mm:ss" (whole seconds, years 1970..9999), padded for %f
+    utc_wall_clock = F.expr("TIMESTAMP_NTZ'1970-01-01 00:00:00'") + F.col(col_name) * F.expr("INTERVAL 1 SECOND")
+    iso = F.concat(utc_wall_clock.cast("string"), F.lit(".000000"))
+    span = {"%Y": (1, 4), "%m": (6, 2), "%d": (9, 2), "%H": (12, 2), "%M": (15, 2), "%S": (18, 2), "%f": (21, 6)}
+    tokens = [t for t in re.split(r"(%[YmdHMSf])", date_format) if t]
+    return df.withColumn(col_name, F.concat(*[F.substring(iso, *span[t]) if t in span else F.lit(t) for t in tokens]))
 
 
   @staticmethod
