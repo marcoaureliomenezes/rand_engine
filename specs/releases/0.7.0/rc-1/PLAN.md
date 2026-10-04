@@ -1,13 +1,13 @@
 # PLAN — Release: 0.7.0, candidate 1 (relations core + visibility)
 
-**Status:** Approved
+**Status:** In review
 **Release ID:** 0.7.0
 **Owner:** dd-software-engineer
-**SPEC:** `specs/releases/0.7.0/rc-1/SPEC.md` (In review: amended per the definition review, commits bb0cbb8..19600df); ADR 0002 accepted.
+**SPEC:** `specs/releases/0.7.0/rc-1/SPEC.md`; ADR 0002 accepted.
 **Approval:** operator, 2026-10-03, verbatim: "Approve trio + 4 fills (Recommended)" — PLAN and TASKS approved with the four fills: the fk seed mixes the fk kwargs; every `docs/*.md` executed; pk defaults `sequence`/`start` 0/`step` 1/`key` 0; T-070-10/11 checked by build + `twine check` evidence.
 **Re-approval:** operator, 2026-10-03, verbatim: "Re-approve all three (Recommended)" — SPEC, PLAN and TASKS as amended per the definition review (5fc0fd8, bb0cbb8).
 **Re-approval (light tests):** operator, 2026-10-04, verbatim: "Re-approve (Recommended)" — SPEC 84fae68, ADR repair 85f0a46, PLAN/TASKS 66734c1.
-**Amended:** per the dd-code-reviewer definition REJECT at 464e5f7 (F1–F18) and the operator's rulings recorded in the SPEC; awaiting re-review and re-approval.
+**Amended:** SPEC AC1.7 (815ac0e, T-070-1 review MEDIUM); §5 step 1 and T-070-12 wording (definition review L3–L5, review LOW-3).
 
 ## 1. As-is review
 
@@ -93,7 +93,7 @@ Arm B bug worktrees run one at a time beside the tasks; a task opens only after 
 
 | step | tasks open together | width | how |
 |---|---|---|---|
-| 1 | T-070-12, T-070-1 | 2 | one impl worktree each; T-070-1 already open (`0.7.0a-impl`) and merges after T-070-12 (its `Stress:` variants need the registered marker); T-070-7 done (5197718); B4 runs |
+| 1 | T-070-12, T-070-1 | 2 | one impl worktree each; T-070-1 already open (`0.7.0a-impl`) and merges after T-070-12 (its `Stress:` variants need the registered marker); T-070-7 done (5197718); B4 runs, serialised with T-070-12 on `pyproject.toml` (bug waits below) |
 | 2 | T-070-2 | 1 | impl worktree; after B4 merged; B2 runs |
 | 3 | T-070-3, T-070-4 | 2 | one impl worktree each; T-070-3 after B2 (and D20 in B3) merged |
 | 4 | T-070-5 | 1 | impl worktree |
