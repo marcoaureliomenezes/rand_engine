@@ -1,26 +1,25 @@
-"""FR11 speed benchmark, same-runner A/B: one row per map_methods method and size, one per sink. CI-only (benchmarks.yml).
+"""FR11 speed benchmark, same-runner A/B interleaved per row. CI-only (benchmarks.yml).
 
-Base pass: PYTHONPATH=<base tree> python benchmarks/speed.py --base-pass <base tree> --out <dir>
-Head pass: python benchmarks/speed.py --baseline <dir>/benchmarks.json --out docs/
+python benchmarks/speed.py --base-tree ../base --out docs/
+The coordinator times nothing: it alternates requests between two `--worker <tree>` processes (base, head)
+over line-delimited JSON, so runner drift hits both sides alike.
 """
 import argparse
+import gc
 import itertools
 import json
 import os
 import platform
 import statistics
+import subprocess
 import sys
 import tempfile
+import threading
 import time
 import tracemalloc
 from pathlib import Path
 
 import numpy as np
-
-import rand_engine
-from rand_engine.main._rand_generator import RandGenerator
-from rand_engine.main.data_generator import DataGenerator
-from rand_engine.utils.stream_handler import StreamHandler
 
 PK = {"method": "pk", "kwargs": {"style": "sequence", "start": 1, "step": 1}}
 SAMPLE_KWARGS = {
@@ -45,7 +44,7 @@ SAMPLE_KWARGS = {
   "pk": PK["kwargs"],
   "fk": {"parent": PK, "parent_size": 1000},
 }
-# CommonRandSpecs.customers, copied so both passes write one spec
+# CommonRandSpecs.customers, copied so both trees write one spec
 SINK_SPEC = {
   "customer_id": {"method": "uuid4", "kwargs": {}},
   "age": {"method": "integers", "kwargs": {"min": 18, "max": 80, "int_type": "int32"}},
@@ -56,7 +55,8 @@ SINK_SPEC = {
   "registration_date": {"method": "dates", "kwargs": {"start": "2020-01-01", "end": "2025-10-30", "date_format": "%Y-%m-%d"}},
 }
 COLS = {"distincts_map": ["a", "b"], "distincts_map_prop": ["a", "b"], "distincts_multi_map": ["a", "b", "c"]}
-RUNS, LIMIT = 3, 1.3
+SINKS = ("csv", "parquet", "json", "stream_dict")
+RUNS, LIMIT, CAP_S = 3, 1.3, 15 * 60
 
 
 def timed(fn):
@@ -66,46 +66,107 @@ def timed(fn):
   return elapsed
 
 
-def method_row(method, rows, base_pass):
+def column(method):
   col = {"method": method, "kwargs": SAMPLE_KWARGS[method]}
   if method in COLS: col["cols"] = COLS[method]
-  gen = DataGenerator({"c": col}, seed=42).size(rows)
-  get_df_s = [timed(gen.get_df) for _ in range(RUNS)]
-  row = {"method": method, "rows": rows, "get_df_s": statistics.median(get_df_s)}
-  if base_pass: return row  # the base times the public path only
-  core = RandGenerator({"c": col}).map_methods(0, 0, "c")[method]
-  core_s = [timed(lambda: core(rows, **SAMPLE_KWARGS[method])) for _ in range(RUNS)]
-  tracemalloc.start(); gen.get_df(); peak = tracemalloc.get_traced_memory()[1]; tracemalloc.stop()
-  return {**row, "core_s": statistics.median(core_s), "peak_mib": peak / 2**20,
-          "rows_per_us": rows / (statistics.mean(get_df_s) * 1e6)}
+  return col
 
 
 def drain_stream(gen, rows):
-  # the real stream_dict path; its throughput sleep is a no-op in this process (see main)
+  # the real stream_dict path; its throughput sleep is a no-op in the worker (see worker)
   for _ in itertools.islice(gen.stream_dict(), rows): pass
 
 
-def sink_rows(rows, absent):
-  gen = DataGenerator(SINK_SPEC, seed=42).size(rows)
-  out = []
-  with tempfile.TemporaryDirectory() as d:
-    sinks = {fmt: (lambda fmt=fmt: gen.write.format(fmt).save(f"{d}/{fmt}")) for fmt in ("csv", "parquet", "json")}
-    sinks["stream_dict"] = lambda: drain_stream(gen, rows)
-    for sink, fn in sinks.items():
-      try: s = [timed(fn) for _ in range(RUNS)]
-      except Exception as e:
-        if absent is None: raise
-        absent[sink] = f"base raised {type(e).__name__}: {e}"; continue
-      out.append({"sink": sink, "rows": rows, "sink_s": statistics.median(s), "rows_per_us": rows / (statistics.mean(s) * 1e6)})
-  return out
+def serve(req):
+  from rand_engine.main._rand_generator import RandGenerator
+  from rand_engine.main.data_generator import DataGenerator
+  row, rows = req.get("extra") or req["row"], req["rows"]
+  if row in SINKS:
+    gen = DataGenerator(SINK_SPEC, seed=42).size(rows)
+    with tempfile.TemporaryDirectory() as d:
+      fn = (lambda: drain_stream(gen, rows)) if row == "stream_dict" else (lambda: gen.write.format(row).save(f"{d}/{row}"))
+      return {"s": timed(fn)}
+  gen = DataGenerator({"c": column(row)}, seed=42).size(rows)
+  if "extra" not in req: return {"s": timed(gen.get_df)}
+  core = RandGenerator({"c": column(row)}).map_methods(0, 0, "c")[row]
+  core_s = statistics.median(timed(lambda: core(rows, **SAMPLE_KWARGS[row])) for _ in range(RUNS))
+  tracemalloc.start(); gen.get_df(); peak = tracemalloc.get_traced_memory()[1]; tracemalloc.stop()
+  return {"core_s": core_s, "peak_mib": peak / 2**20}
+
+
+def worker(tree):
+  reply = os.fdopen(os.dup(1), "w")
+  os.dup2(2, 1)  # a print or C-level write lands in stderr, never in the protocol
+  import rand_engine
+  from rand_engine.main._rand_generator import RandGenerator
+  from rand_engine.utils.stream_handler import StreamHandler
+  check_tree(rand_engine.__file__, tree)
+  StreamHandler.sleep_to_contro_throughput = staticmethod(lambda *a: None)
+
+  def send(msg):
+    reply.write(json.dumps(msg) + "\n"); reply.flush()
+  send({"keys": list(RandGenerator({}).map_methods())})
+  for line in sys.stdin:
+    req = json.loads(line)
+    try: out = serve(req)
+    except Exception as e: out = {"error": f"{type(e).__name__}: {e}"}
+    gc.collect()
+    send({**req, **out})
+
+
+def parse_reply(req, line):
+  """The reply dict, or None when the line is not JSON or does not echo the request (= the worker's death)."""
+  try: reply = json.loads(line)
+  except ValueError: return None
+  return reply if isinstance(reply, dict) and all(reply.get(k) == v for k, v in req.items()) else None
+
+
+class Worker:
+  """One tree's worker process; ask() returns the reply, or None once the worker is dead."""
+
+  def __init__(self, tree):
+    self.err = tempfile.TemporaryFile("w+")
+    self.proc = subprocess.Popen([sys.executable, "-u", __file__, "--worker", str(tree)], stdin=subprocess.PIPE,
+                                 stdout=subprocess.PIPE, stderr=self.err, text=True, env={**os.environ, "PYTHONPATH": str(tree)})
+    self.keys = (self.read({}) or {}).get("keys")
+
+  @property
+  def returncode(self):
+    return self.proc.poll()
+
+  def ask(self, req):
+    try: self.proc.stdin.write(json.dumps(req) + "\n"); self.proc.stdin.flush()
+    except OSError: return None
+    return self.read(req)
+
+  def read(self, req):
+    line = []
+    t = threading.Thread(target=lambda: line.append(self.proc.stdout.readline()), daemon=True)
+    t.start(); t.join(CAP_S)
+    reply = parse_reply(req, line[0]) if line else None
+    if reply is None: self.proc.kill(); t.join()
+    return reply
+
+  def reason(self):
+    self.proc.wait(); self.err.seek(0)
+    lines = self.err.read().strip().splitlines()
+    return lines[-1] if lines else f"exit {self.proc.returncode}"
+
+  def close(self):
+    self.proc.kill(); self.proc.wait(); self.err.seek(0)
+    sys.stderr.write(self.err.read())
 
 
 def key(r):
   return (r.get("method") or r["sink"], r["rows"])
 
 
+def field(r):
+  return "get_df_s" if "method" in r else "sink_s"
+
+
 def metric(r):
-  return r["get_df_s"] if "get_df_s" in r else r["sink_s"]
+  return r[field(r)]
 
 
 def compare(current, baseline, limit=LIMIT):
@@ -114,81 +175,96 @@ def compare(current, baseline, limit=LIMIT):
   return failed, [key(r) for r in current if key(r) not in base]
 
 
+def baseline(records):
+  """The base side of A/B records, in compare's record shape."""
+  return [{**r, field(r): r["base_" + field(r)]} for r in records if "base_" + field(r) in r]
+
+
 def check_tree(module_file, expected):
   if Path(module_file).resolve().parents[1] != Path(expected).resolve():
     print(f"rand_engine imported from {module_file}, expected tree {expected}", file=sys.stderr)
     sys.exit(3)
 
 
-def plan_keys(sample_keys, tree_keys, base_pass):
-  if not base_pass and set(tree_keys) - set(sample_keys):
-    sys.exit(f"SAMPLE_KWARGS lacks map_methods keys: {sorted(set(tree_keys) - set(sample_keys))}")
-  absent = {k: "deleted in head" for k in tree_keys if k not in sample_keys}
-  return [k for k in sample_keys if k in tree_keys], absent
+def plan_keys(sample_keys, head_keys, base_keys):
+  missing = sorted(set(head_keys) - set(sample_keys))
+  if missing: sys.exit(f"SAMPLE_KWARGS lacks map_methods keys: {missing}")
+  absent = {} if base_keys is None else {**{k: "deleted in head" for k in base_keys if k not in head_keys},
+                                         **{k: "added in head" for k in head_keys if k not in base_keys}}
+  return [k for k in sample_keys if k in head_keys], absent
 
 
-def attach_base(records, base_records):
-  base_t = {key(r): metric(r) for r in base_records}
-  for r in records:
-    if key(r) in base_t: r["base_get_df_s" if "method" in r else "base_sink_s"] = base_t[key(r)]
-
-
-def render(report, base):
-  failed, _ = compare(report["records"], base.get("records", []))
-  absent = base.get("absent", {})
-  covered = sum("base_get_df_s" in r or "base_sink_s" in r for r in report["records"])
+def render(report, absent, error):
+  records = report["records"]
+  failed, _ = compare(records, baseline(records))
   lines = [(f"# Speed benchmark (same-runner A/B)\n\nhead `{report['commit']}` · base `{report['base_commit'] or 'none'}` · "
             f"Python {report['python']} · NumPy {report['numpy']} · {report['runner']}\n"),
-           f"base rows {covered}/{len(report['records'])}" + (f" · base pass failed: {base['error']}" if base.get("error") else ""),
+           f"base rows {len(baseline(records))}/{len(records)}" + (f" · base pass failed: {error}" if error else ""),
            *(f"- `{k}`: {why}" for k, why in absent.items()), "",
            "| method / sink | rows | rows/µs | base s | head s | ratio | peak MiB |", "|---|---|---|---|---|---|---|"]
-  for r in report["records"]:
-    k, b = key(r), r.get("base_get_df_s", r.get("base_sink_s"))
+  for r in records:
+    k, b = key(r), r.get("base_" + field(r))
     ratio = f"{metric(r) / b:.2f}" + (f" ❌ > {LIMIT}" if k in failed else "") if b else "absent → recorded"
     peak = f"{r['peak_mib']:.1f}" if "peak_mib" in r else "—"
     lines.append(f"| {k[0]} | {k[1]:,} | {r['rows_per_us']:.3f} | {f'{b:.3f}' if b else '—'} | {metric(r):.3f} | {ratio} | {peak} |")
   return "\n".join(lines) + "\n"
 
 
-def read_base(path):
-  base = json.loads(path.read_text()) if path.exists() else {}
-  err = path.with_name("error.txt")
-  if err.exists(): base["error"] = err.read_text().strip()
-  return base
+def run(head, base, sizes, out, error=None):
+  """Coordinate the A/B rows, write benchmarks.json + BENCHMARKS.md, exit 3 on a foreign base tree, 1 over LIMIT."""
+  def ask_head(req):
+    reply = head.ask(req)
+    if reply is None or "error" in reply:
+      sys.exit(f"head worker failed on {req}: {reply['error'] if reply else head.reason()}")
+    return reply
+
+  if head.keys is None: sys.exit(f"head worker failed: {head.reason()}")
+  if error is None and base.keys is None: error = base.reason()
+  methods, absent = plan_keys(list(SAMPLE_KWARGS), head.keys, None if error else base.keys)
+  records = []
+  for i, (row, n) in enumerate([(m, n) for n in sizes for m in methods] + [(s, sizes[0]) for s in SINKS]):
+    req, times = {"row": row, "rows": n}, {"head": [], "base": []}
+    base_ok = error is None and (row in SINKS or row in base.keys)
+    for side in (["base", "head"] if i % 2 == 0 else ["head", "base"]) * RUNS:
+      if side == "head": times["head"].append(ask_head(req)["s"]); continue
+      if not base_ok: continue
+      reply = base.ask(req)
+      if reply is None: error, base_ok = base.reason(), False
+      elif "error" in reply: absent[row], base_ok = f"base raised {reply['error']}", False
+      else: times["base"].append(reply["s"])
+    r = {("sink" if row in SINKS else "method"): row, "rows": n}
+    r[field(r)] = statistics.median(times["head"])
+    r["rows_per_us"] = n / (statistics.mean(times["head"]) * 1e6)
+    if base_ok: r["base_" + field(r)] = statistics.median(times["base"])
+    if row not in SINKS:
+      extra = ask_head({"extra": row, "rows": n})
+      r.update(core_s=extra["core_s"], peak_mib=extra["peak_mib"])
+    records.append(r)
+  report = {"commit": os.environ.get("HEAD_SHA", "local"), "base_commit": os.environ.get("BASE_SHA") or None,
+            "python": platform.python_version(), "numpy": np.__version__,
+            "runner": os.environ.get("RUNNER_NAME", platform.node()), "records": records}
+  os.makedirs(out, exist_ok=True)
+  with open(os.path.join(out, "benchmarks.json"), "w") as f: json.dump(report, f, indent=2)
+  with open(os.path.join(out, "BENCHMARKS.md"), "w") as f: f.write(render(report, absent, error))
+  if base is not None and base.returncode == 3: sys.exit(3)
+  failed, _ = compare(records, baseline(records))
+  if failed: sys.exit(f"over {LIMIT}x base: {failed}")
 
 
 def main(argv=None):
   p = argparse.ArgumentParser()
-  p.add_argument("--baseline", type=Path, default=Path("docs/benchmarks.json"))
-  p.add_argument("--base-pass", metavar="TREE", help="measure the base tree at TREE (on PYTHONPATH)")
+  p.add_argument("--worker", metavar="TREE", help=argparse.SUPPRESS)
+  p.add_argument("--base-tree", type=Path, help="the base commit's tree; missing = every row absent")
   p.add_argument("--out", default="docs/")
   p.add_argument("--sizes", type=int, nargs="+", default=[10**6, 10**7], help="method sizes; the first is the sink size")
   a = p.parse_args(argv)
-  base_pass = a.base_pass is not None
-  check_tree(rand_engine.__file__, a.base_pass if base_pass else Path(__file__).parents[1])
-  StreamHandler.sleep_to_contro_throughput = staticmethod(lambda *a: None)
-  methods, absent = plan_keys(list(SAMPLE_KWARGS), list(RandGenerator({}).map_methods()), base_pass)
-  records = []
-  for n in a.sizes:
-    for m in methods:
-      try: records.append(method_row(m, n, base_pass))
-      except Exception as e:
-        if not base_pass: raise
-        absent[m] = f"base raised {type(e).__name__}: {e}"
-  records += sink_rows(a.sizes[0], absent if base_pass else None)
-  report = {"commit": os.environ.get("HEAD_SHA", "local"), "python": platform.python_version(), "numpy": np.__version__,
-            "runner": os.environ.get("RUNNER_NAME", platform.node()), "records": records}
-  os.makedirs(a.out, exist_ok=True)
-  if base_pass:
-    with open(os.path.join(a.out, "benchmarks.json"), "w") as f: json.dump({**report, "absent": absent}, f, indent=2)
-    return
-  base = read_base(a.baseline)
-  attach_base(records, base.get("records", []))
-  report["base_commit"] = base.get("commit")
-  with open(os.path.join(a.out, "benchmarks.json"), "w") as f: json.dump(report, f, indent=2)
-  with open(os.path.join(a.out, "BENCHMARKS.md"), "w") as f: f.write(render(report, base))
-  failed, _ = compare(records, base.get("records", []))
-  if failed: sys.exit(f"over {LIMIT}x base: {failed}")
+  if a.worker: return worker(a.worker)
+  head = Worker(Path(__file__).parents[1])
+  base = Worker(a.base_tree) if a.base_tree and a.base_tree.is_dir() else None
+  try: run(head, base, a.sizes, a.out, None if base else f"no base tree for commit '{os.environ.get('BASE_SHA', '')}'")
+  finally:
+    for w in (head, base):
+      if w: w.close()
 
 
 if __name__ == "__main__":
