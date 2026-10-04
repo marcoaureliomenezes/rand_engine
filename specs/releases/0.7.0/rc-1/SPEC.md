@@ -70,6 +70,7 @@
   - Table delivery: "Artefato + commit no work branch (Recomendado)". Triggers: "Também em PR para development (Recomendado)". Main thread, by inspection: time median of 3, speed mean (G1, G3 both stand); the SPEC size stays.
   - First baseline: "PR rascunho feature→development (Recomendado)". Main thread, by inspection after planning: csv `zip`/`xz` map through stdlib file objects (probed), parquet `engine` is dead since D18; FR11 gains sink rows; goldens wait for the timezone fix.
   - Summary delivery: "Job summary + comentário no PR (Recomendado)". Goal (/goal): "eu ver testes de benchmark de CI funcionando e publicandu um summary no actions que me é mandado que posso ver + merge de benchmarks na documentação".
+  - Review of 5f097db: CSV through pyarrow "Aceitar a quebra, documentada"; `stream_dict` through Arrow "Tirar da rc-1 (Recomendado)". Main thread, by inspection: a change is measured after it reaches PR #42 by a `chore(bench)` follow-up, and "lands" is the merge to `development` at closure (M2, L3); the shown ratio is the gated ratio, the baseline rolls (L6); each candidate opens its draft release PR at implementation start (L4); the memory pass covers FR11–FR14 (L8).
 - Inferred by the product engineer, approved with the SPEC:
   - A key is admitted only when the FK side can rebuild it from the column spec alone (D5's rule applied to every key input), so `transformers` on a `pk` column or an fk `parent` are rejected (AC1.7, AC2.6).
   - `DataGenerator.option` leaves with `reset_checkpoint`, its only key (AC5.3).
@@ -145,7 +146,7 @@
 
 - AC9.1 `LICENSE` at the repo root carries the MIT text with the author as copyright holder.
 - AC9.2 The built distribution's metadata carries: licence MIT (`pyproject.toml` `license`); a summary stating the identity without "v2"; keywords; `License :: OSI Approved :: MIT License` among the classifiers; project URLs Homepage, Documentation, Repository, Issues, Changelog; `twine check` passes.
-- AC9.3 `CHANGELOG.md` carries 0.6.1, 0.6.2, 0.6.3, 0.6.4 and 0.7.0; 0.7.0 lists every break: `constraints` removed, `pk`/`fk` added, `db_checkpoint` and `option` removed, Spark rejects keys, `duckdb` dropped, same-seed values differ from 0.6.x.
+- AC9.3 `CHANGELOG.md` carries 0.6.1, 0.6.2, 0.6.3, 0.6.4 and 0.7.0; 0.7.0 lists every break: `constraints` removed, `pk`/`fk` added, `db_checkpoint` and `option` removed, Spark rejects keys, `duckdb` dropped, same-seed values differ from 0.6.x, csv written by pyarrow (each AC14.2 divergence, the mixed-type column refused), writer options limited to the documented ones.
 - AC9.4 `pyproject.toml` `version` is `0.7.0`, delivered by the last task of TASKS; tag and publish stay the project pipeline's, at promote.
 
 ### FR10 — Repo hygiene
@@ -159,7 +160,7 @@
 ### FR11 — Speed benchmark (the official CI job)
 
 - A script outside pytest collection runs each `RandGenerator.map_methods` method (one fixed kwargs set each, versioned with the script) as a one-column spec at 10^6 and 10^7 rows: core array time, `DataGenerator.get_df` time, peak memory, speed in rows/µs. Each time is the median of 3 runs; speed is rows ÷ the mean `get_df` µs of the 3 runs.
-- Sink rows: one fixed multi-column spec (`CommonRandSpecs.customers`, versioned with the script) at 10^6 rows times `.write` to csv, parquet and json, and `stream_dict` records/µs with the throughput sleep excluded; same record fields where they apply, `sink` in place of `method`, same 1.3× gate.
+- Sink rows: one fixed multi-column spec (`CommonRandSpecs.customers`, versioned with the script) at 10^6 rows times `.write` to csv, parquet and json, and `stream_dict` records/µs with the throughput sleep excluded; same record fields where they apply, `sink` in place of `method`, same 1.3× gate; the `stream_dict` row is measured only, no before/after source in rc-1.
 - AC11.1 One workflow job runs it on `pull_request` to `master`, `pull_request` to `development` and `workflow_dispatch` (usable once the workflow is on `master`); no other trigger.
 - AC11.2 `docs/benchmarks.json` holds one record per method and size — `method`, `rows`, `core_s`, `get_df_s`, `peak_mib`, `rows_per_us` — and top-level `commit`, `python`, `numpy`, `runner`; the script renders `docs/BENCHMARKS.md` from it.
 - AC11.3 The job fails when any method's `get_df_s` exceeds 1.3× its baseline at the same size; a method absent from the baseline is recorded, not failed. The job never pushes; its permissions are `contents: read` and `pull-requests: write` only. It uploads `docs/benchmarks.json` and `docs/BENCHMARKS.md` as a workflow artifact, and the agent commits both on the work branch with the change measured.
@@ -168,8 +169,10 @@
 
 ### FR12 — Speed gate on generation changes
 
-- A change to an existing method lands only when its FR11 rows are ≤ 1.3× baseline; the gate fires on the PR to `development`, and `workflow_dispatch` stays available on the work branch; the operator sees the rows before and after.
-- AC12.1 The release PR `feature/0.7.0` → `development` opens now as a draft; its first benchmark run's artifact is the baseline, committed on the work branch before T-070-3; the PR merges only at rc-1 closure, reviewed APPROVED and CI green. T-070-3 (FR4) is the first change under the gate: a method over 1.3× under `Generator(PCG64)` switches the bit generator (e.g. `SFC64`) with FR4's ACs re-run, else T-070-3 is reverted.
+- A change to an existing method or sink is measured once it reaches PR #42: its feat commit lands first, then `chore(bench): FR11 rows for T-070-N` commits the artifact json and table with the run URL, and the operator sees the rows before and after.
+- The ratio shown and gated is the median `get_df_s` (a sink row: its median sink time) over the baseline's; rows/µs stays the speed column; each committed artifact is the next baseline.
+- A change lands at the merge to `development` at closure, only with every FR11 row ≤ 1.3× baseline; a change over it is fixed or reverted before closure.
+- AC12.1 The release PR `feature/0.7.0` → `development` opens now as a draft; its first benchmark run's artifact is the baseline, committed on the work branch before T-070-3; the PR merges only at rc-1 closure, reviewed APPROVED and CI green; each later candidate opens its own draft release PR when its implementation starts. T-070-3 (FR4) is the first change under the gate: a method over 1.3× under `Generator(PCG64)` switches the bit generator (e.g. `SFC64`) with FR4's ACs re-run, else T-070-3 is reverted.
 - Rule for later additions (rc-2): a new method ≤ 1.5× its closest existing sibling in the same run; a modifier key ≤ +25% over its base method.
 
 ### FR13 — Golden seeded output
@@ -177,13 +180,12 @@
 - AC13.1 Right after T-070-3 and the fix of `timestamps-depend-on-local-timezone` merge, every NumPy-engine method has a seeded golden test at 10^3 rows asserting literal values or a literal hash of its output.
 - AC13.2 From then on, a spec without keys added later yields bit-identical output for the same seed; a deliberate change rewrites its golden in the same commit, the body stating why.
 
-### FR14 — Vectorised hot paths, output unchanged
+### FR14 — Vectorised hot paths
 
 - pyarrow is already a runtime dependency: nothing is added (G4); JSON output stays on pandas (pyarrow has no JSON writer).
 - AC14.1 `dates` formats without a per-row Python loop; its strings equal the per-row `strftime` strings for the same timestamps in UTC (the timezone bug's fix); FR13 goldens unchanged.
-- AC14.2 `csv` and `parquet` files are written through pyarrow; each file read back equals the pandas-written file of the same frame (values; dtypes per format), for every option and compression `docs/3_WRITING_FILES.md` lists for those formats except the dead parquet `engine` (the docs drop it); csv `zip` and `xz` go through stdlib file objects like `gzip` and `bz2`.
-- AC14.3 `stream_dict` builds its records through Arrow (`Table.to_pylist` or equivalent); each equals (`==`) today's `to_dict('records')` record.
-- AC14.4 Each of AC14.1–AC14.3 lands with its FR11 rows before and after shown to the operator (FR12): the `dates` method row for AC14.1, the sink rows for AC14.2 and AC14.3.
+- AC14.2 `csv` and `parquet` files are written through pyarrow for every option and compression `docs/3_WRITING_FILES.md` lists except the dead parquet `engine` (the docs drop it); csv `zip` and `xz` go through stdlib file objects like `gzip` and `bz2`; the writer's `.option()`/`.options()` map only those documented options and never forward other pandas `to_csv` kwargs. Parquet reads back equal to the pandas-written file (values and dtypes). CSV diverges by ruling, each item asserted as re-probed at pandas 2.2.2 / pyarrow 23.0.1 (T-070-16): booleans `true`/`false`; integral floats written `1`, read back as int; a quoted header; timestamps gain `.000000`; a mixed-type object column raises a `RandEngineError` naming the column.
+- AC14.4 AC14.1 and AC14.2 each land with their FR11 rows before and after shown to the operator (FR12): the `dates` method row for AC14.1, the csv and parquet sink rows for AC14.2.
 
 ## 4. Replaces
 
@@ -193,7 +195,7 @@
 - `DataGenerator`: `np.random.seed(seed)` on the global state; `del spec["constraints"]` on the first call; `db_checkpoint(conn)`; `option("reset_checkpoint", True)` and `option` itself; one SQLite handler per instance.
 - `Changer` (`utils/update.py`) and its `np.random.seed(None)` reseed — imported by `WebServerLogs`, never called.
 - `NPCore.gen_uuid4`'s per-row `uuid.uuid4()` loop (→ FR4); `NPCore.gen_dates`'s per-row `fromtimestamp().strftime` loop (→ AC14.1).
-- `FileHandler.to_csv`/`to_parquet` through pandas (→ AC14.2); `stream_dict`'s `to_dict('records')` (→ AC14.3).
+- `FileHandler.to_csv`/`to_parquet` through pandas, and the writer forwarding any option to pandas (→ AC14.2).
 - README: the `unique_ids`, `references`, `get_dfs`, multi-spec and `splitable` examples; six dead links; the MIT claim without a `LICENSE`; the 81.5 s benchmark and the hand-written test count.
 - `docs/4_CONSTRAINTS.md`'s `constraints`/`references` guide.
 - `specs_bkp/` — the tracked retire backup.
@@ -204,6 +206,7 @@
 - Arm B, operator-confirmed, fixed in parallel bug worktrees — not tasks of this candidate: D5 writer size, D7 stream `timeout`/`trigger`, D8 `numFiles` consumed, D9 warnings raised as errors, D10 `integers.dtype`, D11 `distincts_external`, D12 timezone, D14 `int_type` overflow, D15 float bounds and Spark exclusive max, D17 dead CDC module, D18 unused dependencies (`fastavro`, `fastparquet`) and `PyCore`'s DuckDB import, D20 `uuid4` kwargs and `length`.
 - Deferred to the backlog through the main thread's intake: Spark `pk`/`fk` parity; a DB key-sink writer (output only); an event-time-ordered FK (`born_before`).
 - Features from the RandSpec review → 0.7.0 rc-2 after rc-1 closes (grill 2026-10-04: null_rate, constant, distributions, anomaly_rate, faker_pool, from_schema, writer memory); Polars or DuckDB engines.
+- stream_dict via Arrow → backlog (break needs its own ruling).
 - Not offered: composite keys, fan-out per parent, orphan or bad-data rates, hash-UUID keys, Spark seeding, a single method registry, a multi-spec container (`get_dfs`), a docs site, Python 3.13/3.14 and pandas 3 support, CI security-scan hardening.
 
 ## 6. Dependencies and risks
@@ -213,6 +216,7 @@
 - Constitution and Tech Stack: the ADR 0002 accept commit, at SPEC approval in this release worktree (an `impl` worktree cannot write `specs/`), carries the paired canonical hunks: invariant 8 rewritten (no SQL surface remains), Exclusion 1 rewritten (relations are stateless keys; a database is only ever an output sink), invariant 4 kept (this approved SPEC is the revision it requires), and `ARCHITECTURE.md` `## Tech Stack` without `duckdb`, `fastavro`, `fastparquet` (invariant 11).
 - Memory pass at closure: `pk-fk-constraints` (rewritten for keys), `data-generator`, `rand-spec-grammar`, `spark-generator`, `generation-methods`, `public-api`; `ARCHITECTURE.md` Structure and Tech Stack; `QUALITY.md` Test architecture.
 - Also at closure: `writers-and-streaming` (the writer `size` text leaves by ruling; `numFiles` now splits `size`); `ARCHITECTURE.md`'s frontmatter `summary` and `## Structure` still describe the checkpoint and are rewritten; the Tech Stack removal of `fastavro`/`fastparquet` anticipates the Arm B fix of D18.
+- Memory pass for FR11–FR14: `writers-and-streaming` (CSV through pyarrow and its divergences, compression through stdlib file objects, `.option()` mapping only documented options); `QUALITY.md` (the stress job moved to `benchmarks.yml`, the benchmark job and gate, the goldens); `generation-methods` (`dates` vectorised, UTC).
 - Constitution Exclusion 2 drops "persisted checkpoint" in its own commit (owner: `specs/AGENTS.md` canon table; no `### P-NN` statement, so no ADR).
 
 | risk | mitigation |
@@ -222,4 +226,6 @@
 | users' seeded 0.6.x outputs change | the 0.7.0 CHANGELOG break list; AC7.5, AC9.3 |
 | README examples drift again | executed in CI; AC7.2, AC8.3 |
 | an Arm B fix and a task edit the same function | the Parallel schedule serialises them |
+| CSV through pyarrow changes users' files | ruled break; each divergence asserted (AC14.2) and listed (AC9.3) |
+| shared-runner noise trips or hides the 1.3× gate | median of 3; rolling baseline; every before/after shown to the operator (FR12) |
 
