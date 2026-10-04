@@ -6,7 +6,7 @@
 
 Every commit touching `.py` carries `test-audit:` and `mutation:` lines (PLAN §4). Bug-merge waits: PLAN §5. Default tests ≤ 10^4 rows; `Stress:` variants carry `@pytest.mark.stress` (AC10.5, PLAN §4).
 
-- [ ] T-070-1 — Tracer: `pk` sequence + `fk` uniform through `get_df` (FR1, FR2 slice). `W:` `rand_engine/core/_keys.py`, `rand_engine/main/_rand_generator.py`, `rand_engine/main/data_generator.py`, `rand_engine/validators/advanced_validator.py`, `tests/test_8_consistency.py`, `tests/fixtures/f3_data_generator_constraints.py`
+- [-] T-070-1 — Tracer: `pk` sequence + `fk` uniform through `get_df` (FR1, FR2 slice). `W:` `rand_engine/core/_keys.py`, `rand_engine/main/_rand_generator.py`, `rand_engine/main/data_generator.py`, `rand_engine/validators/advanced_validator.py`, `tests/test_8_consistency.py`, `tests/fixtures/f3_data_generator_constraints.py`
   blocked by: none. delivers: the operator generates a parent and a child frame whose integer FK values all sit in the parent PK set.
   `Keys.gen_pk` (sequence), `Keys.gen_fk` (uniform, `cell_hash` port); `map_methods(offset, key_seed)` binds them by `partial`; `DataGenerator._key_seed` from `SeedSequence`; the loop builds `map_methods` per column; `pk`/`fk` in `METHOD_SPECS`. `test_8` rebuilt (old cases and the f3 fixture deleted: their target leaves in T-070-2).
   RED: `tests/test_8_consistency.py` — AC1.1, AC2.1 (sequence parent), AC3.3 at light sizes; the 10^6 variants under `stress`; asserts on the output read back (AC10.3). Merges after T-070-12 (marker registered).
