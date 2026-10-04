@@ -169,7 +169,7 @@
 
 ### FR12 — Speed gate on generation changes
 
-- A change to an existing method or sink is measured once it reaches PR #42: its feat commit lands first, then `chore(bench): FR11 rows for T-070-N` commits the artifact json and table with the run URL, and the operator sees the rows before and after.
+- A change to an existing method or sink is measured once it reaches PR #42: its feat commit lands first; after the PR #42 run, a fresh `impl` worktree commits the artifact json and table as `chore(T-070-N): FR11 rows — <run URL>`, reviewed APPROVED and merged on its own, and the operator sees the rows before and after.
 - The ratio shown and gated is the median `get_df_s` (a sink row: `sink_s`) over the baseline's; rows/µs stays the speed column; each committed artifact is the next baseline.
 - A change lands at the merge to `development` at closure, only with every FR11 row ≤ 1.3× baseline; a change over it is fixed or reverted before closure.
 - AC12.1 The release PR `feature/0.7.0` → `development` opens now as a draft; its first benchmark run's artifact is the baseline, committed on the work branch before T-070-3; the PR merges only at rc-1 closure, reviewed APPROVED and CI green; each later candidate opens its own draft release PR when its implementation starts. T-070-3 (FR4) is the first change under the gate: a method over 1.3× under `Generator(PCG64)` switches the bit generator (e.g. `SFC64`) with FR4's ACs re-run, else T-070-3 is reverted.
