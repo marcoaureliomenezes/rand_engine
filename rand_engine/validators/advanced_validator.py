@@ -380,7 +380,7 @@ class AdvancedValidator:
         Validates a complete DataGenerator specification.
         
         Combines validation from CommonValidator (common methods) and 
-        AdvancedValidator (advanced methods) plus constraints validation.
+        AdvancedValidator (advanced methods); a `constraints` key is refused.
         
         Args:
             spec: Specification dictionary {column_name: {method: ..., kwargs: ...}}
@@ -408,14 +408,11 @@ class AdvancedValidator:
             )
             return errors
         
-        # Validate constraints at spec level (if exists)
         constraints_errors = cls.validate_constraints(spec)
-        errors.extend(constraints_errors)
+        if constraints_errors:
+            return constraints_errors
         
-        # Validate each column (excluding constraints)
         for col_name, col_config in spec.items():
-            if col_name == "constraints":
-                continue  # Already validated above
             errors.extend(cls._validate_column_complete(col_name, col_config))
         
         return errors
@@ -511,165 +508,14 @@ class AdvancedValidator:
     
     @classmethod
     def validate_constraints(cls, spec: Dict[str, Any]) -> List[str]:
-        """
-        Validates constraints field in specification.
-        
-        Constraints define Primary Keys (PK) and Foreign Keys (FK) for data consistency.
-        
-        Structure:
-            "constraints": {
-                "constraint_name": {
-                    "name": "table_name",        # Checkpoint table name
-                    "tipo": "PK" | "FK",         # Constraint type
-                    "fields": ["field1", ...],   # Field list
-                    "watermark": 60              # Optional: FK lookback in seconds
-                }
-            }
-        """
-        errors = []
-        
+        """Refuses a `constraints` key: relations are stateless `pk`/`fk` columns."""
         if "constraints" not in spec:
-            return errors  # Constraints are optional
-        
-        constraints = spec["constraints"]
-        
-        # Validate constraints is a dictionary
-        if not isinstance(constraints, dict):
-            errors.append(
-                f"❌ 'constraints' must be dictionary, got {type(constraints).__name__}\n"
-                f"   Correct example:\n"
-                f"   'constraints': {{\n"
-                f"       'users_pk': {{'name': 'users_pk', 'tipo': 'PK', 'fields': ['user_id VARCHAR(8)']}}\n"
-                f"   }}"
-            )
-            return errors
-        
-        if len(constraints) == 0:
-            errors.append(
-                "⚠️  'constraints' is empty. Remove it if not needed."
-            )
-            return errors
-        
-        # Validate each constraint
-        for constraint_name, constraint_config in constraints.items():
-            errors.extend(
-                cls._validate_constraint(constraint_name, constraint_config)
-            )
-        
-        return errors
-
-    @classmethod
-    def _validate_constraint(cls, constraint_name: str, config: Any) -> List[str]:
-        """Validates individual constraint configuration."""
-        errors = []
-        
-        # Validate config is a dictionary
-        if not isinstance(config, dict):
-            errors.append(
-                f"❌ Constraint '{constraint_name}': must be dictionary, got {type(config).__name__}\n"
-                f"   Fix to:\n"
-                f"   '{constraint_name}': {{'name': 'users_pk', 'tipo': 'PK', 'fields': ['user_id VARCHAR(8)']}}"
-            )
-            return errors
-        
-        # Required fields
-        required_fields = ["name", "tipo", "fields"]
-        for field in required_fields:
-            if field not in config:
-                errors.append(
-                    f"❌ Constraint '{constraint_name}': missing required field '{field}'\n"
-                    f"   Required fields: name, tipo, fields\n"
-                    f"   Example:\n"
-                    f"   '{constraint_name}': {{\n"
-                    f"       'name': 'categories_pk',\n"
-                    f"       'tipo': 'PK',\n"
-                    f"       'fields': ['category_id VARCHAR(4)']\n"
-                    f"   }}"
-                )
-        
-        if "tipo" in config:
-            tipo = config["tipo"]
-            
-            # Validate tipo is string
-            if not isinstance(tipo, str):
-                errors.append(
-                    f"❌ Constraint '{constraint_name}': 'tipo' must be string, got {type(tipo).__name__}"
-                )
-            # Validate tipo is PK or FK
-            elif tipo not in ["PK", "FK"]:
-                errors.append(
-                    f"❌ Constraint '{constraint_name}': 'tipo' must be 'PK' or 'FK', got '{tipo}'\n"
-                    f"   • 'PK' = Primary Key (creates checkpoint table)\n"
-                    f"   • 'FK' = Foreign Key (references checkpoint table)"
-                )
-        
-        if "name" in config:
-            name = config["name"]
-            
-            # Validate name is string
-            if not isinstance(name, str):
-                errors.append(
-                    f"❌ Constraint '{constraint_name}': 'name' must be string, got {type(name).__name__}"
-                )
-            elif len(name.strip()) == 0:
-                errors.append(
-                    f"❌ Constraint '{constraint_name}': 'name' cannot be empty"
-                )
-        
-        if "fields" in config:
-            fields = config["fields"]
-            
-            # Validate fields is a list
-            if not isinstance(fields, list):
-                errors.append(
-                    f"❌ Constraint '{constraint_name}': 'fields' must be list, got {type(fields).__name__}\n"
-                    f"   Examples:\n"
-                    f"   • PK: ['user_id VARCHAR(8)', 'type VARCHAR(2)']  (with datatypes)\n"
-                    f"   • FK: ['user_id', 'type']  (without datatypes)"
-                )
-            elif len(fields) == 0:
-                errors.append(
-                    f"❌ Constraint '{constraint_name}': 'fields' cannot be empty"
-                )
-            else:
-                # Validate each field is a string
-                for i, field in enumerate(fields):
-                    if not isinstance(field, str):
-                        errors.append(
-                            f"❌ Constraint '{constraint_name}': fields[{i}] must be string, got {type(field).__name__}"
-                        )
-        
-        # Validate watermark (FK only)
-        if "watermark" in config:
-            watermark = config["watermark"]
-            tipo = config.get("tipo", "")
-            
-            if tipo == "PK":
-                errors.append(
-                    f"⚠️  Constraint '{constraint_name}': 'watermark' is only used for FK (Foreign Keys)\n"
-                    f"   Remove 'watermark' or change 'tipo' to 'FK'"
-                )
-            
-            if not isinstance(watermark, (int, float)):
-                errors.append(
-                    f"❌ Constraint '{constraint_name}': 'watermark' must be int/float (seconds), "
-                    f"got {type(watermark).__name__}\n"
-                    f"   Example: 'watermark': 60  (lookback 60 seconds)"
-                )
-            elif watermark <= 0:
-                errors.append(
-                    f"❌ Constraint '{constraint_name}': 'watermark' must be positive, got {watermark}"
-                )
-        
-        # Suggest adding watermark for FK (warning only)
-        if "tipo" in config and config["tipo"] == "FK" and "watermark" not in config:
-            errors.append(
-                f"⚠️  Constraint '{constraint_name}': FK without 'watermark' will query ALL records\n"
-                f"   Recommendation: Add 'watermark' to limit lookback period\n"
-                f"   Example: 'watermark': 60  (only records from last 60 seconds)"
-            )
-        
-        return errors
+            return []
+        return [
+            "❌ 'constraints' is not supported; declare keys as columns:\n"
+            + cls._format_example(cls.METHOD_SPECS["pk"]["example"]) + "\n"
+            + cls._format_example(cls.METHOD_SPECS["fk"]["example"])
+        ]
     
     @classmethod
     def _validate_transformers(cls, col_name: str, transformers: Any) -> List[str]:

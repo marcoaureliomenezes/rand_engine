@@ -198,3 +198,10 @@ def test_complex_distincts_ip_address(rand_spec_all_methods, size):
     for part in parts[1:]:
       assert 0 <= int(part) <= 255
 
+
+
+def test_checkpoint_surface_is_gone():
+  """AC5.3: no db_checkpoint, no option."""
+  g = DataGenerator({"id": {"method": "pk"}})
+  assert not hasattr(g, "db_checkpoint")
+  assert not hasattr(g, "option")

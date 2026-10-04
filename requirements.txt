@@ -4,4 +4,3 @@ faker==28.4.1
 pytest==9.0.3
 pyarrow==23.0.1
 poetry==2.3.4
-duckdb==1.4.2

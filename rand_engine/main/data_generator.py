@@ -1,16 +1,13 @@
 import time
 import pandas as pd
 import numpy as np
-from typing import List, Optional, Generator, Callable, Any
+from typing import List, Optional, Generator, Callable
 from rand_engine.main._rand_generator import RandGenerator
-from rand_engine.main._constraints_handler import ConstraintsHandler
 from rand_engine.file_handlers._writer_batch import FileBatchWriter
 from rand_engine.file_handlers._writer_stream import FileStreamWriter
 from rand_engine.utils.stream_handler import StreamHandler
 from rand_engine.validators.advanced_validator import AdvancedValidator
 from rand_engine.validators.exceptions import SpecValidationError, RandEngineError
-from rand_engine.integrations._duckdb_handler import DuckDBHandler
-from rand_engine.integrations._sqlite_handler import SQLiteHandler
   
 class DataGenerator:
       
@@ -23,11 +20,7 @@ class DataGenerator:
     np.random.seed(seed)
     self._key_seed = int(np.random.SeedSequence(seed).generate_state(1)[0])
     self._size = None
-    self._constraints_db_path = ":memory:"
     self._transformers: List[Optional[Callable]] = []
-    self.aux_db_conn = SQLiteHandler(db_path=":memory:")
-    self.constraints_handler = ConstraintsHandler(db_conn=self.aux_db_conn)
-    self._options = {}
  
 
   def __evaluate_spec(self):
@@ -50,15 +43,11 @@ class DataGenerator:
     """
     def wrapped_lazy_dataframe():
       evaluated_spec = self.__evaluate_spec()
-      constraints = evaluated_spec.get("constraints", {})
-      if constraints:
-        del evaluated_spec["constraints"]
       rand_generator = RandGenerator(evaluated_spec)
       
       df_pandas = rand_generator.generate_first_level(size=size, key_seed=self._key_seed)
       df_pandas = rand_generator.apply_embedded_transformers(df_pandas)
       df_pandas = rand_generator.apply_global_transformers(df_pandas, self._transformers)
-      df_pandas = self.constraints_handler.generate_consistency(df_pandas, constraints)
       return df_pandas
     return wrapped_lazy_dataframe
   
@@ -79,21 +68,7 @@ class DataGenerator:
     return self._size() if callable(self._size) else self._size
   
 
-  def db_checkpoint(self, db_conn: Any):
-    self.aux_db_conn = db_conn
-    return self
-
-
-  def option(self, key: str, value: Any):
-    if not hasattr(self, "_options"):
-      self._options = {}
-    self._options[key] = value
-    return self
-
-
   def get_df(self):
-    if self._options.get("reset_checkpoint"):
-      self.constraints_handler.delete_state()
     lazy_dataframe = self.wrapped_df_generator(size=self._resolve_size())
     assert lazy_dataframe is not None, "You need to generate a DataFrame first."
     assert callable(lazy_dataframe), "wrapped_df_generator must return a callable"

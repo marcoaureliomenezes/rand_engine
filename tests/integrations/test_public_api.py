@@ -55,9 +55,6 @@ class TestPublicAPI:
             "RandGenerator",
             "FileBatchWriter", 
             "FileStreamWriter",
-            "DuckDBHandler",
-            "SQLiteHandler",
-            "BaseDBHandler"
         ]
         
         for name in private_names:
@@ -76,17 +73,11 @@ class TestPublicAPI:
         """
         # These imports should work (Python doesn't enforce privacy)
         # but they start with underscore to discourage direct use
-        from rand_engine.integrations import _duckdb_handler
-        from rand_engine.integrations import _sqlite_handler
-        from rand_engine.integrations import _base_handler
         from rand_engine.file_handlers import _writer_batch
         from rand_engine.file_handlers import _writer_stream
         from rand_engine.main import _rand_generator
         
         # Verify the convention: all start with underscore
-        assert _duckdb_handler.__name__ == "rand_engine.integrations._duckdb_handler"
-        assert _sqlite_handler.__name__ == "rand_engine.integrations._sqlite_handler"
-        assert _base_handler.__name__ == "rand_engine.integrations._base_handler"
         assert _writer_batch.__name__ == "rand_engine.file_handlers._writer_batch"
         assert _writer_stream.__name__ == "rand_engine.file_handlers._writer_stream"
         assert _rand_generator.__name__ == "rand_engine.main._rand_generator"
@@ -188,9 +179,8 @@ class TestPublicAPI:
         import os
         import glob
         
-        # Find all Python files in integrations, file_handlers, and main
+        # Find all Python files in file_handlers and main
         internal_dirs = [
-            "rand_engine/integrations",
             "rand_engine/file_handlers",
             "rand_engine/main"
         ]
@@ -266,7 +256,6 @@ class TestPublicAPI:
         # Should only have DataGenerator
         assert "DataGenerator" in namespace
         assert "RandGenerator" not in namespace
-        assert "DuckDBHandler" not in namespace
         
         print(f"\n✓ Star import only brings: {list(namespace.keys())}")
 
@@ -287,12 +276,8 @@ class TestInternalAccess:
         # These work, but are NOT part of the public API
         # Users should NOT rely on these - they may change without warning
         
-        from rand_engine.integrations._duckdb_handler import DuckDBHandler
-        from rand_engine.integrations._sqlite_handler import SQLiteHandler
         from rand_engine.main._rand_generator import RandGenerator
         
-        assert DuckDBHandler is not None
-        assert SQLiteHandler is not None
         assert RandGenerator is not None
         
         print("\n✓ Internal modules are accessible (but NOT recommended)")
@@ -359,23 +344,6 @@ def test_every_shipped_module_imports():
     root = Path(rand_engine.__file__).parent
     for path in sorted(root.rglob("*.py")):
         importlib.import_module(".".join(("rand_engine", *path.relative_to(root).with_suffix("").parts)))
-
-
-def test_py_core_import_does_not_load_duckdb():
-    """The pure-python core uses no DB; importing it must not pull duckdb in."""
-    import subprocess
-    import sys
-
-    import rand_engine.core
-
-    # Load the module file alone: the package __init__ legitimately loads duckdb via DataGenerator.
-    path = f"{rand_engine.core.__path__[0]}/_py_core.py"
-    code = (
-        "import importlib.util as u, sys; s = u.spec_from_file_location('m', sys.argv[1]);"
-        " s.loader.exec_module(u.module_from_spec(s)); print('duckdb' in sys.modules)"
-    )
-    out = subprocess.run([sys.executable, "-c", code, path], capture_output=True, text=True, check=True)
-    assert out.stdout.strip() == "False"
 
 
 if __name__ == "__main__":

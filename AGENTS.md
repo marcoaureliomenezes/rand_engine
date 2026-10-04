@@ -26,8 +26,8 @@ Production edits need the live release in `IMPLEMENTATION` and its trio at
 
 ## Repo-Specific Stop Conditions
 
-- Stop before treating DuckDB or SQLite as a correlation engine: they hold PK/FK
-  checkpoint state only (constitution, Exclusions).
+- Relations are stateless `pk`/`fk` columns computed per row; stop before adding
+  any persisted key state or database to generation.
 - Stop before changing public API names, RandSpec method grammar, writer
   semantics, release/version policy, or the supported Python/Spark matrix without
   an approved SPEC.
@@ -39,11 +39,9 @@ Production edits need the live release in `IMPLEMENTATION` and its trio at
 
 - `rand_engine/main/data_generator.py` - Pandas generation composition root.
 - `rand_engine/main/spark_generator.py` - Spark generation facade.
-- `rand_engine/main/_constraints_handler.py` - PK/FK checkpoint state (SQLite by default, DuckDB optional).
 - `rand_engine/core/` - NumPy, Python, and Spark generation primitives.
 - `rand_engine/validators/` - RandSpec grammar validation.
 - `rand_engine/file_handlers/` - batch and stream writers.
-- `rand_engine/integrations/` - DuckDB and SQLite handlers.
 - `rand_engine/examples/` and `rand_engine/templates/` - built-in specs/templates.
 - `tests/` - pytest suite; run with caches disabled or redirected outside the repo.
 - `specs/` - dadaia-workspace SDD truth.
