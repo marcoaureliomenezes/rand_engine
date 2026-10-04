@@ -349,5 +349,17 @@ class TestPackageStructure:
         print(f"✓ Essential public API present: {essential_public}")
 
 
+def test_every_shipped_module_imports():
+    """Every module in the package must import; dead code that cannot is a defect."""
+    import importlib
+    from pathlib import Path
+
+    import rand_engine
+
+    root = Path(rand_engine.__file__).parent
+    for path in sorted(root.rglob("*.py")):
+        importlib.import_module(".".join(("rand_engine", *path.relative_to(root).with_suffix("").parts)))
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])
