@@ -1,6 +1,6 @@
 # SPEC — Release: 0.7.0, candidate 1 (relations core + visibility)
 
-**Status:** In review
+**Status:** Approved
 **Release ID:** 0.7.0
 **Owner:** dd-product-engineer
 **Opened:** 2026-10-03
@@ -60,6 +60,7 @@
   - "Delete `.write.size()` (Recommended)" — the writer's own `size` leaves; the generator's `size` is the one row count.
 - Operator re-approval of the amended trio, 2026-10-03, verbatim: "Re-approve all three (Recommended)".
 - Operator demand, 2026-10-04, verbatim: "precisamos tirar os testes de stress. esse server não aguenta. vamos cria-los em jobs de CI. não precisamos ficar criando milhoes e milhoes de linhas aqui, ok?? testes devem ser leves. benchmarks deixaremos para etapa de CI." Settled by inspection: marker + CI job — the operator named CI jobs; the `stress` marker is the mechanism (AC10.5); every large-size AC is restated at ≤ 10^4 rows with the same property, its large size kept as a `Stress:` variant.
+- Operator re-approval of the light-tests amendment, 2026-10-04, verbatim: "Re-approve (Recommended)".
 - Inferred by the product engineer, approved with the SPEC:
   - A key is admitted only when the FK side can rebuild it from the column spec alone (D5's rule applied to every key input), so `transformers` on a `pk` column or an fk `parent` are rejected (AC1.7, AC2.6).
   - `DataGenerator.option` leaves with `reset_checkpoint`, its only key (AC5.3).
