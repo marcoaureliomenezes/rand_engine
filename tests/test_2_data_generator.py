@@ -293,8 +293,16 @@ def test_golden_covers_every_numpy_method():
 
 @pytest.mark.parametrize("method", sorted(GOLDEN_SHA256))
 def test_golden_seeded_output(method):
-  import hashlib, json
+  import hashlib
+  import json
   from benchmarks.speed import column
   df = DataGenerator({"c": column(method)}, seed=42).size(10**3).get_df()
-  # to_dict gives Python scalars: hash independent of numpy int width (int32 on Windows) and locale
   assert hashlib.sha256(json.dumps(df.to_dict("list")).encode()).hexdigest() == GOLDEN_SHA256[method]
+
+
+def test_golden_multi_column_draw_order():
+  import hashlib
+  import json
+  from benchmarks.speed import SINK_SPEC
+  df = DataGenerator(SINK_SPEC, seed=42).size(10**3).get_df()
+  assert hashlib.sha256(json.dumps(df.to_dict("list")).encode()).hexdigest() == "3b0464af85f501117a2be790d55ac1bd856a004f6745f781d317dabcc9dcb10f"
