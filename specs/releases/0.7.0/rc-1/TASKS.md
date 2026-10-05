@@ -1,10 +1,10 @@
 # TASKS — Release: 0.7.0, candidate 1 (relations core + visibility)
 
-**Status:** Approved
+**Status:** In review
 **Release ID:** 0.7.0
 **Owner:** dd-software-engineer
 
-Test stack and light-tests rule: PLAN §4, binding on every task that touches tests or `.py`. Speed tasks close with a follow-up `impl` worktree (`W:` `docs/benchmarks.json`, `docs/BENCHMARKS.md`; commit `chore(T-070-N): FR11 rows — <run URL>`, own APPROVED review and merge; PLAN §3) before `[x]`.
+Test stack and light-tests rule: PLAN §4, binding on every task that touches tests or `.py`. Speed tasks close with a follow-up `impl` worktree (`W:` `docs/benchmarks.json`, `docs/BENCHMARKS.md`; commit `chore(T-070-N): FR11 rows — <run URL>`, under an APPROVED verdict; PLAN §3) before `[x]`; the `[x]` may land in the same fast-forward merge, after that commit, one APPROVED verdict over the series.
 
 - [x] T-070-1 — Tracer: `pk` sequence + `fk` uniform through `get_df` (FR1, FR2 slice). `W:` `rand_engine/core/_keys.py`, `rand_engine/main/_rand_generator.py`, `rand_engine/main/data_generator.py`, `rand_engine/validators/advanced_validator.py`, `tests/test_8_consistency.py`, `tests/fixtures/f3_data_generator_constraints.py`
   blocked by: none. delivers: the operator generates a parent and a child frame whose integer FK values all sit in the parent PK set.
@@ -61,8 +61,8 @@ Test stack and light-tests rule: PLAN §4, binding on every task that touches te
   RED: `tests/test_benchmarks.py` — `compare` on literal head/base records: ratio 1.29 passes, 1.31 fails, on a method row and on a sink row; a row the base lacks is reported, not failed; the tree assertion exits 3 on a foreign `rand_engine` path; key planning (head key missing from `SAMPLE_KWARGS` exits naming it; base-only key absent "deleted in head"; head-only key gets no base request); the coordinator over fake in-process workers (no subprocess, no real timing): the full request sequence is literal: every row's alternating six (even B,H,B,H,B,H; odd H,B,H,B,H,B), then every head-only key's timed calls (after every shared row), then all head extras, none before the last timed row, a base `error` reply renders that row absent with its reason, a base EOF renders every remaining row absent and `base pass failed: <reason>`, a base worker ending with returncode 3 → coordinator exits 3 with the table written, a head `error` reply or head EOF → coordinator exits non-zero.
 - [-] T-070-14 — Golden seeded output (FR13). `W:` `tests/test_2_data_generator.py`
   blocked by: T-070-3, bug `timestamps-depend-on-local-timezone`. delivers: the operator changes generation code and learns at once whether any seeded output moved.
-  One seeded `get_df` at 10^3 rows per NumPy-engine method, `pk`/`fk` excluded (AC13.2), specs from `benchmarks/speed.py` `SAMPLE_KWARGS`, asserting its keys minus `pk`/`fk` equal `map_methods`'s; literal values or a literal sha256; expected literals from a UTC run after B8 (`timestamps-depend-on-local-timezone`) merged (AC13.1, PLAN §5).
-  RED: `tests/test_2_data_generator.py` — AC13.1; AC13.2 is the standing rule, stated in `tests/AGENTS.md` by T-070-10.
+  One seeded `get_df` at 10^3 rows per NumPy-engine method, `pk`/`fk` excluded (AC13.2), specs from `benchmarks/speed.py` `SAMPLE_KWARGS`, asserting its keys minus `pk`/`fk` equal `map_methods`'s; plus one multi-column golden over `benchmarks/speed.py` `SINK_SPEC` (imported, 10^3 rows) pinning cross-column draw order; literal values or a literal sha256 of `json.dumps(df.to_dict("list"))`; expected literals from a local `TZ=UTC` run after B8 (`timestamps-depend-on-local-timezone`) merged, confirmed by the green 9-leg matrix (AC13.1, PLAN §4). Bug `distincts-multi-map-drops-levels-silently` rewrites the `distincts_multi_map` golden and its `SAMPLE_KWARGS` sample on purpose, rewritten in the same commit with the reason, per AC13.2.
+  RED: `tests/test_2_data_generator.py` — AC13.1, per method and the `SINK_SPEC` multi-column golden (a cross-column draw-order swap goes red); AC13.2 is the standing rule, stated in `tests/AGENTS.md` by T-070-10.
 - [ ] T-070-15 — `dates` vectorised in UTC (AC14.1, AC14.4). `W:` `rand_engine/core/_np_core.py`, `tests/test_0_np_core.py`, `docs/benchmarks.json`, `docs/BENCHMARKS.md`
   blocked by: T-070-14, bug `timestamps-depend-on-local-timezone`. delivers: the operator generates `dates` columns at NumPy speed, identical on every machine.
   `gen_dates` per PLAN §3; FR11 `dates` rows before/after in the `chore(T-070-N): FR11 rows` follow-up and to the operator; lands at closure only with ratio ≤ 1.3 (FR12).
