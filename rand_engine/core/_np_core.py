@@ -1,9 +1,14 @@
 
 import uuid
+import re
 import numpy as np
 
 from typing import List, Any, Dict
 from datetime import datetime as dt, timezone
+
+
+DATE_DIRECTIVES = ("%Y", "%m", "%d", "%H", "%M", "%S", "%f")
+DATE_SPLIT = re.compile(f"({'|'.join(DATE_DIRECTIVES)})")
 
 
 class NPCore:
@@ -86,9 +91,21 @@ class NPCore:
         numpy array of formatted date strings
     """
     timestamp_array = cls.gen_unix_timestamps(size, start, end, date_format, rng=rng)
-    # Convert to datetime64 then format as strings
-    date_array = np.array([dt.fromtimestamp(ts, timezone.utc).strftime(date_format) for ts in timestamp_array])
-    return date_array
+    s = timestamp_array.astype("datetime64[s]")
+    y, m, d = (s.astype(f"datetime64[{u}]") for u in "YMD")
+    sec = (s - d).astype(np.int64)
+    fields = {"%Y": y.astype(np.int64) + 1970, "%m": (m - y).astype(np.int64) + 1, "%d": (d - m).astype(np.int64) + 1,
+              "%H": sec // 3600, "%M": sec // 60 % 60, "%S": sec % 60}
+    tokens = [{"%f": "000000"}.get(t, t) for t in DATE_SPLIT.split(date_format) if t]
+    widths = [(4 if t == "%Y" else 2) if t in fields else len(t) for t in tokens]
+    codes, c = np.empty((size, sum(widths)), np.uint32), 0
+    for t, w in zip(tokens, widths):
+      if t in fields:
+        for k in range(w): codes[:, c + k] = fields[t] // 10 ** (w - 1 - k) % 10 + 48
+      else:
+        codes[:, c:c + w] = [ord(ch) for ch in t]
+      c += w
+    return codes.view(f"<U{sum(widths)}").ravel()
 
 if __name__ == "__main__":
   

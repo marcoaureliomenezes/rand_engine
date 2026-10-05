@@ -351,3 +351,22 @@ def test_gen_uuid4_values_are_rfc4122_version_4():
 def test_gen_ints_and_zfilled_reach_the_inclusive_max():
   assert set(NPCore.gen_ints(1000, 0, 1, rng=RNG).tolist()) == {0, 1}
   assert set(NPCore.gen_ints_zfilled(1000, 1, rng=RNG).tolist()) == set("0123456789")
+
+
+@pytest.mark.parametrize("fmt, start, end", [
+  ("%Y-%m-%d %H:%M:%S", "1999-12-31 23:00:00", "2000-01-01 01:00:00"),
+  ("%Y-%m-%d", "1970-01-01", "9999-12-31"),
+  ("%d/%m/%Y", "01/01/1970", "31/12/9999"),
+  ("%Y-%m-%dT%H:%M:%S", "1970-01-01T00:00:00", "9999-12-31T23:59:59"),
+  ("%Y%m%d %H%M%S.%f", "19700101 000000.000000", "99991231 235959.000000"),
+])
+def test_gen_dates_equals_per_row_utc_strftime(fmt, start, end):
+  """AC14.1: same strings as the per-row UTC strftime, for each documented date_format."""
+  from datetime import datetime, timezone
+  ts = NPCore.gen_unix_timestamps(10**4, start, end, fmt, rng=np.random.default_rng(7))
+  expected = [datetime.fromtimestamp(int(t), timezone.utc).strftime(fmt) for t in ts]
+  assert NPCore.gen_dates(10**4, start, end, fmt, rng=np.random.default_rng(7)).tolist() == expected
+
+
+def test_gen_dates_zero_rows_returns_empty():
+  assert NPCore.gen_dates(0, "2020-01-01", "2024-12-31", "%Y-%m-%d", rng=RNG).tolist() == []

@@ -23,8 +23,10 @@ IMPORTANT DIFFERENCES HANDLED:
    - SparkCore maintains backward compatibility with 'formato'
 """
 
+import re
 import warnings
 from typing import Dict, List, Any
+from rand_engine.core._np_core import DATE_DIRECTIVES
 
 
 class CommonValidator:
@@ -323,7 +325,16 @@ class CommonValidator:
                             f"⚠️  Column '{col_name}': Weight for '{key}' must be an integer\n"
                             f"   Got: {type(weight).__name__} ({weight})"
                         )
-        
+
+        # 11. dates renders only DATE_DIRECTIVES, on both engines
+        if method == "dates" and isinstance(kwargs.get("date_format"), str):
+            bad = sorted(set(re.findall(r"%.?", kwargs["date_format"])) - set(DATE_DIRECTIVES))
+            if bad:
+                errors.append(
+                    f"❌ Column '{col_name}': 'date_format' directives {bad} not supported\n"
+                    f"   Supported: {' '.join(DATE_DIRECTIVES)}"
+                )
+
         return errors
     
     @classmethod

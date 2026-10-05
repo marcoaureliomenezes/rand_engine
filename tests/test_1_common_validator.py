@@ -234,3 +234,18 @@ def test_validated_spec_without_kwargs_generates(spark_session, spark_functions)
     from rand_engine.main.spark_generator import SparkGenerator
     df = SparkGenerator(spark_session, spark_functions, {"id": {"method": "uuid4"}}).size(3).get_df()
     assert df.count() == 3
+
+
+@pytest.mark.parametrize("fmt", ["%b %d %Y", "%Y-%m-%d %%"])
+def test_dates_format_outside_supported_directives_is_refused_by_both_engines(fmt):
+    """AC14.1: one check site; the message names the supported set."""
+    from rand_engine.validators.advanced_validator import AdvancedValidator
+    spec = {"d": {"method": "dates", "kwargs": {"start": "Jan 01 2020", "end": "Dec 31 2024", "date_format": fmt}}}
+    for errors in (AdvancedValidator.validate(spec), CommonValidator.validate_spark_spec(spec)):
+        assert len(errors) == 1
+        assert "%Y %m %d %H %M %S %f" in errors[0]
+
+
+def test_unix_timestamps_format_is_not_restricted():
+    spec = {"t": {"method": "unix_timestamps", "kwargs": {"start": "Jan 01 2020", "end": "Dec 31 2024", "date_format": "%b %d %Y"}}}
+    assert CommonValidator.validate_spark_spec(spec) == []

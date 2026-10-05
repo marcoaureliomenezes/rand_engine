@@ -1,6 +1,6 @@
-import re
 from datetime import datetime as dt, timezone
 import pandas as pd
+from rand_engine.core._np_core import DATE_DIRECTIVES, DATE_SPLIT
 
 
 class SparkCore:
@@ -106,8 +106,8 @@ class SparkCore:
     # NTZ cast to string is TZ-free: "yyyy-MM-dd HH:mm:ss" (whole seconds, years 1970..9999), padded for %f
     utc_wall_clock = F.expr("TIMESTAMP_NTZ'1970-01-01 00:00:00'") + F.col(col_name) * F.expr("INTERVAL 1 SECOND")
     iso = F.concat(utc_wall_clock.cast("string"), F.lit(".000000"))
-    span = {"%Y": (1, 4), "%m": (6, 2), "%d": (9, 2), "%H": (12, 2), "%M": (15, 2), "%S": (18, 2), "%f": (21, 6)}
-    tokens = [t for t in re.split(r"(%[YmdHMSf])", date_format) if t]
+    span = dict(zip(DATE_DIRECTIVES, [(1, 4), (6, 2), (9, 2), (12, 2), (15, 2), (18, 2), (21, 6)]))
+    tokens = [t for t in DATE_SPLIT.split(date_format) if t]
     return df.withColumn(col_name, F.concat(*[F.substring(iso, *span[t]) if t in span else F.lit(t) for t in tokens]))
 
 
