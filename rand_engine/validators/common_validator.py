@@ -131,8 +131,8 @@ class CommonValidator:
         "unix_timestamps": {
             "description": "Generates random Unix timestamps within a time period",
             "params": {
-                "required": {"start": str, "end": str, "date_format": str},
-                "optional": {}
+                "required": {"start": str, "end": str},
+                "optional": {"date_format": str}
             },
             "example": {
                 "created_at": {
@@ -148,8 +148,8 @@ class CommonValidator:
         "dates": {
             "description": "Generates random date strings within a time period (formatted)",
             "params": {
-                "required": {"start": str, "end": str, "date_format": str},
-                "optional": {}
+                "required": {"start": str, "end": str},
+                "optional": {"date_format": str}
             },
             "example": {
                 "birth_date": {

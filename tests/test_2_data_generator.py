@@ -253,3 +253,14 @@ def test_callable_spec_is_evaluated_once_per_get_df_and_per_microbatch():
   stream = gen.stream_dict(min_throughput=10**4, max_throughput=10**4)
   for _ in range(4): next(stream)
   assert len(calls) == 4
+
+
+@pytest.mark.parametrize("method, expected", [
+  ("dates", {"2024-01-01"}),
+  ("unix_timestamps", set(range(1704067200, 1704153600))),
+])
+def test_documented_date_spec_without_date_format_generates(method, expected):
+  spec = {"d": {"method": method, "kwargs": {"start": "2024-01-01", "end": "2024-01-02"}}}
+  df = DataGenerator(spec, seed=1).size(1000).get_df()
+  assert len(df) == 1000
+  assert set(df["d"].tolist()) <= expected

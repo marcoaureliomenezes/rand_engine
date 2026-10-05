@@ -11,7 +11,6 @@ class SparkCore:
   
   @staticmethod
   def gen_booleans(spark, F, df, col_name, true_prob=0.5):
-    # Support both 'true_prob' and 'prob_true' for backwards compatibility
     return df.withColumn(col_name, F.rand() < true_prob)
   
 

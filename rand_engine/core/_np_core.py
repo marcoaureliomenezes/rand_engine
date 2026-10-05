@@ -62,7 +62,7 @@ class NPCore:
   
 
   @classmethod
-  def gen_unix_timestamps(cls, size: int, start: str, end: str, date_format: str, *, rng: np.random.Generator) -> np.ndarray:
+  def gen_unix_timestamps(cls, size: int, start: str, end: str, date_format: str = "%Y-%m-%d", *, rng: np.random.Generator) -> np.ndarray:
     dt_start, dt_end = dt.strptime(start, date_format), dt.strptime(end, date_format)
     if dt_start < dt(1970, 1, 1): dt_start = dt(1970, 1, 1)
     timestamp_start, timestamp_end = (int(d.replace(tzinfo=timezone.utc).timestamp()) for d in (dt_start, dt_end))
@@ -72,7 +72,7 @@ class NPCore:
   
 
   @classmethod
-  def gen_dates(cls, size: int, start: str, end: str, date_format: str, *, rng: np.random.Generator) -> np.ndarray:
+  def gen_dates(cls, size: int, start: str, end: str, date_format: str = "%Y-%m-%d", *, rng: np.random.Generator) -> np.ndarray:
     """
     Generate random dates as formatted strings.
     
