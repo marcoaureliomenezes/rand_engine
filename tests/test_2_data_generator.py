@@ -264,3 +264,37 @@ def test_documented_date_spec_without_date_format_generates(method, expected):
   df = DataGenerator(spec, seed=1).size(1000).get_df()
   assert len(df) == 1000
   assert set(df["d"].tolist()) <= expected
+
+
+# FR13 goldens: seed 42, 10**3 rows, UTC run. A deliberate output change rewrites its line here, the commit body saying why.
+GOLDEN_SHA256 = {
+  "integers": "953f31ff97cb998eb78ce3b16215f99bfda4fbf2628b856cd5755e97d80b195a",
+  "int_zfilled": "56c7e77935c45862e81c70fc019572f234e2c2faca802353b7bfc31aebdd4128",
+  "floats": "1e59355e2f889ba13ca3e3e8adc355e9cb5070c9bdf6494a363c641743f0e5f0",
+  "floats_normal": "a780eb25f39ca93c4fe9c86aedf074c2901058f2638aa88442567adc3f2c4780",
+  "distincts": "9ed5a4bc7ab4166a007da955731e00f82080182feb6507edec09d7406c3376e2",
+  "distincts_prop": "a551262b37e7743f62bf46d60fe60b13dc9fa5ca000ca3d62f589d0bf250d0dc",
+  "unix_timestamps": "4dbe45709175a998c32b04c4617677ee5cf6933e60b61ee3f56a467cea23f9f6",
+  "uuid4": "375ea08389dbdd1ff08caf390bff4c158bfeea06a7f66e13a22254e2bfa57b4b",
+  "booleans": "da7a8360dd086fc14e1fe7b7e6b42d927807a434eb4dea876848fc03cec8e794",
+  "dates": "0f3e14d4485a3418bcb304c7f9618b63547194d4f3e0d970a528b821e0cbb42e",
+  "distincts_map": "6dd39ea7e62ff23b7c36d4f5748f6edb65f2ec248aac062c47c4048113a85dad",
+  "distincts_multi_map": "84522aea46e2b39bfa4b591f479ad82bf38108910c6e9cd4e2ed44301daf7e5b",
+  "distincts_map_prop": "563b3d7fc27913cb65d710b98474754cb79eca1611cbae54fe5669a80d0b06ce",
+  "complex_distincts": "880ef59af262594f18ddd705076dd0fe8ed06f2b961d750b917b498e01d30a33",
+}
+
+
+def test_golden_covers_every_numpy_method():
+  from benchmarks.speed import SAMPLE_KWARGS
+  from rand_engine.main._rand_generator import RandGenerator
+  assert set(GOLDEN_SHA256) == set(SAMPLE_KWARGS) - {"pk", "fk"} == set(RandGenerator({}).map_methods()) - {"pk", "fk"}
+
+
+@pytest.mark.parametrize("method", sorted(GOLDEN_SHA256))
+def test_golden_seeded_output(method):
+  import hashlib, json
+  from benchmarks.speed import column
+  df = DataGenerator({"c": column(method)}, seed=42).size(10**3).get_df()
+  # to_dict gives Python scalars: hash independent of numpy int width (int32 on Windows) and locale
+  assert hashlib.sha256(json.dumps(df.to_dict("list")).encode()).hexdigest() == GOLDEN_SHA256[method]
