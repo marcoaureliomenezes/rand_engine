@@ -166,7 +166,7 @@ class TestInvalidSparkSpecs:
         assert "requires parameter 'std'" in errors[0]
     
     def test_invalid_dates_wrong_param_name(self):
-        """Test error when dates uses 'format' instead of unified 'date_format'."""
+        """'format' is not a dates parameter; date_format is optional."""
         spec = {
             "created_at": {
                 "method": "dates",
@@ -178,8 +178,7 @@ class TestInvalidSparkSpecs:
             }
         }
         errors = CommonValidator.validate_spark_spec(spec)
-        assert len(errors) == 2
-        assert any("requires parameter 'date_format'" in error.lower() for error in errors)
+        assert len(errors) == 1
         assert any("unknown parameters" in error.lower() and "'format'" in error for error in errors)
 
 
