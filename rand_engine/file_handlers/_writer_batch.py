@@ -12,6 +12,9 @@ class FileBatchWriter(FileWriter):
     return [f"{path}/part_{str(uuid.uuid4())[:18]}.{ext}" for _ in range(size)]
 
 
+  def __generate_file(self, path, dataframe, write_options):
+    self.writer_method[self.write_format](dataframe, path, write_options)()
+
   def save(self, path: str) -> None:
 
     write_options = dict(self.write_options)
@@ -25,13 +28,12 @@ class FileBatchWriter(FileWriter):
     rows, extra = divmod(self.size_def(), len(files))
     sizes = [rows + (f < extra) for f in range(len(files))]
     dataframes = [self.microbatch_def(n, sum(sizes[:f])) for f, n in enumerate(sizes)]
-    writes = [self.writer_method[self.write_format](df, file, write_options, ("numFiles",)) for file, df in zip(files, dataframes)]
     os.makedirs(os.path.dirname(files[0]), exist_ok=True)
     if num_files > 1 and self.write_mode == "overwrite":
       if os.path.exists(path):
         for f in os.listdir(path):
           os.remove(os.path.join(path, f))
       
-    for write in writes:
-      write()
+    for file, dataframe in zip(files, dataframes):
+      self.__generate_file(file, dataframe, write_options)
 
