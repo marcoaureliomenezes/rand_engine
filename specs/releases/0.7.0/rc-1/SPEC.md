@@ -1,6 +1,6 @@
 # SPEC — Release: 0.7.0, candidate 1 (relations core + visibility)
 
-**Status:** Approved
+**Status:** In review
 **Release ID:** 0.7.0
 **Owner:** dd-product-engineer
 **Opened:** 2026-10-03
@@ -155,7 +155,7 @@
 
 - AC9.1 `LICENSE` at the repo root carries the MIT text with the author as copyright holder.
 - AC9.2 The built distribution's metadata carries: licence MIT (`pyproject.toml` `license`); a summary stating the identity without "v2"; keywords; `License :: OSI Approved :: MIT License` among the classifiers; project URLs Homepage, Documentation, Repository, Issues, Changelog; `twine check` passes.
-- AC9.3 `CHANGELOG.md` carries 0.6.1, 0.6.2, 0.6.3, 0.6.4 and 0.7.0; 0.7.0 lists every break: `constraints` removed, `pk`/`fk` added, `db_checkpoint` and `option` removed, Spark rejects keys, `duckdb` dropped, same-seed values differ from 0.6.x, csv written by pyarrow (each AC14.2 divergence, the mixed-type column refused), writer options limited to the documented ones (an undocumented one raises).
+- AC9.3 `CHANGELOG.md` carries 0.6.1, 0.6.2, 0.6.3, 0.6.4 and 0.7.0; 0.7.0 lists every break: `constraints` removed, `pk`/`fk` added, `db_checkpoint` and `option` removed, Spark rejects keys, `duckdb` dropped, same-seed values differ from 0.6.x, csv written by pyarrow (each AC14.2 divergence, the mixed-type column refused), `date_format` limited to `%Y %m %d %H %M %S %f` (AC14.1), writer options limited to the documented ones (an undocumented one raises).
 - AC9.4 `pyproject.toml` `version` is `0.7.0`, delivered by the last task of TASKS; tag and publish stay the project pipeline's, at promote.
 
 ### FR10 — Repo hygiene
@@ -192,8 +192,8 @@
 ### FR14 — Vectorised hot paths
 
 - pyarrow is already a runtime dependency: nothing is added (G4); JSON output stays on pandas (pyarrow has no JSON writer).
-- AC14.1 `dates` formats without a per-row Python loop; its strings equal the per-row `strftime` strings for the same timestamps in UTC (the timezone bug's fix); FR13 goldens unchanged.
-- AC14.2 `csv` and `parquet` files are written through pyarrow for every option and compression `docs/3_WRITING_FILES.md` lists except the dead parquet `engine` (the docs drop it); csv `zip` and `xz` go through stdlib file objects like `gzip` and `bz2`; the writer's `.option()`/`.options()` map only those documented options; an undocumented option raises a `RandEngineError` naming it and listing the accepted ones, never silently ignored. Parquet reads back equal to the pandas-written file (values and dtypes). CSV diverges by ruling, each item asserted as re-probed at pandas 2.2.2 / pyarrow 23.0.1 (T-070-16): booleans `true`/`false`; integral floats written `1`, read back as int; a quoted header; timestamps gain `.000000`; a mixed-type object column raises a `RandEngineError` naming the column.
+- AC14.1 `dates` renders without a per-row Python loop on every supported format, through one NumPy path: year, month, day, hour, minute, second from `datetime64[s]`; directives `%Y %m %d %H %M %S %f` only (the Spark engine's set; `%f` renders `000000`), other characters copied literally (operator ruling 2026-10-05). Its strings equal per-row UTC `strftime` for the same timestamps over 1970..9999 (the timezone bug's fix); FR13 goldens unchanged. A NumPy-engine `dates` or `unix_timestamps` `date_format` holding any other directive (e.g. `%b`, `%A`, `%j`, `%Z`, `%%`) fails validation with a message naming the supported set.
+- AC14.2 `csv` and `parquet` files are written through pyarrow for every option and compression `docs/3_WRITING_FILES.md` lists except the dead parquet `engine` (the docs drop it); csv `zip` and `xz` go through stdlib file objects like `gzip` and `bz2`; the writer's `.option()`/`.options()` map only those documented options; an undocumented option raises a `RandEngineError` naming it and listing the accepted ones, never silently ignored. Parquet reads back equal to the pandas-written file (values and dtypes). CSV diverges by ruling, each item asserted as re-probed at pandas 2.2.2 / pyarrow 23.0.1 (T-070-16): booleans `true`/`false`; integral floats written `1`, read back as int; the header and every string value quoted; a timestamp's fraction sized by its column's unit (`ns`, the pandas default, `.000000000`; `us` six digits; `ms` three; `s` none); timezone-aware timestamps suffixed `Z`, not `+00:00`; line endings always LF, not `os.linesep`. A mixed-type object column raises a `RandEngineError` naming the column.
 - AC14.4 AC14.1 and AC14.2 each land with their FR11 rows before and after shown to the operator (FR12): the `dates` method row for AC14.1, the csv and parquet sink rows for AC14.2.
 
 ## 4. Replaces
@@ -203,7 +203,7 @@
 - `SQLiteHandler`, `DuckDBHandler`, `BaseDBHandler`: the class-level connection pool and the process-shared `:memory:` checkpoint; the `duckdb` runtime dependency.
 - `DataGenerator`: `np.random.seed(seed)` on the global state; `del spec["constraints"]` on the first call; `db_checkpoint(conn)`; `option("reset_checkpoint", True)` and `option` itself; one SQLite handler per instance.
 - `Changer` (`utils/update.py`) and its `np.random.seed(None)` reseed — imported by `WebServerLogs`, never called.
-- `NPCore.gen_uuid4`'s per-row `uuid.uuid4()` loop (→ FR4); `NPCore.gen_dates`'s per-row `fromtimestamp().strftime` loop (→ AC14.1).
+- `NPCore.gen_uuid4`'s per-row `uuid.uuid4()` loop (→ FR4); `NPCore.gen_dates`'s per-row `fromtimestamp().strftime` loop and the acceptance of any `strftime` directive (→ AC14.1).
 - `FileHandler.to_csv`/`to_parquet` through pandas, and the writer forwarding any option to pandas (→ AC14.2).
 - README: the `unique_ids`, `references`, `get_dfs`, multi-spec and `splitable` examples; six dead links; the MIT claim without a `LICENSE`; the 81.5 s benchmark and the hand-written test count.
 - `docs/4_CONSTRAINTS.md`'s `constraints`/`references` guide.
@@ -225,7 +225,7 @@
 - Constitution and Tech Stack: the ADR 0002 accept commit, at SPEC approval in this release worktree (an `impl` worktree cannot write `specs/`), carries the paired canonical hunks: invariant 8 rewritten (no SQL surface remains), Exclusion 1 rewritten (relations are stateless keys; a database is only ever an output sink), invariant 4 kept (this approved SPEC is the revision it requires), and `ARCHITECTURE.md` `## Tech Stack` without `duckdb`, `fastavro`, `fastparquet` (invariant 11).
 - Memory pass at closure: `pk-fk-constraints` (rewritten for keys), `data-generator`, `rand-spec-grammar`, `spark-generator`, `generation-methods`, `public-api`; `ARCHITECTURE.md` Structure and Tech Stack; `QUALITY.md` Test architecture.
 - Also at closure: `writers-and-streaming` (the writer `size` text leaves by ruling; `numFiles` now splits `size`); `ARCHITECTURE.md`'s frontmatter `summary` and `## Structure` still describe the checkpoint and are rewritten; the Tech Stack removal of `fastavro`/`fastparquet` anticipates the Arm B fix of D18.
-- Memory pass for FR11–FR14: `writers-and-streaming` (CSV through pyarrow and its divergences, compression through stdlib file objects, `.option()` mapping only documented options); `QUALITY.md` (the stress job moved to `benchmarks.yml`, the benchmark job and gate, the goldens); `generation-methods` (`dates` vectorised, UTC).
+- Memory pass for FR11–FR14: `writers-and-streaming` (CSV through pyarrow and its divergences, compression through stdlib file objects, `.option()` mapping only documented options); `QUALITY.md` (the stress job moved to `benchmarks.yml`, the benchmark job and gate, the goldens); `generation-methods` (`dates` vectorised, UTC, its directive set).
 - Constitution Exclusion 2 drops "persisted checkpoint" in its own commit (owner: `specs/AGENTS.md` canon table; no `### P-NN` statement, so no ADR).
 
 | risk | mitigation |
@@ -236,6 +236,7 @@
 | README examples drift again | executed in CI; AC7.2, AC8.3 |
 | an Arm B fix and a task edit the same function | the Parallel schedule serialises them |
 | CSV through pyarrow changes users' files | ruled break; each divergence asserted (AC14.2) and listed (AC9.3) |
+| a `date_format` outside the supported directives now fails | ruled break; the message names the supported set (AC14.1); listed (AC9.3) |
 | shared-runner noise trips or hides the speed gate | same-runner A/B, per-row interleaved (FR12); median of 3; every before/after shown (FR12). Residual: drift faster than one row's alternation |
 | the A/B doubles the benchmark job (≈ 22 → ≈ 45 min) | inside the job's 90-minute timeout |
 
