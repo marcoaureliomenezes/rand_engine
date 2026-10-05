@@ -48,6 +48,8 @@ Production edits need the live release in `IMPLEMENTATION` and its trio at
 
 ## Key Commands
 
+verify: POETRY_VIRTUALENVS_IN_PROJECT=false POETRY_CACHE_DIR="$PWD/../../../.dadaia/tmp/poetry-cache" PYTHONDONTWRITEBYTECODE=1 sh -c 'poetry install --with test --no-root --no-interaction -q && poetry run python -m pytest -q -p no:cacheprovider tests/'
+
 ```bash
 # Install dependencies
 poetry install --with test --no-interaction
