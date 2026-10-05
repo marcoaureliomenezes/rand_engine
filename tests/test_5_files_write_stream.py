@@ -145,3 +145,12 @@ def test_stream_writes_through_pyarrow(rand_spec_with_kwargs, tmp_path, format_t
   [file] = glob.glob(str(tmp_path / "out" / "*"))
   frame = reader(file)
   assert len(frame) == 3 and list(frame.columns) == list(rand_spec_with_kwargs)
+
+
+def test_undocumented_option_fails_before_overwrite_deletes(rand_spec_with_kwargs, tmp_path):
+  path = str(tmp_path / "clients")
+  os.makedirs(path)
+  open(f"{path}/keep.csv", "w").close()
+  with pytest.raises(RandEngineError, match="'engine'.*accepted: index, sep, compression, timeout$"):
+    DataGenerator(rand_spec_with_kwargs).size(2).writeStream.option("engine", "x").mode("overwrite").start(path)
+  assert os.listdir(path) == ["keep.csv"]

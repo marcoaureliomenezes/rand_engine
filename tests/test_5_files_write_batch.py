@@ -243,9 +243,9 @@ def test_csv_mixed_type_column_raises_naming_it(tmp_path):
 
 
 @pytest.mark.parametrize("format_type,accepted", [
-  ("csv", "index, sep, compression"),
-  ("parquet", "compression"),
-  ("json", "orient, force_ascii, indent, compression"),
+  ("csv", "index, sep, compression, numFiles"),
+  ("parquet", "compression, numFiles"),
+  ("json", "orient, force_ascii, indent, compression, numFiles"),
 ])
 def test_undocumented_option_raises_naming_it_and_accepted(rand_spec_with_kwargs, tmp_path, format_type, accepted):
   with pytest.raises(RandEngineError, match=f"'engine'.*accepted: {accepted}$"):
@@ -294,3 +294,23 @@ def test_csv_tz_aware_timestamps_end_in_z_with_lf_lines(tmp_path):
   FileHandler.to_csv(lambda: frame, path, {})()
   with open(path, "rb") as f:
     assert f.read() == b'"t"\n2024-01-01 00:00:00.000000000Z\n2024-01-02 03:04:05.000000000Z\n'
+
+
+def test_undocumented_option_fails_before_overwrite_deletes(rand_spec_with_kwargs, tmp_path):
+  path = str(tmp_path / "clients")
+  os.makedirs(path)
+  open(f"{path}/keep.csv", "w").close()
+  with pytest.raises(RandEngineError, match="'engine'"):
+    DataGenerator(rand_spec_with_kwargs).size(4).write.option("numFiles", 2).option("engine", "x").mode("overwrite").save(path)
+  assert os.listdir(path) == ["keep.csv"]
+
+
+def test_csv_non_utc_offset_and_all_midnight_written_in_full(tmp_path):
+  path = str(tmp_path / "f.csv")
+  frame = pd.DataFrame({
+    "local": pd.to_datetime(["2024-01-01 09:00:00"]).tz_localize("America/Sao_Paulo"),
+    "midnight": pd.to_datetime(["2020-01-01"]),
+  })
+  FileHandler.to_csv(lambda: frame, path, {})()
+  with open(path, "rb") as f:
+    assert f.read() == b'"local","midnight"\n2024-01-01 09:00:00.000000000-0300,2020-01-01 00:00:00.000000000\n'

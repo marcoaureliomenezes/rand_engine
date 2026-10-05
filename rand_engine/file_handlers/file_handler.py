@@ -46,8 +46,8 @@ def _arrow_table(df: PDDataFrame) -> pa.Table:
 class FileHandler:
 
   @staticmethod
-  def to_csv(dataframe: PDDataFrame, full_path: str, write_options: dict) -> Callable:
-    _documented("csv", write_options, ("index", "sep", "compression"))
+  def to_csv(dataframe: PDDataFrame, full_path: str, write_options: dict, writer_keys: tuple = ()) -> Callable:
+    _documented("csv", write_options, ("index", "sep", "compression", *writer_keys))
     if write_options.get("index", False) is not False:
       raise RandEngineError("csv option 'index' accepts only False")
     compression = write_options.get("compression")
@@ -62,16 +62,16 @@ class FileHandler:
     return write
 
   @staticmethod
-  def to_json(dataframe: PDDataFrame, full_path: str, write_options: dict) -> Callable:
-    _documented("json", write_options, ("orient", "force_ascii", "indent", "compression"))
+  def to_json(dataframe: PDDataFrame, full_path: str, write_options: dict, writer_keys: tuple = ()) -> Callable:
+    _documented("json", write_options, ("orient", "force_ascii", "indent", "compression", *writer_keys))
     if write_options.get("orient", "records") != "records":
       raise RandEngineError("json option 'orient' accepts only 'records'")
     options = {k: v for k, v in write_options.items() if k != "orient"}
     return lambda: dataframe().to_json(full_path, orient='records', lines=True, **options)
 
   @staticmethod
-  def to_parquet(dataframe: PDDataFrame, full_path: str, write_options: dict) -> Callable:
-    _documented("parquet", write_options, ("compression",))
+  def to_parquet(dataframe: PDDataFrame, full_path: str, write_options: dict, writer_keys: tuple = ()) -> Callable:
+    _documented("parquet", write_options, ("compression", *writer_keys))
     return lambda: pq.write_table(_arrow_table(dataframe()), full_path, compression=write_options.get("compression", "snappy"))
 
 
