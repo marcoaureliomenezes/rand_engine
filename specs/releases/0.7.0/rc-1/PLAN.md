@@ -1,6 +1,6 @@
 # PLAN — Release: 0.7.0, candidate 1 (relations core + visibility)
 
-**Status:** In review
+**Status:** Approved
 **Release ID:** 0.7.0
 **Owner:** dd-software-engineer
 **SPEC:** `specs/releases/0.7.0/rc-1/SPEC.md`; ADR 0002 accepted.
@@ -16,6 +16,7 @@
 **Re-approval (multi-column golden):** operator, 2026-10-05, verbatim: "Re-aprovo (Recomendado)" — PLAN/TASKS d0c5ef8 (ruling "Amend: + multi-column golden (Recommended)"); reviewed APPROVED at d0c5ef8; SPEC unchanged (Approved).
 **Re-approval (dates renderer + writer reorder):** operator, 2026-10-05, verbatim: "Re-aprovo (Recomendado)" — SPEC 140647a + 91389ad, PLAN/TASKS 50a9961 + ed37ff4 + 968b735 (ruling "NumPy components (Recommended)"); reviewed APPROVED at ed37ff4 (L1 folded in 968b735).
 **Re-approval (dates code matrix):** operator, 2026-10-05, verbatim: "Re-aprovo (Recomendado)" — PLAN 21ba0d4 (ruling "Code matrix (Recommended)"); reviewed APPROVED at 21ba0d4; SPEC and TASKS unchanged (Approved).
+**Re-approval (T-070-16 REBUILD, tz-aware csv via pandas):** operator, 2026-10-05, verbatim: "Re-aprovo (Recomendado)" — SPEC 93f39ae + c78f5c2 + 8b93ee8, PLAN/TASKS 819e6d4 + 12885b7 + cf07ff3 (rulings "Render tz-aware via pandas (Recommended)", "List as divergence now (Recommended)"); reviewed APPROVED at 12885b7.
 **Amended (same-runner A/B gate):** SPEC 83920a7 (AC11.2–AC11.5, FR12, AC12.1) → §1.1, §3, §4, §5 and T-070-18; replaces the calibrated gate of 96a6608 (review H1) (2026-10-04).
 **Amended (speed program):** SPEC FR11–FR14 → As-is rows, authorities, §3–§5 and T-070-13..16 (2026-10-04).
 **Amended:** SPEC AC1.7 (815ac0e, T-070-1 review MEDIUM); §5 step 1 and T-070-12 wording (definition review L3–L5, review LOW-3).
