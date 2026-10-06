@@ -1,9 +1,15 @@
+import json
 import re
 from pathlib import Path
 
 import pytest
 
-DOCS = Path(__file__).parents[1] / "docs"
+ROOT = Path(__file__).parents[1]
+DOCS = ROOT / "docs"
+REPO_BLOB = "https://github.com/marcoaureliomenezes/rand_engine/blob/"
+GITFLOW = re.search(r"^gitflow: (.*)$", (ROOT / "specs" / "constitution.md").read_text(encoding="utf-8"), re.M)
+PRINCIPAL = json.loads(GITFLOW.group(1))["principal"]
+LINK = re.compile(r"\]\(([^)\s]+)\)")
 FENCE = re.compile(r"^```((?:python|py)[^\n]*)\n(.*?)^```", re.M | re.S)
 
 
@@ -31,3 +37,25 @@ def test_no_run_is_only_the_kafka_producer():
   assert {name for name, _ in no_run} == {"5_RECIPES.md"}
   assert all("from kafka import" in body for _, body in no_run)
 
+
+
+def test_readme_python_blocks_execute_in_order(tmp_path, monkeypatch):
+  """AC7.2: every README `python` block runs, in order, in one namespace; only {python, python no-run} fences."""
+  blocks = python_blocks(ROOT / "README.md")
+  assert {info for info, _ in blocks} <= {"python", "python no-run"}
+  monkeypatch.chdir(tmp_path)
+  namespace = {"__name__": "__readme__"}
+  for i, (info, body) in enumerate(blocks):
+    if info == "python":
+      exec(compile(body, f"README.md[{i}]", "exec"), namespace)
+
+
+@pytest.mark.parametrize("name", ["README.md", "llms.txt"])
+def test_links_resolve(name):
+  """AC7.4, AC8.4: no relative link (PyPI breaks them); a link into this repo targets the principal branch and a file that exists."""
+  links = LINK.findall((ROOT / name).read_text(encoding="utf-8"))
+  assert links
+  assert [u for u in links if not u.startswith("https://")] == []
+  repo = [u[len(REPO_BLOB):].split("#")[0].split("/", 1) for u in links if u.startswith(REPO_BLOB)]
+  assert [b for b, _ in repo if b != PRINCIPAL] == []
+  assert [p for _, p in repo if not (ROOT / p).is_file()] == []
