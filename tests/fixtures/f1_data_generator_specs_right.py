@@ -52,9 +52,9 @@ def rand_spec_with_related_columns():
                     method="distincts_multi_map", cols = ["setor", "sub_setor", "porte", "codigo_municipio"],
                     kwargs=dict(distincts={
                       "setor_1": [
-                          ["agro", "mineração", "petróleo", "pecuária"], [0.25, 0.15], [None], ["01", "02"]], 
+                          ["agro", "mineração", "petróleo", "pecuária"], [None], ["01", "02"]], 
                       "setor_2": [
-                          ["indústria", "construção"], [0.30, 0.20, 0.10], ["micro", "pequena", "média"], ["03", "04", "05"]]
+                          ["indústria", "construção"], ["micro", "pequena", "média"], ["03", "04", "05"]]
         })),
     }
 

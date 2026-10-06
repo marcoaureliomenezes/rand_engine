@@ -72,7 +72,6 @@ class AdvancedValidator:
                 "optional": {}
             },
             "requires_cols": True,
-            "expected_cols": "N+1",  # Category + N value columns
             "example": {
                 "company": {
                     "method": "distincts_multi_map",
@@ -198,12 +197,11 @@ class AdvancedValidator:
                     )
                 else:
                     expected_cols = spec.get("expected_cols")
-                    if expected_cols and expected_cols != "N+1":
-                        if len(cols) != expected_cols:
-                            errors.append(
-                                f"⚠️  Column '{col_name}': Method '{method}' expects {expected_cols} columns\n"
-                                f"   Got: {len(cols)} columns {cols}"
-                            )
+                    if expected_cols and len(cols) != expected_cols:
+                        errors.append(
+                            f"⚠️  Column '{col_name}': Method '{method}' expects {expected_cols} columns\n"
+                            f"   Got: {len(cols)} columns {cols}"
+                        )
         
         # 6. Validate required parameters
         required_params = spec["params"]["required"]
@@ -308,6 +306,12 @@ class AdvancedValidator:
                             f"   Got: {type(list_of_lists).__name__}"
                         )
                     else:
+                        cols = col_config.get("cols")
+                        if isinstance(cols, list) and len(cols) != len(list_of_lists) + 1:
+                            errors.append(
+                                f"❌ Column '{col_name}': category '{category}' has {len(list_of_lists)} levels, "
+                                f"so 'cols' needs {len(list_of_lists) + 1} names; got {len(cols)}"
+                            )
                         for sublist in list_of_lists:
                             if not isinstance(sublist, list):
                                 errors.append(

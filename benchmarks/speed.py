@@ -34,7 +34,7 @@ SAMPLE_KWARGS = {
   "booleans": {"true_prob": 0.5},
   "dates": {"start": "2020-01-01", "end": "2025-12-31", "date_format": "%Y-%m-%d"},
   "distincts_map": {"distincts": {"mobile": ["android", "ios"], "desktop": ["windows", "macos", "linux"]}},
-  "distincts_multi_map": {"distincts": {"tech": [["software", "hardware"], [0.7, 0.3], ["small", "medium", "large"]]}},
+  "distincts_multi_map": {"distincts": {"tech": [["software", "hardware"], ["small", "medium", "large"]]}},
   "distincts_map_prop": {"distincts": {"EQUITY": [("BUY", 6), ("SELL", 4)], "FX": [("BUY", 5), ("SELL", 5)]}},
   "complex_distincts": {"pattern": "x.x.x.x", "replacement": "x", "templates": [
     {"method": "distincts", "kwargs": {"distincts": ["192", "172", "10"]}},

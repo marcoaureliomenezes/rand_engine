@@ -513,6 +513,14 @@ def test_complex_distincts_template_that_validates_generates(template, expected)
   assert set(DataGenerator(spec, seed=1).size(20).get_df()["c"]) == {expected}
 
 
+@pytest.mark.parametrize("cols, got", [(["k", "l"], "got 2"), (["k", "l", "m", "n"], "got 4")])
+def test_distincts_multi_map_cols_must_be_levels_plus_one(cols, got):
+  spec = {"c": {"method": "distincts_multi_map", "kwargs": {"distincts": {"t": [["a", "b"], ["x", "y"]]}}, "cols": cols}}
+  errors = AdvancedValidator.validate(spec)
+  assert len(errors) == 1
+  assert "'t' has 2 levels, so 'cols' needs 3 names" in errors[0] and got in errors[0]
+
+
 def _params(fn, injected=("size", "rng", "spark", "F", "df", "col_name", "offset", "key_seed", "column")):
   sig = inspect.signature(fn.func if isinstance(fn, functools.partial) else fn).parameters.values()
   if any(p.kind is p.VAR_KEYWORD for p in sig):
