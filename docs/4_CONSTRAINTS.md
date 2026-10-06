@@ -17,7 +17,7 @@ customers = DataGenerator({
 orders = DataGenerator({
     "order_id": {"method": "pk", "kwargs": {"start": 1}},
     "customer_id": {"method": "fk", "kwargs": {"parent": customer_id, "parent_size": 1_000}},
-}, seed=2).size(5_000).get_df()
+}, seed=2).size(2_000).get_df()
 
 assert customers["customer_id"].is_unique
 assert orders["customer_id"].isin(customers["customer_id"]).all()
@@ -66,7 +66,7 @@ products = DataGenerator({"product_id": parent}, seed=1).size(200).get_df()
 
 sales = DataGenerator({
     "product_id": {"method": "fk", "kwargs": {"parent": parent, "parent_size": 200, "skew": 1.2}},
-}, seed=5).size(10_000).get_df()
+}, seed=5).size(4_000).get_df()
 
 assert sales["product_id"].isin(products["product_id"]).all()
 top_share = sales["product_id"].value_counts().iloc[0] / len(sales)

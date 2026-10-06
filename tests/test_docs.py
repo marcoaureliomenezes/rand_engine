@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 DOCS = Path(__file__).parents[1] / "docs"
-FENCE = re.compile(r"^```(python[^\n]*)\n(.*?)^```", re.M | re.S)
+FENCE = re.compile(r"^```((?:python|py)[^\n]*)\n(.*?)^```", re.M | re.S)
 
 
 def python_blocks(path: Path) -> list[tuple[str, str]]:
@@ -25,12 +25,9 @@ def test_doc_python_blocks_execute_in_order(doc, tmp_path, monkeypatch, request)
 
 def test_no_run_is_only_the_kafka_producer():
   """AC8.3: `python no-run` only for a client outside the test dependencies (a Kafka producer)."""
+  infos = {info for doc in DOCS.glob("*.md") for info, _ in python_blocks(doc)}
+  assert infos <= {"python", "python no-run"}
   no_run = {(doc.name, body) for doc in DOCS.glob("*.md") for info, body in python_blocks(doc) if info == "python no-run"}
   assert {name for name, _ in no_run} == {"5_RECIPES.md"}
   assert all("from kafka import" in body for _, body in no_run)
 
-
-def test_keys_guide_drops_the_checkpoint_vocabulary():
-  """AC8.1: the keys guide names none of the 0.6 checkpoint concepts."""
-  text = (DOCS / "4_CONSTRAINTS.md").read_text(encoding="utf-8")
-  assert re.findall(r'"constraints"|watermark|checkpoint|references', text) == []

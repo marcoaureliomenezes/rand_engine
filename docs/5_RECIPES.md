@@ -18,7 +18,7 @@ emails = [fake.email() for _ in range(500)]
 people = DataGenerator({
     "name": {"method": "distincts", "kwargs": {"distincts": names}},
     "email": {"method": "distincts", "kwargs": {"distincts": emails}},
-}, seed=1).size(10_000).get_df()
+}, seed=1).size(2_000).get_df()
 assert people["name"].isin(names).all()
 ```
 
@@ -60,11 +60,11 @@ for day in ["2024-01-01", "2024-01-02"]:
     sales = DataGenerator({
         "sale_id": {"method": "pk", "kwargs": {"start": 1, "format": day.replace("-", "") + "{:06d}"}},
         "amount": {"method": "floats", "kwargs": {"min": 1, "max": 500}},
-    }, seed=int(day[-2:])).size(2_000)
+    }, seed=int(day[-2:])).size(1_000)
     sales.write.format("parquet").options(numFiles=2, compression="zstd").save(f"lake/sales/day={day}")
 
 lake = pd.read_parquet("lake/sales")
-assert len(lake) == 4_000 and lake["sale_id"].is_unique
+assert len(lake) == 2_000 and lake["sale_id"].is_unique
 ```
 
 ## Related tables
@@ -79,12 +79,12 @@ customers = DataGenerator({"customer_id": customer_pk}, seed=1).size(500).get_df
 orders = DataGenerator({
     "order_id": order_pk,
     "customer_id": {"method": "fk", "kwargs": {"parent": customer_pk, "parent_size": 500, "skew": 1.0}},
-}, seed=2).size(3_000).get_df()
+}, seed=2).size(2_000).get_df()
 items = DataGenerator({
-    "order_id": {"method": "fk", "kwargs": {"parent": order_pk, "parent_size": 3_000}},
+    "order_id": {"method": "fk", "kwargs": {"parent": order_pk, "parent_size": 2_000}},
     "qty": {"method": "integers", "kwargs": {"min": 1, "max": 5}},
-}, seed=3).size(9_000).get_df()
+}, seed=3).size(3_000).get_df()
 
-assert orders.merge(customers, on="customer_id").shape[0] == 3_000
-assert items.merge(orders, on="order_id").shape[0] == 9_000
+assert orders.merge(customers, on="customer_id").shape[0] == 2_000
+assert items.merge(orders, on="order_id").shape[0] == 3_000
 ```

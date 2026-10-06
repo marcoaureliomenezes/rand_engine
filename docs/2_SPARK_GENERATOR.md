@@ -56,11 +56,4 @@ else:
 
 ## Writing
 
-```python
-import os
-
-path = os.path.abspath("users_parquet")  # Spark resolves relative paths against the JVM's own cwd
-df = df.withColumn("adult", F.col("age") >= 18)
-df.write.mode("overwrite").parquet(path)
-assert spark.read.parquet(path).count() == 1_000
-```
+Use Spark's own `df.write`; rand-engine does not own Spark writing.

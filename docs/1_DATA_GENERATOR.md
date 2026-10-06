@@ -88,7 +88,7 @@ These take a `cols` list naming the columns they produce.
 |---|---|---|
 | `distincts_map` | `{key: [value, ...]}` | `cols[0]` = a value, `cols[1]` = its key |
 | `distincts_map_prop` | `{key: [(value, weight), ...]}` | `cols[0]` = the key, `cols[1]` = a value |
-| `distincts_multi_map` | `{key: [[a, ...], [b, ...]]}` | the key, then one column per inner list (cartesian product) |
+| `distincts_multi_map` | `{key: [[a, ...], [b, ...]]}` | the key, then one column per inner list (cartesian product); `cols` must name levels + 1 columns: today fewer names drop the extra levels silently (open bug `distincts-multi-map-drops-levels-silently`) |
 
 `complex_distincts` fills each `replacement` character of `pattern` with one template column.
 
