@@ -17,6 +17,7 @@
 **Re-approval (dates renderer + writer reorder):** operator, 2026-10-05, verbatim: "Re-aprovo (Recomendado)" — SPEC 140647a + 91389ad, PLAN/TASKS 50a9961 + ed37ff4 + 968b735 (ruling "NumPy components (Recommended)"); reviewed APPROVED at ed37ff4 (L1 folded in 968b735).
 **Re-approval (dates code matrix):** operator, 2026-10-05, verbatim: "Re-aprovo (Recomendado)" — PLAN 21ba0d4 (ruling "Code matrix (Recommended)"); reviewed APPROVED at 21ba0d4; SPEC and TASKS unchanged (Approved).
 **Re-approval (T-070-16 REBUILD, tz-aware csv via pandas):** operator, 2026-10-05, verbatim: "Re-aprovo (Recomendado)" — SPEC 93f39ae + c78f5c2 + 8b93ee8, PLAN/TASKS 819e6d4 + 12885b7 + cf07ff3 (rulings "Render tz-aware via pandas (Recommended)", "List as divergence now (Recommended)"); reviewed APPROVED at 12885b7.
+**Re-approval (T-070-8 RED line):** operator, 2026-10-06, verbatim: "Amend + re-approve (Recommended)" — TASKS T-070-8 RED: AC8.3 as pytest, AC8.1/AC8.2 as commit-body grep evidence (wave5 job review: text-absence test is junk); G9 reconfirmed verbatim: "Yes, category first (Recommended)".
 **Amended (same-runner A/B gate):** SPEC 83920a7 (AC11.2–AC11.5, FR12, AC12.1) → §1.1, §3, §4, §5 and T-070-18; replaces the calibrated gate of 96a6608 (review H1) (2026-10-04).
 **Amended (speed program):** SPEC FR11–FR14 → As-is rows, authorities, §3–§5 and T-070-13..16 (2026-10-04).
 **Amended:** SPEC AC1.7 (815ac0e, T-070-1 review MEDIUM); §5 step 1 and T-070-12 wording (definition review L3–L5, review LOW-3).
