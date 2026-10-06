@@ -42,7 +42,7 @@ Test stack and light-tests rule: PLAN §4, binding on every task that touches te
   blocked by: T-070-2, T-070-3, T-070-5, T-070-6, T-070-7, T-070-16. delivers: the operator follows any guide and every example runs.
   `docs/3_WRITING_FILES.md` drops the dead parquet `engine` option and writes the writer contract (AC14.2, review N5): csv and parquet through pyarrow, json through pandas; the documented options per format, any other raising `RandEngineError`; the AC14.2 CSV divergences.
   RED: `tests/test_docs.py` — AC8.3 over `docs/*.md` (every fenced `python` block executes); AC8.1 and AC8.2 (doc text and inventory) as one-off grep evidence in the commit body.
-- [ ] T-070-9 — README and `llms.txt` (FR7, AC8.4). `W:` `README.md`, `llms.txt`, `tests/test_docs.py`
+- [x] T-070-9 — README and `llms.txt` (FR7, AC8.4). `W:` `README.md`, `llms.txt`, `tests/test_docs.py`
   blocked by: T-070-8, T-070-10. delivers: a newcomer, human or agent, reaches a working related-tables example from PyPI in one read.
   RED: `tests/test_docs.py` — AC7.2–AC7.5, AC8.4 (README blocks executed; README and `llms.txt` links resolve).
 - [x] T-070-10 — Licence, metadata, changelog, test law, backup (FR9 less AC9.4, AC10.1, AC10.2, AC13.2). `W:` `LICENSE`, `pyproject.toml`, `CHANGELOG.md`, `tests/AGENTS.md`, `specs_bkp/**`
