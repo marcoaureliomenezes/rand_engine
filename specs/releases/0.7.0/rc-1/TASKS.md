@@ -38,14 +38,14 @@ Test stack and light-tests rule: PLAN §4, binding on every task that touches te
 - [x] T-070-7 — Spark refuses keys (FR6). `W:` `rand_engine/validators/common_validator.py`, `tests/test_1_common_validator.py`
   blocked by: none. delivers: the operator gets "NumPy engine only in 0.7.0" naming `DataGenerator` for a Spark spec with keys.
   RED: `tests/test_1_common_validator.py` — AC6.1, AC6.2.
-- [-] T-070-8 — Docs rebuilt and executed (FR8 docs). `W:` `docs/1_DATA_GENERATOR.md`, `docs/2_SPARK_GENERATOR.md`, `docs/3_WRITING_FILES.md`, `docs/4_CONSTRAINTS.md`, `docs/5_RECIPES.md`, `tests/test_docs.py`
+- [x] T-070-8 — Docs rebuilt and executed (FR8 docs). `W:` `docs/1_DATA_GENERATOR.md`, `docs/2_SPARK_GENERATOR.md`, `docs/3_WRITING_FILES.md`, `docs/4_CONSTRAINTS.md`, `docs/5_RECIPES.md`, `tests/test_docs.py`
   blocked by: T-070-2, T-070-3, T-070-5, T-070-6, T-070-7, T-070-16. delivers: the operator follows any guide and every example runs.
   `docs/3_WRITING_FILES.md` drops the dead parquet `engine` option and writes the writer contract (AC14.2, review N5): csv and parquet through pyarrow, json through pandas; the documented options per format, any other raising `RandEngineError`; the AC14.2 CSV divergences.
   RED: `tests/test_docs.py` — AC8.1, AC8.2, AC8.3 over `docs/*.md`.
 - [ ] T-070-9 — README and `llms.txt` (FR7, AC8.4). `W:` `README.md`, `llms.txt`, `tests/test_docs.py`
   blocked by: T-070-8, T-070-10. delivers: a newcomer, human or agent, reaches a working related-tables example from PyPI in one read.
   RED: `tests/test_docs.py` — AC7.2–AC7.5, AC8.4 (README blocks executed; README and `llms.txt` links resolve).
-- [-] T-070-10 — Licence, metadata, changelog, test law, backup (FR9 less AC9.4, AC10.1, AC10.2, AC13.2). `W:` `LICENSE`, `pyproject.toml`, `CHANGELOG.md`, `tests/AGENTS.md`, `specs_bkp/**`
+- [x] T-070-10 — Licence, metadata, changelog, test law, backup (FR9 less AC9.4, AC10.1, AC10.2, AC13.2). `W:` `LICENSE`, `pyproject.toml`, `CHANGELOG.md`, `tests/AGENTS.md`, `specs_bkp/**`
   blocked by: T-070-2, T-070-3, T-070-7, T-070-14, T-070-16. delivers: the operator sees MIT, the identity summary and the 0.7.0 break list on PyPI.
   RED: none statable as a pytest — evidence `poetry build && pipx run twine check dist/*` and `git ls-files specs_bkp` empty, in the commit body.
 - [ ] T-070-11 — Version 0.7.0 (AC9.4). `W:` `pyproject.toml`
