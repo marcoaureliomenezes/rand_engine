@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Same-seed values differ from 0.6.x: each generator draws from its own `SeedSequence` + PCG64 rng instead of the global NumPy seed.
 - `complex_distincts` templates whose `method` is a callable now receive the generator rng as an `rng` keyword argument.
 - `uuid4` values are drawn from the seeded PCG64 rng (RFC 4122 v4), so a seed reproduces them.
+- `uuid4` no longer takes its ignored `length` parameter: a positional `args` value (e.g. `{"method": "uuid4", "args": [5]}`) raises `ColumnGenerationError`, a `length` kwarg fails validation.
 - csv is written by pyarrow, with these divergences from the pandas writer:
   - booleans are written `true`/`false`;
   - integral floats are written `1` and read back as integers;
@@ -26,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - an all-midnight naive datetime column is written with its full time (`2020-01-01 00:00:00.000000000`), not a bare date;
   - line endings are always LF, not `os.linesep`;
   - in a single-column frame a null is written as a blank line, which `pd.read_csv` skips, so the row is lost on read-back;
-  - a tz-aware column is written in its pandas string form (`2024-01-01 00:00:00+00:00`), quoted, a NaT as an empty field;
+  - a tz-aware column is written in its pandas string form (`2024-01-01 00:00:00+00:00`), quoted, a NaT as an empty field in a multi-column frame;
   - a mixed-type object column raises `RandEngineError` naming the column.
 - parquet is written by pyarrow (reads back equal; tz-aware columns keep their tz); the dead parquet `engine` option is gone.
 - Writers accept only their documented options; any other raises `RandEngineError` naming it and listing the accepted ones.
@@ -43,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `floats` keeps fractional bounds; Spark `integers` includes `max`; `integers` with a too-small `int_type` raises instead of wrapping.
 - Spark refuses `min > max` for `floats` and `integers`.
 - The writer gets its row count from `DataGenerator.size()`; `numFiles` splits `size` across files; writer options are no longer consumed on first use or shared across chains.
-- Validator warnings no longer raise; validator parameter tables match the engines; `dates`/`unix_timestamps` without `date_format` default to `%Y-%m-%d`.
+- Validator warnings no longer raise; validator `kwargs` parameter tables match the engines (positional `args` and `complex_distincts` templates are still unvalidated); `dates`/`unix_timestamps` without `date_format` default to `%Y-%m-%d`.
 - The bundled advanced example specs validate; the unimportable CDC module and the unused `fastavro`/`fastparquet` dependencies are removed.
 
 ## [0.6.4] - 2026-06-05

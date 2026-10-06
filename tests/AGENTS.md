@@ -5,8 +5,8 @@ These rules govern everything under `tests/`; slop: `dd-code-review` SLOP.md and
 ## Layout
 
 - One pytest suite: numbered files `test_<n>_<area>.py`, by layer — 0 core methods, 1 validators, 2 `DataGenerator`, 3 Spark and advanced specs, 4 example specs, 5 batch and stream writers, 6 `stream_dict`, 7 templates, 8 the `pk`/`fk` relations contract.
-- `tests/integrations/test_public_api.py` owns the public import surface; `test_benchmarks.py` the FR11 script.
-- Specs under test live in `tests/fixtures/f<n>_*.py`; Spark tests skip when PySpark is absent or on Windows with Python 3.12+.
+- `tests/integrations/test_public_api.py` owns the public import surface; `test_benchmarks.py` the FR11 script; `test_docs.py` the docs contract (fenced blocks executed, README and `llms.txt` links resolve).
+- Specs under test live in `tests/fixtures/f<n>_*.py` (`fixtures_templates.py` is the exception: an orphan no test imports, and it cannot be imported); Spark tests skip when PySpark is absent or on Windows with Python 3.12+.
 - A new test goes into the file that owns its area; a new file only when no file owns it.
 
 ## Law
