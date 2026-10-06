@@ -56,7 +56,7 @@ def rand_spec_with_related_columns():
         "device_plat": dict(
                     method="distincts_map", cols = ["device_type", "os_type"],
                     kwargs=dict(distincts={
-                       "smartphone": ["android","IOS"], 
+                       "smartphone": ["android","iOS"], 
                        "desktop": ["linux", "windows"]
         })),
         # From simple_client_3 - distincts_map_prop

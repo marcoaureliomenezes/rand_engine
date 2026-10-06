@@ -174,8 +174,8 @@ class TestPyCoreDistinctsMap:
         
         # Check all results are valid category-value pairs
         expected_pairs = [
-            ("apple", "Fruit"), ("banana", "Fruit"), ("orange", "Fruit"),
-            ("carrot", "Vegetable"), ("lettuce", "Vegetable"), ("tomato", "Vegetable")
+            ("Fruit", "apple"), ("Fruit", "banana"), ("Fruit", "orange"),
+            ("Vegetable", "carrot"), ("Vegetable", "lettuce"), ("Vegetable", "tomato")
         ]
         assert all(item in expected_pairs for item in result)
     
@@ -189,7 +189,7 @@ class TestPyCoreDistinctsMap:
         
         assert len(result) == size
         # All should be from Color category
-        expected_pairs = [("red", "Color"), ("green", "Color"), ("blue", "Color")]
+        expected_pairs = [("Color", "red"), ("Color", "green"), ("Color", "blue")]
         assert all(item in expected_pairs for item in result)
 
 
@@ -361,3 +361,9 @@ class TestPyCoreIntegration:
             assert len(parts) == 4
             assert len(parts[1]) == 8  # Zero-filled
             assert parts[2] in ["ACTIVE", "INACTIVE", "PENDING"]
+
+
+def test_gen_distincts_map_puts_category_first():
+    """Operator ruling G9: (category, value), like distincts_map_prop."""
+    result = PyCore.gen_distincts_map(rng=RNG, size=50, distincts={"smartphone": ["android", "ios"]})
+    assert set(result) == {("smartphone", "android"), ("smartphone", "ios")}

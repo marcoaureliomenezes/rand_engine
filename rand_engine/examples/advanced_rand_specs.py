@@ -168,7 +168,7 @@ class AdvancedRandSpecs:
             "currency_country": {
                 "method": "distincts_map",
                 "splitable": True,
-                "cols": ["currency", "country"],
+                "cols": ["country", "currency"],
                 "sep": ";",
                 "kwargs": {
                     "distincts": {

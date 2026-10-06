@@ -86,7 +86,7 @@ These take a `cols` list naming the columns they produce.
 
 | Method | `distincts` shape | Columns |
 |---|---|---|
-| `distincts_map` | `{key: [value, ...]}` | `cols[0]` = a value, `cols[1]` = its key |
+| `distincts_map` | `{key: [value, ...]}` | `cols[0]` = the key, `cols[1]` = a value |
 | `distincts_map_prop` | `{key: [(value, weight), ...]}` | `cols[0]` = the key, `cols[1]` = a value |
 | `distincts_multi_map` | `{key: [[a, ...], [b, ...]]}` | the key, then one column per inner list (cartesian product); `cols` must name levels + 1 columns, any other count fails validation |
 
@@ -94,7 +94,7 @@ These take a `cols` list naming the columns they produce.
 
 ```python
 spec = {
-    "os_device": {"method": "distincts_map", "cols": ["os", "device"],
+    "device_os": {"method": "distincts_map", "cols": ["device", "os"],
                   "kwargs": {"distincts": {"phone": ["android", "ios"], "desktop": ["linux", "windows"]}}},
     "company": {"method": "distincts_multi_map", "cols": ["sector", "sub_sector", "size"],
                 "kwargs": {"distincts": {"tech": [["software", "hardware"], ["small", "large"]]}}},
@@ -108,8 +108,8 @@ spec = {
         ]}},
 }
 df = DataGenerator(spec, seed=1).size(500).get_df()
-assert list(df.columns) == ["os", "device", "sector", "sub_sector", "size", "ip"]
-assert set(zip(df["os"], df["device"])) <= {("android", "phone"), ("ios", "phone"), ("linux", "desktop"), ("windows", "desktop")}
+assert list(df.columns) == ["device", "os", "sector", "sub_sector", "size", "ip"]
+assert set(zip(df["device"], df["os"])) <= {("phone", "android"), ("phone", "ios"), ("desktop", "linux"), ("desktop", "windows")}
 ```
 
 ## Transformers

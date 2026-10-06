@@ -33,7 +33,7 @@ class PyCore:
 
   @classmethod
   def gen_distincts_map(cls, size: int, distincts: Dict[str, List[Any]], *, rng: np.random.Generator) -> np.ndarray:
-    distincts_map = [(i, j) for j in distincts for i in distincts[j]]
+    distincts_map = [(k, v) for k, values in distincts.items() for v in values]
     assert len(list(set([type(x) for x in distincts]))) == 1
     return cls.gen_distincts_untyped(size, distincts_map, rng=rng)
 
