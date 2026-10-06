@@ -362,9 +362,9 @@ def test_gen_ints_and_zfilled_reach_the_inclusive_max():
 ])
 def test_gen_dates_equals_per_row_utc_strftime(fmt, start, end):
   """AC14.1: same strings as the per-row UTC strftime, for each documented date_format."""
-  from datetime import datetime, timezone
+  from datetime import datetime, timedelta, timezone
   ts = NPCore.gen_unix_timestamps(10**4, start, end, fmt, rng=np.random.default_rng(7))
-  expected = [datetime.fromtimestamp(int(t), timezone.utc).strftime(fmt) for t in ts]
+  expected = [(datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(seconds=int(t))).strftime(fmt) for t in ts]
   assert NPCore.gen_dates(10**4, start, end, fmt, rng=np.random.default_rng(7)).tolist() == expected
 
 
