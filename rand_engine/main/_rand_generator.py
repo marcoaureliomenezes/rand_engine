@@ -4,8 +4,7 @@ import numpy as np
 import pandas as pd
 from rand_engine.validators.exceptions import ColumnGenerationError, TransformerError
 from rand_engine.core._keys import Keys
-from rand_engine.core._np_core import NPCore
-from rand_engine.core._py_core import PyCore
+from rand_engine.core._py_core import METHODS
 from rand_engine.core._spark_core import SparkCore
 
 
@@ -18,24 +17,8 @@ class RandGenerator:
 
 
   def map_methods(self, rng: Optional[np.random.Generator] = None, offset: int = 0, key_seed: int = 0, column: str = ""):
-    core = {
-      "integers": NPCore.gen_ints,
-      "int_zfilled": NPCore.gen_ints_zfilled,
-      "floats": NPCore.gen_floats,
-      "floats_normal": NPCore.gen_floats_normal,
-      "distincts": NPCore.gen_distincts,
-      "distincts_prop": NPCore.gen_distincts_prop,
-      "unix_timestamps": NPCore.gen_unix_timestamps,
-      "uuid4": NPCore.gen_uuid4,
-      "booleans": NPCore.gen_booleans,
-      "dates": NPCore.gen_dates,
-      "distincts_map": PyCore.gen_distincts_map,
-      "distincts_multi_map": PyCore.gen_distincts_multi_map,
-      "distincts_map_prop": PyCore.gen_distincts_map_prop,
-      "complex_distincts": PyCore.gen_complex_distincts,
-    }
     return {
-      **{name: partial(method, rng=rng) for name, method in core.items()},
+      **{name: partial(method, rng=rng) for name, method in METHODS.items()},
       "pk": partial(Keys.gen_pk, offset=offset),
       "fk": partial(Keys.gen_fk, offset=offset, key_seed=key_seed, column=column),
     }
@@ -46,8 +29,7 @@ class RandGenerator:
       columns = v.get("cols", [k])
       generator_method = self.map_methods(rng, offset, key_seed, k)[v["method"]]
       try:
-        if "args" in v: values = generator_method(size , *v["args"])
-        else: values = generator_method(size , **v.get("kwargs", {}))
+        values = generator_method(size , **v.get("kwargs", {}))
         for i, col in enumerate(columns):
           dict_data[col] = values if len(columns) == 1 else [val[i] for val in values]
       except Exception as e:

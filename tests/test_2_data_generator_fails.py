@@ -17,7 +17,6 @@ from tests.fixtures.f1_data_generator_specs_wrong import (
     wrong_spec_method_not_string,
     wrong_spec_missing_required_param,
     wrong_spec_wrong_param_type,
-    wrong_spec_both_kwargs_and_args,
     wrong_spec_missing_kwargs_and_args,
     wrong_spec_method_requires_cols,
     wrong_spec_cols_not_list,
@@ -85,15 +84,6 @@ def test_spec_wrong_param_type(wrong_spec_wrong_param_type):
         DataGenerator(wrong_spec_wrong_param_type)
     
     assert "must be int" in str(exc_info.value)
-
-
-def test_spec_both_kwargs_and_args(wrong_spec_both_kwargs_and_args):
-    """Test that DataGenerator raises exception when both kwargs and args are present."""
-    with pytest.raises(SpecValidationError) as exc_info:
-        DataGenerator(wrong_spec_both_kwargs_and_args)
-    
-    assert "cannot have both" in str(exc_info.value)
-    assert "simultaneously" in str(exc_info.value)
 
 
 def test_spec_missing_kwargs_and_args(wrong_spec_missing_kwargs_and_args):

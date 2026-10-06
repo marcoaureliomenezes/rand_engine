@@ -344,6 +344,12 @@ class AdvancedValidator:
                         errors.append(
                             f"⚠️  Column '{col_name}': Template {idx} missing 'kwargs' field"
                         )
+                    elif isinstance(template["method"], str):
+                        name = f"{col_name}.templates[{idx}]"
+                        errors.extend(
+                            CommonValidator.validate_column(name, template) if template["method"] in CommonValidator.METHOD_SPECS
+                            else [f"❌ Column '{name}': template method '{template['method']}' must be one of "
+                                  f"{', '.join(sorted(CommonValidator.METHOD_SPECS))}"])
         
         return errors
     
@@ -387,8 +393,6 @@ class AdvancedValidator:
     @classmethod
     def _fk_errors(cls, col_name: str, col_config: Dict[str, Any]) -> List[str]:
         """Refuses an fk whose parent pk cannot be rebuilt, or whose parent_size or skew is out of range."""
-        if "args" in col_config:
-            return [f"❌ Column '{col_name}': 'fk' takes only 'kwargs', never 'args'"]
         kw = col_config.get("kwargs", {})
         if not isinstance(kw, dict):
             return []
@@ -518,32 +522,14 @@ class AdvancedValidator:
                 )
             return errors
         
-        # Validate kwargs vs args format
-        has_kwargs = "kwargs" in col_config
-        has_args = "args" in col_config
-        
-        if has_kwargs and has_args:
-            errors.append(
-                f"❌ Column '{col_name}': cannot have both 'kwargs' and 'args' simultaneously\n"
-                f"   Use only 'kwargs' (recommended)"
-            )
+        if "args" in col_config:
+            errors.append(f"❌ Column '{col_name}': 'args' was removed in 0.7.0; pass parameters by name in 'kwargs'")
             return errors
-        
+
         key_errors = {"pk": cls._pk_errors, "fk": cls._fk_errors}.get(method)
         if key_errors:
             errors.extend(key_errors(col_name, col_config))
 
-        # Convert legacy 'args' to 'kwargs' for validation
-        if has_args:
-            if not isinstance(col_config["args"], (list, tuple)):
-                errors.append(
-                    f"❌ Column '{col_name}': 'args' must be list or tuple, got {type(col_config['args']).__name__}\n"
-                    f"   Or better yet, use 'kwargs' (recommended format)"
-                )
-                return errors
-            # Legacy format - skip detailed validation
-            return errors
-        
         # Try CommonValidator first
         common_errors = CommonValidator.validate_column(col_name, col_config)
         if common_errors:

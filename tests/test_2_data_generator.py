@@ -37,13 +37,6 @@ def test_create_df_simple_with_kwargs_spec_lambda_size(rand_spec_with_kwargs):
   assert rand_spec_with_kwargs.keys() == set(df_data.columns)
 
 
-@pytest.mark.parametrize("size", [10**1, 10**2, 10**3])
-def test_create_df_simple_with_args_spec(rand_spec_with_args, size):
-  df_data = DataGenerator(rand_spec_with_args).size(size).get_df()
-  assert df_data.shape[0] == size
-  assert rand_spec_with_args.keys() == set(df_data.columns)
-
-
 
 @pytest.mark.parametrize("size", [10**1, 10**2, 10**3])
 def test_create_df_simple_with_lazy_spec(rand_spec_lambda_with_kwargs, size):

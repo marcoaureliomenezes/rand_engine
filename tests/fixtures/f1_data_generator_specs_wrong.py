@@ -76,18 +76,6 @@ def wrong_spec_wrong_param_type():
 
 
 @pytest.fixture(scope="function")
-def wrong_spec_both_kwargs_and_args():
-    """Cannot have both 'kwargs' and 'args' simultaneously."""
-    return {
-        "age": {
-            "method": "integers",
-            "kwargs": {"min": 0, "max": 100},
-            "args": [0, 100]  # Can't have both
-        }
-    }
-
-
-@pytest.fixture(scope="function")
 def wrong_spec_missing_kwargs_and_args():
     """Missing both 'kwargs' and 'args' - need at least one."""
     return {

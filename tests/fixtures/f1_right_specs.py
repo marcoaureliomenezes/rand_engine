@@ -36,14 +36,11 @@ def rand_spec_lambda_with_kwargs():
 
 @pytest.fixture(scope="function")
 def rand_spec_with_args():
-    """
-    Spec using ONLY args (not kwargs).
-    Tests that args parameter works correctly.
-    """
+    """A small three-column spec ('args' itself was removed in 0.7.0)."""
     return {
-        "id": dict(method="int_zfilled", args=[10]),
-        "priority": dict(method="distincts", args=[["low", "medium", "high"]]),
-        "temperature": dict(method="floats", args=[20.0, 30.0, 1]),
+        "id": dict(method="int_zfilled", kwargs=dict(length=10)),
+        "priority": dict(method="distincts", kwargs=dict(distincts=["low", "medium", "high"])),
+        "temperature": dict(method="floats", kwargs=dict(min=20.0, max=30.0, decimals=1)),
     }
 
 
@@ -183,10 +180,10 @@ def rand_spec_all_methods():
 def rand_engine_splitable_benchmark_baseline():
   return {
     "id":        dict(method="int_zfilled", kwargs=dict(length=8)),
-    "device": dict(method="distincts", args=[["mobile", "desktop"]]),
-    "platform": dict(method="distincts", args=[["IOS", "Android", "Windows", "MacOS", "Linux"]]),
-    "http_request": dict(method="distincts", args=[["GET /home", "GET /login", "POST /login", "GET /logout"]]),
-    "http_status": dict(method="distincts", args=[["200", "201", "400", "404", "500"]]),
+    "device": dict(method="distincts", kwargs=dict(distincts=["mobile", "desktop"])),
+    "platform": dict(method="distincts", kwargs=dict(distincts=["IOS", "Android", "Windows", "MacOS", "Linux"])),
+    "http_request": dict(method="distincts", kwargs=dict(distincts=["GET /home", "GET /login", "POST /login", "GET /logout"])),
+    "http_status": dict(method="distincts", kwargs=dict(distincts=["200", "201", "400", "404", "500"])),
   }
 
 

@@ -3,8 +3,14 @@ Tests for AdvancedValidator - validates DataGenerator specs.
 Covers common methods (integers, floats, etc.) + advanced methods (distincts_map, pk, fk, etc.)
 """
 
+import functools
+import inspect
+
 import pytest
+from rand_engine.main._rand_generator import RandGenerator
 from rand_engine.main.data_generator import DataGenerator
+from rand_engine.main.spark_generator import SparkGenerator
+from rand_engine.validators.common_validator import CommonValidator
 from rand_engine.validators.advanced_validator import AdvancedValidator
 from rand_engine.validators.exceptions import SpecValidationError
 
@@ -130,20 +136,6 @@ def test_invalid_method_unknown():
     assert len(errors) == 1
     assert "does not exist" in errors[0]
     assert "Available methods" in errors[0]
-
-
-def test_invalid_both_kwargs_and_args():
-    """Tests error when having both kwargs and args simultaneously."""
-    spec = {
-        "idade": {
-            "method": "integers",
-            "kwargs": {"min": 0, "max": 100},
-            "args": [0, 100]
-        }
-    }
-    errors = AdvancedValidator.validate(spec)
-    assert len(errors) == 1
-    assert "cannot have both" in errors[0] and "simultaneously" in errors[0]
 
 
 def test_invalid_missing_kwargs_and_args():
@@ -481,14 +473,66 @@ def test_fk_spec_is_refused(kwargs, match):
     AdvancedValidator.validate_and_raise({"pid": {"method": "fk", "kwargs": kwargs}})
 
 
-def test_fk_args_are_refused():
-  with pytest.raises(SpecValidationError, match=r"'fk' takes only 'kwargs'"):
-    AdvancedValidator.validate_and_raise({"pid": {"method": "fk", "args": [FK_PARENT, 10]}})
-
-
 def test_fk_with_domain_sized_parent_and_skew_is_accepted():
   AdvancedValidator.validate_and_raise({"pid": {"method": "fk", "kwargs": {"parent": FK_PARENT, "parent_size": 100, "skew": 1}}})
 
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+@pytest.mark.parametrize("column", [
+  {"method": "integers", "args": [1, 9]},
+  {"method": "uuid4", "args": [5]},
+  {"method": "integers", "kwargs": {"min": 0, "max": 9}, "args": [0, 9]},
+])
+def test_args_is_refused(column):
+  """The Spark side is owned by test_1_common_validator ("does not support 'args'")."""
+  errors = AdvancedValidator.validate({"x": column})
+  assert len(errors) == 1
+  assert "'args'" in errors[0] and "'kwargs'" in errors[0]
+
+
+@pytest.mark.parametrize("template, match", [
+  ({"method": "integers", "kwargs": {"min": 0, "max": 9, "dtype": "int8"}}, r"(?s)c\.templates\[0\].*dtype"),
+  ({"method": "integers", "kwargs": {"max": 9}}, r"(?s)c\.templates\[0\].*requires parameter 'min'"),
+  ({"method": "distincts_map", "kwargs": {"distincts": {"a": ["b"]}}}, r"(?s)c\.templates\[0\].*distincts_map"),
+])
+def test_complex_distincts_template_is_checked(template, match):
+  spec = {"c": {"method": "complex_distincts", "kwargs": {"pattern": "<x>", "replacement": "x", "templates": [template]}}}
+  with pytest.raises(SpecValidationError, match=match):
+    DataGenerator(spec)
+
+
+@pytest.mark.parametrize("template, expected", [
+  ({"method": "dates", "kwargs": {"start": "2024-01-01", "end": "2024-01-02"}}, "<2024-01-01>"),
+  ({"method": "distincts_prop", "kwargs": {"distincts": {"a": 1}}}, "<a>"),
+])
+def test_complex_distincts_template_that_validates_generates(template, expected):
+  spec = {"c": {"method": "complex_distincts", "kwargs": {"pattern": "<x>", "replacement": "x", "templates": [template]}}}
+  assert set(DataGenerator(spec, seed=1).size(20).get_df()["c"]) == {expected}
+
+
+def _params(fn, injected=("size", "rng", "spark", "F", "df", "col_name", "offset", "key_seed", "column")):
+  sig = inspect.signature(fn.func if isinstance(fn, functools.partial) else fn).parameters.values()
+  if any(p.kind is p.VAR_KEYWORD for p in sig):
+    return None
+  names = {p.name for p in sig} - set(injected)
+  return names, {p.name for p in sig if p.default is p.empty} - set(injected)
+
+
+def test_validator_tables_match_engine_maps_and_signatures():
+  """One method set: every validator table pinned to both engine maps and to each callable's parameters."""
+  common, advanced = CommonValidator.METHOD_SPECS, AdvancedValidator.METHOD_SPECS
+  pandas = RandGenerator({}).map_methods()
+  spark = SparkGenerator.map_methods(None)
+  assert set(common) | set(advanced) == set(pandas)
+  assert set(common) | set(advanced) - {"pk", "fk"} == set(spark)
+  for name, fn in [*pandas.items(), *spark.items()]:
+    table = (common.get(name) or advanced[name])["params"]
+    params = _params(fn)
+    if params is None:
+      continue
+    names, required = params
+    assert set(table["required"]) | set(table["optional"]) == names, name
+    assert required <= set(table["required"]), name

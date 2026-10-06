@@ -3,6 +3,7 @@ import time
 from typing import Dict, List, Any
 import numpy as np
 from functools import reduce
+from rand_engine.core._np_core import NPCore
 
 class PyCore:
 
@@ -11,28 +12,13 @@ class PyCore:
   def gen_complex_distincts(cls, size: int, pattern="x.x.x-x", replacement="x", templates=None, *, rng: np.random.Generator):
     if templates is None:
       templates = []
-    from rand_engine.core._np_core import NPCore
-    
-    # Mapeamento de strings para métodos
-    method_map = {
-      "integers": NPCore.gen_ints,
-      "int_zfilled": NPCore.gen_ints_zfilled,
-      "floats": NPCore.gen_floats,
-      "floats_normal": NPCore.gen_floats_normal,
-      "distincts": NPCore.gen_distincts,
-      "unix_timestamps": NPCore.gen_unix_timestamps,
-      "uuid4": NPCore.gen_uuid4,
-      "booleans": NPCore.gen_booleans,
-    }
-    
     assert pattern.count(replacement) == len(templates)
     list_of_lists, counter = [], 0
     for replacer_cursor in range(len(pattern)):
       if pattern[replacer_cursor] == replacement:
         method = templates[counter]["method"]
-        # Se for string, mapeia para o callable
         if isinstance(method, str):
-          method = method_map[method]
+          method = METHODS[method]
         list_of_lists.append(method(size, rng=rng, **templates[counter]["kwargs"]))
         counter += 1
       else:
@@ -70,6 +56,24 @@ class PyCore:
     return cls.gen_distincts_untyped(size, distincts_map_prop, rng=rng)
 
 
+
+# the NumPy engine's one method map: DataGenerator columns and complex_distincts templates
+METHODS = {
+  "integers": NPCore.gen_ints,
+  "int_zfilled": NPCore.gen_ints_zfilled,
+  "floats": NPCore.gen_floats,
+  "floats_normal": NPCore.gen_floats_normal,
+  "distincts": NPCore.gen_distincts,
+  "distincts_prop": NPCore.gen_distincts_prop,
+  "unix_timestamps": NPCore.gen_unix_timestamps,
+  "uuid4": NPCore.gen_uuid4,
+  "booleans": NPCore.gen_booleans,
+  "dates": NPCore.gen_dates,
+  "distincts_map": PyCore.gen_distincts_map,
+  "distincts_multi_map": PyCore.gen_distincts_multi_map,
+  "distincts_map_prop": PyCore.gen_distincts_map_prop,
+  "complex_distincts": PyCore.gen_complex_distincts,
+}
 
 
 # def test_handle_distincts_lvl_5():
