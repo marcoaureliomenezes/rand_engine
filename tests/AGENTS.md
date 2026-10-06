@@ -1,60 +1,26 @@
-# Test Rules — <project-name>
+# Test Rules — rand-engine
 
-> Installed by dadaia. Replace every `<ANGLE-BRACKET>` placeholder below with this project's own values before relying on it.
-> A placeholder left in place means that section is not yet calibrated.
+These rules govern everything under `tests/`; slop: `dd-code-review` SLOP.md and `specs/memory/QUALITY.md`.
 
-These rules override general workspace guidance for everything under `tests/`.
-Agents creating or editing tests must follow them. Full protocol: skill
-`dd-test-stewardship`.
+## Layout
 
-- Intent, admission, deletion, tombstone: `dd-test-stewardship`; slop: `dd-code-review` SLOP.md and `specs/memory/QUALITY.md` fixed section.
+- One pytest suite: numbered files `test_<n>_<area>.py`, by layer — 0 core methods, 1 validators, 2 `DataGenerator`, 3 Spark and advanced specs, 4 example specs, 5 batch and stream writers, 6 `stream_dict`, 7 templates, 8 the `pk`/`fk` relations contract.
+- `tests/integrations/test_public_api.py` owns the public import surface; `test_benchmarks.py` the FR11 script.
+- Specs under test live in `tests/fixtures/f<n>_*.py`; Spark tests skip when PySpark is absent or on Windows with Python 3.12+.
+- A new test goes into the file that owns its area; a new file only when no file owns it.
 
-## Architecture
+## Law
 
-- `tests/unit/**`: pure or near-pure tests only. No real subprocess execution,
-  server threads, CLI runners, full workspace init, network, sleeps, or real git
-  remotes. Process-boundary units may patch the runner; they must not spawn a
-  process.
-- `tests/contract/**`: public CLI/API/schema/security/projection/gate contracts.
-- `tests/integration/**`: multi-component tests using tmp filesystem, service
-  wiring, or CLI runner.
-- `tests/e2e/**`: named end-to-end journeys only. Every file names an owner.
-- `tests/tmp/**`: temporary debugging reproductions only; excluded from default
-  collection and deleted or promoted before closure.
+- A test asserts behaviour on literal expected values, never values computed by the code under test, never text or counts of the source.
+- Relations are asserted on the output read back (frame, file, stream records), never on the run alone.
+- A default test generates at most 10^4 rows; a larger one carries `@pytest.mark.stress`, deselected by default and run only in the CI `benchmarks` job.
+- No benchmark or timing assert in the default suite; speed is measured only by `benchmarks/speed.py` in CI.
+- Golden seeded outputs (`test_2_data_generator.py`) change only deliberately: the commit that changes generation output rewrites the golden in the same commit, its body stating why.
+- A fix adds a new case; it never rewrites an old assert.
+- Mock only boundaries; writer tests write under `tmp_path`.
 
-## Size tiers and cost
-
-| Tier (marker) | Directory | Timeout default | Owner rule |
-|---|---|---|---|
-| `unit` | `tests/unit/**` | `<UNIT_TIMEOUT_S>` s | — |
-| `contract` | `tests/contract/**` | `<CONTRACT_TIMEOUT_S>` s | — |
-| `integration` | `tests/integration/**` | `<INTEGRATION_TIMEOUT_S>` s | — |
-| `e2e` (LARGE) | `tests/e2e/**` | `<E2E_TIMEOUT_S>` s | every file names an owner |
-
-A test that needs more time than its tier's default is **mis-tiered** — fix the
-tier, never raise the default. The LARGE-tier census cap is `<LARGE_CAP>` per
-module (abstract default in `dd-test-stewardship/PARAMETERS.md`'s "LARGE (E2E)
-cap" row), reported as a warning until achievable.
-
-`flaky` and `quarantine` markers are registered in `pyproject.toml`; a
-`quarantine` marker without `bug="<bug-slug>"` refuses collection, and every
-gating selector (CI jobs, release jobs, the pre-push preflight) excludes the
-quarantine lane. Diagnosis runs use `-m quarantine` explicitly.
-
-## Markers and cost
-
-- Layer markers are applied automatically by directory via `tests/conftest.py`.
-- Add `@pytest.mark.slow(reason="...")` to any test over 1 second or any test
-  that starts a subprocess/server.
-- The local loop is:
+## Run
 
 ```bash
-pytest -q -m "unit and not slow" tests/unit
-```
-
-Coverage is not the default loop. Use explicit coverage only for curated
-unit/contract runs:
-
-```bash
-pytest -q -m "unit or contract" --cov=<PACKAGE> --cov-report=term-missing --cov-fail-under=<COVERAGE_FLOOR>
+PYTHONDONTWRITEBYTECODE=1 poetry run pytest tests/ -q -p no:cacheprovider
 ```
