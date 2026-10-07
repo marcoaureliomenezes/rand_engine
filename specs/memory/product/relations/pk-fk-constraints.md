@@ -1,33 +1,28 @@
 ---
 slug: pk-fk-constraints
-title: PK/FK constraints
-tldr: "PK constraints record generated keys in checkpoint tables; FK constraints fill child columns by sampling keys recorded within a time watermark."
-summary: "ConstraintsHandler gives DataGenerator relation-aware data — a PK constraint writes the generated keys with a creation time into checkpoint_<name>; an FK constraint overwrites its columns with keys sampled from rows created within the watermark; SQLite (default) and DuckDB handlers store the checkpoints."
-tags: [constraints, referential-integrity, checkpoint, sqlite, duckdb]
+title: PK/FK key columns
+tldr: "Stateless pk and fk column methods create related tables from definitions, seeds and row indexes without a checkpoint store."
+summary: "A pk is a sequence or a deterministic permutation of row indexes; an fk deterministically selects a parent row and rebuilds its pk value. Batch parts and stream microbatches advance row offsets, so keys remain consistent without shared state."
+tags: [keys, referential-integrity, stateless, pk, fk]
 sources:
   - rand_engine/main/_constraints_handler.py
   - rand_engine/integrations/**
-  - rand_engine/utils/logger.py
+  - rand_engine/core/_keys.py
+  - rand_engine/main/data_generator.py
 ---
 
-## Grammar
+## Primary keys
 
-- The spec's top-level `constraints` maps a label to `{name, tipo, fields, watermark}` ([[rand-spec-grammar]]).
-- `tipo` is `PK` or `FK`; `name` names the checkpoint table `checkpoint_<name>` the two sides share.
-- PK `fields` carry SQL types (`["category_id VARCHAR(8)"]`); FK `fields` are bare column names (`["category_id"]`).
-- `watermark` is a positive number of seconds.
+- `pk` is a column method with `sequence` and `permuted` styles. Sequence computes `start + row_index * step`; permuted applies a keyed bijection over a declared domain and then adds `start`.
+- An optional integer `format` field renders either style as strings. Keys do not depend on the generator seed and are unique while the validated domain and int64 guards hold.
 
-## Behaviour
+## Foreign keys
 
-- PK: after generation, the frame's key columns plus a `creation_time` (epoch seconds) are inserted into `checkpoint_<name>`, created on first use with those columns as its primary key; an already-recorded key is skipped.
-- Each PK write prunes checkpoint rows older than the PK watermark plus a 300-second retention.
-- FK: the FK columns of the child frame are overwritten with keys sampled, with replacement, from `checkpoint_<name>` rows created within the last `watermark` seconds (default 10).
-- A parent generator runs before its child: relations link through time-stamped checkpoint rows, not through a shared spec.
-- `.option("reset_checkpoint", True)` on a generator drops every `checkpoint_*` table before its batch ([[data-generator]]).
+- `fk` receives a parent `pk` column spec, `parent_size` and optional non-negative `skew`.
+- The child seed, column name, full FK definition and child row index select a parent row. The parent value is rebuilt from its `pk` definition, so parent and child can be generated in separate processes.
+- Uniform selection is the default; positive skew applies a Zipf distribution over permuted parent ranks so hot keys are scattered.
 
-## Storage
+## Continuity and boundaries
 
-- The checkpoint store is an in-memory SQLite database by default.
-- `SQLiteHandler` and `DuckDBHandler` implement `BaseDBHandler`: `create_table`, `insert_df` (insert-or-ignore), `query_with_pandas`, `list_tables`, `drop_table`.
-- Both handlers pool one connection per `db_path` at class level, so every generator in a process shares one `:memory:` checkpoint database.
-- `insert_df` accepts only table names made of letters, digits and underscores.
+- `get_df` starts key indexes at zero for every call. `stream_dict` and `writeStream` advance them across microbatches; a multi-file batch advances them across its parts.
+- `SparkGenerator` refuses both key methods. No SQL, database integration, checkpoint table, watermark or retained key state participates in relations ([[spark-generator]], [[rand-spec-grammar]]).

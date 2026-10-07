@@ -4,6 +4,8 @@ Short, runnable patterns. Every `python` block runs in CI, in order, in one name
 
 ## Faker pools
 
+<!-- derived-from: generation-methods sha256:b3bed2e747eb -->
+
 Faker is slow per value; draw a pool once and sample it with `distincts`.
 
 ```python
@@ -23,6 +25,8 @@ assert people["name"].isin(names).all()
 ```
 
 ## Kafka or any queue
+
+<!-- derived-from: data-generator sha256:2a69edeee8a2 -->
 
 `stream_dict` yields JSON-ready dicts at a bounded rate; send them with your client.
 
@@ -51,6 +55,8 @@ for record in events.stream_dict(min_throughput=10, max_throughput=50):
 
 ## Parquet lake
 
+<!-- derived-from: writers-and-streaming sha256:6b17969e7cb2 -->
+
 One folder per partition value, several files each.
 
 ```python
@@ -68,6 +74,8 @@ assert len(lake) == 2_000 and lake["sale_id"].is_unique
 ```
 
 ## Related tables
+
+<!-- derived-from: pk-fk-constraints sha256:3cc5aee7e657 -->
 
 Share the parent's `pk` spec with the child's `fk`; see [4_CONSTRAINTS.md](4_CONSTRAINTS.md).
 

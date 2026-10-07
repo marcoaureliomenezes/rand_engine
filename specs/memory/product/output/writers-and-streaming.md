@@ -1,8 +1,8 @@
 ---
 slug: writers-and-streaming
 title: Writers and streaming
-tldr: "Spark-style file writers on DataGenerator — write saves CSV, JSON lines or Parquet files; writeStream emits one file per microbatch until a timeout."
-summary: "DataGenerator.write (FileBatchWriter) and .writeStream (FileStreamWriter) mirror Spark's writer API — format, mode, option(s), size, then save or trigger+start; every file is a fresh microbatch of the generator's pipeline."
+tldr: "DataGenerator writes CSV, JSON lines and Parquet batches or repeated file-stream microbatches through a Spark-style builder."
+summary: "The batch writer distributes one requested total row count across numFiles; the stream writer emits size rows per microbatch. CSV and Parquet use PyArrow, JSON uses pandas, and each format accepts only documented options."
 tags: [writers, streaming, files, csv, json, parquet]
 sources:
   - rand_engine/file_handlers/**
@@ -10,23 +10,22 @@ sources:
 
 ## Scope
 
-- Built-in sinks are local or mounted files only (CSV, JSON lines, Parquet); no Kafka, queue, object-store or database writer exists.
-- Every other sink is reached by forwarding `get_df()` DataFrames or `stream_dict` records ([[data-generator]]).
+- Built-in sinks are local or mounted CSV, JSON-lines and Parquet files; callers forward DataFrames or records to every other sink ([[data-generator]]).
+- Both writers expose `format`, `mode`, `option` and `options`; unsupported options raise `RandEngineError` before existing output is removed.
 
-## Batch — `write`
+## Batch writer
 
-- `generator.write.format(f).mode(m).option(k, v).size(n).save(path)` writes generated rows to files ([[data-generator]]).
-- `format` is `csv` (default, no index), `json` (JSON lines, one record per line) or `parquet` (PyArrow engine).
-- `option("compression", c)` passes pandas compression; CSV and JSON get a `.<format>.<c>` extension (`gzip` -> `.gz`), Parquet keeps `.parquet`.
-- `option("numFiles", k)` with `k > 1` writes `k` files `part_<id>.<ext>` into a directory named after the target file; `mode("overwrite")` (the default) empties that directory first.
-- `.size(n)` sets the rows per file; each file is a fresh microbatch of the pipeline.
-- `.options(**kw)` sets several options at once.
+- `generator.write.format(f).mode(m).option(k, v).save(path)` uses the generator's configured size as the total row count.
+- `numFiles` splits that total as evenly as possible across parts; offsets follow the cumulative part sizes, so keys do not repeat between files.
+- A single file uses the requested path. Multiple files use a directory of `part_<id>` files, emptied first in overwrite mode.
 
-## Stream — `writeStream`
+## Stream writer
 
-- `generator.writeStream.format(f).option("timeout", s).trigger(t).size(n).start(path)` writes `part-<uuid>.<ext>` files into a directory named after the target, one microbatch every `t` seconds, until `s` seconds have passed.
-- `mode("overwrite")` empties the directory before the first file.
+- `generator.writeStream.trigger(seconds).option("timeout", seconds).start(path)` writes repeated `size`-row microbatches to `part-<uuid>` files.
+- Each microbatch advances the row offset; `start` blocks until the timeout expires.
 
-## Filesystem helpers
+## Formats
 
-- `fs_utils` defines `LocalFSUtils` and `DBFSUtils` (Databricks `dbutils`) behind one `ls`/`mkdir`/`rm` interface; the writers use `os` directly.
+- CSV and Parquet convert the DataFrame to an Arrow table; mixed-type object columns fail with the column named. Parquet defaults to Snappy and preserves timezone-aware values and dtypes.
+- CSV accepts `sep`, supported compression and `index=False`; compressed streams use gzip, bz2, xz or deflated zip file objects. Timezone-aware columns are rendered to pandas strings before Arrow writes them.
+- JSON remains pandas JSON-lines output and accepts its documented orientation, text and compression options.

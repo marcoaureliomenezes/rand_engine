@@ -4,6 +4,8 @@
 
 ## Docs
 
+<!-- derived-from: public-api sha256:0d1a9b54e4a7 -->
+
 - [README](https://github.com/marcoaureliomenezes/rand_engine/blob/master/README.md): install, quickstart, seeds, related tables, streams and files
 - [DataGenerator](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/1_DATA_GENERATOR.md): every method, its kwargs, seeds, `stream_dict`
 - [SparkGenerator](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/2_SPARK_GENERATOR.md): the same spec on Spark
@@ -12,9 +14,13 @@
 
 ## Recipes
 
+<!-- derived-from: templates-and-examples sha256:a7eb98b819bf -->
+
 - [Recipes](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/5_RECIPES.md): Faker pools, Kafka or any queue, parquet lake, related tables
 
 ## Optional
+
+<!-- derived-from: benchmarks sha256:42b63a34e160 -->
 
 - [Benchmarks](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/BENCHMARKS.md): rows/µs per method and sink, measured in CI
 - [Changelog](https://github.com/marcoaureliomenezes/rand_engine/blob/master/CHANGELOG.md): release notes and breaking changes

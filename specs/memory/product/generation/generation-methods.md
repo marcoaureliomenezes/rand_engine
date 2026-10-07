@@ -1,41 +1,40 @@
 ---
 slug: generation-methods
 title: Generation methods
-tldr: "Ten common methods run on pandas and Spark; four correlated methods (maps, weighted maps, multi-maps, patterns) run on pandas only."
-summary: "The method names a RandSpec column may use, what each produces, and which engine runs it — NPCore (vectorized NumPy) and PyCore (correlated tuples, patterns) for pandas, SparkCore (native expressions) for Spark."
+tldr: "Ten common methods run on pandas and Spark; four correlated methods plus pk and fk run on pandas."
+summary: "NPCore and PyCore provide the NumPy generator's single method map, including deterministic keys; SparkCore supplies native Spark expressions for the ten common methods."
 tags: [methods, numpy, spark, correlation]
 sources:
   - rand_engine/core/**
   - rand_engine/main/_rand_generator.py
 ---
 
-## Common methods (pandas and Spark)
+## Common methods
 
-| method | kwargs | produces |
+| method | main kwargs | produces |
 |---|---|---|
-| `integers` | `min`, `max`, `int_type` | random integers in the range, cast to `int_type` |
-| `int_zfilled` | `length` | numeric strings zero-padded to `length` |
-| `floats` | `min`, `max`, `decimals` | random decimals rounded to `decimals` |
-| `floats_normal` | `mean`, `std`, `decimals` | normally distributed decimals |
-| `booleans` | `true_prob` | booleans, `True` with probability `true_prob` |
-| `distincts` | `distincts` (list) | uniform picks from the list |
-| `distincts_prop` | `distincts` (value -> integer weight) | weighted picks |
-| `unix_timestamps` | `start`, `end`, `date_format` | epoch seconds between two parsed dates, floored at 1970 |
-| `dates` | `start`, `end`, `date_format` | date strings formatted with `date_format` |
-| `uuid4` | none | UUID4 strings |
+| `integers` | `min`, `max`, `int_type` | inclusive random integers |
+| `int_zfilled` | `length` | zero-padded numeric strings |
+| `floats` | `min`, `max`, `decimals` | rounded uniform values |
+| `floats_normal` | `mean`, `std`, `decimals` | rounded normal values |
+| `booleans` | `true_prob` | booleans at the requested probability |
+| `distincts` | list `distincts` | uniform choices |
+| `distincts_prop` | value-to-weight `distincts` | weighted choices |
+| `unix_timestamps` | `start`, `end`, `date_format` | UTC epoch seconds |
+| `dates` | `start`, `end`, `date_format` | UTC date strings using `%Y %m %d %H %M %S %f` |
+| `uuid4` | none | RFC 4122 version-4 UUID strings |
 
-- pandas runs these as `NPCore` NumPy calls, one array per column; `uuid4` and `dates` build values per row.
-- Spark runs them as `SparkCore` column expressions; `distincts` joins a broadcast lookup table on a random index; `int_type` maps NumPy names onto Spark integer types.
+- On pandas these methods draw from the `numpy.random.Generator` owned by [[data-generator]]. Date rendering is vectorized, and UUID bytes come from that same generator.
+- On Spark they are native `SparkCore` expressions; Spark has no seed in this interface ([[spark-generator]]).
 
-## Correlated methods (pandas only)
+## Pandas-only methods
 
-- `distincts_map` — `{category: [values]}` -> `(category, value)` pairs split into two `cols`.
-- `distincts_map_prop` — `{category: [(value, weight)]}` -> weighted `(category, value)` pairs in two `cols`.
-- `distincts_multi_map` — `{key: [[a1, a2], [b1]]}` -> one row per combination of the key and one pick from each list, split into N `cols`.
-- `complex_distincts` — `pattern` with a `replacement` placeholder plus one `{method, kwargs}` template per placeholder -> concatenated strings such as IPs, SKUs and URLs.
-- `PyCore` samples these from in-memory tuple lists; `SparkGenerator` does not accept them ([[spark-generator]]).
+- `distincts_map` and `distincts_map_prop` return `(category, value)` pairs.
+- `distincts_multi_map` returns the category followed by one selected value from each declared level; `cols` therefore has exactly levels plus one names.
+- `complex_distincts` fills a pattern from templates that use methods in the NumPy engine's method map.
+- `pk` emits unique sequence or permuted keys; `fk` rebuilds a parent key selected from the child seed, column, definition and row index ([[pk-fk-constraints]]).
 
-## Randomness
+## Dispatch
 
-- pandas methods draw from NumPy's global random state, which `DataGenerator(seed=…)` seeds ([[data-generator]]); `uuid4` draws from Python's `uuid`.
-- Spark methods draw from `rand()`/`randn()` and `uuid()` with no seed.
+- The NumPy engine has one method-name-to-callable map shared by normal columns and `complex_distincts` templates.
+- `RandGenerator` binds the owned random generator to ordinary methods and binds row/key context to `pk` and `fk`.

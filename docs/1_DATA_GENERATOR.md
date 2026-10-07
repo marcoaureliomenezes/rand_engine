@@ -18,10 +18,12 @@ assert df["age"].between(18, 80).all()
 
 ## API
 
+<!-- derived-from: data-generator sha256:2a69edeee8a2 -->
+
 | Call | Does |
 |---|---|
 | `DataGenerator(spec, seed=None)` | validates the spec at once (`SpecValidationError`); owns one `np.random.default_rng(seed)` |
-| `.size(n)` | rows per `get_df`, per file in `write`, per microbatch in a stream; `n` may be a callable returning an int |
+| `.size(n)` | rows per `get_df`, total rows in one batch `write`, or rows per stream microbatch; `n` may be a callable returning an int |
 | `.transformers([f, ...])` | functions `DataFrame -> DataFrame`, applied in order after generation |
 | `.get_df()` | one DataFrame of `size` rows |
 | `.stream_dict(min_throughput=1, max_throughput=10)` | an infinite generator of dicts, sleeping `1/uniform(min, max)` s after each |
@@ -30,6 +32,8 @@ assert df["age"].between(18, 80).all()
 Calling `get_df` without `.size` raises `RandEngineError`.
 
 ## Seeds
+
+<!-- derived-from: data-generator sha256:2a69edeee8a2 -->
 
 A seed fixes the output: the same spec, seed and size give the same frame. Each generator owns
 its own `numpy.random.Generator` (PCG64), so generators never share or reset NumPy's global state.
@@ -45,6 +49,8 @@ assert not gen.get_df().equals(gen.get_df())
 ```
 
 ## Methods
+
+<!-- derived-from: generation-methods sha256:b3bed2e747eb -->
 
 Each column is `{"method": <name>, "kwargs": {...}}`. Bounds of `integers` are inclusive.
 
@@ -114,6 +120,8 @@ assert set(zip(df["device"], df["os"])) <= {("phone", "android"), ("phone", "ios
 
 ## Transformers
 
+<!-- derived-from: data-generator sha256:2a69edeee8a2 -->
+
 A column may carry `"transformers"`: functions applied value by value. `.transformers([...])` takes
 whole-frame functions, run after the column ones.
 
@@ -135,6 +143,8 @@ assert (df["adult"] == (df["age"] >= 18)).all()
 
 ## Validation
 
+<!-- derived-from: rand-spec-grammar sha256:7b0eef6f065a -->
+
 An invalid spec raises `SpecValidationError` (a `RandEngineError`) on construction, listing every
 error with a corrected example.
 
@@ -150,6 +160,8 @@ else:
 ```
 
 ## Streaming dicts
+
+<!-- derived-from: data-generator sha256:2a69edeee8a2 -->
 
 `stream_dict` never ends: it generates `size` rows per microbatch, converts datetime columns to
 strings and adds `timestamp_created` (epoch seconds) to each record. Stop it yourself.

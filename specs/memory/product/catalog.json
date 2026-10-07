@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-03T13:27:29Z",
+  "generated_at": "2026-10-07T13:39:27Z",
   "features": [
     {
       "rank": 1,
@@ -14,7 +14,7 @@
         "package",
         "exceptions"
       ],
-      "token_estimate": 227,
+      "token_estimate": 224,
       "depends_on": [
         "data-generator",
         "spark-generator",
@@ -32,15 +32,15 @@
       "slug": "templates-and-examples",
       "title": "Templates and examples",
       "area": "content",
-      "tldr": "Ready RandSpecs — ten cross-engine CommonRandSpecs (exported as RandSpecs), ten pandas-only AdvancedRandSpecs, and the WebServerLogs template.",
-      "summary": "Prebuilt specs a user runs without writing a grammar — CommonRandSpecs uses only common methods so the same spec runs on DataGenerator and SparkGenerator; AdvancedRandSpecs adds correlated methods; WebServerLogs pairs a spec with transformers that emit Apache common log lines.",
+      "tldr": "Ready RandSpecs — ten cross-engine CommonRandSpecs, ten pandas-only AdvancedRandSpecs, and a UTC WebServerLogs template.",
+      "summary": "Prebuilt specs a user runs without writing a grammar — CommonRandSpecs is exported as RandSpecs and runs on both generators; AdvancedRandSpecs demonstrates correlated pandas methods; WebServerLogs assembles Apache common log lines in UTC.",
       "path": "specs/memory/product/content/templates-and-examples.md",
       "tags": [
         "templates",
         "examples",
         "rand-specs"
       ],
-      "token_estimate": 196,
+      "token_estimate": 157,
       "depends_on": [
         "data-generator",
         "spark-generator",
@@ -57,8 +57,8 @@
       "slug": "data-generator",
       "title": "DataGenerator",
       "area": "generation",
-      "tldr": "The pandas generator: validates a RandSpec, seeds NumPy, and returns DataFrames, files, file streams or an endless record stream.",
-      "summary": "DataGenerator(spec, seed) is the pandas composition root; a fluent builder (size, transformers, option) feeds get_df, stream_dict, write and writeStream, each running the same pipeline of column generation, per-column transformers, global transformers and PK/FK constraints.",
+      "tldr": "The pandas generator validates a RandSpec, owns its random generator, and returns DataFrames, files, file streams or an endless record stream.",
+      "summary": "DataGenerator(spec, seed) is the pandas composition root; size and transformers feed get_df, stream_dict, write and writeStream, with one owned NumPy generator and row offsets that keep keys continuous across stream batches and file parts.",
       "path": "specs/memory/product/generation/data-generator.md",
       "tags": [
         "pandas",
@@ -66,12 +66,12 @@
         "generator",
         "dataframe"
       ],
-      "token_estimate": 385,
+      "token_estimate": 319,
       "depends_on": [
         "writers-and-streaming",
         "rand-spec-grammar",
-        "pk-fk-constraints",
-        "generation-methods"
+        "generation-methods",
+        "pk-fk-constraints"
       ],
       "sources": [
         "rand_engine/main/data_generator.py",
@@ -84,8 +84,8 @@
       "slug": "generation-methods",
       "title": "Generation methods",
       "area": "generation",
-      "tldr": "Ten common methods run on pandas and Spark; four correlated methods (maps, weighted maps, multi-maps, patterns) run on pandas only.",
-      "summary": "The method names a RandSpec column may use, what each produces, and which engine runs it — NPCore (vectorized NumPy) and PyCore (correlated tuples, patterns) for pandas, SparkCore (native expressions) for Spark.",
+      "tldr": "Ten common methods run on pandas and Spark; four correlated methods plus pk and fk run on pandas.",
+      "summary": "NPCore and PyCore provide the NumPy generator's single method map, including deterministic keys; SparkCore supplies native Spark expressions for the ten common methods.",
       "path": "specs/memory/product/generation/generation-methods.md",
       "tags": [
         "methods",
@@ -93,10 +93,11 @@
         "spark",
         "correlation"
       ],
-      "token_estimate": 417,
+      "token_estimate": 367,
       "depends_on": [
+        "data-generator",
         "spark-generator",
-        "data-generator"
+        "pk-fk-constraints"
       ],
       "sources": [
         "rand_engine/core/**",
@@ -108,17 +109,16 @@
       "slug": "spark-generator",
       "title": "SparkGenerator",
       "area": "generation",
-      "tldr": "The Spark generator: builds a Spark DataFrame from a RandSpec of common methods with native column expressions and no UDF.",
-      "summary": "SparkGenerator(spark, F, spec) validates the spec against the common methods, starts from spark.range(size) and adds one column per spec entry through SparkCore expressions; PySpark is the caller's dependency, never the package's.",
+      "tldr": "The Spark generator builds a Spark DataFrame from common RandSpec methods with native expressions and no Python UDF.",
+      "summary": "SparkGenerator(spark, F, spec) validates the common grammar, starts from spark.range(size), adds native SparkCore columns and refuses the NumPy-only pk and fk methods.",
       "path": "specs/memory/product/generation/spark-generator.md",
       "tags": [
         "spark",
         "pyspark",
         "generator"
       ],
-      "token_estimate": 207,
+      "token_estimate": 196,
       "depends_on": [
-        "data-generator",
         "rand-spec-grammar",
         "generation-methods"
       ],
@@ -132,8 +132,8 @@
       "slug": "writers-and-streaming",
       "title": "Writers and streaming",
       "area": "output",
-      "tldr": "Spark-style file writers on DataGenerator — write saves CSV, JSON lines or Parquet files; writeStream emits one file per microbatch until a timeout.",
-      "summary": "DataGenerator.write (FileBatchWriter) and .writeStream (FileStreamWriter) mirror Spark's writer API — format, mode, option(s), size, then save or trigger+start; every file is a fresh microbatch of the generator's pipeline.",
+      "tldr": "DataGenerator writes CSV, JSON lines and Parquet batches or repeated file-stream microbatches through a Spark-style builder.",
+      "summary": "The batch writer distributes one requested total row count across numFiles; the stream writer emits size rows per microbatch. CSV and Parquet use PyArrow, JSON uses pandas, and each format accepts only documented options.",
       "path": "specs/memory/product/output/writers-and-streaming.md",
       "tags": [
         "writers",
@@ -143,7 +143,7 @@
         "json",
         "parquet"
       ],
-      "token_estimate": 259,
+      "token_estimate": 277,
       "depends_on": [
         "data-generator"
       ],
@@ -153,47 +153,67 @@
     },
     {
       "rank": 7,
-      "slug": "pk-fk-constraints",
-      "title": "PK/FK constraints",
-      "area": "relations",
-      "tldr": "PK constraints record generated keys in checkpoint tables; FK constraints fill child columns by sampling keys recorded within a time watermark.",
-      "summary": "ConstraintsHandler gives DataGenerator relation-aware data — a PK constraint writes the generated keys with a creation time into checkpoint_<name>; an FK constraint overwrites its columns with keys sampled from rows created within the watermark; SQLite (default) and DuckDB handlers store the checkpoints.",
-      "path": "specs/memory/product/relations/pk-fk-constraints.md",
+      "slug": "benchmarks",
+      "title": "Performance benchmarks",
+      "area": "quality",
+      "tldr": "A CI-only same-runner A/B benchmark measures every generation method and built-in sink, publishes its table and enforces a relative regression limit.",
+      "summary": "The benchmark coordinator alternates timed requests between long-lived base and head workers per row, reports method and sink throughput, publishes Markdown and JSON artifacts, and fails when a comparable head row exceeds the configured ratio.",
+      "path": "specs/memory/product/quality/benchmarks.md",
       "tags": [
-        "constraints",
-        "referential-integrity",
-        "checkpoint",
-        "sqlite",
-        "duckdb"
+        "performance",
+        "benchmarks",
+        "ci",
+        "regression"
       ],
-      "token_estimate": 304,
-      "depends_on": [
-        "rand-spec-grammar",
-        "data-generator"
-      ],
+      "token_estimate": 261,
+      "depends_on": [],
       "sources": [
-        "rand_engine/main/_constraints_handler.py",
-        "rand_engine/integrations/**",
-        "rand_engine/utils/logger.py"
+        "benchmarks/**",
+        ".github/workflows/benchmarks.yml"
       ]
     },
     {
       "rank": 8,
+      "slug": "pk-fk-constraints",
+      "title": "PK/FK key columns",
+      "area": "relations",
+      "tldr": "Stateless pk and fk column methods create related tables from definitions, seeds and row indexes without a checkpoint store.",
+      "summary": "A pk is a sequence or a deterministic permutation of row indexes; an fk deterministically selects a parent row and rebuilds its pk value. Batch parts and stream microbatches advance row offsets, so keys remain consistent without shared state.",
+      "path": "specs/memory/product/relations/pk-fk-constraints.md",
+      "tags": [
+        "keys",
+        "referential-integrity",
+        "stateless",
+        "pk",
+        "fk"
+      ],
+      "token_estimate": 254,
+      "depends_on": [
+        "spark-generator",
+        "rand-spec-grammar"
+      ],
+      "sources": [
+        "rand_engine/main/_constraints_handler.py",
+        "rand_engine/integrations/**",
+        "rand_engine/core/_keys.py",
+        "rand_engine/main/data_generator.py"
+      ]
+    },
+    {
+      "rank": 9,
       "slug": "rand-spec-grammar",
       "title": "RandSpec grammar",
       "area": "spec",
-      "tldr": "A RandSpec is a dict of column name to {method, kwargs or args, cols, transformers}, validated before any row is generated.",
-      "summary": "The declarative grammar both generators read; AdvancedValidator judges DataGenerator specs (common and correlated methods plus constraints), CommonValidator judges SparkGenerator specs (common methods only); every issue is collected and raised as one SpecValidationError with a corrected example.",
+      "tldr": "A RandSpec maps output columns to a method, named kwargs and optional multi-column or transformer metadata, and is validated before generation.",
+      "summary": "AdvancedValidator validates NumPy common, correlated and key methods; CommonValidator validates the Spark common-method subset. Args and top-level constraints are refused, and validation collects issues into SpecValidationError.",
       "path": "specs/memory/product/spec/rand-spec-grammar.md",
       "tags": [
         "spec",
         "grammar",
         "validation"
       ],
-      "token_estimate": 263,
+      "token_estimate": 273,
       "depends_on": [
-        "generation-methods",
-        "data-generator",
         "pk-fk-constraints"
       ],
       "sources": [

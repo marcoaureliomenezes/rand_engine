@@ -14,7 +14,7 @@ sources:
 
 - `from rand_engine import DataGenerator, SparkGenerator, RandSpecs` is the public surface (`__all__`) — [[data-generator]], [[spark-generator]], [[templates-and-examples]].
 - `rand_engine.examples` also exposes `CommonRandSpecs` and `AdvancedRandSpecs`; `RandSpecs` is `CommonRandSpecs`.
-- Cores, validators, writers and DB handlers are internal modules, importable but not part of the contract.
+- Cores, validators and writers are internal modules, importable but not part of the contract.
 - The surface hands back DataFrames, record dicts and files — never a sink client; the caller forwards them to any platform.
 - The package exposes no `__version__`; the version lives in `pyproject.toml`.
 

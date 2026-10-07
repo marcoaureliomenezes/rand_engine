@@ -1,28 +1,27 @@
 ---
 slug: spark-generator
 title: SparkGenerator
-tldr: "The Spark generator: builds a Spark DataFrame from a RandSpec of common methods with native column expressions and no UDF."
-summary: "SparkGenerator(spark, F, spec) validates the spec against the common methods, starts from spark.range(size) and adds one column per spec entry through SparkCore expressions; PySpark is the caller's dependency, never the package's."
+tldr: "The Spark generator builds a Spark DataFrame from common RandSpec methods with native expressions and no Python UDF."
+summary: "SparkGenerator(spark, F, spec) validates the common grammar, starts from spark.range(size), adds native SparkCore columns and refuses the NumPy-only pk and fk methods."
 tags: [spark, pyspark, generator]
 sources:
   - rand_engine/main/spark_generator.py
   - rand_engine/core/_spark_core.py
 ---
 
-## Role
+## Role and use
 
-- Supported, not central: Spark users run the same common-method RandSpec on a cluster; the NumPy core needs no Spark ([[data-generator]]).
+- `SparkGenerator(spark, F, spec).size(n).get_df()` builds a Spark DataFrame; PySpark is supplied by the caller and is not a runtime dependency.
+- Generation starts from `spark.range(size)`, adds one column per spec entry and drops the technical `id` unless the spec defines it.
 
-## Use
+## Grammar
 
-- `SparkGenerator(spark, F, spec).size(n).get_df()` — `spark` is the caller's `SparkSession`, `F` is `pyspark.sql.functions`.
-- The spec is validated by `CommonValidator` at construction, so only the ten common methods are accepted ([[rand-spec-grammar]], [[generation-methods]]).
-- Each column entry needs `kwargs`; `args`, `cols`, `transformers` and `constraints` are pandas-only grammar.
+- The common validator accepts the ten common methods and named `kwargs` ([[rand-spec-grammar]], [[generation-methods]]).
+- `pk` and `fk` are refused with guidance to use `DataGenerator`; related keys are NumPy-engine features.
+- Correlated pandas methods warn and produce a null string column; `args` is refused.
 
 ## Behaviour
 
-- Generation starts from `spark.range(size)` and adds one column per spec entry with `withColumn`; the technical `id` column is dropped unless the spec defines `id`.
-- Every value comes from a native expression (`rand`, `randn`, `uuid`, `lpad`, `from_unixtime`, `date_format`) or a broadcast join, so generation scales with the cluster and runs no Python UDF.
-- `dates` translates the Python `date_format` into the Spark pattern.
-- Spark output is not seeded.
-- The package never imports PySpark; the caller provides it.
+- Values come from native Spark expressions and one broadcast lookup join per `distincts` column; no Python UDF runs.
+- `dates` translates the supported Python directives `%Y %m %d %H %M %S %f` to Spark patterns.
+- Spark output is not seeded, and writing is delegated to the returned DataFrame's own writer.

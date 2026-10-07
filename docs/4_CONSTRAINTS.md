@@ -25,6 +25,8 @@ assert orders["customer_id"].isin(customers["customer_id"]).all()
 
 ## `pk`
 
+<!-- derived-from: pk-fk-constraints sha256:3cc5aee7e657 -->
+
 | kwarg | Default | Meaning |
 |---|---|---|
 | `style` | `"sequence"` | `"sequence"`: `start + i * step`; `"permuted"`: `start` + a bijection of `i` over `[0, domain)` |
@@ -51,6 +53,8 @@ assert DataGenerator(spec, seed=99).size(1_000).get_df().equals(df)
 
 ## `fk`
 
+<!-- derived-from: pk-fk-constraints sha256:3cc5aee7e657 -->
+
 | kwarg | Meaning |
 |---|---|
 | `parent` | the parent's `pk` column spec, exactly as the parent declares it |
@@ -75,6 +79,8 @@ assert top_share > 1 / 200 * 10  # a few parents take most of the rows
 
 ## Streams and multi-file writes continue the row index
 
+<!-- derived-from: pk-fk-constraints sha256:3cc5aee7e657 -->
+
 Each microbatch of `stream_dict`, `writeStream`, and each part of `write` with `numFiles` starts at
 the row index where the previous one ended, so `pk` values never repeat across batches.
 
@@ -87,6 +93,8 @@ assert [r["event_id"] for r in records] == list(range(1, 26))
 ```
 
 ## Spark
+
+<!-- derived-from: spark-generator sha256:963951e9fea8 -->
 
 `SparkGenerator` refuses `pk` and `fk` with a `SpecValidationError`: keys run on the NumPy engine only.
 Generate the keyed tables with `DataGenerator` and hand them to Spark with `spark.createDataFrame`.

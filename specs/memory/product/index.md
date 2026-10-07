@@ -38,33 +38,39 @@ ready-made specs ([[templates-and-examples]]) sit on a vectorized NumPy core.
 
 | slug | title | tldr |
 |------|-------|------|
-| `templates-and-examples` | Templates and examples | Ready RandSpecs — ten cross-engine CommonRandSpecs (exported as RandSpecs), ten pandas-only AdvancedRandSpecs, and the WebServerLogs template. |
+| `templates-and-examples` | Templates and examples | Ready RandSpecs — ten cross-engine CommonRandSpecs, ten pandas-only AdvancedRandSpecs, and a UTC WebServerLogs template. |
 
 ### generation
 
 | slug | title | tldr |
 |------|-------|------|
-| `data-generator` | DataGenerator | The pandas generator: validates a RandSpec, seeds NumPy, and returns DataFrames, files, file streams or an endless record stream. |
-| `generation-methods` | Generation methods | Ten common methods run on pandas and Spark; four correlated methods (maps, weighted maps, multi-maps, patterns) run on pandas only. |
-| `spark-generator` | SparkGenerator | The Spark generator: builds a Spark DataFrame from a RandSpec of common methods with native column expressions and no UDF. |
+| `data-generator` | DataGenerator | The pandas generator validates a RandSpec, owns its random generator, and returns DataFrames, files, file streams or an endless record stream. |
+| `generation-methods` | Generation methods | Ten common methods run on pandas and Spark; four correlated methods plus pk and fk run on pandas. |
+| `spark-generator` | SparkGenerator | The Spark generator builds a Spark DataFrame from common RandSpec methods with native expressions and no Python UDF. |
 
 ### output
 
 | slug | title | tldr |
 |------|-------|------|
-| `writers-and-streaming` | Writers and streaming | Spark-style file writers on DataGenerator — write saves CSV, JSON lines or Parquet files; writeStream emits one file per microbatch until a timeout. |
+| `writers-and-streaming` | Writers and streaming | DataGenerator writes CSV, JSON lines and Parquet batches or repeated file-stream microbatches through a Spark-style builder. |
+
+### quality
+
+| slug | title | tldr |
+|------|-------|------|
+| `benchmarks` | Performance benchmarks | A CI-only same-runner A/B benchmark measures every generation method and built-in sink, publishes its table and enforces a relative regression limit. |
 
 ### relations
 
 | slug | title | tldr |
 |------|-------|------|
-| `pk-fk-constraints` | PK/FK constraints | PK constraints record generated keys in checkpoint tables; FK constraints fill child columns by sampling keys recorded within a time watermark. |
+| `pk-fk-constraints` | PK/FK key columns | Stateless pk and fk column methods create related tables from definitions, seeds and row indexes without a checkpoint store. |
 
 ### spec
 
 | slug | title | tldr |
 |------|-------|------|
-| `rand-spec-grammar` | RandSpec grammar | A RandSpec is a dict of column name to {method, kwargs or args, cols, transformers}, validated before any row is generated. |
+| `rand-spec-grammar` | RandSpec grammar | A RandSpec maps output columns to a method, named kwargs and optional multi-column or transformer metadata, and is validated before generation. |
 
 ## Capability map
 

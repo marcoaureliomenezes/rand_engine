@@ -1,8 +1,8 @@
 ---
 slug: templates-and-examples
 title: Templates and examples
-tldr: "Ready RandSpecs — ten cross-engine CommonRandSpecs (exported as RandSpecs), ten pandas-only AdvancedRandSpecs, and the WebServerLogs template."
-summary: "Prebuilt specs a user runs without writing a grammar — CommonRandSpecs uses only common methods so the same spec runs on DataGenerator and SparkGenerator; AdvancedRandSpecs adds correlated methods; WebServerLogs pairs a spec with transformers that emit Apache common log lines."
+tldr: "Ready RandSpecs — ten cross-engine CommonRandSpecs, ten pandas-only AdvancedRandSpecs, and a UTC WebServerLogs template."
+summary: "Prebuilt specs a user runs without writing a grammar — CommonRandSpecs is exported as RandSpecs and runs on both generators; AdvancedRandSpecs demonstrates correlated pandas methods; WebServerLogs assembles Apache common log lines in UTC."
 tags: [templates, examples, rand-specs]
 sources:
   - rand_engine/examples/**
@@ -12,13 +12,12 @@ sources:
 
 ## Example specs
 
-- `CommonRandSpecs` (`RandSpecs` in the public API) — `customers`, `products`, `orders`, `transactions`, `employees`, `sensors`, `users`, `events`, `sales`, `devices`; common methods only, so each runs on both generators ([[data-generator]], [[spark-generator]]).
-- `AdvancedRandSpecs` — `products`, `orders`, `employees`, `devices`, `invoices`, `shipments`, `network_devices`, `vehicles`, `real_estate`, `healthcare`; they use the correlated methods and run on `DataGenerator` only ([[generation-methods]]).
-- Each example is a classmethod returning a fresh RandSpec dict.
+- `CommonRandSpecs` (`RandSpecs` in the public API) supplies `customers`, `products`, `orders`, `transactions`, `employees`, `sensors`, `users`, `events`, `sales` and `devices`; each uses common methods and runs on both generators ([[data-generator]], [[spark-generator]]).
+- `AdvancedRandSpecs` supplies ten pandas-oriented examples using correlated methods such as maps and patterns ([[generation-methods]]).
+- Each example is a classmethod returning a fresh RandSpec dict whose parameter names agree with the validator.
 
 ## Templates
 
-- `rand_engine.templates.web_server_logs.WebServerLogs` implements `IRandomSpec`: `metadata()` returns the spec (IP pattern, request/status correlation, weighted HTTP version, timestamp, size) and `transformers()` returns the global transformers that join them into one `log_entry` column in Apache common log format.
-- `rand_engine.templates` re-exports `RandSpecs`.
-- No template imports Faker; realistic values come from user-built Faker pools passed as `distincts` ([[generation-methods]]).
-- `Changer(cols).updater` is a global transformer that perturbs the named numeric columns and rotates the named object columns, simulating updated records.
+- `WebServerLogs.metadata()` returns the columns for an Apache common log entry; its timestamp transformer renders UTC and the final line carries `+0000`.
+- `WebServerLogs.transformers()` joins those columns and returns only `log_entry`.
+- `rand_engine.templates` re-exports `RandSpecs`; templates do not import Faker, so realistic pools remain user-provided input to `distincts`.
