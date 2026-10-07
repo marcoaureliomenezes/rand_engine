@@ -50,6 +50,7 @@ assert (np.random.get_state()[1] == state).all()
 
 ## Faker pools at scale
 
+Install the optional Faker dependency with `pip install faker` before running this example.
 Faker is slow per value; draw a pool once and let rand-engine sample it.
 
 ```python
@@ -59,7 +60,7 @@ fake = Faker()
 Faker.seed(0)
 names = [fake.name() for _ in range(200)]
 
-people = DataGenerator({"name": {"method": "distincts", "kwargs": {"distincts": names}}}, seed=1).size(100_000).get_df()
+people = DataGenerator({"name": {"method": "distincts", "kwargs": {"distincts": names}}}, seed=1).size(10_000).get_df()
 assert people["name"].isin(names).all()
 ```
 
@@ -85,8 +86,8 @@ assert set(orders["customer_id"]) <= set(customers["customer_id"])
 `stream_dict` yields records forever at a bounded rate; `write` writes csv, json or parquet.
 
 ```python
-import os
 from itertools import islice
+import pandas as pd
 
 events = DataGenerator({"event_id": {"method": "pk", "kwargs": {"start": 1}}}, seed=1).size(10)
 records = list(islice(events.stream_dict(min_throughput=500, max_throughput=1000), 5))
@@ -94,7 +95,7 @@ assert [r["event_id"] for r in records] == [1, 2, 3, 4, 5]
 
 orders_gen = DataGenerator({"order_id": {"method": "pk", "kwargs": {"start": 1}}}, seed=1).size(1_000)
 orders_gen.write.format("parquet").save("out/orders.parquet")
-assert os.path.exists("out/orders.parquet")
+assert len(pd.read_parquet("out/orders.parquet")) == 1_000
 ```
 
 ## Learn more
