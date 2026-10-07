@@ -114,6 +114,24 @@
       "agent": "dd-software-engineer",
       "kind": "reviews",
       "text": "Main-thread local APPROVED references cover registry 009d443, README 55ec159 and version 69d0d33/66f6114; version local job gate reported 692 passed, eight deselected in 78.68s. Current reconciliation has no final job approval yet. Local gates and reviewer APPROVED precede feature merge; only prepared feature is published, final CI/benchmark and promotion gates remain required."
+    },
+    {
+      "ts": "2026-10-07T14:49:32Z",
+      "agent": "dd-software-engineer",
+      "kind": "note",
+      "text": "Actual local preparation merge/publication under operator override: first J4 commit 7742bba at 2026-10-07T13:30:35Z; prepared feature head 959f8909b402b37558382a2c3088aa6265d0729e published at 2026-10-07T14:29:10Z (feature CI createdAt). Elapsed to publication was 58 whole minutes, not code-only time. One known preparation job gate: 692 passed in 69.33s after task 692/81.06s and stage 692/75.87s. No job remote-CI prerequisite or worktree push; unknown ritual waits/dispatch counts are not invented, so this actual merge evidence uses note rather than the legacy remote-CI merge shape."
+    },
+    {
+      "ts": "2026-10-07T14:49:32Z",
+      "agent": "dd-software-engineer",
+      "kind": "summary",
+      "text": "J4 precision corrections are locally integrated at 959f890; terminal benchmark proof is now present. Run 37637078229 succeeded at exact head 959f8909b402b37558382a2c3088aa6265d0729e against base c9ed9f422189836d4939a011f187aecbae691ea5: all 36 rows paired, every ratio <= 1.3, maximum 1.075219565773126 on pk at 10000000 rows. docs/benchmarks.json and docs/BENCHMARKS.md reproduce the downloaded artifact byte-for-byte. Samples, repetitions, RNG and threshold unchanged. https://github.com/marcoaureliomenezes/rand_engine/actions/runs/37637078229"
+    },
+    {
+      "ts": "2026-10-07T14:49:32Z",
+      "agent": "dd-software-engineer",
+      "kind": "reviews",
+      "text": "Feature security/matrix/build run 37637078265 succeeded at the same measured head (nine matrix legs plus build and security). Existing local preparation review/gate evidence preceded publication. Terminal owner selectors tests/test_docs.py tests/test_benchmarks.py: 42 passed in 11.70s (ten documentation cases plus benchmark contract cases). J4 terminal task/job integration review and gates remain with the main thread; their success and promotion are not claimed here. https://github.com/marcoaureliomenezes/rand_engine/actions/runs/37637078265"
     }
   ]
 }
