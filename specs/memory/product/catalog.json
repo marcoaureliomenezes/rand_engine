@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-07T13:52:52Z",
+  "generated_at": "2026-10-07T14:02:23Z",
   "features": [
     {
       "rank": 1,
@@ -210,7 +210,7 @@
         "grammar",
         "validation"
       ],
-      "token_estimate": 273,
+      "token_estimate": 294,
       "depends_on": [
         "pk-fk-constraints"
       ],

@@ -13,7 +13,7 @@ sources:
 ## Primary keys
 
 - `pk` is a column method with `sequence` and `permuted` styles. Sequence computes `start + row_index * step`; permuted applies a keyed bijection over a declared domain and then adds `start`.
-- An optional integer `format` field renders either style as strings. Keys do not depend on the generator seed and are unique while the validated domain and int64 guards hold.
+- An optional integer-format string template renders either style as strings. Keys do not depend on the generator seed and are unique while the validated domain and int64 guards hold.
 
 ## Foreign keys
 

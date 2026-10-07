@@ -143,7 +143,7 @@ assert (df["adult"] == (df["age"] >= 18)).all()
 
 ## Validation
 
-<!-- derived-from: rand-spec-grammar sha256:7b0eef6f065a -->
+<!-- derived-from: rand-spec-grammar sha256:8956fa6e6298 -->
 
 An invalid spec raises `SpecValidationError` (a `RandEngineError`) on construction, listing every
 error with a corrected example.

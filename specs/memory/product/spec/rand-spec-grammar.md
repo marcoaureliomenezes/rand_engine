@@ -12,7 +12,7 @@ sources:
 
 - A RandSpec is a non-empty dict keyed by output column name; `DataGenerator` also accepts a zero-argument callable returning one.
 - Every column declares a string `method` and named `kwargs`. `args` is refused.
-- Correlated multi-column methods declare `cols`; per-value callables may be declared in `transformers` except on key definitions.
+- Correlated multi-column methods declare `cols`; per-value callables may be declared in `transformers`. A `pk` column refuses transformers; an `fk` may transform its generated child values, but the embedded parent `pk` may not.
 - Relations are ordinary `pk` and `fk` columns. A top-level `constraints` entry is refused with examples of the replacement grammar ([[pk-fk-constraints]]).
 
 ## Validation

@@ -18,7 +18,7 @@ pip install rand-engine
 ## Quickstart
 
 <!-- derived-from: data-generator sha256:2a69edeee8a2 -->
-<!-- derived-from: rand-spec-grammar sha256:7b0eef6f065a -->
+<!-- derived-from: rand-spec-grammar sha256:8956fa6e6298 -->
 
 A spec maps each column to a `method` and its `kwargs`.
 
@@ -75,7 +75,7 @@ assert people["name"].isin(names).all()
 
 ## Related tables
 
-<!-- derived-from: pk-fk-constraints sha256:f618b12b0b07 -->
+<!-- derived-from: pk-fk-constraints sha256:87a6776da0b0 -->
 
 Give the child's `fk` the parent's `pk` spec and size: every child key exists in the parent.
 

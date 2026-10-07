@@ -25,7 +25,7 @@ assert orders["customer_id"].isin(customers["customer_id"]).all()
 
 ## `pk`
 
-<!-- derived-from: pk-fk-constraints sha256:f618b12b0b07 -->
+<!-- derived-from: pk-fk-constraints sha256:87a6776da0b0 -->
 
 | kwarg | Default | Meaning |
 |---|---|---|
@@ -53,7 +53,7 @@ assert DataGenerator(spec, seed=99).size(1_000).get_df().equals(df)
 
 ## `fk`
 
-<!-- derived-from: pk-fk-constraints sha256:f618b12b0b07 -->
+<!-- derived-from: pk-fk-constraints sha256:87a6776da0b0 -->
 
 | kwarg | Meaning |
 |---|---|
@@ -79,7 +79,7 @@ assert top_share > 1 / 200 * 10  # a few parents take most of the rows
 
 ## Streams and multi-file writes continue the row index
 
-<!-- derived-from: pk-fk-constraints sha256:f618b12b0b07 -->
+<!-- derived-from: pk-fk-constraints sha256:87a6776da0b0 -->
 
 Each microbatch of `stream_dict`, `writeStream`, and each part of `write` with `numFiles` starts at
 the row index where the previous one ended, so `pk` values never repeat across batches.

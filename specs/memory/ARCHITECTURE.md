@@ -46,7 +46,7 @@ rand_engine/
   utils/             logger, StreamHandler
 ```
 
-- Dependency direction: `main` -> `core`, `validators`, `file_handlers`, `utils`; `core` imports no generator; `examples` are plain dicts with no import of the engine.
+- Dependency direction: `main` -> `core`, `validators`, `file_handlers`, `utils`; `validators.common_validator` -> `core._np_core.DATE_DIRECTIVES` for the shared date grammar; `core` imports no generator; `examples` are plain dicts with no import of the engine.
 - A RandSpec is a dict keyed by column name; the NumPy path has one method-name -> function map shared by columns and nested templates, while validators own the accepted grammar.
 - Generation is NumPy-first: every column is one array call, assembled into one DataFrame, then transformed.
 - The Spark path builds columns as native expressions plus one broadcast join per `distincts` column; it runs no Python UDF.
