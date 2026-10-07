@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "rand-engine"
-version = "0.6.4"
+version = "0.7.0"
 description = "Sink-agnostic synthetic data at NumPy speed from declarative specs, with related tables through pk/fk key columns; Faker composes on top."
 authors = ["marcoaureliomenezes <marcoaurelioreislima@gmail.com>"]
 license = "MIT"
