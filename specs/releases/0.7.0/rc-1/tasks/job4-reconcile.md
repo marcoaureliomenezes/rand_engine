@@ -32,14 +32,16 @@ open until terminal benchmark proof exists.
 ## Stage J4.S5 — corrective memory
 
 - Contract: correct source coverage and fixed test-law text after J4.S4; shared derived markers are updated sequentially.
-- J4.S5.T1 — corrective memory · `W:` `specs/memory/product/content/templates-and-examples.md`, `specs/memory/product/relations/pk-fk-constraints.md`, `specs/memory/QUALITY.md`, `specs/memory/product/catalog.json`, `specs/memory/product/index.md`, `README.md`, `llms.txt`, `docs/1_DATA_GENERATOR.md`, `docs/2_SPARK_GENERATOR.md`, `docs/3_WRITING_FILES.md`, `docs/4_CONSTRAINTS.md`, `docs/5_RECIPES.md` (affected markers only) · owner `tests/test_docs.py`
-  Provenance: actual J4.S4.T2, `13b53d4`; local gate and merge are recorded by the main thread, not presumed here.
+- [x] J4.S5.T1 — corrective memory · `W:` `specs/memory/product/content/templates-and-examples.md`, `specs/memory/product/relations/pk-fk-constraints.md`, `specs/memory/QUALITY.md`, `specs/memory/product/catalog.json`, `specs/memory/product/index.md`, `README.md`, `llms.txt`, `docs/1_DATA_GENERATOR.md`, `docs/2_SPARK_GENERATOR.md`, `docs/3_WRITING_FILES.md`, `docs/4_CONSTRAINTS.md`, `docs/5_RECIPES.md` (affected markers only) · owner `tests/test_docs.py`
+  Provenance: actual J4.S4.T2, `13b53d4`, locally merged; main-thread task gate: 692 passed in 62.86s.
 
 ## Stage J4.S6 — readiness narrative
 
-- Contract: record evidence/holds honestly; append release log only, preserving milestones and previous memory/history.
+- Contract: record evidence/holds honestly with append-only release log, preserving milestones and previous memory/history; correct reviewer-identified memory precision and regenerate affected catalog/derived markers without runtime changes.
 - [x] J4.S6.T1 — readiness narrative · `W:` `specs/releases/0.7.0/rc-1/tasks/job4-reconcile.md`, `specs/releases/0.7.0/_RELEASE.json` (append log only) · owner `tests/test_docs.py`
   Provenance: actual J4.S5.T1, this metadata task. Local gates and reviewer APPROVED precede local feature merges; no worktree pushes/job CI. Only prepared feature is published. Existing remote worktree refs remain untouched. J4 is not done.
+
+- J4.S6.T2 — reviewer documentation precision corrections · `W:` `specs/memory/ARCHITECTURE.md`, `specs/memory/product/spec/rand-spec-grammar.md`, `specs/memory/product/relations/pk-fk-constraints.md`, `specs/memory/product/catalog.json`, `specs/memory/product/index.md`, `README.md` (Quickstart marker), `llms.txt` (affected markers), `docs/1_DATA_GENERATOR.md` (Validation marker), `docs/2_SPARK_GENERATOR.md`, `docs/3_WRITING_FILES.md`, `docs/4_CONSTRAINTS.md`, `docs/5_RECIPES.md` (affected derived markers only) · owner `tests/test_docs.py` · correct the two reviewer-identified architecture/grammar claims and describe key format as an optional integer-format string template; regenerate catalog/index and affected markers. Product engineer executes in its own task tree; this declaration changes no product behavior and shares no write path with J4.S6.T1.
 
 ## Stage J4.S7 — terminal benchmark follow-up
 
