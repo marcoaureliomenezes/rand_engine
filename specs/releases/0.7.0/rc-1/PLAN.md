@@ -144,3 +144,36 @@ Done: T-070-1, T-070-2, T-070-4, T-070-7, T-070-12, T-070-13; bugs B1, B3, B4, B
 - Critical path: T-070-13 → T-070-18 (A/B validated) → B2 → T-070-3 → B8 → T-070-14 → T-070-16 → T-070-8 → T-070-9 → T-070-11 = 8 task steps and two bug merges; each speed task adds its `chore(T-070-N): FR11 rows` follow-up worktree after a PR #42 run before its `[x]`.
 - File-sharing order (not `blocked by:` edges): `benchmarks/speed.py`: T-070-13 → T-070-18 → T-070-3; T-070-3 after T-070-13 (`tests/test_0_np_core.py`); T-070-5 after T-070-4 (`_keys.py`, `advanced_validator.py`, `test_8`); T-070-6 after T-070-3 (`data_generator.py`) and T-070-5 (`test_8`); T-070-14 after T-070-3 (`tests/test_2_data_generator.py`); T-070-15 after B8 (`_np_core.py`); T-070-15 before bug `method-registry-has-five-owners`'s final-wave fix (`common_validator.py`); T-070-9 after T-070-8 (`tests/test_docs.py`); T-070-11 after T-070-10 (`pyproject.toml`); T-070-10 after T-070-14 (AC13.2 in `tests/AGENTS.md`) and T-070-16 (its CSV divergences in `CHANGELOG.md`); `.github/workflows/*`: T-070-13 → T-070-18, no other task.
 - Overlap check: disjoint within each step except `TASKS.md`, the `*.jsonl` ledgers and the derived `docs/benchmarks.json` and derived `docs/BENCHMARKS.md` (written only from the CI artifact).
+
+## 6. Staged migration of the remaining work
+
+Completed `TASKS.md` rows remain immutable history. The current staged contract
+replaces only T-070-9, T-070-11 and the three registered rc-1 bugs:
+
+```text
+J1 readme ─────┐
+J2 bug-batch ──┼──> J3 version ──> J4 reconcile
+               ┘
+```
+
+- Bootstrap precondition: before a job opens, the operator commits
+  `tests: tests/**` and `tests-red: ^\s*@pytest\.mark\.xfail\(strict=True` to
+  the work branch `AGENTS.md`; every tree rebases onto it. This is the gate's
+  prescribed bootstrap, not a job task.
+- J1 finishes AC7.2–AC7.5 and AC8.4 without changing runtime behavior.
+- J2 resolves `method-registry-has-five-owners`,
+  `distincts-multi-map-drops-levels-silently` and
+  `distincts-map-column-order-reversed`. RED retains existing registry and
+  golden assertions. Fixes replace drift with one validator-owned contract,
+  exact multi-map arity and category-first pairs. Only the two deliberate
+  correlated-method outputs rewrite their sample/golden (AC13.2); RNG order and
+  every other sample stay fixed.
+- J3 changes only `pyproject.toml` to 0.7.0 (AC9.4), after J1 and J2.
+- J4 runs last: memory, derived docs, disposition sweep, closure evidence and
+  artifact GC. Run 37416658724 is recorded as same-code noise (ratio
+  1.867135399); rc-1 changes no sample, repetition count, RNG contract or 1.3
+  limit. The final PR #42 run must still satisfy every FR12 row at ≤ 1.3.
+
+Write conflicts are serialized: J1 owns README/`llms.txt` tests, J2 owns the
+registry/correlated-method bug surface, J3 alone owns `pyproject.toml`, and J4
+starts only after all three.
