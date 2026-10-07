@@ -14,7 +14,7 @@
 
 ## Recipes
 
-<!-- derived-from: templates-and-examples sha256:a7eb98b819bf -->
+<!-- derived-from: templates-and-examples sha256:3a80d1549af6 -->
 
 - [Recipes](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/5_RECIPES.md): Faker pools, Kafka or any queue, parquet lake, related tables
 

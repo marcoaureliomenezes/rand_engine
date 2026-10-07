@@ -75,7 +75,7 @@ assert len(lake) == 2_000 and lake["sale_id"].is_unique
 
 ## Related tables
 
-<!-- derived-from: pk-fk-constraints sha256:3cc5aee7e657 -->
+<!-- derived-from: pk-fk-constraints sha256:f618b12b0b07 -->
 
 Share the parent's `pk` spec with the child's `fk`; see [4_CONSTRAINTS.md](4_CONSTRAINTS.md).
 

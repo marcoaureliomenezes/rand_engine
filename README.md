@@ -75,7 +75,7 @@ assert people["name"].isin(names).all()
 
 ## Related tables
 
-<!-- derived-from: pk-fk-constraints sha256:3cc5aee7e657 -->
+<!-- derived-from: pk-fk-constraints sha256:f618b12b0b07 -->
 
 Give the child's `fk` the parent's `pk` spec and size: every child key exists in the parent.
 

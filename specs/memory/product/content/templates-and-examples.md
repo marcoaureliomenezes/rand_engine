@@ -7,7 +7,6 @@ tags: [templates, examples, rand-specs]
 sources:
   - rand_engine/examples/**
   - rand_engine/templates/**
-  - rand_engine/utils/update.py
 ---
 
 ## Example specs

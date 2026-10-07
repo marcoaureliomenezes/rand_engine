@@ -5,10 +5,9 @@ tldr: "Stateless pk and fk column methods create related tables from definitions
 summary: "A pk is a sequence or a deterministic permutation of row indexes; an fk deterministically selects a parent row and rebuilds its pk value. Batch parts and stream microbatches advance row offsets, so keys remain consistent without shared state."
 tags: [keys, referential-integrity, stateless, pk, fk]
 sources:
-  - rand_engine/main/_constraints_handler.py
-  - rand_engine/integrations/**
   - rand_engine/core/_keys.py
-  - rand_engine/main/data_generator.py
+  - rand_engine/main/_rand_generator.py
+  - rand_engine/validators/advanced_validator.py
 ---
 
 ## Primary keys
