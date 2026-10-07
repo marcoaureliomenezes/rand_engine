@@ -3,7 +3,7 @@
   "release": "0.7.0",
   "phase": "IMPLEMENTATION",
   "defined": {
-    "sha": "56b854b74796768a9292aa4f70da5af8fef87659",
+    "sha": "cedc6351ba7289f17c212e350b1cb29ade656f67",
     "ts": "2026-10-03T20:34:51Z"
   },
   "implemented": null,
@@ -29,6 +29,18 @@
       "agent": "main-thread",
       "kind": "note",
       "text": "rc-1 amended per definition review (dd-code-reviewer REJECTED 464e5f7) and re-approved by the operator at 04cbffc (\"Re-approve all three (Recommended)\"); the defined stamp 56b854b predates the amendment because release.py phase writes IMPLEMENTATION once."
+    },
+    {
+      "ts": "2026-10-07T13:33:26Z",
+      "agent": "main-thread",
+      "kind": "note",
+      "text": "Repair the active defined stamp after the documented release.py drift diagnostic: historical 56b854b74796768a9292aa4f70da5af8fef87659 maps to reachable cedc6351ba7289f17c212e350b1cb29ade656f67. Both definition commits have identical stable patch-id a2d403d260e397f9b48a6b3d40c9e1c47467ee7c; historical log entries and original timestamp remain unchanged. Operator release-completion authorization covers this lineage repair."
+    },
+    {
+      "ts": "2026-10-07T13:33:26Z",
+      "agent": "main-thread",
+      "kind": "note",
+      "text": "Operator workflow override: task, stage and job gates run locally; reviewer-approved jobs merge into local feature/0.7.0 after the local job gate. No further wt/* pushes or job remote-CI prerequisites; only the prepared feature branch may be published. Final PR benchmark and promotion gates remain required."
     }
   ]
 }
