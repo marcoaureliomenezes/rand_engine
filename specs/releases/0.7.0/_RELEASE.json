@@ -1,12 +1,15 @@
 {
   "schema": "release-state-v1",
   "release": "0.7.0",
-  "phase": "IMPLEMENTATION",
+  "phase": "CLOSURE",
   "defined": {
     "sha": "cedc6351ba7289f17c212e350b1cb29ade656f67",
     "ts": "2026-10-03T20:34:51Z"
   },
-  "implemented": null,
+  "implemented": {
+    "sha": "69d0d33577ec4c3820e54eeef4989fd08dfe4787",
+    "ts": "2026-10-07T13:33:48Z"
+  },
   "shipped": null,
   "log": [
     {
@@ -41,6 +44,15 @@
       "agent": "main-thread",
       "kind": "note",
       "text": "Operator workflow override: task, stage and job gates run locally; reviewer-approved jobs merge into local feature/0.7.0 after the local job gate. No further wt/* pushes or job remote-CI prerequisites; only the prepared feature branch may be published. Final PR benchmark and promotion gates remain required."
+    },
+    {
+      "ts": "2026-10-07T13:33:48Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-1",
+      "milestone": "implemented",
+      "sha": "69d0d33577ec4c3820e54eeef4989fd08dfe4787",
+      "text": "Candidate implemented at 69d0d33577ec4c3820e54eeef4989fd08dfe4787; phase CLOSURE."
     }
   ]
 }
