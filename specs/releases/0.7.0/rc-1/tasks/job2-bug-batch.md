@@ -1,6 +1,21 @@
 # Job 2 — registered rc-1 bug batch
 
 **Status:** Approved
+**done:** true
+
+## Completion provenance
+
+The staged rows below were fulfilled by the existing Arm B implementation, not
+by newly executed J2 task stages. `4147b08` rebuilt the method registry,
+`a025db3` enforced multi-map arity, and `009d443` corrected category-first pairs.
+Their commit bodies and resolved bug records hold the RED-to-GREEN evidence:
+registry/template cases had 7 RED failures, multi-map arity had 2 RED failures,
+and category-first output failed before its fix. No new strict-xfail markers or
+acceptance tests were added by this closure. J2.S1's proposed RED stage is
+superseded by that recorded evidence; J2.S2–J2.S5 are done by the inherited fixes
+and their integration. All three bug records are resolved. The main thread's
+later integration gate reported 692 passed, 8 deselected; this metadata task
+runs no tests and claims no new runtime change.
 
 ## Stage J2.S1 — RED
 

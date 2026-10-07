@@ -156,10 +156,18 @@ J2 bug-batch ──┼──> J3 version ──> J4 reconcile
                ┘
 ```
 
-- Bootstrap precondition: before a job opens, the operator commits
-  `tests: tests/**` and `tests-red: ^\s*@pytest\.mark\.xfail\(strict=True` to
-  the work branch `AGENTS.md`; every tree rebases onto it. This is the gate's
-  prescribed bootstrap, not a job task.
+- The former `tests:` / `tests-red:` test-freeze bootstrap is superseded:
+  the installed runtime and current `worktrees/AGENTS.md` require no such
+  declarations. No library, harness or repo-rule edits implement this correction.
+- Operator override for the remaining closure: task, stage and job gates run
+  locally. A reviewer `APPROVED` verdict and a green local job gate are required
+  before each local merge onto `feature/0.7.0`; no worktree branch is pushed and
+  no job CI run is required. Only `feature/0.7.0` is pushed when the release is
+  prepared. This changes publication cadence only: benchmark samples,
+  repetitions, RNG contract and the FR12 ratio limit of 1.3 remain unchanged.
+  Local reconciliation may merge with final benchmark proof recorded as pending;
+  the final PR #42 artifact is committed by the follow-up after feature CI and
+  remains a terminal release gate, not a memory-preparation prerequisite.
 - J1 finishes AC7.2–AC7.5 and AC8.4 without changing runtime behavior.
 - J2 resolves `method-registry-has-five-owners`,
   `distincts-multi-map-drops-levels-silently` and
