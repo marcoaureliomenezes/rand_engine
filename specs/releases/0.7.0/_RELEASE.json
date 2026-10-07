@@ -72,6 +72,48 @@
         "pk-fk-constraints",
         "rand-spec-grammar"
       ]
+    },
+    {
+      "ts": "2026-10-07T13:57:50Z",
+      "agent": "dd-software-engineer",
+      "kind": "summary",
+      "text": "Runtime implementation is locally merged; J3 sets version 0.7.0 (66f6114, closure 69d0d33), with wheel/sdist 0.7.0 MIT metadata and twine checks green. Memory records eight changed atoms; the current catalog has nine atoms and derived sections carry current markers. Corrective memory work remains separately gated. J4 final approval and terminal benchmark proof are pending."
+    },
+    {
+      "ts": "2026-10-07T13:57:50Z",
+      "agent": "dd-software-engineer",
+      "kind": "test-dispositions",
+      "text": "Main-thread local default gates: 692 passed, eight stress cases deselected. Stress and benchmark workloads run only in CI; this metadata task runs no pytest."
+    },
+    {
+      "ts": "2026-10-07T13:57:50Z",
+      "agent": "dd-software-engineer",
+      "kind": "dispositions",
+      "text": "Origin is operator-demand: no picked backlog or audit items require disposition. All 25 bug records are resolved, zero open. No accepted archival ADR authorizes removal; retain the bug ledger."
+    },
+    {
+      "ts": "2026-10-07T13:57:50Z",
+      "agent": "dd-software-engineer",
+      "kind": "drifts",
+      "text": "Run 37416658724 failed at ratio 1.867135399 with same-code source evidence; this is a noise observation, not root-cause proof. Final PR #42 benchmark evidence remains pending after feature publication. Samples, repetitions, RNG contract and FR12 limit 1.3 are unchanged."
+    },
+    {
+      "ts": "2026-10-07T13:57:50Z",
+      "agent": "dd-software-engineer",
+      "kind": "artifact-gc",
+      "text": "Main-thread dry doctor with explicit task specs_dir exited 1: LINT-1/FIXED-2 are under corrective product work; consumer TREE-5 warnings and workspace PROJECTION/HOOKS drift remain reported. Global runtime repair is outside this job; no library, harness or other-project repair authorized. Prior remote worktree refs remain untouched under the no-worktree-push override; no remote deletion performed."
+    },
+    {
+      "ts": "2026-10-07T13:57:50Z",
+      "agent": "dd-software-engineer",
+      "kind": "size",
+      "text": "Measured metadata/memory-only window 69d0d33..f7bf715 before this narrative: git diff --numstat totals 25 files, 375 added and 194 removed lines. This excludes the pending corrective commit and this narrative; no legacy wall time or dispatch count inferred."
+    },
+    {
+      "ts": "2026-10-07T13:57:50Z",
+      "agent": "dd-software-engineer",
+      "kind": "reviews",
+      "text": "Main-thread local APPROVED references cover registry 009d443, README 55ec159 and version 69d0d33/66f6114; version local job gate reported 692 passed, eight deselected in 78.68s. Current reconciliation has no final job approval yet. Local gates and reviewer APPROVED precede feature merge; only prepared feature is published, final CI/benchmark and promotion gates remain required."
     }
   ]
 }
