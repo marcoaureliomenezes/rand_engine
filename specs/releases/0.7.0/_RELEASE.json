@@ -1,7 +1,7 @@
 {
   "schema": "release-state-v1",
   "release": "0.7.0",
-  "phase": "CLOSURE",
+  "phase": "DEFINITION",
   "defined": {
     "sha": "cedc6351ba7289f17c212e350b1cb29ade656f67",
     "ts": "2026-10-03T20:34:51Z"
@@ -132,6 +132,24 @@
       "agent": "dd-software-engineer",
       "kind": "reviews",
       "text": "Feature security/matrix/build run 37637078265 succeeded at the same measured head (nine matrix legs plus build and security). Existing local preparation review/gate evidence preceded publication. Terminal owner selectors tests/test_docs.py tests/test_benchmarks.py: 42 passed in 11.70s (ten documentation cases plus benchmark contract cases). J4 terminal task/job integration review and gates remain with the main thread; their success and promotion are not claimed here. https://github.com/marcoaureliomenezes/rand_engine/actions/runs/37637078265"
+    },
+    {
+      "ts": "2026-10-07T16:53:49Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.7.0 (prior candidate closed at 69d0d33577ec4c3820e54eeef4989fd08dfe4787)"
+    },
+    {
+      "ts": "2026-10-07T16:57:45Z",
+      "agent": "main-thread",
+      "kind": "note",
+      "text": "Operator publication override applies across candidates: no wt push or remote worktree CI; task, stage and job gates run locally; reviewer-approved jobs merge locally to feature/0.7.0; feature publication only at final release preparation. RC2 definition continues from locally closed RC1 at 6f74199. PR42 remains open with external review required; no admin merge, protection change or remote bypass is authorized or performed. Closed RC1 history is not rewritten."
+    },
+    {
+      "ts": "2026-10-07T16:57:45Z",
+      "agent": "main-thread",
+      "kind": "note",
+      "text": "RC2 grill: 14 product decisions confirmed via clickable selectors, followed by operator demand to proceed. All five reproduced forensic-review bug proposals confirmed; separate registration tree retains the ledger writer's rc-1 discovery attribution. The resulting Draft SPEC is still subject to operator approval; no implementation claim or milestone is made."
     }
   ]
 }
