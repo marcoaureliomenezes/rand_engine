@@ -1,18 +1,26 @@
 from functools import partial
+from numbers import Number
 from typing import Dict, List, Optional, Callable
 import numpy as np
 import pandas as pd
-from rand_engine.validators.exceptions import ColumnGenerationError, TransformerError
+from pandas.api.types import (
+  infer_dtype,
+  is_bool_dtype,
+  is_datetime64_any_dtype,
+  is_float_dtype,
+  is_integer_dtype,
+  is_object_dtype,
+  is_string_dtype,
+)
+from rand_engine.validators.exceptions import ColumnGenerationError, RandEngineError, TransformerError
 from rand_engine.core._keys import Keys
 from rand_engine.core._py_core import METHODS
-from rand_engine.core._spark_core import SparkCore
 
 
 class RandGenerator:
 
 
-  def __init__(self, random_spec: Callable[[], Dict], validate: bool = True):
-    # Avalia a spec usando lazy evaluation
+  def __init__(self, random_spec: Dict):
     self.random_spec = random_spec
 
 
@@ -53,10 +61,115 @@ class RandGenerator:
     return df
   
 
-  def apply_global_transformers(self, df, transformers: List[Optional[Callable]]):
-    if transformers:
-      if len(transformers) > 0: 
-        for transformer in transformers:
-          df = transformer(df)
+  def apply_global_transformers(self, df, transformers: List[Callable]):
+    for transformer in transformers:
+      df = transformer(df)
     return df
- 
+
+
+  @staticmethod
+  def _object_values_are_compatible(series: pd.Series, values: list) -> bool:
+    candidates = [value for value in values if not pd.isna(value)]
+    source_kind = infer_dtype(series, skipna=True)
+    if source_kind == "empty" or not candidates:
+      return True
+    candidate_kind = infer_dtype(candidates, skipna=True)
+    return source_kind in {"mixed", "mixed-integer"} or source_kind == candidate_kind
+
+
+  @staticmethod
+  def _scalar_preserves_dtype(value, dtype) -> bool:
+    if is_integer_dtype(dtype):
+      if isinstance(value, (bool, np.bool_)) or not isinstance(value, (int, np.integer)):
+        return False
+      bounds = np.iinfo(dtype.numpy_dtype if hasattr(dtype, "numpy_dtype") else dtype)
+      return bounds.min <= int(value) <= bounds.max
+    if is_bool_dtype(dtype):
+      return isinstance(value, (bool, np.bool_))
+    if is_float_dtype(dtype):
+      if isinstance(value, (bool, np.bool_)):
+        return False
+      numpy_dtype = dtype.numpy_dtype if hasattr(dtype, "numpy_dtype") else dtype
+      try:
+        converted = np.asarray([value], dtype=numpy_dtype)[0]
+      except (TypeError, ValueError, OverflowError):
+        return False
+      if not isinstance(value, Number) and not pd.isna(value):
+        return False
+      return (pd.isna(value) and pd.isna(converted)) or converted == value
+    if is_datetime64_any_dtype(dtype):
+      if isinstance(value, str):
+        return False
+      try:
+        converted = pd.array([value], dtype=dtype)[0]
+      except (TypeError, ValueError, OverflowError):
+        return False
+      return (pd.isna(value) and pd.isna(converted)) or pd.Timestamp(value) == converted
+    if is_string_dtype(dtype):
+      return pd.isna(value) or isinstance(value, str)
+    try:
+      converted = pd.array([value], dtype=dtype)[0]
+    except (TypeError, ValueError, OverflowError):
+      return False
+    return (pd.isna(value) and pd.isna(converted)) or converted == value
+
+
+  @classmethod
+  def _anomaly_values_are_compatible(cls, series: pd.Series, values: list) -> bool:
+    if is_object_dtype(series.dtype):
+      return cls._object_values_are_compatible(series, values)
+    return all(cls._scalar_preserves_dtype(value, series.dtype) for value in values)
+
+
+  def _validate_modifiers(self, df: pd.DataFrame):
+    for column, config in self.random_spec.items():
+      anomaly_rate = config.get("anomaly_rate", 0)
+      null_rate = config.get("null_rate", 0)
+      if not anomaly_rate and not null_rate:
+        continue
+      if column not in df:
+        raise RandEngineError(f"modifier column '{column}' is missing after transformers")
+      if anomaly_rate and not self._anomaly_values_are_compatible(df[column], config["anomaly_values"]):
+        raise RandEngineError(f"column '{column}' anomaly values cannot preserve dtype {df[column].dtype}")
+
+
+  @staticmethod
+  def _coerce_anomaly_values(series: pd.Series, values: np.ndarray):
+    if is_object_dtype(series.dtype):
+      return np.asarray(values, dtype=object)
+    return pd.array(values, dtype=series.dtype)
+
+
+  @staticmethod
+  def _assign_nulls(series: pd.Series, mask: np.ndarray) -> pd.Series:
+    if is_integer_dtype(series.dtype):
+      nullable = str(series.dtype).replace("uint", "UInt").replace("int", "Int")
+      return series.astype(nullable).mask(mask, pd.NA)
+    if is_bool_dtype(series.dtype):
+      return series.astype("boolean").mask(mask, pd.NA)
+    if is_datetime64_any_dtype(series.dtype):
+      return series.mask(mask, pd.NaT)
+    if is_float_dtype(series.dtype):
+      return series.mask(mask, np.nan)
+    return series.mask(mask, None)
+
+
+  def apply_modifiers(self, df: pd.DataFrame, rng: np.random.Generator) -> pd.DataFrame:
+    self._validate_modifiers(df)
+    for column, config in self.random_spec.items():
+      anomaly_rate = config.get("anomaly_rate", 0)
+      null_rate = config.get("null_rate", 0)
+      if not anomaly_rate and not null_rate:
+        continue
+      series = df[column]
+      if anomaly_rate:
+        anomaly_mask = rng.random(len(series)) < anomaly_rate
+        pool = np.asarray(config["anomaly_values"], dtype=object)
+        selected = rng.choice(pool, size=int(anomaly_mask.sum()))
+        series = series.copy()
+        series.iloc[np.flatnonzero(anomaly_mask)] = self._coerce_anomaly_values(series, selected)
+      if null_rate:
+        null_mask = rng.random(len(series)) < null_rate
+        series = self._assign_nulls(series, null_mask)
+      df[column] = series
+    return df

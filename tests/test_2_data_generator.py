@@ -300,7 +300,6 @@ def test_modifier_active_rates_leave_global_numpy_state_untouched():
   assert pickle.dumps(np.random.get_state()) == before
 
 
-@pytest.mark.xfail(strict=True, reason="J3.S1.T1 RED: anomaly modifiers are not applied")
 def test_modifier_seeded_anomaly_mask_and_values_match_literal():
   spec = {
     "value": {
@@ -320,7 +319,6 @@ def test_modifier_seeded_anomaly_mask_and_values_match_literal():
   assert actual == [90, 1, 91, 91, 91, 1, 1, 90, 1, 91, 1, 1]
 
 
-@pytest.mark.xfail(strict=True, reason="J3.S1.T1 RED: rate-one anomalies are not applied")
 def test_modifier_anomaly_rate_one_replaces_every_non_null_row_without_widening():
   spec = {
     "value": {
@@ -338,7 +336,6 @@ def test_modifier_anomaly_rate_one_replaces_every_non_null_row_without_widening(
   assert str(series.dtype) == "int8"
 
 
-@pytest.mark.xfail(strict=True, reason="J3.S1.T1 RED: compatible object anomalies are not applied")
 @pytest.mark.parametrize("source, anomaly", [
   ("base", "replacement"),
   (None, "replacement"),
@@ -359,7 +356,6 @@ def test_modifier_anomaly_accepts_compatible_object_scalars(source, anomaly):
   assert str(series.dtype) == "object"
 
 
-@pytest.mark.xfail(strict=True, reason="J3.S1.T1 RED: null modifiers are not applied")
 def test_modifier_null_mask_runs_last_and_wins_on_overlap():
   spec = {
     "value": {
@@ -380,7 +376,6 @@ def test_modifier_null_mask_runs_last_and_wins_on_overlap():
   assert actual == [90, None, None, None, None, 1, None, 90, None, None, None, None]
 
 
-@pytest.mark.xfail(strict=True, reason="J3.S1.T1 RED: anomaly pipeline ordering is not implemented")
 def test_modifier_pipeline_orders_embedded_global_then_anomaly():
   spec = {
     "value": {
@@ -403,7 +398,6 @@ def test_modifier_pipeline_orders_embedded_global_then_anomaly():
   assert actual == [99, 20, 20, 99, 99, 99]
 
 
-@pytest.mark.xfail(strict=True, reason="J3.S1.T1 RED: dtype-specific null assignment is not implemented")
 @pytest.mark.parametrize("method, kwargs, transformers, expected_dtype", [
   ("integers", {"min": -2, "max": 2, "int_type": "int8"}, [], "Int8"),
   ("integers", {"min": 0, "max": 2, "int_type": "uint16"}, [], "UInt16"),
@@ -430,7 +424,6 @@ def test_modifier_null_rate_one_uses_dtype_specific_missing_values(
   assert str(series.dtype) == expected_dtype
 
 
-@pytest.mark.xfail(strict=True, reason="J3.S1.T1 RED: transformer row-count changes are not refused")
 def test_modifier_pipeline_refuses_global_transformer_row_count_change():
   spec = {"value": {"method": "constant", "kwargs": {"value": 1}}}
   caught = None
@@ -444,7 +437,6 @@ def test_modifier_pipeline_refuses_global_transformer_row_count_change():
   assert isinstance(caught, RandEngineError)
 
 
-@pytest.mark.xfail(strict=True, reason="J3.S1.T1 RED: post-transform anomaly compatibility is not checked")
 def test_modifier_anomaly_compatibility_is_checked_after_transformers():
   spec = {
     "value": {
@@ -465,7 +457,6 @@ def test_modifier_anomaly_compatibility_is_checked_after_transformers():
   assert isinstance(caught, RandEngineError)
 
 
-@pytest.mark.xfail(strict=True, reason="J3.S1.T1 RED: incompatible anomaly values are not refused")
 @pytest.mark.parametrize("method, kwargs, anomaly", [
   ("integers", {"min": -2, "max": 2, "int_type": "int8"}, 1.5),
   ("integers", {"min": 0, "max": 2, "int_type": "uint8"}, 256),

@@ -1,27 +1,25 @@
 import time
 import pandas as pd
 import numpy as np
-from typing import List, Optional, Generator, Callable
+from typing import List, Generator, Callable
 from rand_engine.main._rand_generator import RandGenerator
 from rand_engine.file_handlers._writer_batch import FileBatchWriter
 from rand_engine.file_handlers._writer_stream import FileStreamWriter
 from rand_engine.utils.stream_handler import StreamHandler
 from rand_engine.validators.advanced_validator import AdvancedValidator
-from rand_engine.validators.exceptions import SpecValidationError, RandEngineError
+from rand_engine.validators.exceptions import RandEngineError
   
 class DataGenerator:
       
   def __init__(self, random_spec: Callable[[], dict] | dict, seed: int = None):
-    # Valida a spec SEMPRE - obrigatório para prevenir erros durante geração
     self.lazy_random_spec = random_spec
     self.__validate_spec()
-    
-    # Configura gerador após validação bem-sucedida
+
     seed_sequence = np.random.SeedSequence(seed)
     self._rng = np.random.default_rng(seed_sequence)
     self._key_seed = int(seed_sequence.generate_state(1)[0])
     self._size = None
-    self._transformers: List[Optional[Callable]] = []
+    self._transformers: List[Callable] = []
  
 
   def __evaluate_spec(self):
@@ -36,25 +34,23 @@ class DataGenerator:
 
   
   def wrapped_df_generator(self, size: int, offset: int = 0) -> pd.DataFrame:
-    """
-    This method generates a pandas DataFrame based on random data specified in the metadata parameter.
-    :param size: int: Number of rows to be generated.
-    :param offset: int: Row index of the first row (keys continue across batches).
-    :param transformer: Optional[Callable]: Function to transform the generated data.
-    :return: pd.DataFrame: DataFrame with the generated data.
-    """
+    """Return one lazy generation/transform/modifier row-batch pipeline."""
     def wrapped_lazy_dataframe():
       evaluated_spec = self.__evaluate_spec()
       rand_generator = RandGenerator(evaluated_spec)
-      
+
       df_pandas = rand_generator.generate_first_level(size=size, rng=self._rng, key_seed=self._key_seed, offset=offset)
       df_pandas = rand_generator.apply_embedded_transformers(df_pandas)
       df_pandas = rand_generator.apply_global_transformers(df_pandas, self._transformers)
+      if not isinstance(df_pandas, pd.DataFrame) or len(df_pandas.index) != size:
+        actual = len(df_pandas.index) if isinstance(df_pandas, pd.DataFrame) else "non-DataFrame"
+        raise RandEngineError(f"global transformers must preserve row count {size}; got {actual}")
+      df_pandas = rand_generator.apply_modifiers(df_pandas, self._rng)
       return df_pandas
     return wrapped_lazy_dataframe
   
 
-  def transformers(self, transformers: List[Optional[Callable]]):
+  def transformers(self, transformers: List[Callable]):
     self._transformers = transformers
     return self
   
@@ -98,9 +94,3 @@ class DataGenerator:
   @property
   def writeStream(self):
     return FileStreamWriter(self._resolve_size, self.wrapped_df_generator)
-
-
-
-if __name__ == '__main__':
-
-  pass
