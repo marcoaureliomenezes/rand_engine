@@ -16,7 +16,7 @@ Root workspace behavior is in the workspace `AGENTS.md`; production-source behav
 | `releases/` | `AGENTS.md _archive/ <M.m.p>/` |
 | `releases/_archive/` | `releases_histo.jsonl <M.m.p>/**` |
 | `releases/<M.m.p>/` | `_RELEASE.json RELEASE.json rc-<N>/` |
-| `releases/<M.m.p>/rc-<N>/` | `SPEC.md PLAN.md TASKS.md` |
+| `releases/<M.m.p>/rc-<N>/` | `SPEC.md PLAN.md TASKS.md tasks/<slug>.md` |
 | `backlog/` | `AGENTS.md BACKLOG.json _archive/backlog_histo.jsonl` |
 | `bugs/` | `AGENTS.md BUGS.jsonl _archive/bugs_histo.jsonl` |
 | `audits/` | `AGENTS.md _archive/audits_histo.jsonl <YYYYMMDD-slug>/` |
@@ -32,8 +32,8 @@ Root workspace behavior is in the workspace `AGENTS.md`; production-source behav
 
 ## 3. Before implementing
 
-- The live release's `_RELEASE.json` `phase` reads `IMPLEMENTATION`, and every trio document carries `**Status:** Approved`.
-- The task is marked per `specs/releases/AGENTS.md` §3 before any production edit, and its declared write set names every file touched.
+- The live release's `_RELEASE.json` `phase` reads `IMPLEMENTATION`: `release.py phase` enters it only when the candidate's SPEC and PLAN both carry `**Status:** Approved`.
+- The task is a row of its job file (`rc-<N>/tasks/<job>.md`), and its declared write set names every file touched.
 - Any item missing: stop and repair the SDD artifact instead of editing production.
 
 ## 4. Artifact authority
@@ -42,20 +42,19 @@ Root workspace behavior is in the workspace `AGENTS.md`; production-source behav
 |---|---|
 | `constitution.md` | operator, or `dd-product-engineer` under approved governance work |
 | `releases/<id>/_RELEASE.json` | `python3 .agents/skills/dd-release-implementation/scripts/release.py new\|phase`; `log` entries by the narrating agent |
-| `releases/<id>/rc-<N>/{SPEC,PLAN,TASKS}.md` (never rewritten after its closure; archived whole at promote) | `dd-product-engineer` (SPEC), `dd-software-engineer` (PLAN, TASKS); implementers change only their own task marker |
-| `memory/**` | `dd-product-engineer`, in `DEFINITION` and `CLOSURE` phase |
+| `releases/<id>/rc-<N>/{SPEC,PLAN}.md`, `rc-<N>/tasks/<job>.md` (never rewritten after its closure; archived whole at promote) | `dd-product-engineer` (SPEC), `dd-software-engineer` (PLAN, job files); a job's close task writes its `done` |
+| `memory/**` | `dd-product-engineer`; phases and tiers: `memory/AGENTS.md` §1 |
 | `backlog/**` | `dd-product-engineer`; entries exit by `python3 .agents/skills/dd-backlog-definition/scripts/backlog.py exit` |
-| `bugs/**` | any agent, after the operator confirms the proposal; verbs only |
-| `audits/**` | `dd-code-reviewer` (audit lens); findings move by `python3 .agents/skills/dd-audit-project/scripts/audit.py disposition|close` |
+| `bugs/**` | any agent, by verbs only; propose and confirm: `bugs/AGENTS.md` |
+| `audits/**` | `dd-code-reviewer` (audit lens); how a finding moves: `audits/AGENTS.md` |
 
 ## 5. Memory
 
 - Memory describes the product as it is now; no changelog, history or version sections.
-- Stale memory found during implementation becomes a bug proposal or a closure note — never patched mid-implementation.
 
 ## 6. Bugs
 
-- A bug is fixed on the live work branch (the constitution's `gitflow:`), in any phase, with no release ceremony.
+- When a bug is fixed: `specs/bugs/AGENTS.md` §2.
 
 ## 7. Escalation
 
