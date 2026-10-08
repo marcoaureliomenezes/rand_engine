@@ -1,6 +1,6 @@
 # SPEC — Release: 0.7.0, candidate 2 (bounded generation + RandSpec breadth)
 
-**Status:** Draft
+**Status:** Approved
 **Release ID:** 0.7.0
 **Owner:** dd-product-engineer
 **Opened:** 2026-10-07
@@ -8,7 +8,7 @@
 
 - Demand: deliver the seven RC2 themes deferred by RC1 §5, repair the five defects confirmed by the full forensic review, and rebuild recurrent validation, numeric and writer units instead of layering exceptions.
 - Sources: confirmed grill handoff `2026-10-07T165344Z-main-thread-grill-rc2-confirmed`; forensic report `2026-10-07T153804Z-main-thread-bug-forensics-rc2.html`; RC1 SPEC §5; operator instruction to proceed.
-- The grill fixed behaviour but not every API spelling/default. The section “Draft API proposals” is product-engineer proposal, not a clicked operator decision; approval of this SPEC would approve it.
+- Approval: operator, 2026-10-07, verbatim: “aprovo a Spec Atual da RC2” — the current contract, including the product-engineer API spellings/defaults below, is approved without substantive amendment.
 
 ## Bug window review
 
