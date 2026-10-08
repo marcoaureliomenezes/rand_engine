@@ -451,7 +451,6 @@ def test_uniform_float_lattice_converts_finite_singletons_at_extreme_scales(valu
   assert actual.tolist() == [value]
 
 
-@pytest.mark.xfail(strict=True, reason="J2.S3.T1 RED: wide lattice conversion exceeds CPython's integer-string limit")
 @pytest.mark.parametrize("value", [1.0, -1.0, 1e308, 1e-308])
 def test_uniform_float_lattice_converts_positive_extreme_decimals_without_string_limits(value):
   digit_limit = sys.get_int_max_str_digits()

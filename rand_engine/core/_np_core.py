@@ -62,7 +62,11 @@ def _lattice_to_float64(values: np.ndarray | list[int], scale: Decimal, decimals
   float_scale = float(scale)
   if isinstance(values, np.ndarray) and np.isfinite(float_scale) and float_scale != 0:
     return np.asarray(values, dtype=np.float64) / float_scale
-  return np.fromiter((float(f"{value}e{-decimals}") for value in values), dtype=np.float64, count=len(values))
+  return np.fromiter(
+    (float(_shift_decimal(Decimal(int(value)), -decimals)) for value in values),
+    dtype=np.float64,
+    count=len(values),
+  )
 
 
 class NPCore:
