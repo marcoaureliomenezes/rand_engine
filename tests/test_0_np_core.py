@@ -364,7 +364,6 @@ def test_gen_dates_zero_rows_returns_empty():
   assert NPCore.gen_dates(0, "2020-01-01", "2024-12-31", "%Y-%m-%d", rng=RNG).tolist() == []
 
 
-@pytest.mark.xfail(strict=True, reason="J2.S1.T1 RED: NumPy distribution methods are not implemented")
 @pytest.mark.parametrize(("method", "kwargs", "expected_dtype", "expected_hash"), [
   ("exponential", {"scale": 2.5, "decimals": 3}, np.dtype("float64"),
    "e1cd3981cbfdd9fe1ec70f4431508c75202dfe752403bf4e45d3ef9ec1760fba"),
@@ -393,7 +392,6 @@ def test_new_distribution_seeded_outputs_match_numpy_family(method, kwargs, expe
   assert hashlib.sha256(actual.tobytes()).hexdigest() == expected_hash
 
 
-@pytest.mark.xfail(strict=True, reason="J2.S1.T1 RED: floats do not sample the decimal lattice")
 def test_uniform_float_lattice_has_seeded_literal_golden():
   actual = NPCore.gen_floats(
     size=1000, min=-12.34, max=56.78, decimals=2,
@@ -406,7 +404,6 @@ def test_uniform_float_lattice_has_seeded_literal_golden():
   assert hashlib.sha256(actual.tobytes()).hexdigest() == "6b7225c0dab242709fa6172d3b658f431793822cf0a62d7b0805d4acb7990a07"
 
 
-@pytest.mark.xfail(strict=True, reason="J2.S1.T1 RED: floats round values outside the representable domain")
 def test_uniform_float_lattice_reaches_exact_fractional_endpoints():
   values = NPCore.gen_floats(
     size=10**4, min=9.991, max=10.011, decimals=2,
@@ -415,7 +412,6 @@ def test_uniform_float_lattice_reaches_exact_fractional_endpoints():
   assert set(values) == {10.0, 10.01}
 
 
-@pytest.mark.xfail(strict=True, reason="J2.S1.T1 RED: signed-decimal lattice sampling is not implemented")
 def test_uniform_float_lattice_supports_signed_decimals():
   values = NPCore.gen_floats(
     size=100, min=91, max=109, decimals=-1,
@@ -435,6 +431,25 @@ def test_uniform_float_lattice_larger_than_int64_remains_supported_without_a_dec
   assert frame["value"].between(-1, 1, inclusive="both").all()
 
 
+@pytest.mark.parametrize(("value", "decimals"), [
+  (1e308, 2),
+  (-1e308, 2),
+  (1e308, -308),
+  (1e-308, 320),
+])
+def test_uniform_float_lattice_converts_finite_singletons_at_extreme_scales(value, decimals):
+  try:
+    actual = NPCore.gen_floats(
+      size=1, min=value, max=value, decimals=decimals,
+      rng=np.random.default_rng(14),
+    )
+  except OverflowError as error:
+    actual = error
+  assert isinstance(actual, np.ndarray)
+  assert actual.dtype == np.float64
+  assert actual.tolist() == [value]
+
+
 def test_legacy_normal_seeded_golden_is_unchanged():
   values = NPCore.gen_floats_normal(
     size=1000, mean=12.5, std=3.25, decimals=4,
@@ -443,7 +458,6 @@ def test_legacy_normal_seeded_golden_is_unchanged():
   assert hashlib.sha256(values.tobytes()).hexdigest() == "9930878da3e03580439114bb2b98d83ccc30718fecc1e87aa894871d7b83fb66"
 
 
-@pytest.mark.xfail(strict=True, reason="J2.S1.T1 RED: constant generation is not implemented")
 @pytest.mark.parametrize(("value", "expected_dtype"), [
   (None, "object"),
   (True, "bool"),
@@ -468,7 +482,6 @@ def test_constant_repeats_declared_scalars_with_natural_pandas_dtype(value, expe
   assert str(result.dtype) == expected_dtype
 
 
-@pytest.mark.xfail(strict=True, reason="J2.S1.T1 RED: constant is absent from NumPy dispatch")
 def test_constant_consumes_no_rng_and_does_not_change_seeded_columns():
   random_column = {"method": "integers", "kwargs": {"min": 0, "max": 10}}
   without_constant = DataGenerator({"random": random_column}, seed=15).size(100).get_df()

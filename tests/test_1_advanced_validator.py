@@ -530,7 +530,6 @@ def _params(fn, injected=("size", "rng", "spark", "F", "df", "col_name", "offset
   return names, {p.name for p in sig if p.default is p.empty} - set(injected)
 
 
-@pytest.mark.xfail(strict=True, reason="J2.S1.T1 RED: NumPy dispatch lacks catalog methods")
 def test_validator_tables_match_engine_maps_and_signatures():
   """Catalog engine metadata pins each map and every mapped callable's parameters."""
   numpy = RandGenerator({}).map_methods()

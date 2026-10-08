@@ -27,6 +27,11 @@ SAMPLE_KWARGS = {
   "int_zfilled": {"length": 10},
   "floats": {"min": 0, "max": 10**6, "decimals": 2},
   "floats_normal": {"mean": 0, "std": 10**6, "decimals": 2},
+  "exponential": {"scale": 1.0, "decimals": 2},
+  "lognormal": {"mean": 0.0, "std": 1.0, "decimals": 2},
+  "poisson": {"lam": 1.0},
+  "zipf": {"a": 2.0},
+  "constant": {"value": 1},
   "distincts": {"distincts": ["A", "B", "C", "D", "E"]},
   "distincts_prop": {"distincts": {"gold": 10, "silver": 30, "bronze": 60}},
   "unix_timestamps": {"start": "2020-01-01", "end": "2025-12-31", "date_format": "%Y-%m-%d"},
@@ -57,6 +62,13 @@ SINK_SPEC = {
 COLS = {"distincts_map": ["a", "b"], "distincts_map_prop": ["a", "b"], "distincts_multi_map": ["a", "b", "c"]}
 SINKS = ("csv", "parquet", "json", "stream_dict")
 RUNS, LIMIT, CAP_S = 3, 1.3, 15 * 60
+METHOD_SIBLINGS = {
+  "exponential": "floats",
+  "lognormal": "floats_normal",
+  "poisson": "integers",
+  "zipf": "integers",
+}
+SIBLING_LIMIT = 1.5
 
 
 def timed(fn):
@@ -181,6 +193,17 @@ def compare(current, baseline, limit=LIMIT):
   return failed, [key(r) for r in current if key(r) not in base]
 
 
+def compare_siblings(current, siblings=METHOD_SIBLINGS, limit=SIBLING_LIMIT):
+  rows = {key(record): metric(record) for record in current if "method" in record}
+  return [
+    (method, count)
+    for (method, count), elapsed in rows.items()
+    if method in siblings
+    and (siblings[method], count) in rows
+    and elapsed > limit * rows[(siblings[method], count)]
+  ]
+
+
 def baseline(records):
   """The base side of A/B records, in compare's record shape."""
   return [{**r, field(r): r["base_" + field(r)]} for r in records if "base_" + field(r) in r]
@@ -258,7 +281,11 @@ def run(head, base, sizes, out, error=None):
   with open(os.path.join(out, "BENCHMARKS.md"), "w", encoding="utf-8") as f: f.write(render(report, absent, error))
   if base is not None and base.returncode == 3: sys.exit(3)
   failed, _ = compare(records, baseline(records))
-  if failed: sys.exit(f"over {LIMIT}x base: {failed}")
+  sibling_failed = compare_siblings(records)
+  failures = []
+  if failed: failures.append(f"over {LIMIT}x base: {failed}")
+  if sibling_failed: failures.append(f"over {SIBLING_LIMIT}x sibling: {sibling_failed}")
+  if failures: sys.exit("; ".join(failures))
 
 
 def main(argv=None):

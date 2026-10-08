@@ -42,13 +42,11 @@ def test_existing_same_method_regression_limit_remains_1_3():
   assert speed.LIMIT == 1.3
 
 
-@pytest.mark.xfail(strict=True, reason="J2.S1.T1 RED: benchmark inventory lacks new NumPy methods")
 def test_benchmark_inventory_covers_every_numpy_catalog_method():
   expected = {name for name, spec in METHOD_CATALOG.items() if NUMPY in spec.engines}
   assert set(speed.SAMPLE_KWARGS) == expected
 
 
-@pytest.mark.xfail(strict=True, reason="J2.S1.T1 RED: nearest-sibling benchmark gate is not implemented")
 @pytest.mark.parametrize(("method", "sibling"), [
   ("exponential", "floats"),
   ("lognormal", "floats_normal"),
@@ -71,7 +69,6 @@ def test_new_distribution_nearest_sibling_limit_is_1_5(method, sibling):
   assert compare_siblings(over) == [(method, 10**6)]
 
 
-@pytest.mark.xfail(strict=True, reason="J2.S1.T1 RED: official run does not enforce the sibling gate")
 def test_official_run_enforces_the_new_distribution_sibling_limit(tmp_path):
   class SiblingWorker:
     keys = ("integers", "floats", "floats_normal", "exponential", "lognormal", "poisson", "zipf")

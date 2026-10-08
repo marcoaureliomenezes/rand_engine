@@ -5,10 +5,64 @@ import numpy as np
 
 from typing import List, Any, Dict
 from datetime import datetime as dt, timezone
+from decimal import Decimal, InvalidOperation, ROUND_CEILING, ROUND_FLOOR
 
 
 DATE_DIRECTIVES = ("%Y", "%m", "%d", "%H", "%M", "%S", "%f")
 DATE_SPLIT = re.compile(f"({'|'.join(DATE_DIRECTIVES)})")
+
+
+def _shift_decimal(value: Decimal, places: int) -> Decimal:
+  sign, digits, exponent = value.as_tuple()
+  return Decimal((sign, digits, exponent + places))
+
+
+def float_lattice_bounds(minimum: int | float, maximum: int | float, decimals: int) -> tuple[int, int, Decimal]:
+  """Return inclusive integer endpoints and exact scale for a decimal lattice."""
+  if isinstance(decimals, bool) or not isinstance(decimals, int):
+    raise ValueError("decimals must be an integer")
+  try:
+    low, high = Decimal(str(minimum)), Decimal(str(maximum))
+  except (InvalidOperation, ValueError) as error:
+    raise ValueError("float bounds must be finite numbers") from error
+  if not low.is_finite() or not high.is_finite():
+    raise ValueError("float bounds must be finite numbers")
+  lower = int(_shift_decimal(low, decimals).to_integral_value(rounding=ROUND_CEILING))
+  upper = int(_shift_decimal(high, decimals).to_integral_value(rounding=ROUND_FLOOR))
+  if lower > upper:
+    raise ValueError("float bounds contain no representable value at the requested decimals")
+  return lower, upper, Decimal((0, (1,), decimals))
+
+
+def poisson_lam_supported(lam: int | float) -> bool:
+  """Whether NumPy can produce its int64 Poisson result for this lambda."""
+  try:
+    np.random.default_rng(0).poisson(lam=lam, size=0)
+  except (OverflowError, ValueError):
+    return False
+  return True
+
+
+def _unbiased_python_ints(rng: np.random.Generator, size: int, lower: int, upper: int) -> list[int]:
+  width = upper - lower + 1
+  limbs = (width.bit_length() + 63) // 64
+  source_width = 1 << (64 * limbs)
+  limit = source_width - source_width % width
+  values: list[int] = []
+  while len(values) < size:
+    word = 0
+    for limb in rng.bit_generator.random_raw(limbs):
+      word = word << 64 | int(limb)
+    if word < limit:
+      values.append(lower + word % width)
+  return values
+
+
+def _lattice_to_float64(values: np.ndarray | list[int], scale: Decimal, decimals: int) -> np.ndarray:
+  float_scale = float(scale)
+  if isinstance(values, np.ndarray) and np.isfinite(float_scale) and float_scale != 0:
+    return np.asarray(values, dtype=np.float64) / float_scale
+  return np.fromiter((float(f"{value}e{-decimals}") for value in values), dtype=np.float64, count=len(values))
 
 
 class NPCore:
@@ -42,14 +96,44 @@ class NPCore:
   
   
   @classmethod
-  def gen_floats(cls, size: int, min: int, max: int, decimals: int = 2, *, rng: np.random.Generator) -> np.ndarray:
-    if min > max: raise ValueError(f"min ({min}) must be <= max ({max})")
-    return np.round(rng.uniform(min, max, size), decimals)
+  def gen_floats(cls, size: int, min: int | float, max: int | float, decimals: int = 2, *, rng: np.random.Generator) -> np.ndarray:
+    lower, upper, scale = float_lattice_bounds(min, max, decimals)
+    int64 = np.iinfo(np.int64)
+    if int64.min <= lower <= upper <= int64.max:
+      values = rng.integers(lower, upper, size, dtype=np.int64, endpoint=True)
+    else:
+      values = _unbiased_python_ints(rng, size, lower, upper)
+    return _lattice_to_float64(values, scale, decimals)
 
 
   @classmethod
   def gen_floats_normal(cls, size: int, mean: int, std: int, decimals: int = 2, *, rng: np.random.Generator) -> np.ndarray:
     return np.round(rng.normal(mean, std, size), decimals)
+
+
+  @classmethod
+  def gen_exponential(cls, size: int, scale: int | float = 1.0, decimals: int = 2, *, rng: np.random.Generator) -> np.ndarray:
+    return np.round(rng.exponential(scale, size), decimals)
+
+
+  @classmethod
+  def gen_lognormal(cls, size: int, mean: int | float = 0.0, std: int | float = 1.0, decimals: int = 2, *, rng: np.random.Generator) -> np.ndarray:
+    return np.round(rng.lognormal(mean, std, size), decimals)
+
+
+  @classmethod
+  def gen_poisson(cls, size: int, lam: int | float = 1.0, *, rng: np.random.Generator) -> np.ndarray:
+    return rng.poisson(lam, size)
+
+
+  @classmethod
+  def gen_zipf(cls, size: int, a: int | float = 2.0, *, rng: np.random.Generator) -> np.ndarray:
+    return rng.zipf(a, size)
+
+
+  @classmethod
+  def gen_constant(cls, size: int, value: Any, *, rng: np.random.Generator) -> np.ndarray:
+    return np.full(size, value)
 
 
 

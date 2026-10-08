@@ -443,7 +443,6 @@ def test_spark_refuses_numpy_only_features_before_execution(config, message_part
         assert part in message
 
 
-@pytest.mark.xfail(strict=True, reason="J2.S1.T1 RED: float lattice validation is not implemented")
 @pytest.mark.parametrize(("minimum", "maximum", "decimals"), [
     (9.991, 9.991, 2),
     (10, 0, 2),
@@ -465,7 +464,6 @@ def test_invalid_or_empty_float_lattices_are_collected_during_public_constructio
     assert "floats" in message
 
 
-@pytest.mark.xfail(strict=True, reason="J2.S1.T1 RED: unrepresentable Poisson lambda validates")
 def test_poisson_lambda_beyond_numpy_int64_result_domain_is_collected_before_generation():
     unrepresentable_lam = float(2**63)
     with pytest.raises(ValueError):

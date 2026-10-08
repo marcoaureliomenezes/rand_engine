@@ -8,7 +8,7 @@ import sys
 from types import MappingProxyType
 from typing import Any, Callable, Mapping
 
-from rand_engine.core._np_core import DATE_DIRECTIVES
+from rand_engine.core._np_core import DATE_DIRECTIVES, float_lattice_bounds, poisson_lam_supported
 
 
 TypeRule = type | tuple[type, ...]
@@ -71,6 +71,16 @@ def _normal(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
     std = kwargs.get("std", 1.0)
     if std < 0:
         return (("std", "must be greater than or equal to 0"),)
+    return ()
+
+
+def _floats(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
+    try:
+        float_lattice_bounds(
+            kwargs["min"], kwargs["max"], kwargs.get("decimals", 2)
+        )
+    except ValueError as error:
+        return (("min/max", str(error)),)
     return ()
 
 
@@ -144,6 +154,8 @@ def _poisson(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
     lam = kwargs.get("lam", 1.0)
     if not _is_finite_float_domain(lam) or lam < 0:
         return (("lam", "must be finite and greater than or equal to 0"),)
+    if not poisson_lam_supported(lam):
+        return (("lam", "is outside NumPy's supported int64 result domain"),)
     return ()
 
 
@@ -228,6 +240,7 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
             required={"min": (int, float), "max": (int, float)},
             optional={"decimals": int},
             defaults={"decimals": 2},
+            semantic=_floats,
             example={
                 "method": "floats",
                 "kwargs": {"min": 0, "max": 1000, "decimals": 2},
