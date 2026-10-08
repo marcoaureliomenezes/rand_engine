@@ -11,7 +11,8 @@
 
 ## Stage J5.S2 — rebuild batch writer
 
-- Contract: exit all writer owners GREEN by marker deletion only; envelope `rand_engine/file_handlers/** tests/test_5_files_write_batch.py tests/test_5_file_batches_formats.py tests/test_5_writer_fixture_paths.py`; ACs AC1.1–AC1.6, AC3.4, AC4.2, AC8.6, AC8.7, AC9.1, AC9.3.
+- Contract: exit all writer owners GREEN by marker deletion only, then write this job file's terminal `done` once; envelope `rand_engine/file_handlers/** tests/test_5_files_write_batch.py tests/test_5_file_batches_formats.py tests/test_5_writer_fixture_paths.py specs/releases/0.7.0/rc-2/tasks/job5-writer.md`; ACs AC1.1–AC1.6, AC3.4, AC4.2, AC8.6, AC8.7, AC9.1, AC9.3.
 - J5.S2.T1 — linear lazy plan and staged commit · AC1.1, AC1.3–AC1.6, AC4.2, AC8.7, AC9.1, AC9.3 · `W:` `rand_engine/file_handlers/_writer_batch.py` `rand_engine/file_handlers/writer.py` `tests/test_5_files_write_batch.py` · owner `tests/test_5_files_write_batch.py` · cumulative offsets, one-frame memory, same-filesystem staging/rollback, validated controls excluded from format options.
 - J5.S2.T2 — stateful existing format adapters · AC1.2, AC1.6, AC3.4 · `W:` `rand_engine/file_handlers/file_handler.py` `tests/test_5_file_batches_formats.py` · owner `tests/test_5_file_batches_formats.py` · CSV/JSON streams and ParquetWriter hold per-file state; CSV timezone adapter retained.
 - J5.S2.T3 — complete fixture cleanup · AC8.6 · `W:` `tests/test_5_writer_fixture_paths.py` · owner `tests/test_5_writer_fixture_paths.py` · delete only the RED marker line associated with the already-final tests-only fixture change.
+- J5.S2.T4 — close writer job · AC1.1–AC1.6, AC3.4, AC4.2, AC8.6–AC8.7, AC9.1, AC9.3 · `W:` `specs/releases/0.7.0/rc-2/tasks/job5-writer.md` · owner `tests/test_5_files_write_batch.py` · after the stage contract is green, write terminal `done` exactly once and commit `chore(tasks): done job5-writer`.

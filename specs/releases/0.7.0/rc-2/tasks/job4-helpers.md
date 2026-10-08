@@ -10,6 +10,7 @@
 
 ## Stage J4.S2 — implement helpers
 
-- Contract: exit helper/public tests GREEN by marker deletion only, lock/requirements agree and no network/data read occurs; envelope `rand_engine/examples/** pyproject.toml poetry.lock requirements.txt tests/test_4_rand_specs_helpers.py tests/integrations/test_public_api.py`; ACs AC5.1–AC5.4, AC6.1–AC6.4, AC9.4.
+- Contract: exit helper/public tests GREEN by marker deletion only, lock/requirements agree and no network/data read occurs, then write this job file's terminal `done` once; envelope `rand_engine/examples/** pyproject.toml poetry.lock requirements.txt tests/test_4_rand_specs_helpers.py tests/integrations/test_public_api.py specs/releases/0.7.0/rc-2/tasks/job4-helpers.md`; ACs AC5.1–AC5.4, AC6.1–AC6.4, AC9.4.
 - J4.S2.T1 — implement existing `RandSpecs` helpers · AC5.1–AC5.4, AC6.1–AC6.4 · `W:` `rand_engine/examples/common_rand_specs.py` `tests/test_4_rand_specs_helpers.py` · owner `tests/test_4_rand_specs_helpers.py` · return plain column-spec/RandSpec dicts, copy inputs, local optional Faker only.
 - J4.S2.T2 — package optional Faker without widening public surface · AC5.3, AC9.4 · `W:` `pyproject.toml` `poetry.lock` `requirements.txt` `tests/integrations/test_public_api.py` · owner `tests/integrations/test_public_api.py` · use already approved dependency/version; no mandatory import.
+- J4.S2.T3 — close helper job · AC5.1–AC5.4, AC6.1–AC6.4, AC9.4 · `W:` `specs/releases/0.7.0/rc-2/tasks/job4-helpers.md` · owner `tests/test_4_rand_specs_helpers.py` · after the stage contract is green, write terminal `done` exactly once and commit `chore(tasks): done job4-helpers`.

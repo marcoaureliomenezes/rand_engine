@@ -161,13 +161,15 @@ The canonical task authority is the six files under `tasks/`, one per DAG job. T
 | AC8.1–AC8.2 | J1.S1 | J1.S2; canonical post-Job-5 bug batch records resolution |
 | AC8.3–AC8.5 | J2.S1 | J2.S2; canonical post-Job-5 bug batch records resolution |
 | AC8.6 | J5.S1 | J5.S2 tests-only fixture completion |
-| AC8.7 | J1.S2, J2.S2, J3.S2 | J6 review confirms deletion |
+| AC8.7 | J1.S1 behavioral single-intake/no-generation test | J1.S2, J2.S2 and J3.S2 preserve that interface while their diffs evidence deletion; J6 review confirms no replacement path |
 | AC9.1 | J2.S1, J3.S1, J5.S1 | owning GREEN stages |
 | AC9.2 | J1.S1 and J2.S1 | J1.S2, J2.S2 and J6 public reconciliation |
 | AC9.3 | J3.S1 and J5.S1 | J3.S2 and J5.S2 |
 | AC9.4 | J4.S1 and J6.S1 | J4.S2 and J6.S2 |
 
 The five bug paths are exact: J1.S1/J1.S2 own the RED/fix evidence for `probability-wrong-type-escapes-validation`, `distincts-map-empty-pool-validates` and `distincts-multi-map-empty-domain-validates`; J2.S1/J2.S2 own it for `float-rounded-domain-violates-bounds` and `spark-bigint-precision-lost`. After Job 5, the canonical bug batch outside the DAG reruns each independent RED/GREEN command and resolves all five through the ledger writer before reconciliation opens; it adds no alternate implementation path.
+
+AC8.7's RED is behavioral, not a source tombstone: constructing `DataGenerator` from a counting callable that returns independently invalid common and advanced columns must evaluate that callable once for the failed construction, return one collected issue per column, never enter the generation seam and never leak `TypeError`, `KeyError` or `ColumnGenerationError`. The GREEN keeps that public boundary while the implementation diff deletes the dead validation parameter, imports, redundant branches, commented implementation and history comments. Every job's final stage also has one disjoint close task whose only write is that job file's terminal `done`; the task runs only after the stage contract is green and commits as `chore(tasks): done <job>`.
 
 ## 7. Closure sequence
 

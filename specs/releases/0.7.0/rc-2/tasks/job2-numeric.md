@@ -10,6 +10,7 @@
 
 ## Stage J2.S2 — implement numeric contracts
 
-- Contract: exit owner tests GREEN by RED-marker deletion only; envelope `rand_engine/core/** benchmarks/speed.py tests/test_0_np_core.py tests/test_0_spark_core.py tests/test_benchmarks.py`; ACs AC2.1–AC2.4, AC7.1–AC7.3, AC8.3–AC8.5, AC8.7, AC9.1–AC9.2.
+- Contract: exit owner tests GREEN by RED-marker deletion only, then write this job file's terminal `done` once; envelope `rand_engine/core/** benchmarks/speed.py tests/test_0_np_core.py tests/test_0_spark_core.py tests/test_benchmarks.py specs/releases/0.7.0/rc-2/tasks/job2-numeric.md`; ACs AC2.1–AC2.4, AC7.1–AC7.3, AC8.3–AC8.5, AC8.7, AC9.1–AC9.2.
 - J2.S2.T1 — rebuild NumPy numeric module and method map · AC2.1–AC2.4, AC7.1–AC7.3, AC8.3, AC8.5, AC8.7, AC9.1 · `W:` `rand_engine/core/_np_core.py` `rand_engine/core/_py_core.py` `benchmarks/speed.py` `tests/test_0_np_core.py` `tests/test_benchmarks.py` · owner `tests/test_0_np_core.py` · vectorized RNG calls, decimal lattice, constant zero-draw, useful legacy assertions retained.
 - J2.S2.T2 — rebuild Spark integer/float expressions · AC8.3–AC8.4, AC8.7, AC9.2 · `W:` `rand_engine/core/_spark_core.py` `tests/test_0_spark_core.py` · owner `tests/test_0_spark_core.py` · exact Decimal limb fold, material-bias bound, supported-domain checks, UTC/date behavior preserved.
+- J2.S2.T3 — close numeric job · AC2.1–AC2.4, AC7.1–AC7.3, AC8.3–AC8.5, AC8.7, AC9.1–AC9.2 · `W:` `specs/releases/0.7.0/rc-2/tasks/job2-numeric.md` · owner `tests/test_0_np_core.py` · after the stage contract is green, write terminal `done` exactly once and commit `chore(tasks): done job2-numeric`.

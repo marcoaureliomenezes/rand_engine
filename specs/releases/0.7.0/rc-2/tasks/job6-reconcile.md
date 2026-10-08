@@ -27,5 +27,6 @@
 
 ## Stage J6.S5 — terminal reconciliation
 
-- Contract: exit closure narrative, disposition sweep, artifact GC, release check and doctor green in this one tree; envelope `specs/releases/0.7.0/_RELEASE.json`; ACs AC1.1–AC9.4 closure proof.
+- Contract: exit closure narrative, disposition sweep, artifact GC, release check and doctor green in this one tree, then write this job file's terminal `done` once; envelope `specs/releases/0.7.0/_RELEASE.json specs/releases/0.7.0/rc-2/tasks/job6-reconcile.md`; ACs AC1.1–AC9.4 closure proof.
 - J6.S5.T1 — main-thread terminal ledger evidence · AC1.1–AC9.4 · `W:` `specs/releases/0.7.0/_RELEASE.json` · owner `tests/test_docs.py` · record summary, size, drifts, test dispositions, dispositions, reviews and artifact-GC results through canonical writers; the reviewer then judges the complete reconcile HEAD once.
+- J6.S5.T2 — close reconciliation job · AC1.1–AC9.4 · `W:` `specs/releases/0.7.0/rc-2/tasks/job6-reconcile.md` · owner `tests/test_docs.py` · after every terminal contract is green, write terminal `done` exactly once and commit `chore(tasks): done job6-reconcile`; this is the final job-file mutation before its one review.
