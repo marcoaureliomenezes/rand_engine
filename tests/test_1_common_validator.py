@@ -260,7 +260,6 @@ def _caught_validation(call):
     return None
 
 
-@pytest.mark.xfail(strict=True, reason="J1.S1.T1 RED: numeric type issues must collect before semantics")
 def test_wrong_numeric_types_are_collected_before_semantic_checks():
     specs = {
         "integer_value": {"method": "integers", "kwargs": {"min": "low", "max": 10}},
@@ -292,7 +291,6 @@ def test_wrong_numeric_types_are_collected_before_semantic_checks():
             assert f"'{parameter}'" in message
 
 
-@pytest.mark.xfail(strict=True, reason="J1.S1.T1 RED: new distribution domains need validation")
 @pytest.mark.parametrize(("method", "kwargs", "parameter"), [
     ("exponential", {"scale": 0}, "scale"),
     ("exponential", {"decimals": -1}, "decimals"),
@@ -312,7 +310,6 @@ def test_new_distribution_domains_are_rejected_before_generation(method, kwargs,
     assert "does not exist" not in message
 
 
-@pytest.mark.xfail(strict=True, reason="J1.S1.T1 RED: modifier rates need probability validation")
 @pytest.mark.parametrize(("modifier", "value"), [
     ("null_rate", "often"),
     ("null_rate", -0.1),
@@ -331,7 +328,6 @@ def test_modifier_rates_require_real_probabilities(modifier, value):
     assert f"'{modifier}'" in message
 
 
-@pytest.mark.xfail(strict=True, reason="J1.S1.T1 RED: Spark must refuse NumPy-only features")
 @pytest.mark.parametrize(("config", "message_parts"), [
     ({"method": "exponential", "kwargs": {}}, ("exponential", "DataGenerator")),
     ({"method": "lognormal", "kwargs": {}}, ("lognormal", "DataGenerator")),

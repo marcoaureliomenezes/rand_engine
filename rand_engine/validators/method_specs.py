@@ -1,0 +1,428 @@
+"""Canonical RandSpec method metadata and typed semantic validators."""
+
+from dataclasses import dataclass
+from datetime import date, datetime
+from decimal import Decimal
+import math
+import re
+from types import MappingProxyType
+from typing import Any, Callable, Mapping
+
+from rand_engine.core._np_core import DATE_DIRECTIVES
+
+
+TypeRule = type | tuple[type, ...]
+SemanticIssue = tuple[str, str]
+SemanticValidator = Callable[[Mapping[str, Any]], tuple[SemanticIssue, ...]]
+
+NUMPY = "numpy"
+SPARK = "spark"
+ORDINARY = "ordinary"
+CORRELATED = "correlated"
+KEY = "key"
+
+INTEGER_TYPES = (
+    "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64"
+)
+
+
+@dataclass(frozen=True)
+class MethodSpec:
+    required: Mapping[str, TypeRule]
+    optional: Mapping[str, TypeRule]
+    defaults: Mapping[str, Any]
+    engines: frozenset[str]
+    kind: str
+    semantic: SemanticValidator
+    example: Mapping[str, Any]
+    requires_cols: bool = False
+    expected_cols: int | None = None
+
+    def as_table(self) -> dict[str, Any]:
+        """Expose the parameter/example shape consumed by current callers."""
+        return {
+            "params": {
+                "required": dict(self.required),
+                "optional": dict(self.optional),
+            },
+            "example": dict(self.example),
+        }
+
+
+def _no_semantics(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
+    return ()
+
+
+def _positive_decimals(kwargs: Mapping[str, Any]) -> list[SemanticIssue]:
+    decimals = kwargs.get("decimals")
+    if decimals is not None and decimals < 0:
+        return [("decimals", "must be a non-negative integer")]
+    return []
+
+
+def _integers(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
+    issues: list[SemanticIssue] = []
+    if kwargs.get("int_type") not in (None, *INTEGER_TYPES):
+        issues.append(("int_type", f"must be one of {list(INTEGER_TYPES)}"))
+    return tuple(issues)
+
+
+def _floats(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
+    return tuple(_positive_decimals(kwargs))
+
+
+def _normal(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
+    issues = _positive_decimals(kwargs)
+    mean = kwargs.get("mean", 0.0)
+    std = kwargs.get("std", 1.0)
+    if not math.isfinite(mean):
+        issues.append(("mean", "must be finite"))
+    if not math.isfinite(std) or std < 0:
+        issues.append(("std", "must be finite and greater than or equal to 0"))
+    return tuple(issues)
+
+
+def _probability(name: str, value: Any) -> SemanticIssue | None:
+    if not 0 <= value <= 1:
+        return (name, "must be between 0 and 1")
+    return None
+
+
+def _booleans(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
+    issue = _probability("true_prob", kwargs.get("true_prob", 0.5))
+    return (issue,) if issue else ()
+
+
+def _distincts(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
+    if not kwargs.get("distincts"):
+        return (("distincts", "must be non-empty"),)
+    return ()
+
+
+def _distincts_prop(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
+    values = kwargs.get("distincts", {})
+    issues: list[SemanticIssue] = []
+    if not values:
+        issues.append(("distincts", "must be non-empty"))
+    for weight in values.values():
+        if isinstance(weight, bool) or not isinstance(weight, int):
+            issues.append(("distincts", "every weight must be an integer"))
+    return tuple(issues)
+
+
+def _dates(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
+    date_format = kwargs.get("date_format")
+    if date_format is None:
+        return ()
+    unsupported = sorted(set(re.findall(r"%.?", date_format)) - set(DATE_DIRECTIVES))
+    if unsupported:
+        return (("date_format", f"contains unsupported directives; supported: {' '.join(DATE_DIRECTIVES)}"),)
+    return ()
+
+
+def _exponential(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
+    issues = _positive_decimals(kwargs)
+    scale = kwargs.get("scale", 1.0)
+    if not math.isfinite(scale) or scale <= 0:
+        issues.append(("scale", "must be finite and greater than 0"))
+    return tuple(issues)
+
+
+def _lognormal(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
+    return _normal(kwargs)
+
+
+def _poisson(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
+    lam = kwargs.get("lam", 1.0)
+    if not math.isfinite(lam) or lam < 0:
+        return (("lam", "must be finite and greater than or equal to 0"),)
+    return ()
+
+
+def _zipf(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
+    a = kwargs.get("a", 2.0)
+    if not math.isfinite(a) or a <= 1:
+        return (("a", "must be finite and greater than 1"),)
+    return ()
+
+
+def _constant(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
+    value = kwargs.get("value")
+    scalar_types = (bool, int, float, str, bytes, date, datetime, Decimal)
+    if value is not None and (callable(value) or not isinstance(value, scalar_types)):
+        return (("value", "must be an immutable scalar"),)
+    return ()
+
+
+def _mapped_values(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
+    pools = kwargs.get("distincts", {})
+    issues = [
+        ("distincts", "every pool must be non-empty")
+        for values in pools.values()
+        if not values
+    ]
+    return tuple(issues)
+
+
+def _multi_mapped_values(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
+    pools = kwargs.get("distincts", {})
+    if not pools:
+        return (("distincts", "domain must be non-empty"),)
+    issues = [
+        ("distincts", "every level must be non-empty")
+        for levels in pools.values()
+        if isinstance(levels, list) and any(not level for level in levels)
+    ]
+    return tuple(issues)
+
+
+def _spec(
+    *,
+    required: Mapping[str, TypeRule] | None = None,
+    optional: Mapping[str, TypeRule] | None = None,
+    defaults: Mapping[str, Any] | None = None,
+    engines: tuple[str, ...] = (NUMPY, SPARK),
+    kind: str = ORDINARY,
+    semantic: SemanticValidator = _no_semantics,
+    example: Mapping[str, Any],
+    requires_cols: bool = False,
+    expected_cols: int | None = None,
+) -> MethodSpec:
+    return MethodSpec(
+        required=MappingProxyType(dict(required or {})),
+        optional=MappingProxyType(dict(optional or {})),
+        defaults=MappingProxyType(dict(defaults or {})),
+        engines=frozenset(engines),
+        kind=kind,
+        semantic=semantic,
+        example=MappingProxyType(dict(example)),
+        requires_cols=requires_cols,
+        expected_cols=expected_cols,
+    )
+
+
+METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
+    {
+        "integers": _spec(
+            required={"min": int, "max": int},
+            optional={"int_type": str},
+            defaults={"int_type": "int64"},
+            semantic=_integers,
+            example={
+                "method": "integers",
+                "kwargs": {"min": 18, "max": 65, "int_type": "int32"},
+            },
+        ),
+        "int_zfilled": _spec(
+            required={"length": int},
+            example={"method": "int_zfilled", "kwargs": {"length": 8}},
+        ),
+        "floats": _spec(
+            required={"min": (int, float), "max": (int, float)},
+            optional={"decimals": int},
+            defaults={"decimals": 2},
+            semantic=_floats,
+            example={
+                "method": "floats",
+                "kwargs": {"min": 0, "max": 1000, "decimals": 2},
+            },
+        ),
+        "floats_normal": _spec(
+            required={"mean": (int, float), "std": (int, float)},
+            optional={"decimals": int},
+            defaults={"decimals": 2},
+            semantic=_normal,
+            example={
+                "method": "floats_normal",
+                "kwargs": {"mean": 170, "std": 10, "decimals": 2},
+            },
+        ),
+        "booleans": _spec(
+            optional={"true_prob": (int, float)},
+            defaults={"true_prob": 0.5},
+            semantic=_booleans,
+            example={"method": "booleans", "kwargs": {"true_prob": 0.7}},
+        ),
+        "distincts": _spec(
+            required={"distincts": list},
+            semantic=_distincts,
+            example={
+                "method": "distincts",
+                "kwargs": {"distincts": ["free", "premium"]},
+            },
+        ),
+        "distincts_prop": _spec(
+            required={"distincts": dict},
+            semantic=_distincts_prop,
+            example={
+                "method": "distincts_prop",
+                "kwargs": {"distincts": {"mobile": 70, "desktop": 30}},
+            },
+        ),
+        "unix_timestamps": _spec(
+            required={"start": str, "end": str},
+            optional={"date_format": str},
+            defaults={"date_format": "%Y-%m-%d"},
+            example={
+                "method": "unix_timestamps",
+                "kwargs": {
+                    "start": "1970-01-01",
+                    "end": "2023-01-01",
+                    "date_format": "%Y-%m-%d",
+                },
+            },
+        ),
+        "dates": _spec(
+            required={"start": str, "end": str},
+            optional={"date_format": str},
+            defaults={"date_format": "%Y-%m-%d"},
+            semantic=_dates,
+            example={
+                "method": "dates",
+                "kwargs": {
+                    "start": "1970-01-01",
+                    "end": "2023-01-01",
+                    "date_format": "%Y-%m-%d",
+                },
+            },
+        ),
+        "uuid4": _spec(example={"method": "uuid4", "kwargs": {}}),
+        "exponential": _spec(
+            optional={"scale": (int, float), "decimals": int},
+            defaults={"scale": 1.0, "decimals": 2},
+            engines=(NUMPY,),
+            semantic=_exponential,
+            example={"method": "exponential", "kwargs": {}},
+        ),
+        "lognormal": _spec(
+            optional={
+                "mean": (int, float),
+                "std": (int, float),
+                "decimals": int,
+            },
+            defaults={"mean": 0.0, "std": 1.0, "decimals": 2},
+            engines=(NUMPY,),
+            semantic=_lognormal,
+            example={"method": "lognormal", "kwargs": {}},
+        ),
+        "poisson": _spec(
+            optional={"lam": (int, float)},
+            defaults={"lam": 1.0},
+            engines=(NUMPY,),
+            semantic=_poisson,
+            example={"method": "poisson", "kwargs": {}},
+        ),
+        "zipf": _spec(
+            optional={"a": (int, float)},
+            defaults={"a": 2.0},
+            engines=(NUMPY,),
+            semantic=_zipf,
+            example={"method": "zipf", "kwargs": {}},
+        ),
+        "constant": _spec(
+            required={"value": object},
+            engines=(NUMPY,),
+            semantic=_constant,
+            example={"method": "constant", "kwargs": {"value": None}},
+        ),
+        "distincts_map": _spec(
+            required={"distincts": dict},
+            engines=(NUMPY,),
+            kind=CORRELATED,
+            semantic=_mapped_values,
+            example={
+                "method": "distincts_map",
+                "cols": ["category", "value"],
+                "kwargs": {"distincts": {"a": ["b"]}},
+            },
+            requires_cols=True,
+            expected_cols=2,
+        ),
+        "distincts_map_prop": _spec(
+            required={"distincts": dict},
+            engines=(NUMPY,),
+            kind=CORRELATED,
+            example={
+                "method": "distincts_map_prop",
+                "cols": ["category", "value"],
+                "kwargs": {"distincts": {"a": [["b", 1]]}},
+            },
+            requires_cols=True,
+            expected_cols=2,
+        ),
+        "distincts_multi_map": _spec(
+            required={"distincts": dict},
+            engines=(NUMPY,),
+            kind=CORRELATED,
+            semantic=_multi_mapped_values,
+            example={
+                "method": "distincts_multi_map",
+                "cols": ["category", "value"],
+                "kwargs": {"distincts": {"a": [["b"]]}},
+            },
+            requires_cols=True,
+        ),
+        "complex_distincts": _spec(
+            required={"pattern": str, "replacement": str, "templates": list},
+            engines=(NUMPY,),
+            kind=CORRELATED,
+            example={
+                "method": "complex_distincts",
+                "kwargs": {
+                    "pattern": "<x>",
+                    "replacement": "x",
+                    "templates": [],
+                },
+            },
+        ),
+        "pk": _spec(
+            optional={
+                "style": str,
+                "start": int,
+                "step": int,
+                "domain": int,
+                "key": int,
+                "format": str,
+            },
+            engines=(NUMPY,),
+            kind=KEY,
+            example={
+                "method": "pk",
+                "kwargs": {"style": "sequence", "start": 1, "step": 1},
+            },
+        ),
+        "fk": _spec(
+            required={"parent": dict, "parent_size": int},
+            optional={"skew": (int, float)},
+            engines=(NUMPY,),
+            kind=KEY,
+            example={
+                "method": "fk",
+                "kwargs": {
+                    "parent": {"method": "pk", "kwargs": {}},
+                    "parent_size": 10,
+                },
+            },
+        ),
+    }
+)
+
+COMMON_METHOD_SPECS: Mapping[str, dict[str, Any]] = MappingProxyType(
+    {
+        name: spec.as_table()
+        for name, spec in METHOD_CATALOG.items()
+        if spec.kind == ORDINARY and SPARK in spec.engines
+    }
+)
+
+
+def matches_type(value: Any, rule: TypeRule) -> bool:
+    rules = rule if isinstance(rule, tuple) else (rule,)
+    if isinstance(value, bool) and bool not in rules and any(item in (int, float) for item in rules):
+        return False
+    return isinstance(value, rules)
+
+
+def type_name(rule: TypeRule) -> str:
+    rules = rule if isinstance(rule, tuple) else (rule,)
+    return " or ".join(item.__name__ for item in rules)
