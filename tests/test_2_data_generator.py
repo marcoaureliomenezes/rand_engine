@@ -1,9 +1,11 @@
 from random import randint
 import pickle
 import numpy as np
+import pandas as pd
 import time
 import pytest
 from rand_engine.main.data_generator import DataGenerator
+from rand_engine.validators.exceptions import RandEngineError
 from tests.fixtures.f1_right_specs import (
     rand_spec_with_kwargs,
     rand_spec_with_args,
@@ -257,6 +259,236 @@ def test_documented_date_spec_without_date_format_generates(method, expected):
   df = DataGenerator(spec, seed=1).size(1000).get_df()
   assert len(df) == 1000
   assert set(df["d"].tolist()) <= expected
+
+
+def test_modifier_zero_rates_are_bit_identical_and_consume_no_rng():
+  plain = {
+    "fixed": {"method": "constant", "kwargs": {"value": 1}},
+    "draw": {"method": "integers", "kwargs": {"min": 0, "max": 100}},
+  }
+  modified = {
+    "fixed": {
+      "method": "constant",
+      "kwargs": {"value": 1},
+      "anomaly_rate": 0,
+      "anomaly_values": [99],
+      "null_rate": 0,
+    },
+    "draw": {"method": "integers", "kwargs": {"min": 0, "max": 100}},
+  }
+
+  expected = DataGenerator(plain, seed=2026).size(12).get_df()
+  actual = DataGenerator(modified, seed=2026).size(12).get_df()
+
+  assert actual.equals(expected)
+
+
+def test_modifier_active_rates_leave_global_numpy_state_untouched():
+  spec = {
+    "value": {
+      "method": "constant",
+      "kwargs": {"value": 1},
+      "anomaly_rate": 0.5,
+      "anomaly_values": [90, 91],
+      "null_rate": 0.5,
+    }
+  }
+  before = pickle.dumps(np.random.get_state())
+
+  DataGenerator(spec, seed=2026).size(12).get_df()
+
+  assert pickle.dumps(np.random.get_state()) == before
+
+
+@pytest.mark.xfail(strict=True, reason="J3.S1.T1 RED: anomaly modifiers are not applied")
+def test_modifier_seeded_anomaly_mask_and_values_match_literal():
+  spec = {
+    "value": {
+      "method": "constant",
+      "kwargs": {"value": 1},
+      "anomaly_rate": 0.5,
+      "anomaly_values": [90, 91],
+    }
+  }
+
+  actual = DataGenerator(spec, seed=2026).size(12).get_df()["value"].tolist()
+
+  assert [value != 1 for value in actual] == [
+    True, False, True, True, True, False, False, True, False, True, False, False,
+  ]
+  assert [value for value in actual if value != 1] == [90, 91, 91, 91, 90, 91]
+  assert actual == [90, 1, 91, 91, 91, 1, 1, 90, 1, 91, 1, 1]
+
+
+@pytest.mark.xfail(strict=True, reason="J3.S1.T1 RED: rate-one anomalies are not applied")
+def test_modifier_anomaly_rate_one_replaces_every_non_null_row_without_widening():
+  spec = {
+    "value": {
+      "method": "integers",
+      "kwargs": {"min": 1, "max": 2, "int_type": "int8"},
+      "anomaly_rate": 1,
+      "anomaly_values": [7],
+    }
+  }
+
+  series = DataGenerator(spec, seed=2026).size(5).get_df()["value"]
+
+  assert series.tolist() == [7, 7, 7, 7, 7]
+  assert series.isna().tolist() == [False, False, False, False, False]
+  assert str(series.dtype) == "int8"
+
+
+@pytest.mark.xfail(strict=True, reason="J3.S1.T1 RED: compatible object anomalies are not applied")
+@pytest.mark.parametrize("source, anomaly", [
+  ("base", "replacement"),
+  (None, "replacement"),
+])
+def test_modifier_anomaly_accepts_compatible_object_scalars(source, anomaly):
+  spec = {
+    "value": {
+      "method": "constant",
+      "kwargs": {"value": source},
+      "anomaly_rate": 1,
+      "anomaly_values": [anomaly],
+    }
+  }
+
+  series = DataGenerator(spec, seed=2026).size(4).get_df()["value"]
+
+  assert series.tolist() == ["replacement", "replacement", "replacement", "replacement"]
+  assert str(series.dtype) == "object"
+
+
+@pytest.mark.xfail(strict=True, reason="J3.S1.T1 RED: null modifiers are not applied")
+def test_modifier_null_mask_runs_last_and_wins_on_overlap():
+  spec = {
+    "value": {
+      "method": "constant",
+      "kwargs": {"value": 1},
+      "anomaly_rate": 0.5,
+      "anomaly_values": [90, 91],
+      "null_rate": 0.5,
+    }
+  }
+
+  series = DataGenerator(spec, seed=2026).size(12).get_df()["value"]
+  actual = series.astype("object").where(series.notna(), None).tolist()
+
+  assert series.isna().tolist() == [
+    False, True, True, True, True, False, True, False, True, True, True, True,
+  ]
+  assert actual == [90, None, None, None, None, 1, None, 90, None, None, None, None]
+
+
+@pytest.mark.xfail(strict=True, reason="J3.S1.T1 RED: anomaly pipeline ordering is not implemented")
+def test_modifier_pipeline_orders_embedded_global_then_anomaly():
+  spec = {
+    "value": {
+      "method": "constant",
+      "kwargs": {"value": 1},
+      "transformers": [lambda value: value + 1],
+      "anomaly_rate": 0.5,
+      "anomaly_values": [99],
+    }
+  }
+
+  actual = (
+    DataGenerator(spec, seed=2030)
+    .transformers([lambda frame: frame.assign(value=frame["value"] * 10)])
+    .size(6)
+    .get_df()["value"]
+    .tolist()
+  )
+
+  assert actual == [99, 20, 20, 99, 99, 99]
+
+
+@pytest.mark.xfail(strict=True, reason="J3.S1.T1 RED: dtype-specific null assignment is not implemented")
+@pytest.mark.parametrize("method, kwargs, transformers, expected_dtype", [
+  ("integers", {"min": -2, "max": 2, "int_type": "int8"}, [], "Int8"),
+  ("integers", {"min": 0, "max": 2, "int_type": "uint16"}, [], "UInt16"),
+  ("booleans", {"true_prob": 0.5}, [], "boolean"),
+  ("floats", {"min": -1, "max": 1, "decimals": 2}, [], "float64"),
+  (
+    "dates",
+    {"start": "2026-01-01", "end": "2026-01-02", "date_format": "%Y-%m-%d"},
+    [pd.Timestamp],
+    "datetime64[ns]",
+  ),
+  ("constant", {"value": "fixed"}, [], "object"),
+])
+def test_modifier_null_rate_one_uses_dtype_specific_missing_values(
+  method, kwargs, transformers, expected_dtype,
+):
+  column = {"method": method, "kwargs": kwargs, "null_rate": 1}
+  if transformers:
+    column["transformers"] = transformers
+
+  series = DataGenerator({"value": column}, seed=2026).size(4).get_df()["value"]
+
+  assert series.isna().tolist() == [True, True, True, True]
+  assert str(series.dtype) == expected_dtype
+
+
+@pytest.mark.xfail(strict=True, reason="J3.S1.T1 RED: transformer row-count changes are not refused")
+def test_modifier_pipeline_refuses_global_transformer_row_count_change():
+  spec = {"value": {"method": "constant", "kwargs": {"value": 1}}}
+  caught = None
+  try:
+    DataGenerator(spec, seed=2026).transformers(
+      [lambda frame: frame.iloc[:-1]]
+    ).size(4).get_df()
+  except RandEngineError as error:
+    caught = error
+
+  assert isinstance(caught, RandEngineError)
+
+
+@pytest.mark.xfail(strict=True, reason="J3.S1.T1 RED: post-transform anomaly compatibility is not checked")
+def test_modifier_anomaly_compatibility_is_checked_after_transformers():
+  spec = {
+    "value": {
+      "method": "integers",
+      "kwargs": {"min": 0, "max": 2},
+      "anomaly_rate": 1,
+      "anomaly_values": [99],
+    }
+  }
+  caught = None
+  try:
+    DataGenerator(spec, seed=2026).transformers(
+      [lambda frame: frame.assign(value=frame["value"].astype(str))]
+    ).size(4).get_df()
+  except RandEngineError as error:
+    caught = error
+
+  assert isinstance(caught, RandEngineError)
+
+
+@pytest.mark.xfail(strict=True, reason="J3.S1.T1 RED: incompatible anomaly values are not refused")
+@pytest.mark.parametrize("method, kwargs, anomaly", [
+  ("integers", {"min": -2, "max": 2, "int_type": "int8"}, 1.5),
+  ("integers", {"min": 0, "max": 2, "int_type": "uint8"}, 256),
+  ("booleans", {"true_prob": 0.5}, 1),
+])
+def test_modifier_anomaly_refuses_values_that_cannot_preserve_the_series_dtype(
+  method, kwargs, anomaly,
+):
+  spec = {
+    "value": {
+      "method": method,
+      "kwargs": kwargs,
+      "anomaly_rate": 1,
+      "anomaly_values": [anomaly],
+    }
+  }
+  caught = None
+  try:
+    DataGenerator(spec, seed=2026).size(4).get_df()
+  except RandEngineError as error:
+    caught = error
+
+  assert isinstance(caught, RandEngineError)
 
 
 # FR13 goldens: seed 42, 10**3 rows, UTC run. A deliberate output change rewrites its line here, the commit body saying why.
