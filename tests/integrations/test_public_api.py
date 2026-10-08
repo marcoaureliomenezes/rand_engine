@@ -7,8 +7,14 @@ and that internal modules are properly hidden from external users.
 Run these tests after installing the package: pip install -e .
 """
 
-import pytest
+from email.parser import BytesParser
+import os
+from pathlib import Path
+import subprocess
 import sys
+from zipfile import ZipFile
+
+import pytest
 
 
 class TestPublicAPI:
@@ -344,6 +350,79 @@ def test_every_shipped_module_imports():
     root = Path(rand_engine.__file__).parent
     for path in sorted(root.rglob("*.py")):
         importlib.import_module(".".join(("rand_engine", *path.relative_to(root).with_suffix("").parts)))
+
+
+def test_public_export_surface_remains_exactly_three_names():
+    import rand_engine
+
+    assert rand_engine.__all__ == ["DataGenerator", "SparkGenerator", "RandSpecs"]
+
+
+def test_ordinary_import_neither_requires_nor_imports_faker():
+    code = """
+import builtins
+import sys
+
+real_import = builtins.__import__
+
+def import_without_faker(name, globals=None, locals=None, fromlist=(), level=0):
+    if name == "faker" or name.startswith("faker."):
+        raise ModuleNotFoundError("Faker is deliberately unavailable")
+    return real_import(name, globals, locals, fromlist, level)
+
+builtins.__import__ = import_without_faker
+import rand_engine
+assert rand_engine.__all__ == ["DataGenerator", "SparkGenerator", "RandSpecs"]
+assert not any(name == "faker" or name.startswith("faker.") for name in sys.modules)
+"""
+    env = os.environ.copy()
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=Path(__file__).parents[2],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.xfail(strict=True, reason="J4.S1.T2 RED: the wheel has no optional Faker extra")
+def test_wheel_exposes_faker_only_as_the_approved_optional_extra(tmp_path):
+    project_root = Path(__file__).parents[2]
+    output = tmp_path / "dist"
+    env = os.environ.copy()
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    env["POETRY_CACHE_DIR"] = str(tmp_path / "poetry-cache")
+    env["POETRY_VIRTUALENVS_IN_PROJECT"] = "false"
+    env["POETRY_VIRTUALENVS_CREATE"] = "false"
+    result = subprocess.run(
+        [
+            "poetry", "build", "--format", "wheel", "--output", str(output),
+            "--no-interaction", "--no-cache",
+        ],
+        cwd=project_root,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+
+    wheels = list(output.glob("*.whl"))
+    assert len(wheels) == 1
+    with ZipFile(wheels[0]) as wheel:
+        metadata_path = next(name for name in wheel.namelist() if name.endswith(".dist-info/METADATA"))
+        metadata = BytesParser().parsebytes(wheel.read(metadata_path))
+
+    faker_requirements = [
+        requirement
+        for requirement in metadata.get_all("Requires-Dist", [])
+        if requirement.lower().startswith("faker ")
+    ]
+    assert metadata.get_all("Provides-Extra", []).count("faker") == 1
+    assert faker_requirements == ['faker (>=28.4.1,<29.0.0) ; extra == "faker"']
 
 
 if __name__ == "__main__":
