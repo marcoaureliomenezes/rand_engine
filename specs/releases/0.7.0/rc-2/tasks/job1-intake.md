@@ -1,6 +1,7 @@
 # Job 1 — validation intake and catalog
 
 **Status:** Approved
+**done:** true
 
 ## Stage J1.S1 — RED
 
