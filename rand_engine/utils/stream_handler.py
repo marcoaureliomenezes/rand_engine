@@ -8,8 +8,11 @@ class StreamHandler:
   def convert_dt_to_str(dataframe: pd.DataFrame) -> pd.DataFrame:
     df_result = dataframe.copy()
     for column in df_result.columns:
-      if 'datetime64' in str(df_result[column].dtype):
-        df_result[column] = df_result[column].astype(str)
+      values = df_result[column]
+      missing = values.isna()
+      if 'datetime64' in str(values.dtype):
+        values = values.astype(str)
+      df_result[column] = values.astype(object).mask(missing, None)
     return df_result
   
   @staticmethod

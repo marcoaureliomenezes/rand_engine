@@ -33,7 +33,6 @@ def test_create_stream_dict(size, rand_spec_with_args):
   assert [set(r) for r in records] == [set(rand_spec_with_args) | {"timestamp_created"}] * 3
 
 
-@pytest.mark.xfail(strict=True, reason="AC3.4 stream null normalization is not implemented")
 def test_stream_dict_normalizes_missing_values_to_none():
   """Intent: AC3.4 — stream records expose Python None and preserve ordinary values."""
   def with_missing_values(frame):
