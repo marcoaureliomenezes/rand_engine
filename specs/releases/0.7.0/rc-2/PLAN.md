@@ -82,7 +82,8 @@ The first multiply/add has inferred precision at most 22 and the second at most 
 - `DataGenerator` retains one `np.random.Generator`. One internal row-batch call evaluates the current spec, generates columns, applies embedded transformers, applies each global transformer, verifies unchanged row count/index width, then delegates anomalies and nulls to `RandGenerator`.
 - A global transformer that changes row count raises `RandEngineError` before modifiers or writer commit. Unbatched `get_df` and save keep one call. Batched save calls once per non-empty row batch. Zero-size partitions call neither transformer nor RNG.
 - Ordinary-column anomaly masks and values draw only when `anomaly_rate > 0`; null masks draw only when `null_rate > 0`. Anomalies apply first, compatibility is checked against the transformed Series without widening, then dtype-specific null assignment runs last. Constants consume no RNG.
-- Nullable integer/boolean extension dtypes, float `NaN`, datetime `NaT`, and object `None` are established before Arrow conversion. `stream_dict` normalizes all missing sentinels to Python `None`.
+- Modifier validation and application resolve an ordinary column once from the same existing metadata as generation: its sole `cols` alias when present, otherwise its spec key. That resolved output name drives compatibility, anomaly and null handling; no second naming path is added, and embedded-transformer legacy mapping is unchanged.
+- Nullable integer/boolean extension dtypes, float `NaN`, datetime `NaT`, and object/string-backed Python `None` are established before Arrow conversion. A transformed pandas string Series becomes object dtype when nulls are assigned so its values are literal `None`, not `pd.NA`. `stream_dict` normalizes all missing sentinels to Python `None`.
 
 ### 2.4 Helpers
 
@@ -113,7 +114,7 @@ The first multiply/add has inferred precision at most 22 and the second at most 
 | Job 1 | none | Rebuild validation intake/catalog first; it owns three confirmed bugs and every later grammar. |
 | Job 2 | Job 1 | Numeric implementations require the approved catalog and close the two numeric bugs. |
 | Job 3 | Job 2 | Modifiers consume the catalog, new constant/distributions and RNG contract. |
-| Job 4 | Job 2 | Schema/Faker helpers emit validated specs and may proceed beside modifiers. |
+| Job 4 | Job 2 | Schema/Faker helpers emit validated specs and may proceed beside modifiers; its corrective Stage 2 RED and reviewer-approved checkpoint recovery precede the unopened Stage 3 implementation. |
 | Job 5 | Job 3 | Writer batching consumes the final row-batch/modifier/dtype pipeline. |
 | Job 6 | Job 4, Job 5 | Reconciliation is last; it consumes all public behavior and final feature benchmark evidence. |
 
@@ -124,7 +125,7 @@ The first multiply/add has inferred precision at most 22 and the second at most 
 | `benchmarks/speed.py`, `tests/test_benchmarks.py` | 2, 3 | Job 3 waits for Job 2 and adds modifier rows after new-method rows. |
 | `tests/test_2_data_generator.py` | 2, 3 | Job 2 owns only the approved uniform-float replacement hash and five new method hashes; Job 3 waits for Job 2 before adding modifier pipeline contracts. |
 | method catalog, validator intake and validator registry/domain contracts | 1, 2 | Job 1 serializes catalog/common J1.S2, shared-common/advanced J1.S3 and review corrections J1.S4–J1.S5; after Job 1 merges, Job 2 owns catalog delegation to the pure numeric helper plus catalog-derived per-engine sets. |
-| `rand_engine/main/data_generator.py`, `rand_engine/main/_rand_generator.py` | 3 | one green task owns the coupled pipeline. |
+| `rand_engine/main/data_generator.py`, `rand_engine/main/_rand_generator.py` | 3 | J3.S2 owns the coupled pipeline; J3.S4 corrects modifier output-name resolution and object/string null representation in the same RandGenerator seam. |
 | `rand_engine/file_handlers/_writer_batch.py`, `file_handler.py` | 5 | separate task owners use disjoint tests and merge at the stage barrier. |
 | docs/README/`llms.txt`/benchmark artifacts | 6 | reconciliation only, after final behavior is merged. |
 
@@ -133,7 +134,7 @@ The first multiply/add has inferred precision at most 22 and the second at most 
 - Job 1 — validation intake: validator catalog/modules and validator tests, including the three validation-bug RED/fix owners.
 - Job 2 — numeric methods: NumPy/Spark cores, method map and numeric/core/benchmark tests, plus the existing DataGenerator seeded-output table's six approved numeric-method hash entries, including the two numeric-bug RED/fix owners.
 - Job 3 — DataFrame modifiers: DataGenerator/RandGenerator, stream conversion and modifier benchmark rows/tests.
-- Job 4 — spec helpers: RandSpecs helpers and optional-Faker packaging plus focused helper/public tests.
+- Job 4 — spec helpers: RandSpecs helpers and optional-Faker packaging plus focused helper/public tests; corrective Stage 2 adds omitted existing-AC RED cases before Stage 3 implementation.
 - Job 5 — batch writer: write planner, format sessions and writer fixtures/tests; `writeStream` production stays untouched.
 - Job 6 — canonical reconciliation tree `0.7.0-rc2/reconcile`: executable docs, README/llms, benchmark artifacts and public integration evidence finish first; the main thread then advances to CLOSURE at that exact implementation SHA, the product engineer performs the derived memory worklist in the same tree, and the main thread records the terminal narrative/dispositions/artifact GC before its single review and merge.
 
@@ -146,26 +147,28 @@ The canonical task authority is the six files under `tasks/`, one per DAG job. T
 | AC1.1–AC1.6 | J5.S1 | J5.S2; J6 local read-back reconciliation |
 | AC2.1–AC2.3 | J1.S4 totality regression and J2.S1 numeric contracts | J1.S5 validator correction and J2.S2 numeric implementation, including DataGenerator inventory and seeded hashes |
 | AC2.4 | J2.S1 benchmark contract | J6.S2 final-preparation CI artifact |
-| AC3.1–AC3.3, AC3.5 | J3.S1 | J3.S2 |
+| AC3.1–AC3.3, AC3.5 | J3.S1 and corrective J3.S3 | J3.S2 and corrective J3.S4 |
 | AC3.4 | J3.S1 stream and J5.S1 sinks | J3.S2 and J5.S2 |
-| AC4.1–AC4.3 | J3.S1 | J3.S2 |
+| AC4.1–AC4.3 | J3.S1 and corrective J3.S3 | J3.S2 and corrective J3.S4 |
 | AC4.4 | J3.S1 benchmark contract | J6.S2 final-preparation CI artifact |
-| AC5.1–AC5.4 | J4.S1 | J4.S2 |
-| AC6.1–AC6.4 | J4.S1 | J4.S2 |
+| AC5.1–AC5.4 | J4.S1 and corrective J4.S2 | J4.S3 |
+| AC6.1–AC6.4 | J4.S1 and corrective J4.S2 | J4.S3 |
 | AC7.1 | J1.S4 scalar-structure regression and J2.S1 | J1.S5 shared scalar predicate and J2.S2 |
 | AC7.2–AC7.3 | J2.S1 and J3.S1 | J2.S2 and J3.S2 |
 | AC8.1–AC8.2 | J1.S1 and J1.S4 review regressions | J1.S2–J1.S3 and J1.S5; canonical post-Job-5 bug batch records resolution |
 | AC8.3–AC8.5 | J1.S4 legacy-compatibility regression, J2.S1 and J2.S3 extreme-decimal RED | J1.S5 compatibility correction, J2.S2 and J2.S4 exact tuple-shift conversion, including the approved uniform-float DataGenerator hash replacement; canonical post-Job-5 bug batch records resolution |
 | AC8.6 | J5.S1 | J5.S2 tests-only fixture completion |
 | AC8.7 | J1.S1 behavioral single-intake/no-generation test | J1.S2–J1.S3, J2.S2 and J3.S2 preserve that interface while their diffs evidence deletion; J6 review confirms no replacement path |
-| AC9.1 | J2.S1, J2.S3, J3.S1, J5.S1 | owning GREEN stages; J2.S2 owns its DataGenerator inventory/hash reconciliation and J2.S4 owns accepted extreme-decimal generation |
+| AC9.1 | J2.S1, J2.S3, J3.S1, corrective J3.S3, J5.S1 | owning GREEN stages; J2.S2 owns its DataGenerator inventory/hash reconciliation, J2.S4 owns accepted extreme-decimal generation and J3.S4 owns modifier alias/null correction |
 | AC9.2 | J1.S1, J1.S4 and J2.S1 | J1.S2–J1.S3, J1.S5, J2.S2 and J6 public reconciliation |
-| AC9.3 | J3.S1 and J5.S1 | J3.S2 and J5.S2 |
-| AC9.4 | J4.S1 and J6.S1 | J4.S2 and J6.S2 |
+| AC9.3 | J3.S1, corrective J3.S3 and J5.S1 | J3.S2, corrective J3.S4 and J5.S2 |
+| AC9.4 | J4.S1 and J6.S1 | J4.S3 and J6.S2 |
 
 The five bug paths are exact: J1.S1/J1.S2–J1.S3 own the original RED/fix evidence for `probability-wrong-type-escapes-validation`, `distincts-map-empty-pool-validates` and `distincts-multi-map-empty-domain-validates`; J1.S4/J1.S5 close the additional-review compatibility, totality and scalar-structure gaps before any of those records can resolve. J2.S1/J2.S2 own the evidence for `float-rounded-domain-violates-bounds` and `spark-bigint-precision-lost`. After Job 5, the canonical bug batch outside the DAG reruns each independent RED/GREEN command and resolves all five through the ledger writer before reconciliation opens; it adds no alternate implementation path.
 
 AC8.7's RED is behavioral, not a source tombstone: constructing `DataGenerator` from a counting callable that returns independently invalid common and advanced columns must evaluate that callable once for the failed construction, return one collected issue per column, never enter the generation seam and never leak `TypeError`, `KeyError` or `ColumnGenerationError`. The J1.S3 GREEN keeps that public boundary while the implementation diff deletes the dead validation parameter, imports, redundant branches, commented implementation and history comments. The unmerged provisional `b91a1c8` is superseded by J1.S3.T1 and carries no task authority. Job 1 closes in J1.S5.T2 after corrective GREEN and the repeated additional checkpoint; its official stage gate and closing trailer then establish the exact HEAD for final Job 1 review before canonical merge. Job 2 closes in J2.S4.T2 only after the corrective J2.S3 RED and J2.S4.T1 GREEN; every other job's final stage likewise has one disjoint close task whose only write is that job file's terminal `done`. Each close task runs only after its stage contract is green and commits as `chore(tasks): done <job>`.
+
+Job 4's rejected additional checkpoint routes the omitted existing-AC cases into tests-only J4.S2. J4.S3 opens only after J4.S2 task and stage gates are green and the reviewer issues an APPROVED checkpoint-recovery verdict; no helper source or packaging task is authorized before that recovery.
 
 ## 7. Closure sequence
 
