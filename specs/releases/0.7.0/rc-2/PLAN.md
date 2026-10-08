@@ -36,7 +36,7 @@ Test debt is part of the rebuild: consolidate duplicate-name NumPy tests so Pyth
 | total rows/files/batches/offsets | `FileBatchWriter` private linear plan | DataGenerator size resolver | `sum(sizes[:f])`, eager DataFrame collections |
 | format append/schema/compression state | existing `FileHandler` CSV/JSON/Parquet adapters | writer plan | reopening a destination for each batch |
 | Spark exact integer expression | `SparkCore.gen_ints` | catalog dtype/range validation | double result arithmetic |
-| representable decimal domain | one pure decimal-lattice helper used by validation and both engines | float generators | clipping and sample-value branches |
+| representable decimal domain | one pure core decimal-lattice helper used by both engines and delegated to by catalog validation | float generators | copied validator-domain calculations, clipping and sample-value branches |
 
 ### 1.2 Bug-window disposition coverage
 
@@ -49,6 +49,7 @@ The SPEC's 25-row review is binding. The rebuild jobs preserve all assertions be
 - Replace `CommonValidator.METHOD_SPECS` and `AdvancedValidator.METHOD_SPECS` with one small catalog under `validators/`; it records required/optional kwargs, defaults, engine support, ordinary/correlated/key kind and semantic validator. It is metadata, not a new generation engine.
 - `AdvancedValidator` owns whole-RandSpec intake and issue collection. It validates shape and types first; semantic functions receive only typed values. `CommonValidator` is the Spark-facing adapter over the same catalog and refuses unsupported methods/modifiers before `SparkGenerator` builds a frame.
 - One shared typed-intake seam under `CommonValidator` consumes catalog metadata for required, optional, type, unknown and semantic checks. After J1.S2 establishes the catalog/common path, sequential J1.S3 rebuilds that seam and makes `AdvancedValidator` delegate to it before adding correlated/key shape rules; no parallel task shares either validator file.
+- J1.S4/J1.S5 own the additional-review regressions and corrections after that rebuild: preserve executable legacy float/normal decimal and infinity behavior (except invalid negative std), make new-distribution numeric predicates total for accepted Python numeric types, and reuse one declared-scalar predicate for constant and anomaly structure. After GREEN, the repeated J1.S2 additional checkpoint must approve before the close task; terminal `done`, the official Stage J1.S5 gate and its closing trailer establish the complete closing HEAD that the final Job 1 review binds before canonical merge. No bug record closes at the intermediate checkpoint.
 - Diagnostics name fields, options and existing key-path identifiers. The mapped-arity key-path diagnostic remains, but collection contents, pairs, items and input value payloads are never dumped.
 - Keep `core/_py_core.py` `METHODS` as the NumPy callable map used by ordinary columns and nested templates. A contract test requires catalog NumPy names to equal this map plus `pk`/`fk`. The Spark map equals catalog entries with Spark engine support plus correlated-kind entries retained by the legacy warning-and-NULL adapter; that compatibility path is not full Spark support. No third registry, manual expected-name list or fallback dispatch survives.
 - J2.S1.T1/J2.S2.T1 own that contract in `tests/test_1_advanced_validator.py`: expected NumPy names come from catalog engine metadata, while expected Spark names come from Spark engine metadata plus correlated kind for the preserved legacy adapter. This replaces the prior equal-engine-set assumption while retaining the existing name, parameter and signature checks.
@@ -57,6 +58,7 @@ The SPEC's 25-row review is binding. The rebuild jobs preserve all assertions be
 ### 2.2 Numeric domains and new methods
 
 - Convert float bounds with `Decimal(str(value))`. For decimals `d`, compute integer endpoints `ceil(min*10**d)` and `floor(max*10**d)`, refuse only an empty lattice, draw inclusive lattice integers, then divide by the scale. NumPy and Spark share the endpoints, not an implementation wrapper. The common int64-sized case stays vectorized; a wider finite lattice uses unbiased rejection from enough owned-RNG raw 64-bit limbs into Python integers before conversion to the approved float64 output. No new decimals ceiling or int64-only public-domain refusal is introduced for implementation convenience.
+- J2.S1.T1 owns public constructor RED cases for empty/invalid numeric lattices while retaining legacy negative decimals. J2.S2.T1 owns the catalog file with the NumPy core so validation delegates to that pure helper instead of copying domain arithmetic; Spark remains a disjoint J2.S2.T2 consumer of the same endpoints.
 - `NPCore` adds direct vectorized calls to the owned RNG for exponential, lognormal, poisson and zipf, with the SPEC defaults/dtypes. Rounding uses the declared decimals after the distribution draw. `constant` broadcasts an immutable approved scalar without touching RNG.
 - Preserve existing uniform/normal goldens except the declared uniform-float lattice change. Consolidated test tables keep every useful original bound, timezone, dtype, categorical and normal assertion.
 
@@ -119,7 +121,7 @@ The first multiply/add has inferred precision at most 22 and the second at most 
 | path | jobs | serialization |
 |---|---|---|
 | `benchmarks/speed.py`, `tests/test_benchmarks.py` | 2, 3 | Job 3 waits for Job 2 and adds modifier rows after new-method rows. |
-| method catalog, validator intake, `tests/test_1_advanced_validator.py` registry contract | 1, 2 | Job 1 serializes catalog/common J1.S2 before shared-common/advanced J1.S3; after Job 1 merges, Job 2 alone replaces the obsolete equal-engine-set assertion with exact catalog-derived per-engine sets. |
+| method catalog, validator intake and validator registry/domain contracts | 1, 2 | Job 1 serializes catalog/common J1.S2, shared-common/advanced J1.S3 and review corrections J1.S4–J1.S5; after Job 1 merges, Job 2 owns catalog delegation to the pure numeric helper plus catalog-derived per-engine sets. |
 | `rand_engine/main/data_generator.py`, `rand_engine/main/_rand_generator.py` | 3 | one green task owns the coupled pipeline. |
 | `rand_engine/file_handlers/_writer_batch.py`, `file_handler.py` | 5 | separate task owners use disjoint tests and merge at the stage barrier. |
 | docs/README/`llms.txt`/benchmark artifacts | 6 | reconciliation only, after final behavior is merged. |
@@ -140,7 +142,7 @@ The canonical task authority is the six files under `tasks/`, one per DAG job. T
 | requirement | RED owner | GREEN/closure owner |
 |---|---|---|
 | AC1.1–AC1.6 | J5.S1 | J5.S2; J6 local read-back reconciliation |
-| AC2.1–AC2.3 | J2.S1 | J2.S2 |
+| AC2.1–AC2.3 | J1.S4 totality regression and J2.S1 numeric contracts | J1.S5 validator correction and J2.S2 numeric implementation |
 | AC2.4 | J2.S1 benchmark contract | J6.S2 final-preparation CI artifact |
 | AC3.1–AC3.3, AC3.5 | J3.S1 | J3.S2 |
 | AC3.4 | J3.S1 stream and J5.S1 sinks | J3.S2 and J5.S2 |
@@ -148,20 +150,20 @@ The canonical task authority is the six files under `tasks/`, one per DAG job. T
 | AC4.4 | J3.S1 benchmark contract | J6.S2 final-preparation CI artifact |
 | AC5.1–AC5.4 | J4.S1 | J4.S2 |
 | AC6.1–AC6.4 | J4.S1 | J4.S2 |
-| AC7.1 | J2.S1 | J2.S2 |
+| AC7.1 | J1.S4 scalar-structure regression and J2.S1 | J1.S5 shared scalar predicate and J2.S2 |
 | AC7.2–AC7.3 | J2.S1 and J3.S1 | J2.S2 and J3.S2 |
-| AC8.1–AC8.2 | J1.S1 | J1.S2–J1.S3; canonical post-Job-5 bug batch records resolution |
-| AC8.3–AC8.5 | J2.S1 | J2.S2; canonical post-Job-5 bug batch records resolution |
+| AC8.1–AC8.2 | J1.S1 and J1.S4 review regressions | J1.S2–J1.S3 and J1.S5; canonical post-Job-5 bug batch records resolution |
+| AC8.3–AC8.5 | J1.S4 legacy-compatibility regression and J2.S1 | J1.S5 compatibility correction and J2.S2; canonical post-Job-5 bug batch records resolution |
 | AC8.6 | J5.S1 | J5.S2 tests-only fixture completion |
 | AC8.7 | J1.S1 behavioral single-intake/no-generation test | J1.S2–J1.S3, J2.S2 and J3.S2 preserve that interface while their diffs evidence deletion; J6 review confirms no replacement path |
 | AC9.1 | J2.S1, J3.S1, J5.S1 | owning GREEN stages |
-| AC9.2 | J1.S1 and J2.S1 | J1.S2–J1.S3, J2.S2 and J6 public reconciliation |
+| AC9.2 | J1.S1, J1.S4 and J2.S1 | J1.S2–J1.S3, J1.S5, J2.S2 and J6 public reconciliation |
 | AC9.3 | J3.S1 and J5.S1 | J3.S2 and J5.S2 |
 | AC9.4 | J4.S1 and J6.S1 | J4.S2 and J6.S2 |
 
-The five bug paths are exact: J1.S1/J1.S2–J1.S3 own the RED/fix evidence for `probability-wrong-type-escapes-validation`, `distincts-map-empty-pool-validates` and `distincts-multi-map-empty-domain-validates`; J2.S1/J2.S2 own it for `float-rounded-domain-violates-bounds` and `spark-bigint-precision-lost`. After Job 5, the canonical bug batch outside the DAG reruns each independent RED/GREEN command and resolves all five through the ledger writer before reconciliation opens; it adds no alternate implementation path.
+The five bug paths are exact: J1.S1/J1.S2–J1.S3 own the original RED/fix evidence for `probability-wrong-type-escapes-validation`, `distincts-map-empty-pool-validates` and `distincts-multi-map-empty-domain-validates`; J1.S4/J1.S5 close the additional-review compatibility, totality and scalar-structure gaps before any of those records can resolve. J2.S1/J2.S2 own the evidence for `float-rounded-domain-violates-bounds` and `spark-bigint-precision-lost`. After Job 5, the canonical bug batch outside the DAG reruns each independent RED/GREEN command and resolves all five through the ledger writer before reconciliation opens; it adds no alternate implementation path.
 
-AC8.7's RED is behavioral, not a source tombstone: constructing `DataGenerator` from a counting callable that returns independently invalid common and advanced columns must evaluate that callable once for the failed construction, return one collected issue per column, never enter the generation seam and never leak `TypeError`, `KeyError` or `ColumnGenerationError`. The J1.S3 GREEN keeps that public boundary while the implementation diff deletes the dead validation parameter, imports, redundant branches, commented implementation and history comments. The unmerged provisional `b91a1c8` is superseded by J1.S3.T1 and carries no task authority. Every job's final stage also has one disjoint close task whose only write is that job file's terminal `done`; the task runs only after the stage contract is green and commits as `chore(tasks): done <job>`.
+AC8.7's RED is behavioral, not a source tombstone: constructing `DataGenerator` from a counting callable that returns independently invalid common and advanced columns must evaluate that callable once for the failed construction, return one collected issue per column, never enter the generation seam and never leak `TypeError`, `KeyError` or `ColumnGenerationError`. The J1.S3 GREEN keeps that public boundary while the implementation diff deletes the dead validation parameter, imports, redundant branches, commented implementation and history comments. The unmerged provisional `b91a1c8` is superseded by J1.S3.T1 and carries no task authority. Job 1 closes in J1.S5.T2 after corrective GREEN and the repeated additional checkpoint; its official stage gate and closing trailer then establish the exact HEAD for final Job 1 review before canonical merge. Every other job's final stage likewise has one disjoint close task whose only write is that job file's terminal `done`; each close task runs only after its stage contract is green and commits as `chore(tasks): done <job>`.
 
 ## 7. Closure sequence
 
