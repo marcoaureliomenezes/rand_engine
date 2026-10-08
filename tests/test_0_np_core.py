@@ -1,8 +1,14 @@
+import hashlib
 import time
 import uuid
+from datetime import date, datetime
+from decimal import Decimal
+
 import pytest
 import numpy as np
+from rand_engine import DataGenerator
 from rand_engine.core._np_core import NPCore
+from rand_engine.validators.exceptions import ColumnGenerationError
 
 RNG = np.random.default_rng(0)
 from tests.fixtures.f1_data_generator_specs_right import default_size
@@ -60,6 +66,7 @@ def test_gen_ints_with_inconsistent_parameters(size, min, max):
 # Test for float generation with various ranges and rounding
 @pytest.mark.parametrize("size, min, max, decimals", [
     (10, 0, 10**4, 2),
+    (10**4, 0, 10**4, 2),
     (10, 0, 10**4, 10),
     (10, 0, 10**4, 15),
     (10, 0, 10**18, 15),
@@ -70,6 +77,8 @@ def test_gen_floats(size, min, max, decimals):
   assert len(real_result) == kwargs["size"]
   assert type(real_result) == np.ndarray
   assert real_result.dtype == np.float64
+  assert real_result.min() >= min
+  assert real_result.max() <= max
 
 
 def test_gen_floats_stay_within_fractional_bounds():
@@ -97,6 +106,7 @@ def test_gen_floats_with_inconsistent_parameters(size, min, max):
 
 @pytest.mark.parametrize("size, mean, std, decimals", [
     (100, 0, 1, 2),
+    (10**4, 10**3, 10**2, 2),
     (100, 10**3, 10**2, 5),
     (100, 10**6, 10**5, 10),
 ])
@@ -114,11 +124,14 @@ def test_gen_floats_normal(size, mean, std, decimals):
     (10, ["A", "B", "C"]),
     (10, [1, 2, 3, 4, 5]),
     (10, [True, False]),
+    (10**4, ["value1", "value2", "value3"]),
 ])
 def test_gen_distincts_low_cardinality(size, distincts):
   result = NPCore.gen_distincts(rng=RNG, size=size, distincts=distincts)
   assert len(result) == size
   assert all(item in distincts for item in result)
+  if isinstance(distincts[0], str):
+    assert all(isinstance(item, str) for item in result)
 
 
 
@@ -134,27 +147,6 @@ def test_gen_ints_fails_2(default_size):
   with pytest.raises(ValueError):
     _ = NPCore.gen_ints(rng=RNG, **kwargs)
 
-
-def test_gen_floats(default_size):
-  kwargs = dict(size=default_size, min=0, max=10**4, decimals=2)
-  real_result = NPCore.gen_floats(rng=RNG, **kwargs)
-  assert len(real_result) == kwargs["size"]
-  assert min(real_result) >= kwargs["min"]
-  assert max(real_result) <= kwargs["max"]
-  assert type(real_result) == np.ndarray
-
-
-def test_gen_floats_normal(default_size):
-  kwargs = dict(size=default_size, mean=10**3, std=10**2, decimals=2)
-  real_result = NPCore.gen_floats_normal(rng=RNG, **kwargs)
-  assert len(real_result) == kwargs["size"]
-  assert type(real_result) == np.ndarray
-
-def test_gen_distincts_low_cardinality(default_size):
-  distincts = ["value1", "value2", "value3"]
-  result = NPCore.gen_distincts(rng=RNG, size=default_size, distincts=distincts)
-  assert len(result) == default_size
-  assert all(isinstance(item, str) for item in result)
 
 def test_gen_distincts_high_cardinality(default_size):
   distincts = [f"value{i}" for i in range(default_size)]
@@ -370,3 +362,124 @@ def test_gen_dates_equals_per_row_utc_strftime(fmt, start, end):
 
 def test_gen_dates_zero_rows_returns_empty():
   assert NPCore.gen_dates(0, "2020-01-01", "2024-12-31", "%Y-%m-%d", rng=RNG).tolist() == []
+
+
+@pytest.mark.xfail(strict=True, reason="J2.S1.T1 RED: NumPy distribution methods are not implemented")
+@pytest.mark.parametrize(("method", "kwargs", "expected_dtype", "expected_hash"), [
+  ("exponential", {"scale": 2.5, "decimals": 3}, np.dtype("float64"),
+   "e1cd3981cbfdd9fe1ec70f4431508c75202dfe752403bf4e45d3ef9ec1760fba"),
+  ("lognormal", {"mean": 0.5, "std": 1.25, "decimals": 4}, np.dtype("float64"),
+   "af947324566baea876ff400c6fba7ec72a08f01e03361e4e0a3071c5368fa869"),
+  ("poisson", {"lam": 3.5}, np.dtype("int64"),
+   "f3153dcdcec5acc1830dbfa03c5102462b476f3e71773cc8895b242f064b43cd"),
+  ("zipf", {"a": 2.25}, np.dtype("int64"),
+   "ace96f795dae288770a648959bcb1f5f2d3bb24bacebf0d9a0166711496a7b0b"),
+])
+def test_new_distribution_seeded_outputs_match_numpy_family(method, kwargs, expected_dtype, expected_hash):
+  seed, size = 20261008, 1000
+  oracle_kwargs = dict(kwargs)
+  decimals = oracle_kwargs.pop("decimals", None)
+  if method == "lognormal":
+    oracle_kwargs["sigma"] = oracle_kwargs.pop("std")
+  expected = getattr(np.random.default_rng(seed), method)(size=size, **oracle_kwargs)
+  if decimals is not None:
+    expected = np.round(expected, decimals)
+
+  generator = getattr(NPCore, f"gen_{method}", None)
+  assert generator is not None
+  actual = generator(size=size, rng=np.random.default_rng(seed), **kwargs)
+  assert np.array_equal(actual, expected)
+  assert actual.dtype == expected_dtype
+  assert hashlib.sha256(actual.tobytes()).hexdigest() == expected_hash
+
+
+@pytest.mark.xfail(strict=True, reason="J2.S1.T1 RED: floats do not sample the decimal lattice")
+def test_uniform_float_lattice_has_seeded_literal_golden():
+  actual = NPCore.gen_floats(
+    size=1000, min=-12.34, max=56.78, decimals=2,
+    rng=np.random.default_rng(20261008),
+  )
+  expected = np.random.default_rng(20261008).integers(
+    -1234, 5679, size=1000, dtype=np.int64,
+  ) / 100
+  assert np.array_equal(actual, expected)
+  assert hashlib.sha256(actual.tobytes()).hexdigest() == "6b7225c0dab242709fa6172d3b658f431793822cf0a62d7b0805d4acb7990a07"
+
+
+@pytest.mark.xfail(strict=True, reason="J2.S1.T1 RED: floats round values outside the representable domain")
+def test_uniform_float_lattice_reaches_exact_fractional_endpoints():
+  values = NPCore.gen_floats(
+    size=10**4, min=9.991, max=10.011, decimals=2,
+    rng=np.random.default_rng(11),
+  )
+  assert set(values) == {10.0, 10.01}
+
+
+@pytest.mark.xfail(strict=True, reason="J2.S1.T1 RED: signed-decimal lattice sampling is not implemented")
+def test_uniform_float_lattice_supports_signed_decimals():
+  values = NPCore.gen_floats(
+    size=100, min=91, max=109, decimals=-1,
+    rng=np.random.default_rng(12),
+  )
+  assert values.tolist() == [100.0] * 100
+
+
+def test_uniform_float_lattice_larger_than_int64_remains_supported_without_a_decimals_ceiling():
+  frame = DataGenerator({
+    "value": {
+      "method": "floats",
+      "kwargs": {"min": -1, "max": 1, "decimals": 20},
+    }
+  }, seed=13).size(100).get_df()
+  assert frame["value"].dtype == np.float64
+  assert frame["value"].between(-1, 1, inclusive="both").all()
+
+
+def test_legacy_normal_seeded_golden_is_unchanged():
+  values = NPCore.gen_floats_normal(
+    size=1000, mean=12.5, std=3.25, decimals=4,
+    rng=np.random.default_rng(20261008),
+  )
+  assert hashlib.sha256(values.tobytes()).hexdigest() == "9930878da3e03580439114bb2b98d83ccc30718fecc1e87aa894871d7b83fb66"
+
+
+@pytest.mark.xfail(strict=True, reason="J2.S1.T1 RED: constant generation is not implemented")
+@pytest.mark.parametrize(("value", "expected_dtype"), [
+  (None, "object"),
+  (True, "bool"),
+  (7, "int64"),
+  (1.5, "float64"),
+  ("fixed", "object"),
+  (b"fixed", "object"),
+  (date(2026, 10, 8), "object"),
+  (datetime(2026, 10, 8, 12, 30), "datetime64[ns]"),
+  (Decimal("1.25"), "object"),
+])
+def test_constant_repeats_declared_scalars_with_natural_pandas_dtype(value, expected_dtype):
+  try:
+    result = DataGenerator({
+      "constant": {"method": "constant", "kwargs": {"value": value}}
+    }, seed=14).size(3).get_df()["constant"]
+  except (ColumnGenerationError, KeyError) as error:
+    result = error
+
+  assert not isinstance(result, (ColumnGenerationError, KeyError))
+  assert result.tolist() == [value, value, value]
+  assert str(result.dtype) == expected_dtype
+
+
+@pytest.mark.xfail(strict=True, reason="J2.S1.T1 RED: constant is absent from NumPy dispatch")
+def test_constant_consumes_no_rng_and_does_not_change_seeded_columns():
+  random_column = {"method": "integers", "kwargs": {"min": 0, "max": 10}}
+  without_constant = DataGenerator({"random": random_column}, seed=15).size(100).get_df()
+  try:
+    with_constant = DataGenerator({
+      "constant": {"method": "constant", "kwargs": {"value": "fixed"}},
+      "random": random_column,
+    }, seed=15).size(100).get_df()
+  except (ColumnGenerationError, KeyError) as error:
+    with_constant = error
+
+  assert not isinstance(with_constant, (ColumnGenerationError, KeyError))
+  assert with_constant["constant"].tolist() == ["fixed"] * 100
+  assert np.array_equal(with_constant["random"].to_numpy(), without_constant["random"].to_numpy())

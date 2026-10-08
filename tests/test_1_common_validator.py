@@ -6,6 +6,7 @@ Covers common methods shared between DataGenerator and SparkGenerator.
 from datetime import date, datetime
 from decimal import Decimal
 
+import numpy as np
 import pytest
 from rand_engine import DataGenerator
 from rand_engine.validators.common_validator import CommonValidator
@@ -440,3 +441,39 @@ def test_spark_refuses_numpy_only_features_before_execution(config, message_part
     assert "Column 'value'" in message
     for part in message_parts:
         assert part in message
+
+
+@pytest.mark.xfail(strict=True, reason="J2.S1.T1 RED: float lattice validation is not implemented")
+@pytest.mark.parametrize(("minimum", "maximum", "decimals"), [
+    (9.991, 9.991, 2),
+    (10, 0, 2),
+    (float("-inf"), 1, 2),
+    (0, float("inf"), 2),
+    (float("nan"), 1, 2),
+])
+def test_invalid_or_empty_float_lattices_are_collected_during_public_construction(minimum, maximum, decimals):
+    error = _caught_validation(lambda: DataGenerator({
+        "value": {
+            "method": "floats",
+            "kwargs": {"min": minimum, "max": maximum, "decimals": decimals},
+        }
+    }))
+
+    assert isinstance(error, SpecValidationError)
+    message = str(error)
+    assert "Column 'value'" in message
+    assert "floats" in message
+
+
+@pytest.mark.xfail(strict=True, reason="J2.S1.T1 RED: unrepresentable Poisson lambda validates")
+def test_poisson_lambda_beyond_numpy_int64_result_domain_is_collected_before_generation():
+    unrepresentable_lam = float(2**63)
+    with pytest.raises(ValueError):
+        np.random.default_rng(0).poisson(lam=unrepresentable_lam, size=1)
+
+    error = _caught_validation(lambda: DataGenerator({
+        "value": {"method": "poisson", "kwargs": {"lam": unrepresentable_lam}}
+    }))
+    assert isinstance(error, SpecValidationError)
+    assert "Column 'value'" in str(error)
+    assert "'lam'" in str(error)

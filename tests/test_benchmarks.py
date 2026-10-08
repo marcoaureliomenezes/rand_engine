@@ -5,7 +5,9 @@ from pathlib import Path
 
 import pytest
 
+import benchmarks.speed as speed
 from benchmarks.speed import baseline, check_tree, compare, parse_reply, plan_keys, run, Worker
+from rand_engine.validators.method_specs import METHOD_CATALOG, NUMPY
 
 BASE = [
   {"method": "integers", "rows": 10**6, "get_df_s": 1.0},
@@ -34,6 +36,63 @@ def test_compare_gates_ab_records_on_their_own_base_times():
              {"sink": "csv", "rows": 10, "sink_s": 1.29, "base_sink_s": 1.0},
              {"method": "uuid4", "rows": 10, "get_df_s": 5.0}]
   assert compare(records, baseline(records)) == ([("integers", 10)], [("uuid4", 10)])
+
+
+def test_existing_same_method_regression_limit_remains_1_3():
+  assert speed.LIMIT == 1.3
+
+
+@pytest.mark.xfail(strict=True, reason="J2.S1.T1 RED: benchmark inventory lacks new NumPy methods")
+def test_benchmark_inventory_covers_every_numpy_catalog_method():
+  expected = {name for name, spec in METHOD_CATALOG.items() if NUMPY in spec.engines}
+  assert set(speed.SAMPLE_KWARGS) == expected
+
+
+@pytest.mark.xfail(strict=True, reason="J2.S1.T1 RED: nearest-sibling benchmark gate is not implemented")
+@pytest.mark.parametrize(("method", "sibling"), [
+  ("exponential", "floats"),
+  ("lognormal", "floats_normal"),
+  ("poisson", "integers"),
+  ("zipf", "integers"),
+])
+def test_new_distribution_nearest_sibling_limit_is_1_5(method, sibling):
+  siblings = getattr(speed, "METHOD_SIBLINGS", None)
+  compare_siblings = getattr(speed, "compare_siblings", None)
+  assert siblings is not None
+  assert compare_siblings is not None
+  assert siblings[method] == sibling
+
+  boundary = [
+    {"method": sibling, "rows": 10**6, "get_df_s": 2.0},
+    {"method": method, "rows": 10**6, "get_df_s": 3.0},
+  ]
+  over = [{**row, "get_df_s": 3.01} if row["method"] == method else row for row in boundary]
+  assert compare_siblings(boundary) == []
+  assert compare_siblings(over) == [(method, 10**6)]
+
+
+@pytest.mark.xfail(strict=True, reason="J2.S1.T1 RED: official run does not enforce the sibling gate")
+def test_official_run_enforces_the_new_distribution_sibling_limit(tmp_path):
+  class SiblingWorker:
+    keys = ("integers", "floats", "floats_normal", "exponential", "lognormal", "poisson", "zipf")
+    returncode = None
+
+    def ask(self, request):
+      if "extra" in request:
+        return {**request, "core_s": 0.5, "peak_mib": 2.0}
+      seconds = {"floats": 1.0, "exponential": 1.51}.get(request["row"], 1.0)
+      return {**request, "s": seconds}
+
+    def reason(self):
+      return "unexpected worker failure"
+
+  with pytest.raises(SystemExit) as caught:
+    speed.run(SiblingWorker(), None, [10], tmp_path, "no base tree")
+
+  message = str(caught.value)
+  assert "exponential" in message
+  assert "1.5" in message
+  assert "sibling" in message
 
 
 def test_check_tree_exits_3_on_a_foreign_rand_engine():

@@ -13,6 +13,7 @@ from rand_engine.main.spark_generator import SparkGenerator
 from rand_engine.validators.common_validator import CommonValidator
 from rand_engine.validators.advanced_validator import AdvancedValidator
 from rand_engine.validators.exceptions import SpecValidationError
+from rand_engine.validators.method_specs import CORRELATED, METHOD_CATALOG, NUMPY, SPARK
 
 
 def test_valid_spec_integers():
@@ -529,21 +530,26 @@ def _params(fn, injected=("size", "rng", "spark", "F", "df", "col_name", "offset
   return names, {p.name for p in sig if p.default is p.empty} - set(injected)
 
 
+@pytest.mark.xfail(strict=True, reason="J2.S1.T1 RED: NumPy dispatch lacks catalog methods")
 def test_validator_tables_match_engine_maps_and_signatures():
-  """One method set: every validator table pinned to both engine maps and to each callable's parameters."""
-  common, advanced = CommonValidator.METHOD_SPECS, AdvancedValidator.METHOD_SPECS
-  pandas = RandGenerator({}).map_methods()
+  """Catalog engine metadata pins each map and every mapped callable's parameters."""
+  numpy = RandGenerator({}).map_methods()
   spark = SparkGenerator.map_methods(None)
-  assert set(common) | set(advanced) == set(pandas)
-  assert set(common) | set(advanced) - {"pk", "fk"} == set(spark)
-  for name, fn in [*pandas.items(), *spark.items()]:
-    table = (common.get(name) or advanced[name])["params"]
+  expected_numpy = {name for name, spec in METHOD_CATALOG.items() if NUMPY in spec.engines}
+  expected_spark = {
+    name for name, spec in METHOD_CATALOG.items()
+    if SPARK in spec.engines or spec.kind == CORRELATED
+  }
+  assert set(numpy) == expected_numpy
+  assert set(spark) == expected_spark
+  for name, fn in [*numpy.items(), *spark.items()]:
+    method_spec = METHOD_CATALOG[name]
     params = _params(fn)
     if params is None:
       continue
     names, required = params
-    assert set(table["required"]) | set(table["optional"]) == names, name
-    assert required <= set(table["required"]), name
+    assert set(method_spec.required) | set(method_spec.optional) == names, name
+    assert required <= set(method_spec.required), name
 
 
 def _caught_validation(call):
