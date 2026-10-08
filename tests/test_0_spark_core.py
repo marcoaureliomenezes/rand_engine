@@ -6,9 +6,51 @@ Each method is tested in isolation with direct Spark DataFrame manipulation.
 
 Note: PySpark is a test-only dependency.
 """
+import re
 import time
 import pytest
 from rand_engine.core._spark_core import SparkCore
+from rand_engine.main.spark_generator import SparkGenerator
+
+
+SPARK_EXACT_DOMAIN_RED = pytest.mark.xfail(
+    strict=True,
+    reason="Spark exact decimal-limb numeric domains are not implemented",
+)
+
+
+def _literal_limb_fold(spark, F, limb0, limb1, limb2, width, minimum):
+    fold = getattr(SparkCore, "_fold_decimal_limb", None)
+    if fold is None:
+        return {"error": "SparkCore._fold_decimal_limb is missing"}
+
+    try:
+        limbs = spark.createDataFrame([(limb0, limb1, limb2)], ("limb0", "limb1", "limb2"))
+        limbs = limbs.select(
+            F.col("limb0").cast("decimal(10,0)").alias("limb0"),
+            F.col("limb1").cast("decimal(10,0)").alias("limb1"),
+            F.col("limb2").cast("decimal(10,0)").alias("limb2"),
+        )
+        with_high = limbs.withColumn(
+            "high_mod",
+            fold(F, F.col("limb0"), F.col("limb1"), width, precision=20),
+        )
+        folded = with_high.withColumn(
+            "word_mod",
+            fold(F, F.col("high_mod"), F.col("limb2"), width, precision=32),
+        ).withColumn(
+            "value",
+            F.lit(str(minimum)).cast("decimal(20,0)") + F.col("word_mod"),
+        )
+        row = folded.select("high_mod", "word_mod", "value").first()
+        return tuple(int(value) for value in row)
+    except Exception as error:
+        return {"error": type(error).__name__}
+
+
+class _NoExecutionFrame:
+    def withColumn(self, *_args, **_kwargs):
+        raise AssertionError("Spark expression construction reached the frame")
 
 
 class TestSparkCoreNumeric:
@@ -174,6 +216,176 @@ class TestSparkCoreNumeric:
         # Check that mean and std are close to expected (within 10% tolerance)
         assert abs(stats["mean"] - mean) < mean * 0.1
         assert abs(stats["std"] - std) < std * 0.2  # More tolerance for std
+
+    @SPARK_EXACT_DOMAIN_RED
+    @pytest.mark.parametrize((
+        "limb0", "limb1", "limb2", "width", "minimum", "expected"
+    ), [
+        (0, 0, 0, 1, 42, (0, 0, 42)),
+        (305419896, 2596069104, 324508639, 11, 0, (6, 6, 6)),
+        (4294967295, 2147483648, 1, 41, -50, (18, 11, -39)),
+        (3735928559, 270544960, 1432778632, 201, -100, (141, 10, -90)),
+        (268435457, 2882400001, 1985229328, 17, 9007199254740993,
+         (4, 0, 9007199254740993)),
+        (4294967295, 4294967295, 4294967295, 1, -9223372036854775808,
+         (0, 0, -9223372036854775808)),
+        (2147483648, 0, 0, 1, 9223372036854775807,
+         (0, 0, 9223372036854775807)),
+        (4294967295, 4294967295, 4294967294, 18446744073709551616,
+         -9223372036854775808,
+         (18446744073709551615, 18446744073709551614, 9223372036854775806)),
+    ])
+    def test_literal_decimal_limb_fold_matches_bigint_oracle(
+        self, spark_session, spark_functions,
+        limb0, limb1, limb2, width, minimum, expected,
+    ):
+        actual = _literal_limb_fold(
+            spark_session, spark_functions, limb0, limb1, limb2, width, minimum
+        )
+
+        assert actual == expected
+
+    @SPARK_EXACT_DOMAIN_RED
+    def test_supported_integer_domains_keep_exact_singleton_bounds(
+        self, spark_session, spark_functions,
+    ):
+        cases = [
+            ("int8", -128),
+            ("int8", 127),
+            ("int16", -32768),
+            ("int16", 32767),
+            ("int32", -2147483648),
+            ("int32", 2147483647),
+            ("uint8", 0),
+            ("uint8", 255),
+            ("uint16", 65535),
+            ("uint32", 4294967295),
+            ("int64", -9223372036854775808),
+            ("int64", 9007199254740993),
+            ("int64", 9223372036854775807),
+        ]
+        actual = []
+        for int_type, bound in cases:
+            result = SparkCore.gen_ints(
+                spark_session,
+                spark_functions,
+                spark_session.range(1),
+                "value",
+                min=bound,
+                max=bound,
+                int_type=int_type,
+            )
+            actual.append((int_type, result.select("value").first()["value"]))
+
+        assert actual == cases
+
+    @SPARK_EXACT_DOMAIN_RED
+    @pytest.mark.parametrize(("int_type", "minimum", "maximum"), [
+        ("uint64", 0, 1),
+        (True, 0, 1),
+        ("int8", -129, 0),
+        ("int8", 0, 128),
+        ("uint8", -1, 0),
+        ("uint16", 0, 65536),
+        ("uint32", 0, 4294967296),
+        ("int64", -9223372036854775809, 0),
+        ("int64", 0, 9223372036854775808),
+    ])
+    def test_unsupported_integer_domains_are_refused_before_frame_execution(
+        self, spark_session, spark_functions, int_type, minimum, maximum,
+    ):
+        try:
+            SparkCore.gen_ints(
+                spark_session,
+                spark_functions,
+                _NoExecutionFrame(),
+                "value",
+                min=minimum,
+                max=maximum,
+                int_type=int_type,
+            )
+        except Exception as error:
+            actual = type(error)
+        else:
+            actual = None
+
+        assert actual is ValueError
+
+    @SPARK_EXACT_DOMAIN_RED
+    def test_float_decimal_lattice_and_empty_domains(
+        self, spark_session, spark_functions,
+    ):
+        try:
+            SparkCore.gen_floats(
+                spark_session,
+                spark_functions,
+                spark_session.range(1),
+                "value",
+                min=9.991,
+                max=9.991,
+                decimals=2,
+            )
+        except Exception as error:
+            empty_domain_result = type(error)
+        else:
+            empty_domain_result = None
+
+        assert empty_domain_result is ValueError
+
+        cases = [
+            (9.991, 10.009, 2, 10.0),
+            (-10.009, -9.991, 2, -10.0),
+            (11, 29, -1, 20.0),
+        ]
+        for minimum, maximum, decimals, expected in cases:
+            result = SparkCore.gen_floats(
+                spark_session,
+                spark_functions,
+                spark_session.range(10**4),
+                "value",
+                min=minimum,
+                max=maximum,
+                decimals=decimals,
+            )
+            assert {row["value"] for row in result.select("value").collect()} == {expected}
+
+    @SPARK_EXACT_DOMAIN_RED
+    def test_generator_keeps_bigint_literal_and_uses_no_python_udf(
+        self, spark_session, spark_functions,
+    ):
+        generator = SparkGenerator(
+            spark_session,
+            spark_functions,
+            {
+                "value": {
+                    "method": "integers",
+                    "kwargs": {
+                        "min": 9007199254740993,
+                        "max": 9007199254740993,
+                        "int_type": "int64",
+                    },
+                }
+            },
+        )
+        result = generator.size(3).get_df()
+        values = [row["value"] for row in result.collect()]
+        wide = SparkCore.gen_ints(
+            spark_session,
+            spark_functions,
+            spark_session.range(1),
+            "value",
+            min=-9223372036854775808,
+            max=9223372036854775807,
+            int_type="int64",
+        )
+        executed_plan = wide._jdf.queryExecution().executedPlan().toString().lower()
+        rand_seeds = re.findall(r"rand\((-?\d+)\)", executed_plan)
+
+        assert values == [9007199254740993, 9007199254740993, 9007199254740993]
+        assert len(rand_seeds) == 3
+        assert len(set(rand_seeds)) == 3
+        assert "pythonudf" not in executed_plan
+        assert "batchevalpython" not in executed_plan
 
 
 class TestSparkCoreIdentifiers:
