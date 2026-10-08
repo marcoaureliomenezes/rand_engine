@@ -3,8 +3,8 @@
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
-import math
 import re
+import sys
 from types import MappingProxyType
 from typing import Any, Callable, Mapping
 
@@ -67,19 +67,20 @@ def _integers(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
     return tuple(issues)
 
 
-def _floats(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
-    return tuple(_positive_decimals(kwargs))
-
-
 def _normal(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
-    issues = _positive_decimals(kwargs)
-    mean = kwargs.get("mean", 0.0)
     std = kwargs.get("std", 1.0)
-    if not math.isfinite(mean):
-        issues.append(("mean", "must be finite"))
-    if not math.isfinite(std) or std < 0:
-        issues.append(("std", "must be finite and greater than or equal to 0"))
-    return tuple(issues)
+    if std < 0:
+        return (("std", "must be greater than or equal to 0"),)
+    return ()
+
+
+def _is_finite_float_domain(value: int | float) -> bool:
+    return -sys.float_info.max <= value <= sys.float_info.max
+
+
+def is_declared_scalar(value: Any) -> bool:
+    scalar_types = (bool, int, float, str, bytes, date, datetime, Decimal)
+    return not callable(value) and (value is None or isinstance(value, scalar_types))
 
 
 def _probability(name: str, value: Any) -> SemanticIssue | None:
@@ -123,33 +124,39 @@ def _dates(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
 def _exponential(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
     issues = _positive_decimals(kwargs)
     scale = kwargs.get("scale", 1.0)
-    if not math.isfinite(scale) or scale <= 0:
+    if not _is_finite_float_domain(scale) or scale <= 0:
         issues.append(("scale", "must be finite and greater than 0"))
     return tuple(issues)
 
 
 def _lognormal(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
-    return _normal(kwargs)
+    issues = _positive_decimals(kwargs)
+    mean = kwargs.get("mean", 0.0)
+    std = kwargs.get("std", 1.0)
+    if not _is_finite_float_domain(mean):
+        issues.append(("mean", "must be finite"))
+    if not _is_finite_float_domain(std) or std < 0:
+        issues.append(("std", "must be finite and greater than or equal to 0"))
+    return tuple(issues)
 
 
 def _poisson(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
     lam = kwargs.get("lam", 1.0)
-    if not math.isfinite(lam) or lam < 0:
+    if not _is_finite_float_domain(lam) or lam < 0:
         return (("lam", "must be finite and greater than or equal to 0"),)
     return ()
 
 
 def _zipf(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
     a = kwargs.get("a", 2.0)
-    if not math.isfinite(a) or a <= 1:
+    if not _is_finite_float_domain(a) or a <= 1:
         return (("a", "must be finite and greater than 1"),)
     return ()
 
 
 def _constant(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
     value = kwargs.get("value")
-    scalar_types = (bool, int, float, str, bytes, date, datetime, Decimal)
-    if value is not None and (callable(value) or not isinstance(value, scalar_types)):
+    if not is_declared_scalar(value):
         return (("value", "must be an immutable scalar"),)
     return ()
 
@@ -221,7 +228,6 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
             required={"min": (int, float), "max": (int, float)},
             optional={"decimals": int},
             defaults={"decimals": 2},
-            semantic=_floats,
             example={
                 "method": "floats",
                 "kwargs": {"min": 0, "max": 1000, "decimals": 2},

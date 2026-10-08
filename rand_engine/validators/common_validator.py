@@ -12,6 +12,7 @@ from rand_engine.validators.method_specs import (
     MethodSpec,
     ORDINARY,
     SPARK,
+    is_declared_scalar,
     matches_type,
     type_name,
 )
@@ -126,7 +127,7 @@ class CommonValidator:
             values = col_config.get("anomaly_values")
             if not isinstance(values, list) or not values:
                 errors.append(f"❌ Column '{col_name}': positive 'anomaly_rate' requires non-empty 'anomaly_values'")
-            elif any(isinstance(value, (list, dict, set, tuple)) or callable(value) for value in values):
+            elif any(not is_declared_scalar(value) for value in values):
                 errors.append(f"❌ Column '{col_name}': 'anomaly_values' must contain only scalar values")
         return errors
 

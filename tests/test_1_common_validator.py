@@ -269,7 +269,6 @@ def _caught_validation(call):
     ("floats_normal", {"mean": float("inf"), "std": 1, "decimals": 2}),
     ("floats_normal", {"mean": 0, "std": float("inf"), "decimals": 2}),
 ])
-@pytest.mark.xfail(strict=True, reason="J1.S4: legacy float domains are narrowed by catalog semantics")
 def test_legacy_float_domains_remain_accepted_and_generatable(method, kwargs):
     try:
         frame = DataGenerator({"value": {"method": method, "kwargs": kwargs}}, seed=7).size(3).get_df()
@@ -302,7 +301,6 @@ def test_legacy_normal_negative_std_remains_invalid():
     ("poisson", "lam"),
     ("zipf", "a"),
 ])
-@pytest.mark.xfail(strict=True, reason="J1.S4: huge accepted integers leak OverflowError")
 def test_huge_new_distribution_parameters_are_collected(method, parameter):
     caught = None
     try:
@@ -337,7 +335,6 @@ def test_anomaly_values_accept_the_declared_scalar_family(value):
     })
 
 
-@pytest.mark.xfail(strict=True, reason="J1.S4: arbitrary objects pass anomaly scalar validation")
 def test_anomaly_values_reject_arbitrary_objects():
     caught = None
     try:
