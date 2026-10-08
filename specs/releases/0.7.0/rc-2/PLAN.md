@@ -92,24 +92,13 @@ The first multiply/add has inferred precision at most 22 and the second at most 
 
 ## 3. Verification and gates
 
-- Every job starts with tests-only Stage 1. Each new acceptance test fails by assertion and carries one `@pytest.mark.xfail(strict=True, ...)` line matching the repository's future `tests-red:` declaration. The green task deletes only that marker line; expected values are final in RED.
+- Every job starts with tests-only Stage 1. Each new acceptance test holds its final expected values, fails by assertion and carries one `@pytest.mark.xfail(strict=True, ...)` line so RED remains explicit and auditable. The green task deletes only that marker line after the implementation satisfies the assertion.
 - Default tests stay at or below `10**4` rows. Distribution/modifier throughput is measured only by the official same-runner benchmark workflow at final feature preparation.
 - Unit: validator issue collection, numeric lattice/distributions/constants, RNG draw order, masks, helpers, write-plan arithmetic and schema decisions.
 - Integration: Spark expressions, pandas dtypes, stream/sink nulls, read-back CSV/JSON/Parquet, transactional overwrite, public imports.
 - E2E: none; this is a library with no browser or deployed service. Public import plus documented executable examples are the outer interface.
 - Security/privacy: no external data or URLs; Faker stays local/optional; writer staging uses a generated sibling under the caller-selected parent and never follows a new arbitrary remote fetch; errors name fields/options but not values; no credentials or PII enter fixtures.
 - Local task/stage/job gates use the repo's existing shared environment and redirected caches. No worktree push or remote worktree CI. The main thread may publish only `feature/0.7.0` during final release preparation to obtain AC2.4/AC4.4 evidence.
-
-### Gate bootstrap prerequisite
-
-The installed ADR 0209 freeze reads `tests:` and `tests-red:` from the work branch's `AGENTS.md` before it can merge any task or job. Rand-engine declares neither. The define worktree may merge only `specs/`, while a task cannot bootstrap the declarations because its own merge is already refused. Therefore no agent-controlled job/task lane is lawful yet. Before opening implementation trees, the main thread must obtain the gate-prescribed operator action and commit these project-local declarations on `feature/0.7.0` through an authorized bootstrap lane:
-
-```text
-tests: tests/**
-tests-red: ^\s*@pytest\.mark\.xfail\(strict=True
-```
-
-This is not a bypass or constitution change. Until that commit exists on the work branch, implementation remains blocked even after PLAN/tasks approval.
 
 ## DAG
 
