@@ -1,6 +1,8 @@
 
-from datetime import datetime as dt    
+from datetime import date, datetime as dt
 from itertools import islice
+
+import pandas as pd
 import pytest
 
 from rand_engine.main.data_generator import DataGenerator
@@ -29,3 +31,49 @@ def test_create_stream_dict(size, rand_spec_with_args):
   stream = DataGenerator(rand_spec_with_args).size(size).stream_dict(min_throughput=1000, max_throughput=1000)
   records = list(islice(stream, 3))
   assert [set(r) for r in records] == [set(rand_spec_with_args) | {"timestamp_created"}] * 3
+
+
+@pytest.mark.xfail(strict=True, reason="AC3.4 stream null normalization is not implemented")
+def test_stream_dict_normalizes_missing_values_to_none():
+  """Intent: AC3.4 — stream records expose Python None and preserve ordinary values."""
+  def with_missing_values(frame):
+    return pd.DataFrame(
+      {
+        "integer": pd.array([7, pd.NA], dtype="Int64"),
+        "boolean": pd.array([True, pd.NA], dtype="boolean"),
+        "floating": [1.5, float("nan")],
+        "datetime": [pd.Timestamp(dt(2025, 1, 2, 3, 4, 5)), pd.NaT],
+        "object": ["kept", None],
+        "date": [date(2025, 1, 2), None],
+      },
+      index=frame.index,
+    )
+
+  stream = (
+    DataGenerator({"source": {"method": "constant", "kwargs": {"value": 1}}})
+    .size(2)
+    .transformers([with_missing_values])
+    .stream_dict(min_throughput=1000, max_throughput=1000)
+  )
+  records = list(islice(stream, 2))
+  timestamps = [record.pop("timestamp_created") for record in records]
+
+  assert all(isinstance(timestamp, float) for timestamp in timestamps)
+  assert records == [
+    {
+      "integer": 7,
+      "boolean": True,
+      "floating": 1.5,
+      "datetime": "2025-01-02 03:04:05",
+      "object": "kept",
+      "date": date(2025, 1, 2),
+    },
+    {
+      "integer": None,
+      "boolean": None,
+      "floating": None,
+      "datetime": None,
+      "object": None,
+      "date": None,
+    },
+  ]
