@@ -48,6 +48,8 @@ The SPEC's 25-row review is binding. The rebuild jobs preserve all assertions be
 
 - Replace `CommonValidator.METHOD_SPECS` and `AdvancedValidator.METHOD_SPECS` with one small catalog under `validators/`; it records required/optional kwargs, defaults, engine support, ordinary/correlated/key kind and semantic validator. It is metadata, not a new generation engine.
 - `AdvancedValidator` owns whole-RandSpec intake and issue collection. It validates shape and types first; semantic functions receive only typed values. `CommonValidator` is the Spark-facing adapter over the same catalog and refuses unsupported methods/modifiers before `SparkGenerator` builds a frame.
+- One shared typed-intake seam under `CommonValidator` consumes catalog metadata for required, optional, type, unknown and semantic checks. After J1.S2 establishes the catalog/common path, sequential J1.S3 rebuilds that seam and makes `AdvancedValidator` delegate to it before adding correlated/key shape rules; no parallel task shares either validator file.
+- Diagnostics name fields, options and existing key-path identifiers. The mapped-arity key-path diagnostic remains, but collection contents, pairs, items and input value payloads are never dumped.
 - Keep `core/_py_core.py` `METHODS` as the NumPy callable map used by ordinary columns and nested templates. A contract test requires catalog NumPy names to equal this map plus `pk`/`fk`. The Spark map equals catalog entries with Spark engine support plus correlated-kind entries retained by the legacy warning-and-NULL adapter; that compatibility path is not full Spark support. No third registry, manual expected-name list or fallback dispatch survives.
 - J2.S1.T1/J2.S2.T1 own that contract in `tests/test_1_advanced_validator.py`: expected NumPy names come from catalog engine metadata, while expected Spark names come from Spark engine metadata plus correlated kind for the preserved legacy adapter. This replaces the prior equal-engine-set assumption while retaining the existing name, parameter and signature checks.
 - The approved `args` removal is one early collected issue naming `kwargs`; generation reads only `kwargs`.
@@ -98,7 +100,7 @@ The first multiply/add has inferred precision at most 22 and the second at most 
 - Unit: validator issue collection, numeric lattice/distributions/constants, RNG draw order, masks, helpers, write-plan arithmetic and schema decisions.
 - Integration: Spark expressions, pandas dtypes, stream/sink nulls, read-back CSV/JSON/Parquet, transactional overwrite, public imports.
 - E2E: none; this is a library with no browser or deployed service. Public import plus documented executable examples are the outer interface.
-- Security/privacy: no external data or URLs; Faker stays local/optional; writer staging uses a generated sibling under the caller-selected parent and never follows a new arbitrary remote fetch; errors name fields/options but not values; no credentials or PII enter fixtures.
+- Security/privacy: no external data or URLs; Faker stays local/optional; writer staging uses a generated sibling under the caller-selected parent and never follows a new arbitrary remote fetch; errors retain field, option and key-path identifiers without dumping collections, pairs, items or input value payloads; no credentials or PII enter fixtures.
 - Local task/stage/job gates use the repo's existing shared environment and redirected caches. No worktree push or remote worktree CI. The main thread may publish only `feature/0.7.0` during final release preparation to obtain AC2.4/AC4.4 evidence.
 
 ## DAG
@@ -117,7 +119,7 @@ The first multiply/add has inferred precision at most 22 and the second at most 
 | path | jobs | serialization |
 |---|---|---|
 | `benchmarks/speed.py`, `tests/test_benchmarks.py` | 2, 3 | Job 3 waits for Job 2 and adds modifier rows after new-method rows. |
-| method catalog, `tests/test_1_advanced_validator.py` registry contract | 1, 2 | Job 1 owns catalog structure and advanced intake; after that merge, Job 2 alone replaces the obsolete equal-engine-set assertion with exact catalog-derived per-engine sets. |
+| method catalog, validator intake, `tests/test_1_advanced_validator.py` registry contract | 1, 2 | Job 1 serializes catalog/common J1.S2 before shared-common/advanced J1.S3; after Job 1 merges, Job 2 alone replaces the obsolete equal-engine-set assertion with exact catalog-derived per-engine sets. |
 | `rand_engine/main/data_generator.py`, `rand_engine/main/_rand_generator.py` | 3 | one green task owns the coupled pipeline. |
 | `rand_engine/file_handlers/_writer_batch.py`, `file_handler.py` | 5 | separate task owners use disjoint tests and merge at the stage barrier. |
 | docs/README/`llms.txt`/benchmark artifacts | 6 | reconciliation only, after final behavior is merged. |
@@ -148,18 +150,18 @@ The canonical task authority is the six files under `tasks/`, one per DAG job. T
 | AC6.1–AC6.4 | J4.S1 | J4.S2 |
 | AC7.1 | J2.S1 | J2.S2 |
 | AC7.2–AC7.3 | J2.S1 and J3.S1 | J2.S2 and J3.S2 |
-| AC8.1–AC8.2 | J1.S1 | J1.S2; canonical post-Job-5 bug batch records resolution |
+| AC8.1–AC8.2 | J1.S1 | J1.S2–J1.S3; canonical post-Job-5 bug batch records resolution |
 | AC8.3–AC8.5 | J2.S1 | J2.S2; canonical post-Job-5 bug batch records resolution |
 | AC8.6 | J5.S1 | J5.S2 tests-only fixture completion |
-| AC8.7 | J1.S1 behavioral single-intake/no-generation test | J1.S2, J2.S2 and J3.S2 preserve that interface while their diffs evidence deletion; J6 review confirms no replacement path |
+| AC8.7 | J1.S1 behavioral single-intake/no-generation test | J1.S2–J1.S3, J2.S2 and J3.S2 preserve that interface while their diffs evidence deletion; J6 review confirms no replacement path |
 | AC9.1 | J2.S1, J3.S1, J5.S1 | owning GREEN stages |
-| AC9.2 | J1.S1 and J2.S1 | J1.S2, J2.S2 and J6 public reconciliation |
+| AC9.2 | J1.S1 and J2.S1 | J1.S2–J1.S3, J2.S2 and J6 public reconciliation |
 | AC9.3 | J3.S1 and J5.S1 | J3.S2 and J5.S2 |
 | AC9.4 | J4.S1 and J6.S1 | J4.S2 and J6.S2 |
 
-The five bug paths are exact: J1.S1/J1.S2 own the RED/fix evidence for `probability-wrong-type-escapes-validation`, `distincts-map-empty-pool-validates` and `distincts-multi-map-empty-domain-validates`; J2.S1/J2.S2 own it for `float-rounded-domain-violates-bounds` and `spark-bigint-precision-lost`. After Job 5, the canonical bug batch outside the DAG reruns each independent RED/GREEN command and resolves all five through the ledger writer before reconciliation opens; it adds no alternate implementation path.
+The five bug paths are exact: J1.S1/J1.S2–J1.S3 own the RED/fix evidence for `probability-wrong-type-escapes-validation`, `distincts-map-empty-pool-validates` and `distincts-multi-map-empty-domain-validates`; J2.S1/J2.S2 own it for `float-rounded-domain-violates-bounds` and `spark-bigint-precision-lost`. After Job 5, the canonical bug batch outside the DAG reruns each independent RED/GREEN command and resolves all five through the ledger writer before reconciliation opens; it adds no alternate implementation path.
 
-AC8.7's RED is behavioral, not a source tombstone: constructing `DataGenerator` from a counting callable that returns independently invalid common and advanced columns must evaluate that callable once for the failed construction, return one collected issue per column, never enter the generation seam and never leak `TypeError`, `KeyError` or `ColumnGenerationError`. The GREEN keeps that public boundary while the implementation diff deletes the dead validation parameter, imports, redundant branches, commented implementation and history comments. Every job's final stage also has one disjoint close task whose only write is that job file's terminal `done`; the task runs only after the stage contract is green and commits as `chore(tasks): done <job>`.
+AC8.7's RED is behavioral, not a source tombstone: constructing `DataGenerator` from a counting callable that returns independently invalid common and advanced columns must evaluate that callable once for the failed construction, return one collected issue per column, never enter the generation seam and never leak `TypeError`, `KeyError` or `ColumnGenerationError`. The J1.S3 GREEN keeps that public boundary while the implementation diff deletes the dead validation parameter, imports, redundant branches, commented implementation and history comments. The unmerged provisional `b91a1c8` is superseded by J1.S3.T1 and carries no task authority. Every job's final stage also has one disjoint close task whose only write is that job file's terminal `done`; the task runs only after the stage contract is green and commits as `chore(tasks): done <job>`.
 
 ## 7. Closure sequence
 
