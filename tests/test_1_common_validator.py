@@ -3,6 +3,9 @@ Tests for CommonValidator - validates SparkGenerator specs.
 Covers common methods shared between DataGenerator and SparkGenerator.
 """
 
+from datetime import date, datetime
+from decimal import Decimal
+
 import pytest
 from rand_engine import DataGenerator
 from rand_engine.validators.common_validator import CommonValidator
@@ -258,6 +261,100 @@ def _caught_validation(call):
     except Exception as error:
         return error
     return None
+
+
+@pytest.mark.parametrize(("method", "kwargs"), [
+    ("floats", {"min": 100, "max": 900, "decimals": -1}),
+    ("floats_normal", {"mean": 100, "std": 10, "decimals": -1}),
+    ("floats_normal", {"mean": float("inf"), "std": 1, "decimals": 2}),
+    ("floats_normal", {"mean": 0, "std": float("inf"), "decimals": 2}),
+])
+@pytest.mark.xfail(strict=True, reason="J1.S4: legacy float domains are narrowed by catalog semantics")
+def test_legacy_float_domains_remain_accepted_and_generatable(method, kwargs):
+    try:
+        frame = DataGenerator({"value": {"method": method, "kwargs": kwargs}}, seed=7).size(3).get_df()
+    except SpecValidationError as error:
+        frame = error
+
+    assert not isinstance(frame, SpecValidationError)
+    assert frame.columns.tolist() == ["value"]
+    assert len(frame) == 3
+
+
+def test_legacy_normal_negative_std_remains_invalid():
+    error = _caught_validation(
+        lambda: DataGenerator({
+            "value": {
+                "method": "floats_normal",
+                "kwargs": {"mean": 0, "std": -1, "decimals": 2},
+            }
+        })
+    )
+
+    assert isinstance(error, SpecValidationError)
+    assert "'std'" in str(error)
+
+
+@pytest.mark.parametrize(("method", "parameter"), [
+    ("exponential", "scale"),
+    ("lognormal", "mean"),
+    ("lognormal", "std"),
+    ("poisson", "lam"),
+    ("zipf", "a"),
+])
+@pytest.mark.xfail(strict=True, reason="J1.S4: huge accepted integers leak OverflowError")
+def test_huge_new_distribution_parameters_are_collected(method, parameter):
+    caught = None
+    try:
+        DataGenerator({"value": {"method": method, "kwargs": {parameter: 10**1000}}})
+    except (SpecValidationError, OverflowError) as error:
+        caught = error
+
+    assert isinstance(caught, SpecValidationError)
+    assert "Column 'value'" in str(caught)
+    assert f"'{parameter}'" in str(caught)
+
+
+@pytest.mark.parametrize("value", [
+    None,
+    True,
+    7,
+    1.5,
+    "outlier",
+    b"outlier",
+    date(2026, 10, 8),
+    datetime(2026, 10, 8, 12, 30),
+    Decimal("1.25"),
+])
+def test_anomaly_values_accept_the_declared_scalar_family(value):
+    DataGenerator({
+        "value": {
+            "method": "integers",
+            "kwargs": {"min": 0, "max": 10},
+            "anomaly_rate": 1,
+            "anomaly_values": [value],
+        }
+    })
+
+
+@pytest.mark.xfail(strict=True, reason="J1.S4: arbitrary objects pass anomaly scalar validation")
+def test_anomaly_values_reject_arbitrary_objects():
+    caught = None
+    try:
+        DataGenerator({
+            "value": {
+                "method": "integers",
+                "kwargs": {"min": 0, "max": 10},
+                "anomaly_rate": 1,
+                "anomaly_values": [object()],
+            }
+        })
+    except SpecValidationError as error:
+        caught = error
+
+    assert isinstance(caught, SpecValidationError)
+    assert "Column 'value'" in str(caught)
+    assert "'anomaly_values'" in str(caught)
 
 
 def test_wrong_numeric_types_are_collected_before_semantic_checks():
