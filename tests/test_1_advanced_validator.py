@@ -559,7 +559,6 @@ def _caught_validation(call):
   ({"method": "distincts_multi_map", "cols": ["category"], "kwargs": {"distincts": {}}}, "distincts_multi_map"),
   ({"method": "distincts_multi_map", "cols": ["category", "first", "second"], "kwargs": {"distincts": {"only": [["x"], []]}}}, "distincts_multi_map"),
 ])
-@pytest.mark.xfail(strict=True, reason="J1.S1.T2 RED: correlated domains must be non-empty")
 def test_empty_correlated_domains_fail_during_public_construction(config, method):
   error = _caught_validation(lambda: DataGenerator({"correlated": config}))
 
@@ -579,7 +578,6 @@ def test_empty_correlated_domains_fail_during_public_construction(config, method
   {"method": "pk", "kwargs": {}},
   {"method": "fk", "kwargs": {"parent": {"method": "pk", "kwargs": {}}, "parent_size": 1}},
 ])
-@pytest.mark.xfail(strict=True, reason="J1.S1.T2 RED: excluded methods must refuse modifiers")
 def test_correlated_and_key_methods_refuse_modifiers(config, modifier):
   column = {**config, modifier: 0.5}
   if modifier == "anomaly_rate":
@@ -594,7 +592,6 @@ def test_correlated_and_key_methods_refuse_modifiers(config, modifier):
   assert modifier in message
 
 
-@pytest.mark.xfail(strict=True, reason="J1.S1.T2 RED: callable validation must collect through one intake")
 def test_failed_callable_spec_collects_once_without_entering_generation():
   calls = {"spec": 0, "generation": 0}
 

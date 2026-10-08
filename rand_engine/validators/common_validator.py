@@ -9,6 +9,7 @@ from rand_engine.validators.method_specs import (
     COMMON_METHOD_SPECS,
     CORRELATED,
     METHOD_CATALOG,
+    MethodSpec,
     ORDINARY,
     SPARK,
     matches_type,
@@ -36,6 +37,19 @@ class CommonValidator:
         if method_spec is None or method_spec.kind != ORDINARY:
             return []
 
+        errors = cls._validate_method_parameters(col_name, col_config, method_spec)
+        errors.extend(cls._modifier_errors(col_name, col_config))
+        return errors
+
+    @classmethod
+    def _validate_method_parameters(
+        cls,
+        col_name: str,
+        col_config: dict[str, Any],
+        method_spec: MethodSpec,
+    ) -> list[str]:
+        """Validate one method's named parameters through catalog metadata."""
+        method = col_config["method"]
         kwargs = col_config.get("kwargs", {})
         if not isinstance(kwargs, dict):
             return [
@@ -66,18 +80,26 @@ class CommonValidator:
         valid_parameters = set(method_spec.required) | set(method_spec.optional)
         unknown_parameters = sorted(set(kwargs) - valid_parameters)
         if unknown_parameters:
-            unknown = "', '".join(unknown_parameters)
             valid = ", ".join(f"'{name}'" for name in sorted(valid_parameters))
-            errors.append(
-                f"⚠️  Column '{col_name}': unknown parameters: '{unknown}'\n"
-                f"   Valid parameters for '{method}': {valid}"
-            )
+            if method_spec.kind == ORDINARY:
+                unknown = "', '".join(unknown_parameters)
+                errors.append(
+                    f"⚠️  Column '{col_name}': unknown parameters: '{unknown}'\n"
+                    f"   Valid parameters for '{method}': {valid}"
+                )
+            else:
+                errors.extend(
+                    f"⚠️  Column '{col_name}': Unknown parameter '{parameter}' for method '{method}'\n"
+                    f"   Valid parameters: {valid}"
+                    for parameter in unknown_parameters
+                )
 
         if not invalid_parameters and not unknown_parameters:
             for parameter, message in method_spec.semantic(kwargs):
-                errors.append(f"❌ Column '{col_name}': '{parameter}' {message}")
+                errors.append(
+                    f"❌ Column '{col_name}': method '{method}' parameter '{parameter}' {message}"
+                )
 
-        errors.extend(cls._modifier_errors(col_name, col_config))
         return errors
 
     @staticmethod
