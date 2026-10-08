@@ -544,3 +544,84 @@ def test_validator_tables_match_engine_maps_and_signatures():
     names, required = params
     assert set(table["required"]) | set(table["optional"]) == names, name
     assert required <= set(table["required"]), name
+
+
+def _caught_validation(call):
+  try:
+    call()
+  except Exception as error:
+    return error
+  return None
+
+
+@pytest.mark.parametrize(("config", "method"), [
+  ({"method": "distincts_map", "cols": ["category", "value"], "kwargs": {"distincts": {"only": []}}}, "distincts_map"),
+  ({"method": "distincts_multi_map", "cols": ["category"], "kwargs": {"distincts": {}}}, "distincts_multi_map"),
+  ({"method": "distincts_multi_map", "cols": ["category", "first", "second"], "kwargs": {"distincts": {"only": [["x"], []]}}}, "distincts_multi_map"),
+])
+@pytest.mark.xfail(strict=True, reason="J1.S1.T2 RED: correlated domains must be non-empty")
+def test_empty_correlated_domains_fail_during_public_construction(config, method):
+  error = _caught_validation(lambda: DataGenerator({"correlated": config}))
+
+  assert isinstance(error, SpecValidationError)
+  message = str(error)
+  assert "Column 'correlated'" in message
+  assert method in message
+  assert "non-empty" in message
+
+
+@pytest.mark.parametrize("modifier", ["null_rate", "anomaly_rate"])
+@pytest.mark.parametrize("config", [
+  {"method": "distincts_map", "cols": ["category", "value"], "kwargs": {"distincts": {"a": ["b"]}}},
+  {"method": "distincts_map_prop", "cols": ["category", "value"], "kwargs": {"distincts": {"a": [["b", 1]]}}},
+  {"method": "distincts_multi_map", "cols": ["category", "value"], "kwargs": {"distincts": {"a": [["b"]]}}},
+  {"method": "complex_distincts", "kwargs": {"pattern": "<x>", "replacement": "x", "templates": [{"method": "distincts", "kwargs": {"distincts": ["a"]}}]}},
+  {"method": "pk", "kwargs": {}},
+  {"method": "fk", "kwargs": {"parent": {"method": "pk", "kwargs": {}}, "parent_size": 1}},
+])
+@pytest.mark.xfail(strict=True, reason="J1.S1.T2 RED: excluded methods must refuse modifiers")
+def test_correlated_and_key_methods_refuse_modifiers(config, modifier):
+  column = {**config, modifier: 0.5}
+  if modifier == "anomaly_rate":
+    column["anomaly_values"] = [99]
+
+  error = _caught_validation(lambda: DataGenerator({"excluded": column}))
+
+  assert isinstance(error, SpecValidationError)
+  message = str(error)
+  assert "Column 'excluded'" in message
+  assert config["method"] in message
+  assert modifier in message
+
+
+@pytest.mark.xfail(strict=True, reason="J1.S1.T2 RED: callable validation must collect through one intake")
+def test_failed_callable_spec_collects_once_without_entering_generation():
+  calls = {"spec": 0, "generation": 0}
+
+  def generation_sentinel(value):
+    calls["generation"] += 1
+    return value
+
+  def invalid_spec():
+    calls["spec"] += 1
+    return {
+      "bad_probability": {
+        "method": "booleans",
+        "kwargs": {"true_prob": "often"},
+        "transformers": [generation_sentinel],
+      },
+      "bad_pool": {
+        "method": "distincts_map",
+        "cols": ["category", "value"],
+        "kwargs": {"distincts": {"only": []}},
+      },
+    }
+
+  error = _caught_validation(lambda: DataGenerator(invalid_spec))
+
+  assert type(error) is SpecValidationError
+  assert calls == {"spec": 1, "generation": 0}
+  message = str(error)
+  assert "Found 2 error(s)" in message
+  assert message.count("Column 'bad_probability'") == 1
+  assert message.count("Column 'bad_pool'") == 1
