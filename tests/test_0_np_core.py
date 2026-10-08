@@ -1,8 +1,9 @@
 import hashlib
+import sys
 import time
 import uuid
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import Decimal, localcontext
 
 import pytest
 import numpy as np
@@ -448,6 +449,50 @@ def test_uniform_float_lattice_converts_finite_singletons_at_extreme_scales(valu
   assert isinstance(actual, np.ndarray)
   assert actual.dtype == np.float64
   assert actual.tolist() == [value]
+
+
+@pytest.mark.xfail(strict=True, reason="J2.S3.T1 RED: wide lattice conversion exceeds CPython's integer-string limit")
+@pytest.mark.parametrize("value", [1.0, -1.0, 1e308, 1e-308])
+def test_uniform_float_lattice_converts_positive_extreme_decimals_without_string_limits(value):
+  digit_limit = sys.get_int_max_str_digits()
+  with localcontext() as context:
+    context.prec = 2
+    try:
+      actual = NPCore.gen_floats(
+        size=1, min=value, max=value, decimals=5000,
+        rng=np.random.default_rng(15),
+      )
+    except ValueError as error:
+      actual = error
+  assert sys.get_int_max_str_digits() == digit_limit
+  assert isinstance(actual, np.ndarray)
+  assert actual.dtype == np.float64
+  assert actual.tolist() == [value]
+
+
+@pytest.mark.parametrize(("value", "decimals"), [
+  (1e308, -308),
+  (0.0, -5000),
+])
+def test_uniform_float_lattice_preserves_negative_extreme_decimals_without_context_or_global_changes(value, decimals):
+  digit_limit = sys.get_int_max_str_digits()
+  with localcontext() as context:
+    context.prec = 2
+    actual = NPCore.gen_floats(
+      size=1, min=value, max=value, decimals=decimals,
+      rng=np.random.default_rng(16),
+    )
+  assert sys.get_int_max_str_digits() == digit_limit
+  assert actual.dtype == np.float64
+  assert actual.tolist() == [value]
+
+
+def test_uniform_float_lattice_wide_domain_seeded_bytes_remain_unchanged():
+  values = NPCore.gen_floats(
+    size=1000, min=-1, max=1, decimals=20,
+    rng=np.random.default_rng(13),
+  )
+  assert hashlib.sha256(values.tobytes()).hexdigest() == "ee024755131895b17e118517ac64a8cf81058c7258f74b470624a81f2e7a7714"
 
 
 def test_legacy_normal_seeded_golden_is_unchanged():
