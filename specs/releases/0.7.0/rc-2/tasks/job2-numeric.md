@@ -1,6 +1,7 @@
 # Job 2 — numeric methods and exact Spark domains
 
 **Status:** Approved
+**done:** true
 
 ## Stage J2.S1 — RED
 
