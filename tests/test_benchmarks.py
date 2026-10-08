@@ -92,6 +92,73 @@ def test_official_run_enforces_the_new_distribution_sibling_limit(tmp_path):
   assert "sibling" in message
 
 
+@pytest.mark.xfail(strict=True, reason="AC4.4 modifier benchmark contract is not implemented")
+def test_modifier_benchmark_inventory_is_literal():
+  assert getattr(speed, "MODIFIERS", None) == {
+    "null_rate": {"method": "integers", "null_rate": 0.1},
+    "anomaly_rate": {
+      "method": "integers",
+      "anomaly_rate": 0.1,
+      "anomaly_values": [-1],
+    },
+  }
+  assert getattr(speed, "MODIFIER_LIMIT", None) == 1.25
+
+
+@pytest.mark.xfail(strict=True, reason="AC4.4 modifier benchmark contract is not implemented")
+def test_modifier_comparison_passes_at_1_25_and_fails_only_over():
+  compare_modifiers = getattr(speed, "compare_modifiers", None)
+  assert compare_modifiers is not None
+
+  boundary = [
+    {"method": "integers", "rows": 10**4, "get_df_s": 2.0},
+    {"modifier": "null_rate", "method": "integers", "rows": 10**4, "get_df_s": 2.5},
+    {"modifier": "anomaly_rate", "method": "integers", "rows": 10**4, "get_df_s": 2.5},
+  ]
+  over = [
+    {**row, "get_df_s": 2.51} if row.get("modifier") == "anomaly_rate" else row
+    for row in boundary
+  ]
+  assert compare_modifiers(boundary) == []
+  assert compare_modifiers(over) == [("anomaly_rate", 10**4)]
+
+
+@pytest.mark.xfail(strict=True, reason="AC4.4 modifier benchmark contract is not implemented")
+def test_official_run_enforces_modifier_rows(tmp_path):
+  class ModifierWorker:
+    keys = ("integers",)
+    returncode = None
+
+    def ask(self, request):
+      if "extra" in request:
+        return {**request, "core_s": 0.5, "peak_mib": 2.0}
+      seconds = {
+        "null_rate": 1.25,
+        "anomaly_rate": 1.26,
+      }.get(request.get("modifier"), 1.0)
+      return {**request, "s": seconds}
+
+    def reason(self):
+      return "unexpected worker failure"
+
+  with pytest.raises(SystemExit) as caught:
+    speed.run(ModifierWorker(), None, [10**4], tmp_path, "no base tree")
+
+  report = json.loads((tmp_path / "benchmarks.json").read_text(encoding="utf-8"))
+  modifier_rows = [record for record in report["records"] if "modifier" in record]
+  assert [
+    (record["modifier"], record["method"], record["rows"], record["get_df_s"])
+    for record in modifier_rows
+  ] == [
+    ("null_rate", "integers", 10**4, 1.25),
+    ("anomaly_rate", "integers", 10**4, 1.26),
+  ]
+  message = str(caught.value)
+  assert "anomaly_rate" in message
+  assert "1.25" in message
+  assert "modifier" in message
+
+
 def test_check_tree_exits_3_on_a_foreign_rand_engine():
   with pytest.raises(SystemExit) as e:
     check_tree("/head/rand_engine/__init__.py", "/base")
