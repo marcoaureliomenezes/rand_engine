@@ -48,7 +48,8 @@ The SPEC's 25-row review is binding. The rebuild jobs preserve all assertions be
 
 - Replace `CommonValidator.METHOD_SPECS` and `AdvancedValidator.METHOD_SPECS` with one small catalog under `validators/`; it records required/optional kwargs, defaults, engine support, ordinary/correlated/key kind and semantic validator. It is metadata, not a new generation engine.
 - `AdvancedValidator` owns whole-RandSpec intake and issue collection. It validates shape and types first; semantic functions receive only typed values. `CommonValidator` is the Spark-facing adapter over the same catalog and refuses unsupported methods/modifiers before `SparkGenerator` builds a frame.
-- Keep `core/_py_core.py` `METHODS` as the NumPy callable map used by ordinary columns and nested templates. A contract test requires catalog NumPy names to equal this map plus `pk`/`fk`, and Spark-supported names to equal `SparkGenerator.map_methods`; no third registry or fallback dispatch survives.
+- Keep `core/_py_core.py` `METHODS` as the NumPy callable map used by ordinary columns and nested templates. A contract test requires catalog NumPy names to equal this map plus `pk`/`fk`. The Spark map equals catalog entries with Spark engine support plus correlated-kind entries retained by the legacy warning-and-NULL adapter; that compatibility path is not full Spark support. No third registry, manual expected-name list or fallback dispatch survives.
+- J2.S1.T1/J2.S2.T1 own that contract in `tests/test_1_advanced_validator.py`: expected NumPy names come from catalog engine metadata, while expected Spark names come from Spark engine metadata plus correlated kind for the preserved legacy adapter. This replaces the prior equal-engine-set assumption while retaining the existing name, parameter and signature checks.
 - The approved `args` removal is one early collected issue naming `kwargs`; generation reads only `kwargs`.
 
 ### 2.2 Numeric domains and new methods
@@ -116,7 +117,7 @@ The first multiply/add has inferred precision at most 22 and the second at most 
 | path | jobs | serialization |
 |---|---|---|
 | `benchmarks/speed.py`, `tests/test_benchmarks.py` | 2, 3 | Job 3 waits for Job 2 and adds modifier rows after new-method rows. |
-| method catalog | 1, 2 | Job 1 owns its structure; Job 2 consumes it without adding another authority. |
+| method catalog, `tests/test_1_advanced_validator.py` registry contract | 1, 2 | Job 1 owns catalog structure and advanced intake; after that merge, Job 2 alone replaces the obsolete equal-engine-set assertion with exact catalog-derived per-engine sets. |
 | `rand_engine/main/data_generator.py`, `rand_engine/main/_rand_generator.py` | 3 | one green task owns the coupled pipeline. |
 | `rand_engine/file_handlers/_writer_batch.py`, `file_handler.py` | 5 | separate task owners use disjoint tests and merge at the stage barrier. |
 | docs/README/`llms.txt`/benchmark artifacts | 6 | reconciliation only, after final behavior is merged. |
