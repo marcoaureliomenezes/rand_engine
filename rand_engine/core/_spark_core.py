@@ -1,9 +1,174 @@
 from datetime import datetime as dt, timezone
 import pandas as pd
-from rand_engine.core._np_core import DATE_DIRECTIVES, DATE_SPLIT
+from rand_engine.core._np_core import DATE_DIRECTIVES, DATE_SPLIT, float_lattice_bounds
 
 
 class SparkCore:
+
+  _CHUNK_BASE = 10 ** 9
+
+  _INTEGER_DOMAINS = {
+    "int8": (-128, 127, "int"),
+    "int16": (-32768, 32767, "int"),
+    "int32": (-2147483648, 2147483647, "int"),
+    "int64": (-9223372036854775808, 9223372036854775807, "bigint"),
+    "uint8": (0, 255, "int"),
+    "uint16": (0, 65535, "int"),
+    "uint32": (0, 4294967295, "bigint"),
+    "int": (-2147483648, 2147483647, "int"),
+    "integer": (-2147483648, 2147483647, "integer"),
+    "bigint": (-9223372036854775808, 9223372036854775807, "bigint"),
+    "long": (-9223372036854775808, 9223372036854775807, "long"),
+  }
+
+  @staticmethod
+  def _fold_decimal_limb(F, high, low, width, precision):
+    base = F.lit(str(2 ** 32)).cast("decimal(10,0)")
+    modulus = F.lit(str(width)).cast("decimal(20,0)")
+    combined = high * base + low
+    if precision == 32:
+      combined = combined.cast("decimal(32,0)")
+    return F.pmod(combined, modulus).cast(f"decimal({precision},0)")
+
+  @staticmethod
+  def _integer_chunks(value, length):
+    chunks = []
+    while value:
+      value, chunk = divmod(value, SparkCore._CHUNK_BASE)
+      chunks.append(chunk)
+    chunks = list(reversed(chunks or [0]))
+    return [0] * (length - len(chunks)) + chunks
+
+  @staticmethod
+  def _chunk_literal(F, value, length):
+    return F.array(*[
+      F.lit(chunk).cast("long")
+      for chunk in SparkCore._integer_chunks(value, length)
+    ])
+
+  @staticmethod
+  def _add_chunk_arrays(F, left, right):
+    base = F.lit(SparkCore._CHUNK_BASE).cast("long")
+    indices = F.reverse(F.sequence(F.lit(1), F.size(left)))
+    initial = F.struct(
+      F.array().cast("array<long>").alias("digits"),
+      F.lit(0).cast("long").alias("carry"),
+    )
+
+    def add_digit(state, index):
+      total = F.element_at(left, index) + F.element_at(right, index) + state["carry"]
+      return F.struct(
+        F.concat(F.array(F.pmod(total, base).cast("long")), state["digits"]).alias("digits"),
+        F.floor(total / base).cast("long").alias("carry"),
+      )
+
+    return F.aggregate(indices, initial, add_digit)["digits"]
+
+  @staticmethod
+  def _subtract_chunk_arrays(F, left, right):
+    base = F.lit(SparkCore._CHUNK_BASE).cast("long")
+    indices = F.reverse(F.sequence(F.lit(1), F.size(left)))
+    initial = F.struct(
+      F.array().cast("array<long>").alias("digits"),
+      F.lit(0).cast("long").alias("borrow"),
+    )
+
+    def subtract_digit(state, index):
+      difference = F.element_at(left, index) - F.element_at(right, index) - state["borrow"]
+      return F.struct(
+        F.concat(F.array(F.pmod(difference, base).cast("long")), state["digits"]).alias("digits"),
+        F.when(difference < 0, F.lit(1)).otherwise(F.lit(0)).cast("long").alias("borrow"),
+      )
+
+    return F.aggregate(indices, initial, subtract_digit)["digits"]
+
+  @staticmethod
+  def _double_add_bit(F, digits, bit):
+    base = F.lit(SparkCore._CHUNK_BASE).cast("long")
+    indices = F.reverse(F.sequence(F.lit(1), F.size(digits)))
+    initial = F.struct(
+      F.array().cast("array<long>").alias("digits"),
+      bit.cast("long").alias("carry"),
+    )
+
+    def double_digit(state, index):
+      total = F.element_at(digits, index) * F.lit(2) + state["carry"]
+      return F.struct(
+        F.concat(F.array(F.pmod(total, base).cast("long")), state["digits"]).alias("digits"),
+        F.floor(total / base).cast("long").alias("carry"),
+      )
+
+    return F.aggregate(indices, initial, double_digit)["digits"]
+
+  @staticmethod
+  def _fold_bits_mod(F, bits, width):
+    zero = F.transform(width, lambda _chunk: F.lit(0).cast("long"))
+
+    def fold_bit(remainder, bit):
+      candidate = SparkCore._double_add_bit(F, remainder, bit)
+      return F.when(
+        candidate >= width,
+        SparkCore._subtract_chunk_arrays(F, candidate, width),
+      ).otherwise(candidate)
+
+    return F.aggregate(bits, zero, fold_bit)
+
+  @staticmethod
+  def _offset_chunks(F, residue, lower, length):
+    lower_chunks = SparkCore._chunk_literal(F, abs(lower), length)
+    if lower >= 0:
+      return F.struct(
+        SparkCore._add_chunk_arrays(F, lower_chunks, residue).alias("magnitude"),
+        F.lit(False).alias("negative"),
+      )
+
+    crosses_zero = residue >= lower_chunks
+    return F.struct(
+      F.when(
+        crosses_zero,
+        SparkCore._subtract_chunk_arrays(F, residue, lower_chunks),
+      ).otherwise(
+        SparkCore._subtract_chunk_arrays(F, lower_chunks, residue)
+      ).alias("magnitude"),
+      (~crosses_zero).alias("negative"),
+    )
+
+  @staticmethod
+  def _float_lattice_expression(F, lower, upper, decimals):
+    width = upper - lower + 1
+    length = max(
+      len(SparkCore._integer_chunks(width, 0)),
+      len(SparkCore._integer_chunks(abs(lower), 0)),
+      len(SparkCore._integer_chunks(abs(upper), 0)),
+    ) + 1
+    width_chunks = SparkCore._chunk_literal(F, width, length)
+
+    if width == 1:
+      residue = SparkCore._chunk_literal(F, 0, length)
+    else:
+      limb_count = (width.bit_length() + 31) // 32 + 2
+      limbs = [F.floor(F.rand() * F.lit(2 ** 32)).cast("long") for _ in range(limb_count)]
+      bits = F.array(*[
+        F.getbit(limb, F.lit(position)).cast("long")
+        for limb in limbs
+        for position in range(31, -1, -1)
+      ])
+      residue = SparkCore._fold_bits_mod(F, bits, width_chunks)
+
+    offset = SparkCore._offset_chunks(F, residue, lower, length)
+    magnitude = offset["magnitude"]
+    negative = offset["negative"]
+
+    padded = F.transform(
+      magnitude,
+      lambda chunk: F.lpad(chunk.cast("string"), 9, "0"),
+    )
+    unsigned = F.regexp_replace(F.array_join(padded, ""), r"^0+(?!$)", "")
+    signed = F.when(
+      negative & (unsigned != "0"),
+      F.concat(F.lit("-"), unsigned),
+    ).otherwise(unsigned)
+    return F.concat(signed, F.lit(f"e{-decimals}")).cast("double")
 
   @staticmethod
   def gen_uuid4(spark, F, df, col_name):
@@ -16,34 +181,35 @@ class SparkCore:
 
   @staticmethod
   def gen_ints(spark, F, df, col_name, min=0, max=10, int_type="long"):
-    """
-    Generate random integers.
-    
-    Args:
-        int_type: Integer type specification
-                 - Accepts Spark types: "int", "bigint", "long", "integer"
-                 - Accepts NPCore types: "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64"
-                   (automatically mapped to Spark equivalents)
-    """
-    # Map NPCore int_type values to Spark equivalents
-    np_to_spark_mapping = {
-        "int8": "int",
-        "int16": "int", 
-        "int32": "int",
-        "int64": "bigint",
-        "uint8": "int",
-        "uint16": "int",
-        "uint32": "bigint",
-        "uint64": "bigint"
-    }
-    
-    # Convert NPCore types to Spark types if needed
-    spark_type = np_to_spark_mapping.get(int_type, int_type)
-    
-    allowed_integers = ["int", "bigint", "long", "integer"]
-    assert spark_type in allowed_integers, f"int_type must be one of {allowed_integers} or NPCore types {list(np_to_spark_mapping.keys())}"
-    if min > max: raise ValueError(f"min ({min}) must be <= max ({max})")
-    return df.withColumn(col_name, F.floor(F.rand() * (max - min + 1) + min).cast(spark_type))
+    """Generate exact inclusive integers in the requested logical domain."""
+    if int_type not in SparkCore._INTEGER_DOMAINS:
+      raise ValueError(f"unsupported Spark integer type: {int_type!r}")
+    if type(min) is not int or type(max) is not int:
+      raise ValueError("integer bounds must be integers")
+    if min > max:
+      raise ValueError(f"min ({min}) must be <= max ({max})")
+
+    type_min, type_max, spark_type = SparkCore._INTEGER_DOMAINS[int_type]
+    if min < type_min or max > type_max:
+      raise ValueError(f"bounds must fit the logical {int_type} domain")
+
+    if min == max:
+      value = F.lit(str(min)).cast(spark_type)
+      return df.withColumn(col_name, value)
+
+    width = max - min + 1
+    limbs = [
+      F.floor(F.rand() * F.lit(2 ** 32)).cast("decimal(10,0)")
+      for _ in range(3)
+    ]
+    high_mod = SparkCore._fold_decimal_limb(
+      F, limbs[0], limbs[1], width, precision=20
+    )
+    word_mod = SparkCore._fold_decimal_limb(
+      F, high_mod, limbs[2], width, precision=32
+    )
+    value = F.lit(str(min)).cast("decimal(20,0)") + word_mod
+    return df.withColumn(col_name, value.cast(spark_type))
 
   @staticmethod
   def gen_ints_zfilled(spark, F, df, col_name, length=10):
@@ -53,8 +219,11 @@ class SparkCore:
 
   @staticmethod
   def gen_floats(spark, F, df, col_name, min=0.0, max=10.0, decimals=2):
-    if min > max: raise ValueError(f"min ({min}) must be <= max ({max})")
-    return df.withColumn(col_name, F.round(F.rand() * (max - min) + min, decimals))
+    if min > max:
+      raise ValueError(f"min ({min}) must be <= max ({max})")
+    lower, upper, _scale = float_lattice_bounds(min, max, decimals)
+    value = SparkCore._float_lattice_expression(F, lower, upper, decimals)
+    return df.withColumn(col_name, value)
 
   @staticmethod
   def gen_floats_normal(spark, F, df, col_name, mean=0.0, std=1.0, decimals=2):

@@ -13,12 +13,6 @@ from rand_engine.core._spark_core import SparkCore
 from rand_engine.main.spark_generator import SparkGenerator
 
 
-SPARK_EXACT_DOMAIN_RED = pytest.mark.xfail(
-    strict=True,
-    reason="Spark exact decimal-limb numeric domains are not implemented",
-)
-
-
 def _literal_limb_fold(spark, F, limb0, limb1, limb2, width, minimum):
     fold = getattr(SparkCore, "_fold_decimal_limb", None)
     if fold is None:
@@ -217,7 +211,6 @@ class TestSparkCoreNumeric:
         assert abs(stats["mean"] - mean) < mean * 0.1
         assert abs(stats["std"] - std) < std * 0.2  # More tolerance for std
 
-    @SPARK_EXACT_DOMAIN_RED
     @pytest.mark.parametrize((
         "limb0", "limb1", "limb2", "width", "minimum", "expected"
     ), [
@@ -245,7 +238,6 @@ class TestSparkCoreNumeric:
 
         assert actual == expected
 
-    @SPARK_EXACT_DOMAIN_RED
     def test_supported_integer_domains_keep_exact_singleton_bounds(
         self, spark_session, spark_functions,
     ):
@@ -279,7 +271,6 @@ class TestSparkCoreNumeric:
 
         assert actual == cases
 
-    @SPARK_EXACT_DOMAIN_RED
     @pytest.mark.parametrize(("int_type", "minimum", "maximum"), [
         ("uint64", 0, 1),
         (True, 0, 1),
@@ -311,7 +302,6 @@ class TestSparkCoreNumeric:
 
         assert actual is ValueError
 
-    @SPARK_EXACT_DOMAIN_RED
     def test_float_decimal_lattice_and_empty_domains(
         self, spark_session, spark_functions,
     ):
@@ -349,7 +339,183 @@ class TestSparkCoreNumeric:
             )
             assert {row["value"] for row in result.select("value").collect()} == {expected}
 
-    @SPARK_EXACT_DOMAIN_RED
+    @pytest.mark.parametrize(("method", "left", "right", "expected"), [
+        ("_add_chunk_arrays", [0, 999999999], [0, 2], [1, 1]),
+        ("_add_chunk_arrays", [0, 999999999, 999999999], [0, 0, 1], [1, 0, 0]),
+        ("_subtract_chunk_arrays", [1, 0, 0], [0, 0, 1], [0, 999999999, 999999999]),
+        ("_subtract_chunk_arrays", [9, 0, 0], [8, 999999999, 999999999], [0, 0, 1]),
+    ])
+    def test_native_chunk_arithmetic_matches_literal_oracles(
+        self, spark_session, spark_functions, method, left, right, expected,
+    ):
+        operation = getattr(SparkCore, method, None)
+        if operation is None:
+            actual = {"error": f"SparkCore.{method} is missing"}
+        else:
+            F = spark_functions
+            row = spark_session.range(1).select(
+                operation(
+                    F,
+                    F.array(*[F.lit(value).cast("long") for value in left]),
+                    F.array(*[F.lit(value).cast("long") for value in right]),
+                ).alias("value")
+            ).first()
+            actual = row["value"]
+
+        assert actual == expected
+
+    @pytest.mark.parametrize(("bits", "width", "expected"), [
+        ([1, 1, 1, 1], [0, 11], [0, 4]),
+        ([1, 1, 1, 0, 1, 0], [0, 41], [0, 17]),
+        ([1] * 60, [1, 1], [0, 453925472]),
+    ])
+    def test_native_bit_fold_matches_literal_modulo_oracle(
+        self, spark_session, spark_functions, bits, width, expected,
+    ):
+        fold = getattr(SparkCore, "_fold_bits_mod", None)
+        if fold is None:
+            actual = {"error": "SparkCore._fold_bits_mod is missing"}
+        else:
+            F = spark_functions
+            row = spark_session.range(1).select(
+                fold(
+                    F,
+                    F.array(*[F.lit(bit).cast("long") for bit in bits]),
+                    F.array(*[F.lit(value).cast("long") for value in width]),
+                ).alias("value")
+            ).first()
+            actual = row["value"]
+
+        assert actual == expected
+
+    @pytest.mark.parametrize(("lower", "residue", "expected_magnitude", "expected_negative"), [
+        (-500, [0, 100], [0, 400], True),
+        (-100, [0, 90], [0, 10], True),
+        (-100, [0, 100], [0, 0], False),
+        (-100, [0, 110], [0, 10], False),
+        (100, [0, 10], [0, 110], False),
+    ])
+    def test_native_signed_offset_handles_negative_and_crossing_zero(
+        self, spark_session, spark_functions,
+        lower, residue, expected_magnitude, expected_negative,
+    ):
+        F = spark_functions
+        offset = getattr(SparkCore, "_offset_chunks", None)
+        if offset is None:
+            actual = {"error": "SparkCore._offset_chunks is missing"}
+        else:
+            row = spark_session.range(1).select(
+                offset(
+                    F,
+                    F.array(*[F.lit(value).cast("long") for value in residue]),
+                    lower,
+                    len(residue),
+                ).alias("offset")
+            ).first()["offset"]
+            actual = (row["magnitude"], row["negative"])
+
+        assert actual == (expected_magnitude, expected_negative)
+
+    def test_float_lattice_supports_extreme_scales(
+        self, spark_session, spark_functions,
+    ):
+        F = spark_functions
+        maximum = 1.7976931348623157e308
+        try:
+            max_result = SparkCore.gen_floats(
+                spark_session,
+                F,
+                spark_session.range(1),
+                "value",
+                min=maximum,
+                max=maximum,
+                decimals=0,
+            ).first()["value"]
+            tiny_result = SparkCore.gen_floats(
+                spark_session,
+                F,
+                spark_session.range(1),
+                "value",
+                min=1.0,
+                max=1.0,
+                decimals=5000,
+            ).first()["value"]
+            actual = (max_result, tiny_result)
+        except Exception as error:
+            actual = {"error": type(error).__name__}
+
+        assert actual == (1.7976931348623157e308, 1.0)
+
+    def test_float_lattice_wide_101_digit_domain_uses_native_plan(
+        self, spark_session, spark_functions,
+    ):
+        F = spark_functions
+        wide = SparkCore.gen_floats(
+            spark_session,
+            F,
+            spark_session.range(1),
+            "value",
+            min=0.0,
+            max=1e100,
+            decimals=0,
+        )
+        wide_value = wide.first()["value"]
+        prior_max_fields = spark_session.conf.get("spark.sql.debug.maxToStringFields")
+        spark_session.conf.set("spark.sql.debug.maxToStringFields", 10000)
+        try:
+            executed_plan = wide._jdf.queryExecution().executedPlan().toString().lower()
+        finally:
+            spark_session.conf.set("spark.sql.debug.maxToStringFields", prior_max_fields)
+        rand_seeds = re.findall(r"rand\((-?\d+)\)", executed_plan)
+
+        assert 0.0 <= wide_value <= 1e100
+        assert wide_value.is_integer()
+        assert len(set(rand_seeds)) == 13
+        assert "pythonudf" not in executed_plan
+        assert "batchevalpython" not in executed_plan
+
+    @pytest.mark.parametrize(("minimum", "maximum", "decimals"), [
+        (float("nan"), 1.0, 2),
+        (0.0, float("inf"), 2),
+        (0.0, 1.0, True),
+        (9.991, 9.991, 2),
+    ])
+    def test_invalid_float_lattices_fail_before_frame_execution(
+        self, spark_session, spark_functions, minimum, maximum, decimals,
+    ):
+        try:
+            SparkCore.gen_floats(
+                spark_session,
+                spark_functions,
+                _NoExecutionFrame(),
+                "value",
+                min=minimum,
+                max=maximum,
+                decimals=decimals,
+            )
+        except Exception as error:
+            actual = type(error)
+        else:
+            actual = None
+
+        assert actual is ValueError
+
+    def test_empty_float_frame_keeps_double_type(
+        self, spark_session, spark_functions,
+    ):
+        result = SparkCore.gen_floats(
+            spark_session,
+            spark_functions,
+            spark_session.range(0),
+            "value",
+            min=-1e100,
+            max=1e100,
+            decimals=25,
+        )
+
+        assert result.collect() == []
+        assert result.schema["value"].dataType.simpleString() == "double"
+
     def test_generator_keeps_bigint_literal_and_uses_no_python_udf(
         self, spark_session, spark_functions,
     ):
