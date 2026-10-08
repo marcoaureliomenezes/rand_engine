@@ -4,6 +4,7 @@ Covers common methods shared between DataGenerator and SparkGenerator.
 """
 
 import pytest
+from rand_engine import DataGenerator
 from rand_engine.validators.common_validator import CommonValidator
 from rand_engine.validators.exceptions import SpecValidationError
 
@@ -249,3 +250,103 @@ def test_dates_format_outside_supported_directives_is_refused_by_both_engines(fm
 def test_unix_timestamps_format_is_not_restricted():
     spec = {"t": {"method": "unix_timestamps", "kwargs": {"start": "Jan 01 2020", "end": "Dec 31 2024", "date_format": "%b %d %Y"}}}
     assert CommonValidator.validate_spark_spec(spec) == []
+
+
+def _caught_validation(call):
+    try:
+        call()
+    except Exception as error:
+        return error
+    return None
+
+
+@pytest.mark.xfail(strict=True, reason="J1.S1.T1 RED: numeric type issues must collect before semantics")
+def test_wrong_numeric_types_are_collected_before_semantic_checks():
+    specs = {
+        "integer_value": {"method": "integers", "kwargs": {"min": "low", "max": 10}},
+        "float_value": {"method": "floats", "kwargs": {"min": "low", "max": "high", "decimals": "two"}},
+        "normal_value": {"method": "floats_normal", "kwargs": {"mean": "mean", "std": "std", "decimals": "two"}},
+        "boolean_value": {"method": "booleans", "kwargs": {"true_prob": "abc"}},
+        "exponential_value": {"method": "exponential", "kwargs": {"scale": "scale", "decimals": "two"}},
+        "lognormal_value": {"method": "lognormal", "kwargs": {"mean": "mean", "std": "std", "decimals": "two"}},
+        "poisson_value": {"method": "poisson", "kwargs": {"lam": "lam"}},
+        "zipf_value": {"method": "zipf", "kwargs": {"a": "a"}},
+    }
+
+    error = _caught_validation(lambda: DataGenerator(specs))
+
+    assert isinstance(error, SpecValidationError)
+    message = str(error)
+    for column, parameters in {
+        "integer_value": ("min",),
+        "float_value": ("min", "max", "decimals"),
+        "normal_value": ("mean", "std", "decimals"),
+        "boolean_value": ("true_prob",),
+        "exponential_value": ("scale", "decimals"),
+        "lognormal_value": ("mean", "std", "decimals"),
+        "poisson_value": ("lam",),
+        "zipf_value": ("a",),
+    }.items():
+        assert f"Column '{column}'" in message
+        for parameter in parameters:
+            assert f"'{parameter}'" in message
+
+
+@pytest.mark.xfail(strict=True, reason="J1.S1.T1 RED: new distribution domains need validation")
+@pytest.mark.parametrize(("method", "kwargs", "parameter"), [
+    ("exponential", {"scale": 0}, "scale"),
+    ("exponential", {"decimals": -1}, "decimals"),
+    ("exponential", {"decimals": 1.5}, "decimals"),
+    ("lognormal", {"std": -1}, "std"),
+    ("lognormal", {"decimals": -1}, "decimals"),
+    ("poisson", {"lam": -1}, "lam"),
+    ("zipf", {"a": 1}, "a"),
+])
+def test_new_distribution_domains_are_rejected_before_generation(method, kwargs, parameter):
+    error = _caught_validation(lambda: DataGenerator({"value": {"method": method, "kwargs": kwargs}}))
+
+    assert isinstance(error, SpecValidationError)
+    message = str(error)
+    assert f"Column 'value'" in message
+    assert f"'{parameter}'" in message
+    assert "does not exist" not in message
+
+
+@pytest.mark.xfail(strict=True, reason="J1.S1.T1 RED: modifier rates need probability validation")
+@pytest.mark.parametrize(("modifier", "value"), [
+    ("null_rate", "often"),
+    ("null_rate", -0.1),
+    ("null_rate", 1.1),
+    ("anomaly_rate", "often"),
+    ("anomaly_rate", -0.1),
+    ("anomaly_rate", 1.1),
+])
+def test_modifier_rates_require_real_probabilities(modifier, value):
+    column = {"method": "integers", "kwargs": {"min": 0, "max": 10}, modifier: value}
+    error = _caught_validation(lambda: DataGenerator({"value": column}))
+
+    assert isinstance(error, SpecValidationError)
+    message = str(error)
+    assert "Column 'value'" in message
+    assert f"'{modifier}'" in message
+
+
+@pytest.mark.xfail(strict=True, reason="J1.S1.T1 RED: Spark must refuse NumPy-only features")
+@pytest.mark.parametrize(("config", "message_parts"), [
+    ({"method": "exponential", "kwargs": {}}, ("exponential", "DataGenerator")),
+    ({"method": "lognormal", "kwargs": {}}, ("lognormal", "DataGenerator")),
+    ({"method": "poisson", "kwargs": {}}, ("poisson", "DataGenerator")),
+    ({"method": "zipf", "kwargs": {}}, ("zipf", "DataGenerator")),
+    ({"method": "constant", "kwargs": {"value": 1}}, ("constant", "DataGenerator")),
+    ({"method": "integers", "kwargs": {"min": 0, "max": 10}, "null_rate": 0.1}, ("null_rate", "DataGenerator")),
+    ({"method": "integers", "kwargs": {"min": 0, "max": 10}, "anomaly_rate": 0.1, "anomaly_values": [99]}, ("anomaly_rate", "DataGenerator")),
+    ({"method": "integers", "kwargs": {"min": 0, "max": 10, "int_type": "uint64"}}, ("uint64", "Spark")),
+])
+def test_spark_refuses_numpy_only_features_before_execution(config, message_parts):
+    error = _caught_validation(lambda: CommonValidator.validate_spark_and_raise({"value": config}))
+
+    assert isinstance(error, SpecValidationError)
+    message = str(error)
+    assert "Column 'value'" in message
+    for part in message_parts:
+        assert part in message
