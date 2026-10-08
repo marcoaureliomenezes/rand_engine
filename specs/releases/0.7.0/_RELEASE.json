@@ -1,10 +1,10 @@
 {
   "schema": "release-state-v1",
   "release": "0.7.0",
-  "phase": "DEFINITION",
+  "phase": "IMPLEMENTATION",
   "defined": {
-    "sha": "cedc6351ba7289f17c212e350b1cb29ade656f67",
-    "ts": "2026-10-03T20:34:51Z"
+    "sha": "3dee8bdc0e4b0d676d553c2ac3db54b613879d7b",
+    "ts": "2026-10-08T01:21:23Z"
   },
   "implemented": {
     "sha": "69d0d33577ec4c3820e54eeef4989fd08dfe4787",
@@ -150,6 +150,15 @@
       "agent": "main-thread",
       "kind": "note",
       "text": "RC2 grill: 14 product decisions confirmed via clickable selectors, followed by operator demand to proceed. All five reproduced forensic-review bug proposals confirmed; separate registration tree retains the ledger writer's rc-1 discovery attribution. The resulting Draft SPEC is still subject to operator approval; no implementation claim or milestone is made."
+    },
+    {
+      "ts": "2026-10-08T01:21:23Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-2",
+      "milestone": "defined",
+      "sha": "3dee8bdc0e4b0d676d553c2ac3db54b613879d7b",
+      "text": "Candidate defined at 3dee8bdc0e4b0d676d553c2ac3db54b613879d7b; phase IMPLEMENTATION."
     }
   ]
 }
