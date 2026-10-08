@@ -60,7 +60,7 @@ The SPEC's 25-row review is binding. The rebuild jobs preserve all assertions be
 - Convert float bounds with `Decimal(str(value))`. For decimals `d`, compute integer endpoints `ceil(min*10**d)` and `floor(max*10**d)`, refuse only an empty lattice, draw inclusive lattice integers, then divide by the scale. NumPy and Spark share the endpoints, not an implementation wrapper. The common int64-sized case stays vectorized; a wider finite lattice uses unbiased rejection from enough owned-RNG raw 64-bit limbs into Python integers before conversion to the approved float64 output. No new decimals ceiling or int64-only public-domain refusal is introduced for implementation convenience.
 - J2.S1.T1 owns public constructor RED cases for empty/invalid numeric lattices while retaining legacy negative decimals. J2.S2.T1 owns the catalog file with the NumPy core so validation delegates to that pure helper instead of copying domain arithmetic; Spark remains a disjoint J2.S2.T2 consumer of the same endpoints.
 - `NPCore` adds direct vectorized calls to the owned RNG for exponential, lognormal, poisson and zipf, with the SPEC defaults/dtypes. Rounding uses the declared decimals after the distribution draw. `constant` broadcasts an immutable approved scalar without touching RNG.
-- Preserve existing uniform/normal goldens except the declared uniform-float lattice change. Consolidated test tables keep every useful original bound, timezone, dtype, categorical and normal assertion.
+- Preserve existing uniform/normal goldens except the declared uniform-float lattice change. Consolidated test tables keep every useful original bound, timezone, dtype, categorical and normal assertion. J2.S2.T1 also owns the existing `tests/test_2_data_generator.py` seeded-output table narrowly enough to replace the one approved uniform-float hash and add the five new method hashes; its existing catalog/map coverage assertion remains unchanged. This is GREEN ownership of expectations that become red only after the approved registry expands, not a new behavior or corrective stage.
 
 #### Spark wide integers
 
@@ -121,6 +121,7 @@ The first multiply/add has inferred precision at most 22 and the second at most 
 | path | jobs | serialization |
 |---|---|---|
 | `benchmarks/speed.py`, `tests/test_benchmarks.py` | 2, 3 | Job 3 waits for Job 2 and adds modifier rows after new-method rows. |
+| `tests/test_2_data_generator.py` | 2, 3 | Job 2 owns only the approved uniform-float replacement hash and five new method hashes; Job 3 waits for Job 2 before adding modifier pipeline contracts. |
 | method catalog, validator intake and validator registry/domain contracts | 1, 2 | Job 1 serializes catalog/common J1.S2, shared-common/advanced J1.S3 and review corrections J1.S4–J1.S5; after Job 1 merges, Job 2 owns catalog delegation to the pure numeric helper plus catalog-derived per-engine sets. |
 | `rand_engine/main/data_generator.py`, `rand_engine/main/_rand_generator.py` | 3 | one green task owns the coupled pipeline. |
 | `rand_engine/file_handlers/_writer_batch.py`, `file_handler.py` | 5 | separate task owners use disjoint tests and merge at the stage barrier. |
@@ -129,7 +130,7 @@ The first multiply/add has inferred precision at most 22 and the second at most 
 ## 5. Job envelopes
 
 - Job 1 — validation intake: validator catalog/modules and validator tests, including the three validation-bug RED/fix owners.
-- Job 2 — numeric methods: NumPy/Spark cores, method map and numeric/core/benchmark tests, including the two numeric-bug RED/fix owners.
+- Job 2 — numeric methods: NumPy/Spark cores, method map and numeric/core/benchmark tests, plus the existing DataGenerator seeded-output table's six approved numeric-method hash entries, including the two numeric-bug RED/fix owners.
 - Job 3 — DataFrame modifiers: DataGenerator/RandGenerator, stream conversion and modifier benchmark rows/tests.
 - Job 4 — spec helpers: RandSpecs helpers and optional-Faker packaging plus focused helper/public tests.
 - Job 5 — batch writer: write planner, format sessions and writer fixtures/tests; `writeStream` production stays untouched.
@@ -142,7 +143,7 @@ The canonical task authority is the six files under `tasks/`, one per DAG job. T
 | requirement | RED owner | GREEN/closure owner |
 |---|---|---|
 | AC1.1–AC1.6 | J5.S1 | J5.S2; J6 local read-back reconciliation |
-| AC2.1–AC2.3 | J1.S4 totality regression and J2.S1 numeric contracts | J1.S5 validator correction and J2.S2 numeric implementation |
+| AC2.1–AC2.3 | J1.S4 totality regression and J2.S1 numeric contracts | J1.S5 validator correction and J2.S2 numeric implementation, including DataGenerator inventory and seeded hashes |
 | AC2.4 | J2.S1 benchmark contract | J6.S2 final-preparation CI artifact |
 | AC3.1–AC3.3, AC3.5 | J3.S1 | J3.S2 |
 | AC3.4 | J3.S1 stream and J5.S1 sinks | J3.S2 and J5.S2 |
@@ -153,10 +154,10 @@ The canonical task authority is the six files under `tasks/`, one per DAG job. T
 | AC7.1 | J1.S4 scalar-structure regression and J2.S1 | J1.S5 shared scalar predicate and J2.S2 |
 | AC7.2–AC7.3 | J2.S1 and J3.S1 | J2.S2 and J3.S2 |
 | AC8.1–AC8.2 | J1.S1 and J1.S4 review regressions | J1.S2–J1.S3 and J1.S5; canonical post-Job-5 bug batch records resolution |
-| AC8.3–AC8.5 | J1.S4 legacy-compatibility regression and J2.S1 | J1.S5 compatibility correction and J2.S2; canonical post-Job-5 bug batch records resolution |
+| AC8.3–AC8.5 | J1.S4 legacy-compatibility regression and J2.S1 | J1.S5 compatibility correction and J2.S2, including the approved uniform-float DataGenerator hash replacement; canonical post-Job-5 bug batch records resolution |
 | AC8.6 | J5.S1 | J5.S2 tests-only fixture completion |
 | AC8.7 | J1.S1 behavioral single-intake/no-generation test | J1.S2–J1.S3, J2.S2 and J3.S2 preserve that interface while their diffs evidence deletion; J6 review confirms no replacement path |
-| AC9.1 | J2.S1, J3.S1, J5.S1 | owning GREEN stages |
+| AC9.1 | J2.S1, J3.S1, J5.S1 | owning GREEN stages; J2.S2 owns its existing DataGenerator inventory/hash reconciliation |
 | AC9.2 | J1.S1, J1.S4 and J2.S1 | J1.S2–J1.S3, J1.S5, J2.S2 and J6 public reconciliation |
 | AC9.3 | J3.S1 and J5.S1 | J3.S2 and J5.S2 |
 | AC9.4 | J4.S1 and J6.S1 | J4.S2 and J6.S2 |
