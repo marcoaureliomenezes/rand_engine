@@ -92,7 +92,6 @@ def test_official_run_enforces_the_new_distribution_sibling_limit(tmp_path):
   assert "sibling" in message
 
 
-@pytest.mark.xfail(strict=True, reason="AC4.4 modifier benchmark contract is not implemented")
 def test_modifier_benchmark_inventory_is_literal():
   assert getattr(speed, "MODIFIERS", None) == {
     "null_rate": {"method": "integers", "null_rate": 0.1},
@@ -105,7 +104,6 @@ def test_modifier_benchmark_inventory_is_literal():
   assert getattr(speed, "MODIFIER_LIMIT", None) == 1.25
 
 
-@pytest.mark.xfail(strict=True, reason="AC4.4 modifier benchmark contract is not implemented")
 def test_modifier_comparison_passes_at_1_25_and_fails_only_over():
   compare_modifiers = getattr(speed, "compare_modifiers", None)
   assert compare_modifiers is not None
@@ -123,7 +121,6 @@ def test_modifier_comparison_passes_at_1_25_and_fails_only_over():
   assert compare_modifiers(over) == [("anomaly_rate", 10**4)]
 
 
-@pytest.mark.xfail(strict=True, reason="AC4.4 modifier benchmark contract is not implemented")
 def test_official_run_enforces_modifier_rows(tmp_path):
   class ModifierWorker:
     keys = ("integers",)
@@ -204,7 +201,7 @@ class Fake:
     self.name, self.log, self.keys, self.fail, self.returncode = name, log, keys, fail or {}, returncode
 
   def ask(self, req):
-    self.log.append((self.name, req))
+    if "modifier" not in req: self.log.append((self.name, req))
     if (len(self.log), self.name) in self.fail: return self.fail[(len(self.log), self.name)]
     if "extra" in req: return {**req, "core_s": 0.5, "peak_mib": 2.0}
     return {**req, "s": 1.0 if self.name == "B" else [1.2, 1.2, 3.0][sum(n == "H" and r == req for n, r in self.log) % 3]}
@@ -215,7 +212,10 @@ class Fake:
 
 def ab(log, base=None, head=None, error=None, out=None, sizes=(10,)):
   run(head or Fake("H", log), base, list(sizes), out, error)
-  return json.loads((out / "benchmarks.json").read_text(encoding="utf-8")), (out / "BENCHMARKS.md").read_text(encoding="utf-8")
+  report = json.loads((out / "benchmarks.json").read_text(encoding="utf-8"))
+  # Legacy A/B protocol tests inspect ordinary rows; modifier tests read the raw artifact directly.
+  report["records"] = [record for record in report["records"] if "modifier" not in record]
+  return report, (out / "BENCHMARKS.md").read_text(encoding="utf-8")
 
 
 @pytest.fixture(autouse=True)

@@ -69,6 +69,15 @@ METHOD_SIBLINGS = {
   "zipf": "integers",
 }
 SIBLING_LIMIT = 1.5
+MODIFIERS = {
+  "null_rate": {"method": "integers", "null_rate": 0.1},
+  "anomaly_rate": {
+    "method": "integers",
+    "anomaly_rate": 0.1,
+    "anomaly_values": [-1],
+  },
+}
+MODIFIER_LIMIT = 1.25
 
 
 def timed(fn):
@@ -78,9 +87,10 @@ def timed(fn):
   return elapsed
 
 
-def column(method):
+def column(method, modifier=None):
   col = {"method": method, "kwargs": SAMPLE_KWARGS[method]}
   if method in COLS: col["cols"] = COLS[method]
+  if modifier: col.update({k: v for k, v in MODIFIERS[modifier].items() if k != "method"})
   return col
 
 
@@ -98,7 +108,7 @@ def serve(req):
     with tempfile.TemporaryDirectory() as d:
       fn = (lambda: drain_stream(gen, rows)) if row == "stream_dict" else (lambda: gen.write.format(row).save(f"{d}/{row}"))
       return {"s": timed(fn)}
-  gen = DataGenerator({"c": column(row)}, seed=42).size(rows)
+  gen = DataGenerator({"c": column(row, req.get("modifier"))}, seed=42).size(rows)
   if "extra" not in req: return {"s": timed(gen.get_df)}
   core = RandGenerator({"c": column(row)}).map_methods(np.random.default_rng(42), 0, 0, "c")[row]
   core_s = statistics.median(timed(lambda: core(rows, **SAMPLE_KWARGS[row])) for _ in range(RUNS))
@@ -176,7 +186,7 @@ class Worker:
 
 
 def key(r):
-  return (r.get("method") or r["sink"], r["rows"])
+  return (r.get("modifier") or r.get("method") or r["sink"], r["rows"])
 
 
 def field(r):
@@ -194,13 +204,24 @@ def compare(current, baseline, limit=LIMIT):
 
 
 def compare_siblings(current, siblings=METHOD_SIBLINGS, limit=SIBLING_LIMIT):
-  rows = {key(record): metric(record) for record in current if "method" in record}
+  rows = {key(record): metric(record) for record in current if "method" in record and "modifier" not in record}
   return [
     (method, count)
     for (method, count), elapsed in rows.items()
     if method in siblings
     and (siblings[method], count) in rows
     and elapsed > limit * rows[(siblings[method], count)]
+  ]
+
+
+def compare_modifiers(current, modifiers=MODIFIERS, limit=MODIFIER_LIMIT):
+  methods = {(record["method"], record["rows"]): metric(record)
+             for record in current if "method" in record and "modifier" not in record}
+  return [
+    (record["modifier"], record["rows"])
+    for record in current
+    if record.get("modifier") in modifiers
+    and metric(record) > limit * methods[(record["method"], record["rows"])]
   ]
 
 
@@ -225,15 +246,23 @@ def plan_keys(sample_keys, head_keys, base_keys):
 
 def render(report, absent, error):
   records = report["records"]
+  base_candidates = [r for r in records if "modifier" not in r]
   failed, _ = compare(records, baseline(records))
+  modifier_failed = set(compare_modifiers(records))
+  method_times = {(r["method"], r["rows"]): metric(r)
+                  for r in records if "method" in r and "modifier" not in r}
   lines = [(f"# Speed benchmark (same-runner A/B)\n\nhead `{report['commit']}` · base `{report['base_commit'] or 'none'}` · "
             f"Python {report['python']} · NumPy {report['numpy']} · {report['runner']}\n"),
-           f"base rows {len(baseline(records))}/{len(records)}" + (f" · base pass failed: {error}" if error else ""),
+           f"base rows {len(baseline(records))}/{len(base_candidates)}" + (f" · base pass failed: {error}" if error else ""),
            *(f"- `{k}`: {why}" for k, why in absent.items()), "",
            "| method / sink | rows | rows/µs | base s | head s | ratio | peak MiB |", "|---|---|---|---|---|---|---|"]
   for r in records:
     k, b = key(r), r.get("base_" + field(r))
-    ratio = f"{metric(r) / b:.2f}" + (f" ❌ > {LIMIT}" if k in failed else "") if b else "absent → recorded"
+    if "modifier" in r:
+      ratio = f"{metric(r) / method_times[(r['method'], r['rows'])]:.2f}"
+      if k in modifier_failed: ratio += f" ❌ > {MODIFIER_LIMIT}"
+    else:
+      ratio = f"{metric(r) / b:.2f}" + (f" ❌ > {LIMIT}" if k in failed else "") if b else "absent → recorded"
     peak = f"{r['peak_mib']:.1f}" if "peak_mib" in r else "—"
     lines.append(f"| {k[0]} | {k[1]:,} | {r['rows_per_us']:.3f} | {f'{b:.3f}' if b else '—'} | {metric(r):.3f} | {ratio} | {peak} |")
   return "\n".join(lines) + "\n"
@@ -253,10 +282,16 @@ def run(head, base, sizes, out, error=None):
   methods, absent = plan_keys(list(SAMPLE_KWARGS), head.keys, None if error else base.keys)
   def shared(row): return error is None and (row in SINKS or row in base.keys)
   rows = sorted([(m, n) for n in sizes for m in methods] + [(s, sizes[0]) for s in SINKS], key=lambda rn: not shared(rn[0]))
+  requests = [{"row": row, "rows": n} for row, n in rows]
+  requests.extend(
+    {"row": config["method"], "rows": n, "modifier": name}
+    for n in sizes
+    for name, config in MODIFIERS.items()
+  )
   records = []
-  for i, (row, n) in enumerate(rows):  # head-only rows last: both workers share one call history while shared rows time
-    req, times = {"row": row, "rows": n}, {"head": [], "base": []}
-    base_ok = shared(row)
+  for i, req in enumerate(requests):  # head-only rows last: both workers share one call history while shared rows time
+    row, n, times = req["row"], req["rows"], {"head": [], "base": []}
+    base_ok = "modifier" not in req and shared(row)
     for side in (["base", "head"] if i % 2 == 0 else ["head", "base"]) * RUNS:
       if side == "head": times["head"].append(ask_head(req)["s"]); continue
       if not base_ok: continue
@@ -265,12 +300,13 @@ def run(head, base, sizes, out, error=None):
       elif "error" in reply: absent[row], base_ok = f"base raised {reply['error']}", False
       else: times["base"].append(reply["s"])
     r = {("sink" if row in SINKS else "method"): row, "rows": n}
+    if "modifier" in req: r["modifier"] = req["modifier"]
     r[field(r)] = statistics.median(times["head"])
     r["rows_per_us"] = n / (statistics.mean(times["head"]) * 1e6)
     if base_ok: r["base_" + field(r)] = statistics.median(times["base"])
     records.append(r)
   for r in records:  # extras after the last timed row, so they never skew a timed call's history
-    if "method" in r:
+    if "method" in r and "modifier" not in r:
       extra = ask_head({"extra": r["method"], "rows": r["rows"]})
       r.update(core_s=extra["core_s"], peak_mib=extra["peak_mib"])
   report = {"commit": os.environ.get("HEAD_SHA", "local"), "base_commit": os.environ.get("BASE_SHA") or None,
@@ -282,9 +318,11 @@ def run(head, base, sizes, out, error=None):
   if base is not None and base.returncode == 3: sys.exit(3)
   failed, _ = compare(records, baseline(records))
   sibling_failed = compare_siblings(records)
+  modifier_failed = compare_modifiers(records)
   failures = []
   if failed: failures.append(f"over {LIMIT}x base: {failed}")
   if sibling_failed: failures.append(f"over {SIBLING_LIMIT}x sibling: {sibling_failed}")
+  if modifier_failed: failures.append(f"over {MODIFIER_LIMIT}x modifier baseline: {modifier_failed}")
   if failures: sys.exit("; ".join(failures))
 
 
