@@ -376,6 +376,68 @@ def test_modifier_null_mask_runs_last_and_wins_on_overlap():
   assert actual == [90, None, None, None, None, 1, None, 90, None, None, None, None]
 
 
+@pytest.mark.xfail(strict=True, reason="J3.S3.T1 RED: modifiers use the spec key instead of its output alias")
+def test_modifier_single_column_alias_uses_generated_name_for_anomaly_and_null():
+  spec = {
+    "source": {
+      "method": "constant",
+      "kwargs": {"value": 1},
+      "cols": ["target"],
+      "anomaly_rate": 0.5,
+      "anomaly_values": [90, 91],
+      "null_rate": 0.5,
+    }
+  }
+  result = None
+  try:
+    result = DataGenerator(spec, seed=2026).size(12).get_df()
+  except RandEngineError as error:
+    result = error
+
+  assert not isinstance(result, RandEngineError)
+  assert result.columns.tolist() == ["target"]
+  series = result["target"]
+  actual = series.astype("object").where(series.notna(), None).tolist()
+  assert actual == [90, None, None, None, None, 1, None, 90, None, None, None, None]
+  assert str(series.dtype) == "Int64"
+
+
+def test_modifier_object_nulls_are_literal_python_none():
+  spec = {
+    "value": {
+      "method": "constant",
+      "kwargs": {"value": "fixed"},
+      "null_rate": 1,
+    }
+  }
+
+  series = DataGenerator(spec, seed=2026).size(3).get_df()["value"]
+
+  assert series.tolist() == [None, None, None]
+  assert str(series.dtype) == "object"
+
+
+@pytest.mark.xfail(strict=True, reason="J3.S3.T1 RED: transformed string nulls remain pd.NA")
+def test_modifier_transformed_string_nulls_are_literal_python_none_objects():
+  spec = {
+    "value": {
+      "method": "constant",
+      "kwargs": {"value": "fixed"},
+      "null_rate": 1,
+    }
+  }
+
+  series = (
+    DataGenerator(spec, seed=2026)
+    .transformers([lambda frame: frame.astype({"value": "string"})])
+    .size(3)
+    .get_df()["value"]
+  )
+
+  assert series.tolist() == [None, None, None]
+  assert str(series.dtype) == "object"
+
+
 def test_modifier_pipeline_orders_embedded_global_then_anomaly():
   spec = {
     "value": {
