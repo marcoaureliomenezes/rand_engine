@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+from functools import partial
 import time
 import pandas as pd
 import numpy as np
@@ -10,7 +12,14 @@ from rand_engine.utils.stream_handler import StreamHandler
 from rand_engine.validators.advanced_validator import AdvancedValidator
 from rand_engine.validators.exceptions import RandEngineError
 from rand_engine.validators.method_specs import METHOD_CATALOG
-  
+
+
+@dataclass(frozen=True)
+class _EvaluatedBatch:
+  frame: pd.DataFrame
+  declared_schema_def: Callable[[], pa.Schema]
+
+
 class DataGenerator:
       
   def __init__(self, random_spec: Callable[[], dict] | dict, seed: int = None):
@@ -35,21 +44,28 @@ class DataGenerator:
     AdvancedValidator.validate_and_raise(evaluated_spec)
 
   
-  def wrapped_df_generator(self, size: int, offset: int = 0) -> pd.DataFrame:
-    """Return one lazy generation/transform/modifier row-batch pipeline."""
-    def wrapped_lazy_dataframe():
-      evaluated_spec = self.__evaluate_spec()
-      rand_generator = RandGenerator(evaluated_spec)
+  def _evaluated_batch(self, size: int, offset: int = 0) -> _EvaluatedBatch:
+    evaluated_spec = self.__evaluate_spec()
+    rand_generator = RandGenerator(evaluated_spec)
 
-      df_pandas = rand_generator.generate_first_level(size=size, rng=self._rng, key_seed=self._key_seed, offset=offset)
-      df_pandas = rand_generator.apply_embedded_transformers(df_pandas)
-      df_pandas = rand_generator.apply_global_transformers(df_pandas, self._transformers)
-      if not isinstance(df_pandas, pd.DataFrame) or len(df_pandas.index) != size:
-        actual = len(df_pandas.index) if isinstance(df_pandas, pd.DataFrame) else "non-DataFrame"
-        raise RandEngineError(f"global transformers must preserve row count {size}; got {actual}")
-      df_pandas = rand_generator.apply_modifiers(df_pandas, self._rng)
-      return df_pandas
-    return wrapped_lazy_dataframe
+    frame = rand_generator.generate_first_level(size=size, rng=self._rng, key_seed=self._key_seed, offset=offset)
+    frame = rand_generator.apply_embedded_transformers(frame)
+    frame = rand_generator.apply_global_transformers(frame, self._transformers)
+    if not isinstance(frame, pd.DataFrame) or len(frame.index) != size:
+      actual = len(frame.index) if isinstance(frame, pd.DataFrame) else "non-DataFrame"
+      raise RandEngineError(f"global transformers must preserve row count {size}; got {actual}")
+    frame = rand_generator.apply_modifiers(frame, self._rng)
+    return _EvaluatedBatch(
+      frame,
+      partial(self._declared_schema_for, evaluated_spec),
+    )
+
+
+  def wrapped_df_generator(
+    self, size: int, offset: int = 0
+  ) -> Callable[[], pd.DataFrame]:
+    """Return one lazy generation/transform/modifier row-batch pipeline."""
+    return lambda: self._evaluated_batch(size, offset).frame
   
 
   def transformers(self, transformers: List[Callable]):
@@ -68,8 +84,7 @@ class DataGenerator:
     return self._size() if callable(self._size) else self._size
 
 
-  def _declared_schema(self) -> pa.Schema:
-    evaluated_spec = self.__evaluate_spec()
+  def _declared_schema_for(self, evaluated_spec: dict) -> pa.Schema:
     if self._transformers or any(config.get("transformers") for config in evaluated_spec.values()):
       raise RandEngineError("empty output schema is indeterminate when transformers are configured")
 
@@ -88,6 +103,10 @@ class DataGenerator:
     except Exception as error:
       raise RandEngineError(f"empty output schema cannot be derived: {type(error).__name__}") from error
     return pa.schema(fields)
+
+
+  def _declared_schema(self) -> pa.Schema:
+    return self._declared_schema_for(self.__evaluate_spec())
   
 
   def get_df(self):
@@ -112,7 +131,12 @@ class DataGenerator:
 
   @property
   def write(self):
-    return FileBatchWriter(self._resolve_size, self.wrapped_df_generator, self._declared_schema)
+    return FileBatchWriter(
+      self._resolve_size,
+      self.wrapped_df_generator,
+      self._declared_schema,
+      evaluated_batch_def=self._evaluated_batch,
+    )
 
 
   @property

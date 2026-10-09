@@ -14,6 +14,24 @@ from rand_engine.validators.exceptions import RandEngineError
 
 class FileBatchWriter(FileWriter):
 
+  def __init__(
+    self,
+    size_def,
+    microbatch_def,
+    schema_def=None,
+    *,
+    evaluated_batch_def=None,
+  ):
+    super().__init__(size_def, microbatch_def, schema_def)
+    self.evaluated_batch_def = evaluated_batch_def
+
+
+  def _generated_batch(self, size: int, offset: int):
+    if self.evaluated_batch_def is None:
+      return self.microbatch_def(size, offset)(), self.schema_def
+    batch = self.evaluated_batch_def(size, offset)
+    return batch.frame, batch.declared_schema_def
+
   @staticmethod
   def _positive_integer(name: str, value: object) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
@@ -122,8 +140,8 @@ class FileBatchWriter(FileWriter):
     single_append_from: Path | None,
   ) -> pa.Schema | None:
     single = len(file_sizes) == 1
-    declared_schema_def = (
-      None if self.write_format == "json" and batch_limit is None else self.schema_def
+    use_declared_schema = not (
+      self.write_format == "json" and batch_limit is None
     )
     for file_size in file_sizes:
       file_path = staging / f"output.{extension}" if single else self._part_path(staging, extension)
@@ -135,10 +153,14 @@ class FileBatchWriter(FileWriter):
         expected_schema=stable_schema,
       ) as session:
         for batch_size in self._batches(file_size, batch_limit):
-          frame = self.microbatch_def(batch_size, offset)()
-          session.write(frame, declared_schema_def)
+          frame, declared_schema_def = self._generated_batch(batch_size, offset)
+          session.write(
+            frame,
+            declared_schema_def if use_declared_schema else None,
+          )
           offset += batch_size
           del frame
+          del declared_schema_def
           if batch_limit is not None and session.schema is None:
             raise RandEngineError("schema is indeterminate when row batching is enabled")
           if session.schema is not None:
