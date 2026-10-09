@@ -475,3 +475,41 @@ def test_poisson_lambda_beyond_numpy_int64_result_domain_is_collected_before_gen
     assert isinstance(error, SpecValidationError)
     assert "Column 'value'" in str(error)
     assert "'lam'" in str(error)
+
+
+@pytest.mark.parametrize(("kwargs", "expected", "dtype"), [
+    ({"min": 7, "max": 7, "int_type": "int8"}, [7, 7, 7, 7, 7, 7], "int8"),
+    ({"min": -2, "max": 2, "int_type": "int8"}, [-1, 1, -1, -2, -2, 2], "int8"),
+    ({"min": 0, "max": 255, "int_type": "uint8"}, [78, 204, 64, 34, 16, 250], "uint8"),
+])
+def test_integer_range_equal_and_ordered_domains_validate_and_generate(kwargs, expected, dtype):
+    from rand_engine.validators.advanced_validator import AdvancedValidator
+
+    spec = {"value": {"method": "integers", "kwargs": kwargs}}
+
+    assert AdvancedValidator.validate(spec) == []
+    values = DataGenerator(spec, seed=11).size(6).get_df()["value"]
+    assert values.tolist() == expected
+    assert str(values.dtype) == dtype
+
+
+@pytest.mark.xfail(strict=True, reason="integer min greater than max is not yet validated")
+def test_integer_range_inverted_domain_is_collected_before_generation():
+    from rand_engine.validators.advanced_validator import AdvancedValidator
+
+    spec = {
+        "value": {
+            "method": "integers",
+            "kwargs": {"min": 101, "max": 100},
+        }
+    }
+    errors = AdvancedValidator.validate(spec)
+    error = _caught_validation(lambda: DataGenerator(spec))
+    message = str(error)
+
+    assert (
+        len(errors),
+        type(error),
+        "Column 'value'" in message,
+        "'min/max'" in message,
+    ) == (1, SpecValidationError, True, True)
