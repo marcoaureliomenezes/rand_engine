@@ -389,7 +389,6 @@ assert not any(name == "faker" or name.startswith("faker.") for name in sys.modu
     assert result.returncode == 0, result.stderr
 
 
-@pytest.mark.xfail(strict=True, reason="J4.S1.T2 RED: the wheel has no optional Faker extra")
 def test_wheel_exposes_faker_only_as_the_approved_optional_extra(tmp_path):
     project_root = Path(__file__).parents[2]
     output = tmp_path / "dist"

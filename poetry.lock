@@ -155,11 +155,12 @@ version = "28.4.1"
 description = "Faker is a Python package that generates fake data for you."
 optional = false
 python-versions = ">=3.8"
-groups = ["test"]
+groups = ["main", "test"]
 files = [
     {file = "Faker-28.4.1-py3-none-any.whl", hash = "sha256:e59c01d1e8b8e20a83255ab8232c143cb2af3b4f5ab6a3f5ce495f385ad8ab4c"},
     {file = "faker-28.4.1.tar.gz", hash = "sha256:4294d169255a045990720d6f3fa4134b764a4cdf46ef0d3c7553d2506f1adaa1"},
 ]
+markers = {main = "extra == \"faker\""}
 
 [package.dependencies]
 python-dateutil = ">=2.4"
@@ -578,7 +579,10 @@ files = [
     {file = "tzdata-2024.1.tar.gz", hash = "sha256:2674120f8d891909751c38abcdfd386ac0a5a1127954fbc332af6b5ceae07efd"},
 ]
 
+[extras]
+faker = ["faker"]
+
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "419098a8470ffb2699e2352eb0ae4cfc7efe8a6e3c7833601be8137e4857f695"
+content-hash = "22cb926321d353364d572905ad6fe221b76ff3f496e590188bbd7203044100db"
