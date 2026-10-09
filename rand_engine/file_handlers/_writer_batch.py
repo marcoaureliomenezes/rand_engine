@@ -136,6 +136,8 @@ class FileBatchWriter(FileWriter):
           session.write(frame)
           offset += batch_size
           del frame
+          if batch_limit is not None and session.schema is None:
+            raise RandEngineError("schema is indeterminate when row batching is enabled")
           if session.schema is not None:
             stable_schema = session.schema.remove_metadata()
         if session.schema is not None:

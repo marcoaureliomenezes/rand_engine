@@ -195,6 +195,7 @@ class _JsonFile:
     self._file_context = None
     self._closed = False
     self._has_content = False
+    self._deferred_payload = None
 
   @property
   def schema(self) -> pa.Schema | None:
@@ -231,9 +232,20 @@ class _JsonFile:
   def write(self, frame: PDDataFrame) -> None:
     if self._closed:
       raise RandEngineError("json file session is closed")
-    table = _arrow_table(frame)
-    self._schema = _require_same_schema(self._schema, table)
+    if self._deferred_payload is not None:
+      raise RandEngineError("json schema is indeterminate across batches")
     payload = frame.to_json(None, orient="records", lines=True, **self._options).encode("utf-8")
+    try:
+      table = _arrow_table(frame)
+    except RandEngineError as error:
+      # Pandas can serialize heterogeneous object columns that Arrow cannot type.
+      if self._schema is not None or not isinstance(
+        error.__cause__, (pa.ArrowInvalid, pa.ArrowTypeError)
+      ):
+        raise
+      self._deferred_payload = payload
+      return
+    self._schema = _require_same_schema(self._schema, table)
     self._open()
     self._file.write(payload)
     self._has_content = self._has_content or bool(payload)
@@ -241,6 +253,11 @@ class _JsonFile:
   def close(self) -> None:
     if self._closed:
       return
+    if self._deferred_payload is not None:
+      self._open()
+      self._file.write(self._deferred_payload)
+      self._has_content = self._has_content or bool(self._deferred_payload)
+      self._deferred_payload = None
     if not self._has_content:
       if self._schema is None and self._append_from is None:
         self._closed = True
