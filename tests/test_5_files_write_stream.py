@@ -1,11 +1,15 @@
+"""Intent: CONTRACT — writer-options-consumed-by-use (timeout/trigger read with defaults, never consumed); writer-state-shared-across-chains (each .writeStream access is a fresh writer); writer-size-not-from-generator (callable generator size reaches the stream; no size fails before overwrite deletes anything)."""
 import os
 import pandas as pd
 import glob
 import time
 import threading
 import pytest
+from types import SimpleNamespace
+from rand_engine.file_handlers import _writer_stream
 
 from rand_engine.main.data_generator import DataGenerator
+from rand_engine.validators.exceptions import RandEngineError
 from tests.fixtures.f1_data_generator_specs_right import (
     rand_spec_with_kwargs,
     rand_spec_with_args
@@ -49,8 +53,8 @@ def test_writing_multiple_files(
   start_time = time.time()
   _ = (
     DataGenerator(rand_spec_with_kwargs)
-      .writeStream
       .size(10**1)
+      .writeStream
       .mode("overwrite")
       .format(format_type)
       .option("compression", compression)
@@ -90,31 +94,63 @@ def test_writing_multiple_files_append(
 ):
   path = f"{base_path_files_test}/{format_type}/{file_path}"
   start_time = time.time()
-  _ = (
+  writer = (
     DataGenerator(rand_spec_with_kwargs)
-      .writeStream
       .size(10**1)
-      .mode("overwrite")
+      .writeStream
       .format(format_type)
       .option("compression", compression)
       .option("timeout", 0.1)
       .trigger(frequency=0.01)
-      .start(path)
   )
-
-  _ = (
-    DataGenerator(rand_spec_with_kwargs)
-      .writeStream
-      .size(10**1)
-      .mode("append")
-      .format(format_type)
-      .option("compression", compression)
-      .option("timeout", 0.1)
-      .trigger(frequency=0.01)
-      .start(path)
-  )
+  writer.mode("overwrite").start(path)
+  writer.mode("append").start(path)
 
   elapsed_time = time.time() - start_time
   files = glob.glob(f"{path}/*")
-  assert elapsed_time > 0.2
+  assert 0.2 < elapsed_time < 5
   assert len(files) >= 2
+
+
+def test_stream_defaults_timeout_20s_trigger_1s(rand_spec_with_kwargs, base_path_files_test, monkeypatch):
+  clock = {"now": 0.0}
+  def sleep(seconds): clock["now"] += seconds
+  monkeypatch.setattr(_writer_stream, "time", SimpleNamespace(time=lambda: clock["now"], sleep=sleep))
+  path = f"{base_path_files_test}/csv/streaming/defaults/clients"
+  sizes = iter(range(1, 100))
+  g = DataGenerator(rand_spec_with_kwargs).size(lambda: next(sizes))
+  g.writeStream.format("parquet").option("timeout", 1)  # an abandoned chain must not leak (fresh writer per access)
+  g.writeStream.start(path)
+  # one file per 1 s tick until the clock passes 20 s; the callable size is re-read per microbatch
+  assert sorted(len(pd.read_csv(f)) for f in glob.glob(f"{path}/*")) == list(range(1, 22))
+
+
+def test_no_size_fails_before_overwrite_deletes(rand_spec_with_kwargs, base_path_files_test):
+  path = f"{base_path_files_test}/csv/streaming/no_size/clients"
+  os.makedirs(path, exist_ok=True)
+  open(f"{path}/keep.csv", "w").close()
+  with pytest.raises(RandEngineError, match=r"\.size\(n\)"):
+    DataGenerator(rand_spec_with_kwargs).writeStream.mode("overwrite").start(path)
+  assert os.listdir(path) == ["keep.csv"]
+
+
+@pytest.mark.parametrize("format_type,reader", [
+  ("csv", lambda f: pd.read_csv(f, sep=";", compression="gzip")),
+  ("parquet", pd.read_parquet),
+])
+def test_stream_writes_through_pyarrow(rand_spec_with_kwargs, tmp_path, format_type, reader):
+  options = {"csv": {"sep": ";", "compression": "gzip"}, "parquet": {"compression": "zstd"}}[format_type]
+  writer = DataGenerator(rand_spec_with_kwargs).size(3).writeStream.format(format_type).options(timeout=0, **options).trigger(0)
+  writer.start(str(tmp_path / "out"))
+  [file] = glob.glob(str(tmp_path / "out" / "*"))
+  frame = reader(file)
+  assert len(frame) == 3 and list(frame.columns) == list(rand_spec_with_kwargs)
+
+
+def test_undocumented_option_fails_before_overwrite_deletes(rand_spec_with_kwargs, tmp_path):
+  path = str(tmp_path / "clients")
+  os.makedirs(path)
+  open(f"{path}/keep.csv", "w").close()
+  with pytest.raises(RandEngineError, match="'engine'.*accepted: index, sep, compression, timeout$"):
+    DataGenerator(rand_spec_with_kwargs).size(2).writeStream.option("engine", "x").mode("overwrite").start(path)
+  assert os.listdir(path) == ["keep.csv"]

@@ -7,7 +7,8 @@ when provided with incorrect spec configurations.
 
 import pytest
 from rand_engine.main.data_generator import DataGenerator
-from rand_engine.validators.exceptions import SpecValidationError
+from rand_engine.validators.exceptions import SpecValidationError, RandEngineError
+from tests.fixtures.f1_data_generator_specs_right import rand_spec_with_kwargs
 from tests.fixtures.f1_data_generator_specs_wrong import (
     wrong_spec_not_dict,
     wrong_spec_empty,
@@ -16,7 +17,6 @@ from tests.fixtures.f1_data_generator_specs_wrong import (
     wrong_spec_method_not_string,
     wrong_spec_missing_required_param,
     wrong_spec_wrong_param_type,
-    wrong_spec_both_kwargs_and_args,
     wrong_spec_missing_kwargs_and_args,
     wrong_spec_method_requires_cols,
     wrong_spec_cols_not_list,
@@ -84,15 +84,6 @@ def test_spec_wrong_param_type(wrong_spec_wrong_param_type):
         DataGenerator(wrong_spec_wrong_param_type)
     
     assert "must be int" in str(exc_info.value)
-
-
-def test_spec_both_kwargs_and_args(wrong_spec_both_kwargs_and_args):
-    """Test that DataGenerator raises exception when both kwargs and args are present."""
-    with pytest.raises(SpecValidationError) as exc_info:
-        DataGenerator(wrong_spec_both_kwargs_and_args)
-    
-    assert "cannot have both" in str(exc_info.value)
-    assert "simultaneously" in str(exc_info.value)
 
 
 def test_spec_missing_kwargs_and_args(wrong_spec_missing_kwargs_and_args):
@@ -183,3 +174,9 @@ def test_valid_spec_should_not_raise():
     
     assert df.shape[0] == 10
     assert set(df.columns) == set(valid_spec.keys())
+
+
+def test_no_size_raises_library_error(rand_spec_with_kwargs):
+  """Intent: CONTRACT — writer-size-not-from-generator: no size is a library error naming .size(n)."""
+  with pytest.raises(RandEngineError, match=r"\.size\(n\)"):
+    DataGenerator(rand_spec_with_kwargs).get_df()

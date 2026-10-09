@@ -1,0 +1,26 @@
+# rand-engine
+
+> Python + NumPy library that generates synthetic data very fast from a declarative spec (a dict of column -> method + kwargs): pandas DataFrames, infinite dict streams, csv/json/parquet files, Spark DataFrames, and related tables through `pk`/`fk` key columns. Seeded per generator; Faker pools compose on top.
+
+## Docs
+
+<!-- derived-from: public-api sha256:0d1a9b54e4a7 -->
+
+- [README](https://github.com/marcoaureliomenezes/rand_engine/blob/master/README.md): install, quickstart, seeds, related tables, streams and files
+- [DataGenerator](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/1_DATA_GENERATOR.md): every method, its kwargs, seeds, `stream_dict`
+- [SparkGenerator](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/2_SPARK_GENERATOR.md): the same spec on Spark
+- [Writing files](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/3_WRITING_FILES.md): `write`, `writeStream`, formats and accepted options
+- [Keys](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/4_CONSTRAINTS.md): `pk` and `fk` columns
+
+## Recipes
+
+<!-- derived-from: templates-and-examples sha256:3a80d1549af6 -->
+
+- [Recipes](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/5_RECIPES.md): Faker pools, Kafka or any queue, parquet lake, related tables
+
+## Optional
+
+<!-- derived-from: benchmarks sha256:42b63a34e160 -->
+
+- [Benchmarks](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/BENCHMARKS.md): rows/µs per method and sink, measured in CI
+- [Changelog](https://github.com/marcoaureliomenezes/rand_engine/blob/master/CHANGELOG.md): release notes and breaking changes

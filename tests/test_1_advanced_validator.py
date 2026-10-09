@@ -1,11 +1,19 @@
 """
 Tests for AdvancedValidator - validates DataGenerator specs.
-Covers common methods (integers, floats, etc.) + advanced methods (distincts_map, constraints, etc.)
+Covers common methods (integers, floats, etc.) + advanced methods (distincts_map, pk, fk, etc.)
 """
 
+import functools
+import inspect
+
 import pytest
+from rand_engine.main._rand_generator import RandGenerator
+from rand_engine.main.data_generator import DataGenerator
+from rand_engine.main.spark_generator import SparkGenerator
+from rand_engine.validators.common_validator import CommonValidator
 from rand_engine.validators.advanced_validator import AdvancedValidator
 from rand_engine.validators.exceptions import SpecValidationError
+from rand_engine.validators.method_specs import CORRELATED, METHOD_CATALOG, NUMPY, SPARK
 
 
 def test_valid_spec_integers():
@@ -131,30 +139,16 @@ def test_invalid_method_unknown():
     assert "Available methods" in errors[0]
 
 
-def test_invalid_both_kwargs_and_args():
-    """Tests error when having both kwargs and args simultaneously."""
-    spec = {
-        "idade": {
-            "method": "integers",
-            "kwargs": {"min": 0, "max": 100},
-            "args": [0, 100]
-        }
-    }
-    errors = AdvancedValidator.validate(spec)
-    assert len(errors) == 1
-    assert "cannot have both" in errors[0] and "simultaneously" in errors[0]
-
-
 def test_invalid_missing_kwargs_and_args():
-    """Tests error when neither kwargs nor args are present."""
+    """A spec without kwargs is checked against the method's required parameters."""
     spec = {
         "idade": {
             "method": "integers"
         }
     }
     errors = AdvancedValidator.validate(spec)
-    assert len(errors) == 1
-    assert "requires" in errors[0] and ("kwargs" in errors[0] or "args" in errors[0])
+    assert len(errors) == 2
+    assert "requires parameter 'min'" in errors[0]
 
 
 def test_invalid_kwargs_not_dict():
@@ -388,313 +382,248 @@ def test_valid_spec_complex_distincts():
 # CONSTRAINTS VALIDATION TESTS
 # ============================================================================
 
-def test_valid_constraints_pk_simple():
-    """Testa constraint PK válida simples."""
-    spec = {
-        "category_id": {
-            "method": "int_zfilled",
-            "kwargs": {"length": 4}
-        },
-        "constraints": {
-            "category_pk": {
-                "name": "category_pk",
-                "tipo": "PK",
-                "fields": ["category_id VARCHAR(4)"]
-            }
-        }
-    }
-    errors = AdvancedValidator.validate(spec)
-    assert len(errors) == 0
+@pytest.mark.parametrize("constraints", [
+    {"users_pk": {"name": "users_pk", "tipo": "PK", "fields": ["user_id VARCHAR(12)"]}},
+    {},
+])
+def test_constraints_key_is_refused_naming_pk_and_fk(constraints):
+    """AC5.1: the checkpoint left in 0.7.0; an old `constraints` spec fails pointing at pk/fk."""
+    spec = {"user_id": {"method": "pk"}, "constraints": constraints}
+    with pytest.raises(SpecValidationError, match=r"(?s)'constraints'.*\bpk\b.*\bfk\b"):
+        DataGenerator(spec)
+    assert len(AdvancedValidator.validate(spec)) == 1  # the refusal only, no column error on `constraints`
 
 
-def test_valid_constraints_pk_composite():
-    """Testa constraint PK composta (múltiplos campos)."""
-    spec = {
-        "client_id": {
-            "method": "int_zfilled",
-            "kwargs": {"length": 8}
-        },
-        "tp_pes": {
-            "method": "distincts",
-            "kwargs": {"distincts": ["PF", "PJ"]}
-        },
-        "constraints": {
-            "clients_pk": {
-                "name": "clients_pk",
-                "tipo": "PK",
-                "fields": ["client_id VARCHAR(8)", "tp_pes VARCHAR(2)"]
-            }
-        }
-    }
-    errors = AdvancedValidator.validate(spec)
-    assert len(errors) == 0
+@pytest.mark.parametrize("config, message", [
+    ({"method": "integers", "kwargs": {"min": 1, "max": 5, "dtype": "int"}}, "unknown parameters: 'dtype'"),
+    ({"method": "distincts_external", "kwargs": {"name": "t", "fields": ["id"], "watermark": "1 DAY"}}, "does not exist"),
+    ({"method": "distincts_map", "cols": ["device", "os"]}, "requires parameter 'distincts'"),
+])
+def test_spec_the_engine_cannot_run_is_rejected(config, message):
+    """validator-engine-schema-drift: no spec validates that DataGenerator then fails to generate."""
+    with pytest.raises(SpecValidationError, match=message):
+        DataGenerator({"c": config})
 
 
-def test_valid_constraints_fk_with_watermark():
-    """Testa constraint FK válida com watermark."""
-    spec = {
-        "product_id": {
-            "method": "int_zfilled",
-            "kwargs": {"length": 8}
-        },
-        "constraints": {
-            "category_fk": {
-                "name": "category_pk",
-                "tipo": "FK",
-                "fields": ["category_id"],
-                "watermark": 60
-            }
-        }
-    }
-    errors = AdvancedValidator.validate(spec)
-    assert len(errors) == 0
+def test_validated_spec_without_kwargs_generates():
+    """The validator's own uuid4 example (no kwargs) validates and generates."""
+    assert len(DataGenerator({"id": {"method": "uuid4"}}).size(3).get_df()) == 3
 
 
-def test_valid_constraints_fk_without_watermark():
-    """Testa constraint FK sem watermark (warning esperado)."""
-    spec = {
-        "product_id": {
-            "method": "int_zfilled",
-            "kwargs": {"length": 8}
-        },
-        "constraints": {
-            "category_fk": {
-                "name": "category_pk",
-                "tipo": "FK",
-                "fields": ["category_id"]
-            }
-        }
-    }
-    errors = AdvancedValidator.validate(spec)
-    # Should have 1 warning about missing watermark
-    assert len(errors) == 1
-    assert "watermark" in errors[0].lower()
-    assert "⚠️" in errors[0]
+@pytest.mark.parametrize("column, match", [
+    ({"method": "pk", "kwargs": {"style": "random"}}, r"(?s)style.*sequence.*permuted"),
+    ({"method": "pk", "kwargs": {"style": "permuted"}}, r"integer .domain."),
+    ({"method": "pk", "kwargs": {"style": "permuted", "domain": 0}}, r"integer .domain."),
+    ({"method": "pk", "kwargs": {"step": 0}}, r"step"),
+    ({"method": "pk", "kwargs": {"start": 1.5}}, r"start"),
+    ({"method": "pk", "kwargs": {"step": "2"}}, r"step"),
+    ({"method": "pk", "kwargs": {"style": "permuted", "domain": 10, "key": 0.5}}, r"key"),
+    ({"method": "pk", "kwargs": {"format": "C-{}-{}"}}, r"format"),
+    ({"method": "pk", "kwargs": {"format": "C-"}}, r"format"),
+    ({"method": "pk", "kwargs": {"format": "C-{x}"}}, r"format"),
+    ({"method": "pk", "kwargs": {"format": "C-{1}"}}, r"format"),
+    ({"method": "pk", "kwargs": {"format": "{:s}"}}, r"format"),
+    ({"method": "pk", "kwargs": {"format": "{:.0e}"}}, r"format"),
+    ({"method": "pk", "kwargs": {"start": 2**60, "format": "{:.0%}"}}, r"format"),
+    ({"method": "pk", "kwargs": {"format": "{:.2d}"}}, r"format"),
+    ({"method": "pk", "kwargs": {"format": "{!s:.1}"}}, r"format"),
+    ({"method": "pk", "kwargs": {"format": "C-{:{}}"}}, r"format"),
+    ({"method": "pk", "kwargs": {"format": "{:{x}}"}}, r"format"),
+    ({"method": "pk", "kwargs": {"format": "{0:{0}}"}}, r"format"),
+    ({"method": "pk", "kwargs": {"domain": 5, "key": 3}}, r"(?s)'sequence' does not take.*domain.*key"),
+    ({"method": "pk", "kwargs": {"style": "permuted", "domain": 5, "step": 2}}, r"(?s)'permuted' does not take.*step"),
+    ({"method": "pk", "kwargs": {"style": "permuted", "domain": 2**62, "start": 2**62 + 1}}, r"int64"),
+    ({"method": "pk", "kwargs": {"style": "permuted", "domain": 2**62 + 1}}, r"int64"),
+    ({"method": "pk", "args": [1]}, r"args"),
+    ({"method": "pk", "kwargs": {}, "transformers": [lambda x: x]}, r"transformers"),
+])
+def test_pk_spec_is_refused(column, match):
+    """AC1.7: every unbuildable or non-unique pk spec fails before generation."""
+    with pytest.raises(SpecValidationError, match=match):
+        DataGenerator({"id": column})
 
 
-def test_valid_constraints_fk_composite():
-    """Testa constraint FK composta."""
-    spec = {
-        "transaction_id": {
-            "method": "int_zfilled",
-            "kwargs": {"length": 8}
-        },
-        "constraints": {
-            "clients_fk": {
-                "name": "clients_pk",
-                "tipo": "FK",
-                "fields": ["client_id", "tp_pes"],
-                "watermark": 60
-            }
-        }
-    }
-    errors = AdvancedValidator.validate(spec)
-    assert len(errors) == 0
+def test_pk_permuted_with_format_and_key_is_accepted():
+    spec = {"id": {"method": "pk", "kwargs": {"style": "permuted", "domain": 100, "key": 3, "format": "C-{0:,}"}},
+            "top": {"method": "pk", "kwargs": {"style": "permuted", "domain": 2**62, "start": 2**62 - 1}}}
+    assert AdvancedValidator.validate(spec) == []
 
 
-def test_invalid_constraints_not_dict():
-    """Testa erro quando constraints não é dicionário."""
-    spec = {
-        "id": {"method": "int_zfilled", "kwargs": {}},
-        "constraints": "string_invalida"
-    }
-    errors = AdvancedValidator.validate(spec)
-    assert len(errors) >= 1
-    assert any("must be dictionary" in err for err in errors)
+FK_PARENT = {"method": "pk", "kwargs": {"style": "permuted", "domain": 100}}
 
 
-def test_invalid_constraints_empty():
-    """Testa warning quando constraints está vazio."""
-    spec = {
-        "id": {"method": "int_zfilled", "kwargs": {"length": 8}},
-        "constraints": {}
-    }
-    errors = AdvancedValidator.validate(spec)
-    assert len(errors) == 1
-    assert "empty" in errors[0].lower()
+@pytest.mark.parametrize("kwargs, match", [
+  ({"parent": {"method": "integers", "kwargs": {"min": 0, "max": 9}}, "parent_size": 10}, r"'parent'.*pk column spec"),
+  ({"parent": {"kwargs": {}}, "parent_size": 10}, r"'parent'.*pk column spec"),
+  ({"parent": {"method": "pk", "kwargs": {}, "transformers": [str]}, "parent_size": 10}, r"pid\.parent.*transformers"),
+  ({"parent": {"method": "pk", "kwargs": {"step": 0}}, "parent_size": 10}, r"step"),
+  ({"parent": {"method": "pk", "kwargs": {}, "cols": ["a"]}, "parent_size": 10}, r"'parent'.*\['cols'\]"),
+  ({"parent": FK_PARENT, "parent_size": 0}, r"parent_size.*>= 1"),
+  ({"parent": FK_PARENT, "parent_size": 101}, r"parent_size 101.*domain 100"),
+  ({"parent": FK_PARENT, "parent_size": 10, "skew": -0.1}, r"skew.*>= 0"),
+  ({"parent": FK_PARENT, "parent_size": 10, "skew": "1"}, r"skew"),
+  ({"parent": FK_PARENT, "parent_size": 10, "skew": True}, r"skew.*number"),
+  ({"parent": FK_PARENT, "parent_size": 10, "skew": float("nan")}, r"skew.*finite"),
+  ({"parent": FK_PARENT, "parent_size": 10, "skew": float("inf")}, r"skew.*finite"),
+  ({"parent": FK_PARENT, "parent_size": True}, r"parent_size.*integer"),
+  ({"parent": FK_PARENT, "parent_size": 10, "seed": 1}, r"Unknown parameter 'seed'"),
+])
+def test_fk_spec_is_refused(kwargs, match):
+  """AC2.6."""
+  with pytest.raises(SpecValidationError, match=match):
+    AdvancedValidator.validate_and_raise({"pid": {"method": "fk", "kwargs": kwargs}})
 
 
-def test_invalid_constraint_missing_name():
-    """Testa erro quando constraint não tem campo 'name'."""
-    spec = {
-        "category_id": {"method": "int_zfilled", "kwargs": {}},
-        "constraints": {
-            "category_pk": {
-                "tipo": "PK",
-                "fields": ["category_id VARCHAR(4)"]
-            }
-        }
-    }
-    errors = AdvancedValidator.validate(spec)
-    assert len(errors) >= 1
-    assert any("missing required field 'name'" in err for err in errors)
-
-
-def test_invalid_constraint_missing_tipo():
-    """Testa erro quando constraint não tem campo 'tipo'."""
-    spec = {
-        "category_id": {"method": "int_zfilled", "kwargs": {}},
-        "constraints": {
-            "category_pk": {
-                "name": "category_pk",
-                "fields": ["category_id VARCHAR(4)"]
-            }
-        }
-    }
-    errors = AdvancedValidator.validate(spec)
-    assert len(errors) >= 1
-    assert any("missing required field 'tipo'" in err for err in errors)
-
-
-def test_invalid_constraint_missing_fields():
-    """Testa erro quando constraint não tem campo 'fields'."""
-    spec = {
-        "category_id": {"method": "int_zfilled", "kwargs": {}},
-        "constraints": {
-            "category_pk": {
-                "name": "category_pk",
-                "tipo": "PK"
-            }
-        }
-    }
-    errors = AdvancedValidator.validate(spec)
-    assert len(errors) >= 1
-    assert any("missing required field 'fields'" in err for err in errors)
-
-
-def test_invalid_constraint_tipo_invalid():
-    """Testa erro quando tipo não é PK nem FK."""
-    spec = {
-        "category_id": {"method": "int_zfilled", "kwargs": {}},
-        "constraints": {
-            "category_pk": {
-                "name": "category_pk",
-                "tipo": "UNIQUE",  # Invalid
-                "fields": ["category_id VARCHAR(4)"]
-            }
-        }
-    }
-    errors = AdvancedValidator.validate(spec)
-    assert len(errors) >= 1
-    assert any("must be 'PK' or 'FK'" in err for err in errors)
-
-
-def test_invalid_constraint_fields_not_list():
-    """Testa erro quando fields não é lista."""
-    spec = {
-        "category_id": {"method": "int_zfilled", "kwargs": {}},
-        "constraints": {
-            "category_pk": {
-                "name": "category_pk",
-                "tipo": "PK",
-                "fields": "category_id VARCHAR(4)"  # Should be list
-            }
-        }
-    }
-    errors = AdvancedValidator.validate(spec)
-    assert len(errors) >= 1
-    assert any("'fields' must be list" in err for err in errors)
-
-
-def test_invalid_constraint_fields_empty():
-    """Testa erro quando fields está vazia."""
-    spec = {
-        "category_id": {"method": "int_zfilled", "kwargs": {}},
-        "constraints": {
-            "category_pk": {
-                "name": "category_pk",
-                "tipo": "PK",
-                "fields": []
-            }
-        }
-    }
-    errors = AdvancedValidator.validate(spec)
-    assert len(errors) >= 1
-    assert any("cannot be empty" in err for err in errors)
-
-
-def test_invalid_constraint_watermark_negative():
-    """Testa erro quando watermark é negativo."""
-    spec = {
-        "product_id": {"method": "int_zfilled", "kwargs": {}},
-        "constraints": {
-            "category_fk": {
-                "name": "category_pk",
-                "tipo": "FK",
-                "fields": ["category_id"],
-                "watermark": -60  # Invalid
-            }
-        }
-    }
-    errors = AdvancedValidator.validate(spec)
-    assert len(errors) >= 1
-    assert any("must be positive" in err for err in errors)
-
-
-def test_invalid_constraint_watermark_on_pk():
-    """Testa warning quando PK tem watermark (desnecessário)."""
-    spec = {
-        "category_id": {"method": "int_zfilled", "kwargs": {}},
-        "constraints": {
-            "category_pk": {
-                "name": "category_pk",
-                "tipo": "PK",
-                "fields": ["category_id VARCHAR(4)"],
-                "watermark": 60  # Warning: only for FK
-            }
-        }
-    }
-    errors = AdvancedValidator.validate(spec)
-    assert len(errors) >= 1
-    assert any("only used for FK" in err for err in errors)
-
-
-def test_valid_constraints_multiple():
-    """Testa múltiplas constraints no mesmo spec."""
-    spec = {
-        "category_id": {
-            "method": "int_zfilled",
-            "kwargs": {"length": 4}
-        },
-        "product_id": {
-            "method": "int_zfilled",
-            "kwargs": {"length": 8}
-        },
-        "constraints": {
-            "category_pk": {
-                "name": "category_pk",
-                "tipo": "PK",
-                "fields": ["category_id VARCHAR(4)"]
-            },
-            "product_pk": {
-                "name": "product_pk",
-                "tipo": "PK",
-                "fields": ["product_id VARCHAR(8)"]
-            }
-        }
-    }
-    errors = AdvancedValidator.validate(spec)
-    assert len(errors) == 0
-
-
-def test_constraints_not_interfere_with_columns():
-    """Testa que constraints não interferem na validação de colunas."""
-    spec = {
-        "age": {
-            "method": "integers",
-            "kwargs": {"min": 0, "max": 100}
-        },
-        "constraints": {
-            "users_pk": {
-                "name": "users_pk",
-                "tipo": "PK",
-                "fields": ["user_id VARCHAR(12)"]
-            }
-        }
-    }
-    errors = AdvancedValidator.validate(spec)
-    assert len(errors) == 0
+def test_fk_with_domain_sized_parent_and_skew_is_accepted():
+  AdvancedValidator.validate_and_raise({"pid": {"method": "fk", "kwargs": {"parent": FK_PARENT, "parent_size": 100, "skew": 1}}})
 
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+@pytest.mark.parametrize("column", [
+  {"method": "integers", "args": [1, 9]},
+  {"method": "uuid4", "args": [5]},
+  {"method": "integers", "kwargs": {"min": 0, "max": 9}, "args": [0, 9]},
+])
+def test_args_is_refused(column):
+  """The Spark side is owned by test_1_common_validator ("does not support 'args'")."""
+  errors = AdvancedValidator.validate({"x": column})
+  assert len(errors) == 1
+  assert "'args'" in errors[0] and "'kwargs'" in errors[0]
+
+
+@pytest.mark.parametrize("template, match", [
+  ({"method": "integers", "kwargs": {"min": 0, "max": 9, "dtype": "int8"}}, r"(?s)c\.templates\[0\].*dtype"),
+  ({"method": "integers", "kwargs": {"max": 9}}, r"(?s)c\.templates\[0\].*requires parameter 'min'"),
+  ({"method": "distincts_map", "kwargs": {"distincts": {"a": ["b"]}}}, r"(?s)c\.templates\[0\].*distincts_map"),
+])
+def test_complex_distincts_template_is_checked(template, match):
+  spec = {"c": {"method": "complex_distincts", "kwargs": {"pattern": "<x>", "replacement": "x", "templates": [template]}}}
+  with pytest.raises(SpecValidationError, match=match):
+    DataGenerator(spec)
+
+
+@pytest.mark.parametrize("template, expected", [
+  ({"method": "dates", "kwargs": {"start": "2024-01-01", "end": "2024-01-02"}}, "<2024-01-01>"),
+  ({"method": "distincts_prop", "kwargs": {"distincts": {"a": 1}}}, "<a>"),
+])
+def test_complex_distincts_template_that_validates_generates(template, expected):
+  spec = {"c": {"method": "complex_distincts", "kwargs": {"pattern": "<x>", "replacement": "x", "templates": [template]}}}
+  assert set(DataGenerator(spec, seed=1).size(20).get_df()["c"]) == {expected}
+
+
+@pytest.mark.parametrize("cols, got", [(["k", "l"], "got 2"), (["k", "l", "m", "n"], "got 4")])
+def test_distincts_multi_map_cols_must_be_levels_plus_one(cols, got):
+  spec = {"c": {"method": "distincts_multi_map", "kwargs": {"distincts": {"t": [["a", "b"], ["x", "y"]]}}, "cols": cols}}
+  errors = AdvancedValidator.validate(spec)
+  assert len(errors) == 1
+  assert "'t' has 2 levels, so 'cols' needs 3 names" in errors[0] and got in errors[0]
+
+
+def _params(fn, injected=("size", "rng", "spark", "F", "df", "col_name", "offset", "key_seed", "column")):
+  sig = inspect.signature(fn.func if isinstance(fn, functools.partial) else fn).parameters.values()
+  if any(p.kind is p.VAR_KEYWORD for p in sig):
+    return None
+  names = {p.name for p in sig} - set(injected)
+  return names, {p.name for p in sig if p.default is p.empty} - set(injected)
+
+
+def test_validator_tables_match_engine_maps_and_signatures():
+  """Catalog engine metadata pins each map and every mapped callable's parameters."""
+  numpy = RandGenerator({}).map_methods()
+  spark = SparkGenerator.map_methods(None)
+  expected_numpy = {name for name, spec in METHOD_CATALOG.items() if NUMPY in spec.engines}
+  expected_spark = {
+    name for name, spec in METHOD_CATALOG.items()
+    if SPARK in spec.engines or spec.kind == CORRELATED
+  }
+  assert set(numpy) == expected_numpy
+  assert set(spark) == expected_spark
+  for name, fn in [*numpy.items(), *spark.items()]:
+    method_spec = METHOD_CATALOG[name]
+    params = _params(fn)
+    if params is None:
+      continue
+    names, required = params
+    assert set(method_spec.required) | set(method_spec.optional) == names, name
+    assert required <= set(method_spec.required), name
+
+
+def _caught_validation(call):
+  try:
+    call()
+  except Exception as error:
+    return error
+  return None
+
+
+@pytest.mark.parametrize(("config", "method"), [
+  ({"method": "distincts_map", "cols": ["category", "value"], "kwargs": {"distincts": {"only": []}}}, "distincts_map"),
+  ({"method": "distincts_multi_map", "cols": ["category"], "kwargs": {"distincts": {}}}, "distincts_multi_map"),
+  ({"method": "distincts_multi_map", "cols": ["category", "first", "second"], "kwargs": {"distincts": {"only": [["x"], []]}}}, "distincts_multi_map"),
+])
+def test_empty_correlated_domains_fail_during_public_construction(config, method):
+  error = _caught_validation(lambda: DataGenerator({"correlated": config}))
+
+  assert isinstance(error, SpecValidationError)
+  message = str(error)
+  assert "Column 'correlated'" in message
+  assert method in message
+  assert "non-empty" in message
+
+
+@pytest.mark.parametrize("modifier", ["null_rate", "anomaly_rate"])
+@pytest.mark.parametrize("config", [
+  {"method": "distincts_map", "cols": ["category", "value"], "kwargs": {"distincts": {"a": ["b"]}}},
+  {"method": "distincts_map_prop", "cols": ["category", "value"], "kwargs": {"distincts": {"a": [["b", 1]]}}},
+  {"method": "distincts_multi_map", "cols": ["category", "value"], "kwargs": {"distincts": {"a": [["b"]]}}},
+  {"method": "complex_distincts", "kwargs": {"pattern": "<x>", "replacement": "x", "templates": [{"method": "distincts", "kwargs": {"distincts": ["a"]}}]}},
+  {"method": "pk", "kwargs": {}},
+  {"method": "fk", "kwargs": {"parent": {"method": "pk", "kwargs": {}}, "parent_size": 1}},
+])
+def test_correlated_and_key_methods_refuse_modifiers(config, modifier):
+  column = {**config, modifier: 0.5}
+  if modifier == "anomaly_rate":
+    column["anomaly_values"] = [99]
+
+  error = _caught_validation(lambda: DataGenerator({"excluded": column}))
+
+  assert isinstance(error, SpecValidationError)
+  message = str(error)
+  assert "Column 'excluded'" in message
+  assert config["method"] in message
+  assert modifier in message
+
+
+def test_failed_callable_spec_collects_once_without_entering_generation():
+  calls = {"spec": 0, "generation": 0}
+
+  def generation_sentinel(value):
+    calls["generation"] += 1
+    return value
+
+  def invalid_spec():
+    calls["spec"] += 1
+    return {
+      "bad_probability": {
+        "method": "booleans",
+        "kwargs": {"true_prob": "often"},
+        "transformers": [generation_sentinel],
+      },
+      "bad_pool": {
+        "method": "distincts_map",
+        "cols": ["category", "value"],
+        "kwargs": {"distincts": {"only": []}},
+      },
+    }
+
+  error = _caught_validation(lambda: DataGenerator(invalid_spec))
+
+  assert type(error) is SpecValidationError
+  assert calls == {"spec": 1, "generation": 0}
+  message = str(error)
+  assert "Found 2 error(s)" in message
+  assert message.count("Column 'bad_probability'") == 1
+  assert message.count("Column 'bad_pool'") == 1

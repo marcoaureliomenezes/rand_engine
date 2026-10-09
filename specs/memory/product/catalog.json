@@ -1,181 +1,222 @@
 {
-  "generated_at": "2026-06-05T05:48:25Z",
-  "context": "rand-engine",
+  "generated_at": "2026-10-07T14:02:23Z",
   "features": [
     {
       "rank": 1,
-      "slug": "constraints-duckdb-checkpoints",
-      "title": "constraints and DuckDB checkpoints",
-      "category": "product",
-      "tldr": "PK/FK consistency uses DuckDB checkpoint tables and watermarks; checkpoint persistence lifecycle has known defects.",
-      "summary": "Current constraints feature: DuckDB stores generated PK candidates in checkpoint tables, then FK generation samples eligible rows by watermark.",
-      "path": "specs/memory/product/constraints-duckdb-checkpoints.md",
+      "slug": "public-api",
+      "title": "Public API",
+      "area": "api",
+      "tldr": "rand_engine exports DataGenerator, SparkGenerator and RandSpecs; every other module is internal.",
+      "summary": "The supported import surface is the three names in rand_engine.__all__, plus the RandEngineError exception family a caller catches; the wheel ships only the rand_engine package.",
+      "path": "specs/memory/product/api/public-api.md",
       "tags": [
-        "constraints",
-        "duckdb",
-        "checkpoint",
-        "referential-integrity"
+        "api",
+        "package",
+        "exceptions"
       ],
-      "token_estimate": 145,
-      "agent_tier": "self-pull",
-      "depends_on": []
+      "token_estimate": 224,
+      "depends_on": [
+        "data-generator",
+        "spark-generator",
+        "templates-and-examples",
+        "rand-spec-grammar"
+      ],
+      "sources": [
+        "rand_engine/__init__.py",
+        "rand_engine/validators/exceptions.py",
+        "img/**"
+      ]
     },
     {
       "rank": 2,
-      "slug": "correlation-model",
-      "title": "correlation model",
-      "category": "product",
-      "tldr": "Current correlations are in-memory advanced methods; DuckDB-backed correlation is future design work, not current behavior.",
-      "summary": "Correlation truth for restart: PyCore supports in-memory correlated values today; DuckDB is not yet a correlation engine and requires a first-class design spec.",
-      "path": "specs/memory/product/correlation-model.md",
+      "slug": "templates-and-examples",
+      "title": "Templates and examples",
+      "area": "content",
+      "tldr": "Ready RandSpecs — ten cross-engine CommonRandSpecs, ten pandas-only AdvancedRandSpecs, and a UTC WebServerLogs template.",
+      "summary": "Prebuilt specs a user runs without writing a grammar — CommonRandSpecs is exported as RandSpecs and runs on both generators; AdvancedRandSpecs demonstrates correlated pandas methods; WebServerLogs assembles Apache common log lines in UTC.",
+      "path": "specs/memory/product/content/templates-and-examples.md",
       "tags": [
-        "correlation",
-        "duckdb",
-        "advanced-methods"
+        "templates",
+        "examples",
+        "rand-specs"
       ],
-      "token_estimate": 170,
-      "agent_tier": "self-pull",
-      "depends_on": []
+      "token_estimate": 157,
+      "depends_on": [
+        "data-generator",
+        "spark-generator",
+        "generation-methods"
+      ],
+      "sources": [
+        "rand_engine/examples/**",
+        "rand_engine/templates/**"
+      ]
     },
     {
       "rank": 3,
       "slug": "data-generator",
       "title": "DataGenerator",
-      "category": "product",
-      "tldr": "Pandas/NumPy composition root for deterministic dataframe generation, transforms, constraints, writers, and streams.",
-      "summary": "Current DataGenerator behavior: validates specs, seeds NumPy, generates Pandas dataframes, applies transforms, wires writers/streams, and applies DuckDB-backed constraints.",
-      "path": "specs/memory/product/data-generator.md",
+      "area": "generation",
+      "tldr": "The pandas generator validates a RandSpec, owns its random generator, and returns DataFrames, files, file streams or an endless record stream.",
+      "summary": "DataGenerator(spec, seed) is the pandas composition root; size and transformers feed get_df, stream_dict, write and writeStream, with one owned NumPy generator and row offsets that keep keys continuous across stream batches and file parts.",
+      "path": "specs/memory/product/generation/data-generator.md",
       "tags": [
         "pandas",
         "numpy",
         "generator",
         "dataframe"
       ],
-      "token_estimate": 160,
-      "agent_tier": "self-pull",
-      "depends_on": []
+      "token_estimate": 319,
+      "depends_on": [
+        "writers-and-streaming",
+        "rand-spec-grammar",
+        "generation-methods",
+        "pk-fk-constraints"
+      ],
+      "sources": [
+        "rand_engine/main/data_generator.py",
+        "rand_engine/main/_rand_generator.py",
+        "rand_engine/utils/stream_handler.py"
+      ]
     },
     {
       "rank": 4,
-      "slug": "method-registry",
-      "title": "method registry",
-      "category": "product",
-      "tldr": "Current method support is duplicated across validators, Pandas runtime, Spark runtime, examples, and docs; a canonical registry is future work.",
-      "summary": "Generation method support must become a single source of truth with per-engine metadata for Pandas, Spark, advanced/correlation status, determinism, and validation.",
-      "path": "specs/memory/product/method-registry.md",
+      "slug": "generation-methods",
+      "title": "Generation methods",
+      "area": "generation",
+      "tldr": "Ten common methods run on pandas and Spark; four correlated methods plus pk and fk run on pandas.",
+      "summary": "NPCore and PyCore provide the NumPy generator's single method map, including deterministic keys; SparkCore supplies native Spark expressions for the ten common methods.",
+      "path": "specs/memory/product/generation/generation-methods.md",
       "tags": [
         "methods",
-        "validators",
+        "numpy",
         "spark",
-        "pandas"
+        "correlation"
       ],
-      "token_estimate": 120,
-      "agent_tier": "self-pull",
-      "depends_on": []
+      "token_estimate": 367,
+      "depends_on": [
+        "data-generator",
+        "spark-generator",
+        "pk-fk-constraints"
+      ],
+      "sources": [
+        "rand_engine/core/**",
+        "rand_engine/main/_rand_generator.py"
+      ]
     },
     {
       "rank": 5,
-      "slug": "public-api",
-      "title": "public API",
-      "category": "product",
-      "tldr": "Supported import surface is DataGenerator, SparkGenerator, and RandSpecs; runtime version policy is unresolved.",
-      "summary": "Current public API truth for rand-engine, including exported names, compatibility expectations, and release metadata gaps.",
-      "path": "specs/memory/product/public-api.md",
-      "tags": [
-        "api",
-        "semver",
-        "package"
-      ],
-      "token_estimate": 130,
-      "agent_tier": "self-pull",
-      "depends_on": []
-    },
-    {
-      "rank": 6,
-      "slug": "qa-and-release-governance",
-      "title": "QA and release governance",
-      "category": "product",
-      "tldr": "Current suite passes 494 tests at 85.98% coverage; release/version/security gates need explicit restart decisions.",
-      "summary": "Current quality and release truth from QA and DevOps audits: tests are strong, SDD was not, and release metadata/pipeline gates need normalization.",
-      "path": "specs/memory/product/qa-and-release-governance.md",
-      "tags": [
-        "qa",
-        "release",
-        "pypi",
-        "ci"
-      ],
-      "token_estimate": 140,
-      "agent_tier": "self-pull",
-      "depends_on": []
-    },
-    {
-      "rank": 7,
-      "slug": "rand-spec-grammar",
-      "title": "RandSpec grammar",
-      "category": "product",
-      "tldr": "Declarative dictionary grammar validated by common and advanced validators before generation.",
-      "summary": "Current RandSpec grammar truth: common methods, advanced methods, transforms, constraints, lazy sizing, validation, and known validator/runtime drift.",
-      "path": "specs/memory/product/rand-spec-grammar.md",
-      "tags": [
-        "spec",
-        "validation",
-        "grammar"
-      ],
-      "token_estimate": 150,
-      "agent_tier": "self-pull",
-      "depends_on": []
-    },
-    {
-      "rank": 8,
       "slug": "spark-generator",
       "title": "SparkGenerator",
-      "category": "product",
-      "tldr": "Spark supports common methods through expressions; advanced methods are null stubs and must not be treated as implemented behavior.",
-      "summary": "Current Spark support boundary: SparkGenerator is public, common methods are real, advanced methods are compatibility stubs until an approved release changes them.",
-      "path": "specs/memory/product/spark-generator.md",
+      "area": "generation",
+      "tldr": "The Spark generator builds a Spark DataFrame from common RandSpec methods with native expressions and no Python UDF.",
+      "summary": "SparkGenerator(spark, F, spec) validates the common grammar, starts from spark.range(size), adds native SparkCore columns and refuses the NumPy-only pk and fk methods.",
+      "path": "specs/memory/product/generation/spark-generator.md",
       "tags": [
         "spark",
         "pyspark",
         "generator"
       ],
-      "token_estimate": 125,
-      "agent_tier": "self-pull",
-      "depends_on": []
-    },
-    {
-      "rank": 9,
-      "slug": "templates-and-examples",
-      "title": "templates and examples",
-      "category": "product",
-      "tldr": "Built-in common/advanced specs and web-server-log template are product assets that require compatibility tests.",
-      "summary": "Current examples/templates truth: RandSpecs examples and templates are part of the user-facing value and must stay synchronized with validators/runtime.",
-      "path": "specs/memory/product/templates-and-examples.md",
-      "tags": [
-        "templates",
-        "examples",
-        "rand-specs"
+      "token_estimate": 196,
+      "depends_on": [
+        "rand-spec-grammar",
+        "generation-methods"
       ],
-      "token_estimate": 90,
-      "agent_tier": "self-pull",
-      "depends_on": []
+      "sources": [
+        "rand_engine/main/spark_generator.py",
+        "rand_engine/core/_spark_core.py"
+      ]
     },
     {
-      "rank": 10,
+      "rank": 6,
       "slug": "writers-and-streaming",
-      "title": "writers and streaming",
-      "category": "product",
-      "tldr": "Batch and stream writers support file outputs, but tests must prove read-back correctness and artifact hygiene.",
-      "summary": "Current writer truth: batch and streaming facades produce files in common formats; restart work must define correctness, cleanup, overwrite, and tmp-path policy.",
-      "path": "specs/memory/product/writers-and-streaming.md",
+      "title": "Writers and streaming",
+      "area": "output",
+      "tldr": "DataGenerator writes CSV, JSON lines and Parquet batches or repeated file-stream microbatches through a Spark-style builder.",
+      "summary": "The batch writer distributes one requested total row count across numFiles; the stream writer emits size rows per microbatch. CSV and Parquet use PyArrow, JSON uses pandas, and each format accepts only documented options.",
+      "path": "specs/memory/product/output/writers-and-streaming.md",
       "tags": [
         "writers",
         "streaming",
         "files",
-        "qa"
+        "csv",
+        "json",
+        "parquet"
       ],
-      "token_estimate": 110,
-      "agent_tier": "self-pull",
-      "depends_on": []
+      "token_estimate": 277,
+      "depends_on": [
+        "data-generator"
+      ],
+      "sources": [
+        "rand_engine/file_handlers/**"
+      ]
+    },
+    {
+      "rank": 7,
+      "slug": "benchmarks",
+      "title": "Performance benchmarks",
+      "area": "quality",
+      "tldr": "A CI-only same-runner A/B benchmark measures every generation method and built-in sink, publishes its table and enforces a relative regression limit.",
+      "summary": "The benchmark coordinator alternates timed requests between long-lived base and head workers per row, reports method and sink throughput, publishes Markdown and JSON artifacts, and fails when a comparable head row exceeds the configured ratio.",
+      "path": "specs/memory/product/quality/benchmarks.md",
+      "tags": [
+        "performance",
+        "benchmarks",
+        "ci",
+        "regression"
+      ],
+      "token_estimate": 261,
+      "depends_on": [],
+      "sources": [
+        "benchmarks/**",
+        ".github/workflows/benchmarks.yml"
+      ]
+    },
+    {
+      "rank": 8,
+      "slug": "pk-fk-constraints",
+      "title": "PK/FK key columns",
+      "area": "relations",
+      "tldr": "Stateless pk and fk column methods create related tables from definitions, seeds and row indexes without a checkpoint store.",
+      "summary": "A pk is a sequence or a deterministic permutation of row indexes; an fk deterministically selects a parent row and rebuilds its pk value. Batch parts and stream microbatches advance row offsets, so keys remain consistent without shared state.",
+      "path": "specs/memory/product/relations/pk-fk-constraints.md",
+      "tags": [
+        "keys",
+        "referential-integrity",
+        "stateless",
+        "pk",
+        "fk"
+      ],
+      "token_estimate": 254,
+      "depends_on": [
+        "spark-generator",
+        "rand-spec-grammar"
+      ],
+      "sources": [
+        "rand_engine/core/_keys.py",
+        "rand_engine/main/_rand_generator.py",
+        "rand_engine/validators/advanced_validator.py"
+      ]
+    },
+    {
+      "rank": 9,
+      "slug": "rand-spec-grammar",
+      "title": "RandSpec grammar",
+      "area": "spec",
+      "tldr": "A RandSpec maps output columns to a method, named kwargs and optional multi-column or transformer metadata, and is validated before generation.",
+      "summary": "AdvancedValidator validates NumPy common, correlated and key methods; CommonValidator validates the Spark common-method subset. Args and top-level constraints are refused, and validation collects issues into SpecValidationError.",
+      "path": "specs/memory/product/spec/rand-spec-grammar.md",
+      "tags": [
+        "spec",
+        "grammar",
+        "validation"
+      ],
+      "token_estimate": 294,
+      "depends_on": [
+        "pk-fk-constraints"
+      ],
+      "sources": [
+        "rand_engine/validators/**"
+      ]
     }
   ]
 }

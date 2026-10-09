@@ -89,7 +89,7 @@ class AdvancedRandSpecs:
                     "pattern": "PRD-x",
                     "replacement": "x",
                     "templates": [
-                        {"method": "integers", "kwargs": {"min": 1000, "max": 9999, "dtype": "int32"}}
+                        {"method": "integers", "kwargs": {"min": 1000, "max": 9999, "int_type": "int32"}}
                     ]
                 }
             },
@@ -109,7 +109,7 @@ class AdvancedRandSpecs:
             },
             "stock": {
                 "method": "integers",
-                "kwargs": {"min": 0, "max": 1000, "dtype": "int32"}
+                "kwargs": {"min": 0, "max": 1000, "int_type": "int32"}
             },
             "rating": {
                 "method": "floats_normal",
@@ -151,7 +151,7 @@ class AdvancedRandSpecs:
             },
             "order_date": {
                 "method": "unix_timestamps",
-                "kwargs": {"start": "2023-01-01", "end": "2024-12-31"}
+                "kwargs": {"start": "2023-01-01", "end": "2024-12-31", "date_format": "%Y-%m-%d"}
             },
             "amount": {
                 "method": "floats",
@@ -168,7 +168,7 @@ class AdvancedRandSpecs:
             "currency_country": {
                 "method": "distincts_map",
                 "splitable": True,
-                "cols": ["currency", "country"],
+                "cols": ["country", "currency"],
                 "sep": ";",
                 "kwargs": {
                     "distincts": {
@@ -245,7 +245,7 @@ class AdvancedRandSpecs:
             },
             "is_remote": {
                 "method": "booleans",
-                "kwargs": {"prob_true": 0.4}
+                "kwargs": {"true_prob": 0.4}
             },
             "performance_score": {
                 "method": "floats",
@@ -307,11 +307,11 @@ class AdvancedRandSpecs:
             },
             "battery_level": {
                 "method": "integers",
-                "kwargs": {"min": 0, "max": 100, "dtype": "int16"}
+                "kwargs": {"min": 0, "max": 100, "int_type": "int16"}
             },
             "last_ping": {
                 "method": "unix_timestamps",
-                "kwargs": {"start": "2025-10-01", "end": "2025-10-30"}
+                "kwargs": {"start": "2025-10-01", "end": "2025-10-30", "date_format": "%Y-%m-%d"}
             }
         }
 
@@ -490,8 +490,8 @@ class AdvancedRandSpecs:
                     "templates": [
                         {"method": "distincts", "kwargs": {"distincts": ["192", "172", "10"]}},
                         {"method": "distincts", "kwargs": {"distincts": ["168", "16", "0"]}},
-                        {"method": "integers", "kwargs": {"min": 0, "max": 255, "dtype": "int16"}},
-                        {"method": "integers", "kwargs": {"min": 1, "max": 254, "dtype": "int16"}}
+                        {"method": "integers", "kwargs": {"min": 0, "max": 255, "int_type": "int16"}},
+                        {"method": "integers", "kwargs": {"min": 1, "max": 254, "int_type": "int16"}}
                     ]
                 }
             },
@@ -509,7 +509,7 @@ class AdvancedRandSpecs:
             },
             "is_active": {
                 "method": "booleans",
-                "kwargs": {"prob_true": 0.95}
+                "kwargs": {"true_prob": 0.95}
             }
         }
 
@@ -580,7 +580,7 @@ class AdvancedRandSpecs:
             },
             "mileage": {
                 "method": "integers",
-                "kwargs": {"min": 0, "max": 200000, "dtype": "int32"}
+                "kwargs": {"min": 0, "max": 200000, "int_type": "int32"}
             },
             "fuel_type": {
                 "method": "distincts_prop",
@@ -588,7 +588,7 @@ class AdvancedRandSpecs:
             },
             "is_active": {
                 "method": "booleans",
-                "kwargs": {"prob_true": 0.9}
+                "kwargs": {"true_prob": 0.9}
             }
         }
 
@@ -644,15 +644,15 @@ class AdvancedRandSpecs:
             },
             "bedrooms": {
                 "method": "integers",
-                "kwargs": {"min": 1, "max": 5, "dtype": "int16"}
+                "kwargs": {"min": 1, "max": 5, "int_type": "int16"}
             },
             "bathrooms": {
                 "method": "integers",
-                "kwargs": {"min": 1, "max": 4, "dtype": "int16"}
+                "kwargs": {"min": 1, "max": 4, "int_type": "int16"}
             },
             "square_feet": {
                 "method": "integers",
-                "kwargs": {"min": 500, "max": 5000, "dtype": "int32"}
+                "kwargs": {"min": 500, "max": 5000, "int_type": "int32"}
             },
             "price": {
                 "method": "floats_normal",
@@ -660,7 +660,7 @@ class AdvancedRandSpecs:
             },
             "is_available": {
                 "method": "booleans",
-                "kwargs": {"prob_true": 0.3}
+                "kwargs": {"true_prob": 0.3}
             }
         }
 
@@ -699,7 +699,7 @@ class AdvancedRandSpecs:
             },
             "age": {
                 "method": "integers",
-                "kwargs": {"min": 0, "max": 100, "dtype": "int16"}
+                "kwargs": {"min": 0, "max": 100, "int_type": "int16"}
             },
             "diagnosis_treatment": {
                 "method": "distincts_map_prop",
@@ -729,6 +729,6 @@ class AdvancedRandSpecs:
             },
             "is_emergency": {
                 "method": "booleans",
-                "kwargs": {"prob_true": 0.25}
+                "kwargs": {"true_prob": 0.25}
             }
         }

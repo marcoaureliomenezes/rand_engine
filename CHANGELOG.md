@@ -7,6 +7,94 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.0] - Unreleased
+
+### Breaking changes
+
+- The top-level `constraints` spec key is removed: a spec carrying it raises `SpecValidationError` naming `pk` and `fk`.
+- `DataGenerator.db_checkpoint()` and `DataGenerator.option()` (with `reset_checkpoint`) are removed, together with the SQLite/DuckDB checkpoint handlers.
+- The `duckdb` runtime dependency is dropped.
+- `SparkGenerator` rejects `pk` and `fk` columns ("NumPy engine only in 0.7.0").
+- Same-seed values differ from 0.6.x: each generator draws from its own `SeedSequence` + PCG64 rng instead of the global NumPy seed.
+- `complex_distincts` templates whose `method` is a callable now receive the generator rng as an `rng` keyword argument.
+- `uuid4` values are drawn from the seeded PCG64 rng (RFC 4122 v4), so a seed reproduces them.
+- `uuid4` no longer takes its ignored `length` parameter.
+- The positional `args` column key is removed: a column carrying it fails validation on both engines; pass parameters by name in `kwargs`.
+- `distincts_map` emits the key first: `cols[0]` is the key (category), `cols[1]` a value, like `distincts_map_prop`.
+- `distincts_multi_map` `cols` must name levels + 1 columns; any other count fails validation (fewer names used to drop levels silently).
+- `complex_distincts` templates naming a method by string are validated like a column: unknown parameters, missing required ones and multi-column methods fail validation; `dates` and `distincts_prop` templates now generate.
+- csv is written by pyarrow, with these divergences from the pandas writer:
+  - booleans are written `true`/`false`;
+  - integral floats are written `1` and read back as integers;
+  - the header and every string value are quoted;
+  - a naive timestamp's fraction is sized by its column's unit (`ns`, the pandas default, `.000000000`; `us` six digits; `ms` three; `s` none);
+  - an all-midnight naive datetime column is written with its full time (`2020-01-01 00:00:00.000000000`), not a bare date;
+  - line endings are always LF, not `os.linesep`;
+  - in a single-column frame a null is written as a blank line, which `pd.read_csv` skips, so the row is lost on read-back;
+  - a tz-aware column is written in its pandas string form (`2024-01-01 00:00:00+00:00`), quoted, a NaT as an empty field in a multi-column frame;
+  - a mixed-type object column raises `RandEngineError` naming the column.
+- parquet is written by pyarrow (reads back equal; tz-aware columns keep their tz); the dead parquet `engine` option is gone.
+- Writers accept only their documented options; any other raises `RandEngineError` naming it and listing the accepted ones.
+- A `dates` `date_format` accepts only `%Y %m %d %H %M %S %f`, on both engines; any other directive fails validation naming the supported set, and Spark no longer writes it as a literal.
+
+### Added
+
+- `pk` key columns (`sequence` or `permuted`, optional `format`) and `fk` columns referencing a parent `pk` (uniform or `skew`), stateless: keys come from the seed-independent key function and the row index, consistent across batches, streams, files and processes.
+- `LICENSE` (MIT) and full package metadata (licence, keywords, classifiers, project URLs).
+
+### Fixed
+
+- Timestamps and dates no longer depend on the machine or Spark session timezone.
+- `floats` keeps fractional bounds; Spark `integers` includes `max`; `integers` with a too-small `int_type` raises instead of wrapping.
+- Spark refuses `min > max` for `floats` and `integers`.
+- The writer gets its row count from `DataGenerator.size()`; `numFiles` splits `size` across files; writer options are no longer consumed on first use or shared across chains.
+- Validator warnings no longer raise; validator `kwargs` parameter tables match the engines (positional `args` and `complex_distincts` templates are still unvalidated); `dates`/`unix_timestamps` without `date_format` default to `%Y-%m-%d`.
+- The bundled advanced example specs validate; the unimportable CDC module and the unused `fastavro`/`fastparquet` dependencies are removed.
+
+## [0.6.4] - 2026-06-05
+
+### Security
+
+- Vulnerable dependencies patched.
+
+### Changed
+
+- Checkpoint tables can be cleaned; documentation split into `docs/1_DATA_GENERATOR.md` .. `docs/4_CONSTRAINTS.md`.
+
+## [0.6.3] - 2025-10-31
+
+### Added
+
+- Spark spec validator; common rand-specs shared by `DataGenerator` and `SparkGenerator`.
+
+### Changed
+
+- `setuptools` patched; examples merged; tests improved.
+
+## [0.6.2] - 2025-10-25
+
+### Added
+
+- `size` accepts an integer or a callable returning one.
+
+### Fixed
+
+- Lazy evaluation of the generated frame.
+
+## [0.6.1] - 2025-10-24
+
+### Added
+
+- PK/FK `constraints` with watermarks (removed in 0.7.0).
+- Spark generation features.
+
+### Fixed
+
+- Batch writer: append vs overwrite and paths given with extensions or file names.
+- Windows compatibility; deterministic tests.
+
+---
+
 ## [0.6.0] - 2025-10-19
 
 ### 🎉 Major Release - Complete Redesign

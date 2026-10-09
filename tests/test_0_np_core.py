@@ -1,6 +1,17 @@
+import hashlib
+import sys
+import time
+import uuid
+from datetime import date, datetime
+from decimal import Decimal, localcontext
+
 import pytest
 import numpy as np
+from rand_engine import DataGenerator
 from rand_engine.core._np_core import NPCore
+from rand_engine.validators.exceptions import ColumnGenerationError
+
+RNG = np.random.default_rng(0)
 from tests.fixtures.f1_data_generator_specs_right import default_size
 
 
@@ -18,7 +29,7 @@ from tests.fixtures.f1_data_generator_specs_right import default_size
 ])
 def test_gen_ints(min, max, int_type):
   kwargs = dict(size=10, min=min, max=max, int_type=int_type)
-  real_result = NPCore.gen_ints(**kwargs)
+  real_result = NPCore.gen_ints(rng=RNG, **kwargs)
   assert len(real_result) == kwargs["size"]
   assert type(real_result) == np.ndarray
   assert str(type(real_result[0])) == f"<class 'numpy.{int_type}'>"
@@ -28,10 +39,16 @@ def test_gen_ints(min, max, int_type):
   assert total_size == item_size * kwargs["size"]
 
 
+@pytest.mark.parametrize("min, max, int_type", [(0, 1000, 'int8'), (-1, 10, 'uint8')])
+def test_gen_ints_bounds_not_fitting_int_type_are_rejected(min, max, int_type):
+  with pytest.raises(ValueError):
+    _ = NPCore.gen_ints(rng=RNG, size=10, min=min, max=max, int_type=int_type)
+
+
 # Test for integer generation with size 0
 def test_gen_ints_with_size_0(default_size):
   kwargs = dict(size=0, min=0, max=10)
-  data = NPCore.gen_ints(**kwargs)
+  data = NPCore.gen_ints(rng=RNG, **kwargs)
   assert len(data) == 0
 
 
@@ -44,22 +61,36 @@ def test_gen_ints_with_size_0(default_size):
 def test_gen_ints_with_inconsistent_parameters(size, min, max):
   kwargs = dict(size=size, min=min, max=max)
   with pytest.raises(ValueError):
-    _ = NPCore.gen_ints(**kwargs)
+    _ = NPCore.gen_ints(rng=RNG, **kwargs)
 
 
 # Test for float generation with various ranges and rounding
 @pytest.mark.parametrize("size, min, max, decimals", [
     (10, 0, 10**4, 2),
+    (10**4, 0, 10**4, 2),
     (10, 0, 10**4, 10),
     (10, 0, 10**4, 15),
     (10, 0, 10**18, 15),
 ])
 def test_gen_floats(size, min, max, decimals):
   kwargs = dict(size=size, min=min, max=max, decimals=decimals)
-  real_result = NPCore.gen_floats(**kwargs)
+  real_result = NPCore.gen_floats(rng=RNG, **kwargs)
   assert len(real_result) == kwargs["size"]
   assert type(real_result) == np.ndarray
   assert real_result.dtype == np.float64
+  assert real_result.min() >= min
+  assert real_result.max() <= max
+
+
+def test_gen_floats_stay_within_fractional_bounds():
+  values = NPCore.gen_floats(rng=RNG, size=10**4, min=9.99, max=10.5, decimals=2)
+  assert values.min() >= 9.99 and values.max() <= 10.5
+  assert values.max() > 10
+  assert np.array_equal(values, values.round(2))
+
+
+def test_gen_floats_with_equal_bounds_returns_that_value():
+  assert NPCore.gen_floats(rng=RNG, size=10, min=5.25, max=5.25, decimals=2).tolist() == [5.25] * 10
 
 
 # Test for float generation with inconsistent parameters
@@ -71,17 +102,18 @@ def test_gen_floats(size, min, max, decimals):
 def test_gen_floats_with_inconsistent_parameters(size, min, max):
   kwargs = dict(size=size, min=min, max=max)
   with pytest.raises(ValueError):
-    _ = NPCore.gen_floats(**kwargs)
+    _ = NPCore.gen_floats(rng=RNG, **kwargs)
 
 
 @pytest.mark.parametrize("size, mean, std, decimals", [
     (100, 0, 1, 2),
+    (10**4, 10**3, 10**2, 2),
     (100, 10**3, 10**2, 5),
     (100, 10**6, 10**5, 10),
 ])
 def test_gen_floats_normal(size, mean, std, decimals):
   kwargs = dict(size=size, mean=mean, std=std, decimals=decimals)
-  real_result = NPCore.gen_floats_normal(**kwargs)
+  real_result = NPCore.gen_floats_normal(rng=RNG, **kwargs)
   assert len(real_result) == kwargs["size"]
   assert type(real_result) == np.ndarray
   assert real_result.dtype == np.float64
@@ -93,11 +125,14 @@ def test_gen_floats_normal(size, mean, std, decimals):
     (10, ["A", "B", "C"]),
     (10, [1, 2, 3, 4, 5]),
     (10, [True, False]),
+    (10**4, ["value1", "value2", "value3"]),
 ])
 def test_gen_distincts_low_cardinality(size, distincts):
-  result = NPCore.gen_distincts(size=size, distincts=distincts)
+  result = NPCore.gen_distincts(rng=RNG, size=size, distincts=distincts)
   assert len(result) == size
   assert all(item in distincts for item in result)
+  if isinstance(distincts[0], str):
+    assert all(isinstance(item, str) for item in result)
 
 
 
@@ -105,50 +140,29 @@ def test_gen_distincts_low_cardinality(size, distincts):
 def test_gen_ints_fails_1(default_size):
   kwargs = dict(size=default_size, min=10**1, max=0)
   with pytest.raises(ValueError):
-    _ = NPCore.gen_ints(**kwargs)
+    _ = NPCore.gen_ints(rng=RNG, **kwargs)
 
 
 def test_gen_ints_fails_2(default_size):
   kwargs = dict(size=-default_size, min=10**1, max=0)
   with pytest.raises(ValueError):
-    _ = NPCore.gen_ints(**kwargs)
+    _ = NPCore.gen_ints(rng=RNG, **kwargs)
 
-
-def test_gen_floats(default_size):
-  kwargs = dict(size=default_size, min=0, max=10**4, decimals=2)
-  real_result = NPCore.gen_floats(**kwargs)
-  assert len(real_result) == kwargs["size"]
-  assert min(real_result) >= kwargs["min"]
-  assert max(real_result) <= kwargs["max"]
-  assert type(real_result) == np.ndarray
-
-
-def test_gen_floats_normal(default_size):
-  kwargs = dict(size=default_size, mean=10**3, std=10**2, decimals=2)
-  real_result = NPCore.gen_floats_normal(**kwargs)
-  assert len(real_result) == kwargs["size"]
-  assert type(real_result) == np.ndarray
-
-def test_gen_distincts_low_cardinality(default_size):
-  distincts = ["value1", "value2", "value3"]
-  result = NPCore.gen_distincts(size=default_size, distincts=distincts)
-  assert len(result) == default_size
-  assert all(isinstance(item, str) for item in result)
 
 def test_gen_distincts_high_cardinality(default_size):
   distincts = [f"value{i}" for i in range(default_size)]
-  result = NPCore.gen_distincts(size=default_size, distincts=distincts)
+  result = NPCore.gen_distincts(rng=RNG, size=default_size, distincts=distincts)
   assert len(result) == default_size
   assert all(isinstance(item, str) for item in result)
 
 
 def test_gen_unix_timestamps(default_size):
-  result = NPCore.gen_unix_timestamps(default_size, '2024-07-05', '2024-07-06', date_format="%Y-%m-%d")
+  result = NPCore.gen_unix_timestamps(default_size, '2024-07-05', '2024-07-06', date_format="%Y-%m-%d", rng=RNG)
   assert len(result) == default_size
 
 
 def test_gen_dates(default_size):
-  result = NPCore.gen_dates(default_size, '2020-01-01', '2024-12-31', date_format="%Y-%m-%d")
+  result = NPCore.gen_dates(default_size, '2020-01-01', '2024-12-31', date_format="%Y-%m-%d", rng=RNG)
   assert len(result) == default_size
 
 
@@ -159,7 +173,7 @@ def test_gen_dates(default_size):
 # Tests for gen_uuid4
 def test_gen_uuid4_basic(default_size):
   """Test UUID generation returns correct size and format."""
-  result = NPCore.gen_uuid4(size=default_size)
+  result = NPCore.gen_uuid4(rng=RNG, size=default_size)
   assert len(result) == default_size
   assert type(result) == np.ndarray
   # Check UUID format (36 characters with dashes)
@@ -172,7 +186,7 @@ def test_gen_uuid4_basic(default_size):
 def test_gen_uuid4_uniqueness():
   """Test that generated UUIDs are unique."""
   size = 1000
-  result = NPCore.gen_uuid4(size=size)
+  result = NPCore.gen_uuid4(rng=RNG, size=size)
   unique_uuids = set(result)
   assert len(unique_uuids) == size  # All should be unique
 
@@ -180,7 +194,7 @@ def test_gen_uuid4_uniqueness():
 # Tests for gen_booleans
 def test_gen_booleans_default_probability(default_size):
   """Test boolean generation with default 50% probability."""
-  result = NPCore.gen_booleans(size=default_size, true_prob=0.5)
+  result = NPCore.gen_booleans(rng=RNG, size=default_size, true_prob=0.5)
   assert len(result) == default_size
   assert type(result) == np.ndarray
   assert result.dtype == bool
@@ -193,7 +207,7 @@ def test_gen_booleans_default_probability(default_size):
 def test_gen_booleans_various_probabilities(true_prob):
   """Test boolean generation with various probabilities."""
   size = 10000
-  result = NPCore.gen_booleans(size=size, true_prob=true_prob)
+  result = NPCore.gen_booleans(rng=RNG, size=size, true_prob=true_prob)
   true_ratio = np.sum(result) / size
   
   # Allow 5% tolerance
@@ -209,7 +223,7 @@ def test_gen_booleans_various_probabilities(true_prob):
 @pytest.mark.parametrize("length", [4, 6, 8, 10, 12])
 def test_gen_ints_zfilled_various_lengths(length, default_size):
   """Test zero-filled integer generation with various lengths."""
-  result = NPCore.gen_ints_zfilled(size=default_size, length=length)
+  result = NPCore.gen_ints_zfilled(rng=RNG, size=default_size, length=length)
   assert len(result) == default_size
   assert type(result) == np.ndarray
   
@@ -224,7 +238,7 @@ def test_gen_ints_zfilled_padding():
   """Test that zero-filling correctly pads numbers."""
   size = 100
   length = 8
-  result = NPCore.gen_ints_zfilled(size=size, length=length)
+  result = NPCore.gen_ints_zfilled(rng=RNG, size=size, length=length)
   
   # All should be 8 characters
   for item in result:
@@ -239,7 +253,7 @@ def test_gen_distincts_prop_basic():
   """Test proportional distinct generation."""
   size = 1000
   distincts = {"A": 70, "B": 20, "C": 10}
-  result = NPCore.gen_distincts_prop(size=size, distincts=distincts)
+  result = NPCore.gen_distincts_prop(rng=RNG, size=size, distincts=distincts)
   
   assert len(result) == size
   assert type(result) == np.ndarray
@@ -251,7 +265,7 @@ def test_gen_distincts_prop_distribution():
   """Test that proportional distribution is approximately correct."""
   size = 10000
   distincts = {"Junior": 60, "Pleno": 30, "Senior": 10}
-  result = NPCore.gen_distincts_prop(size=size, distincts=distincts)
+  result = NPCore.gen_distincts_prop(rng=RNG, size=size, distincts=distincts)
   
   # Count occurrences
   from collections import Counter
@@ -274,7 +288,7 @@ def test_gen_distincts_prop_distribution():
 def test_gen_distincts_prop_various_distributions(distincts):
   """Test proportional generation with various weight distributions."""
   size = 1000
-  result = NPCore.gen_distincts_prop(size=size, distincts=distincts)
+  result = NPCore.gen_distincts_prop(rng=RNG, size=size, distincts=distincts)
   assert len(result) == size
   assert all(item in distincts.keys() for item in result)
 
@@ -284,7 +298,7 @@ def test_gen_ints_zfilled_edge_case_small():
   """Test zero-filled integers with very small length."""
   size = 10
   length = 2
-  result = NPCore.gen_ints_zfilled(size=size, length=length)
+  result = NPCore.gen_ints_zfilled(rng=RNG, size=size, length=length)
   assert len(result) == size
   for item in result:
     assert len(item) == length
@@ -294,12 +308,287 @@ def test_gen_ints_zfilled_edge_case_small():
 def test_gen_booleans_edge_case_all_true():
   """Test boolean generation with 100% true probability."""
   size = 100
-  result = NPCore.gen_booleans(size=size, true_prob=1.0)
+  result = NPCore.gen_booleans(rng=RNG, size=size, true_prob=1.0)
   assert all(result)
 
 
 def test_gen_booleans_edge_case_all_false():
   """Test boolean generation with 0% true probability."""
   size = 100
-  result = NPCore.gen_booleans(size=size, true_prob=0.0)
+  result = NPCore.gen_booleans(rng=RNG, size=size, true_prob=0.0)
   assert not any(result)
+
+@pytest.mark.skipif(not hasattr(time, "tzset"), reason="time.tzset is Unix-only")
+@pytest.mark.parametrize("tz", ["UTC", "America/Sao_Paulo", "Asia/Tokyo"])
+def test_gen_unix_timestamps_and_dates_ignore_process_timezone(tz, monkeypatch):
+  monkeypatch.setenv("TZ", tz)
+  time.tzset()
+  try:
+    args = (3, "2024-01-01 00:00:00", "2024-01-01 00:00:01", "%Y-%m-%d %H:%M:%S")
+    assert NPCore.gen_unix_timestamps(*args, rng=RNG).tolist() == [1704067200] * 3
+    assert NPCore.gen_dates(*args, rng=RNG).tolist() == ["2024-01-01 00:00:00"] * 3
+  finally:
+    monkeypatch.undo()
+    time.tzset()
+
+
+def test_gen_uuid4_values_are_rfc4122_version_4():
+  """AC4.5"""
+  values = NPCore.gen_uuid4(1000, rng=np.random.default_rng(0))
+  parsed = [uuid.UUID(v) for v in values]
+  assert {(u.version, u.variant) for u in parsed} == {(4, uuid.RFC_4122)}
+  assert [str(u) for u in parsed] == values.tolist()
+  assert len(set(values)) == 1000
+
+
+def test_gen_ints_and_zfilled_reach_the_inclusive_max():
+  assert set(NPCore.gen_ints(1000, 0, 1, rng=RNG).tolist()) == {0, 1}
+  assert set(NPCore.gen_ints_zfilled(1000, 1, rng=RNG).tolist()) == set("0123456789")
+
+
+@pytest.mark.parametrize("fmt, start, end", [
+  ("%Y-%m-%d %H:%M:%S", "1999-12-31 23:00:00", "2000-01-01 01:00:00"),
+  ("%Y-%m-%d", "1970-01-01", "9999-12-31"),
+  ("%d/%m/%Y", "01/01/1970", "31/12/9999"),
+  ("%Y-%m-%dT%H:%M:%S", "1970-01-01T00:00:00", "9999-12-31T23:59:59"),
+  ("%Y%m%d %H%M%S.%f", "19700101 000000.000000", "99991231 235959.000000"),
+])
+def test_gen_dates_equals_per_row_utc_strftime(fmt, start, end):
+  """AC14.1: same strings as the per-row UTC strftime, for each documented date_format."""
+  from datetime import datetime, timedelta, timezone
+  ts = NPCore.gen_unix_timestamps(10**4, start, end, fmt, rng=np.random.default_rng(7))
+  expected = [(datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(seconds=int(t))).strftime(fmt) for t in ts]
+  assert NPCore.gen_dates(10**4, start, end, fmt, rng=np.random.default_rng(7)).tolist() == expected
+
+
+def test_gen_dates_zero_rows_returns_empty():
+  assert NPCore.gen_dates(0, "2020-01-01", "2024-12-31", "%Y-%m-%d", rng=RNG).tolist() == []
+
+
+def test_date_only_iso_bounds_are_independent_from_timestamp_output_format():
+  try:
+    actual = NPCore.gen_dates(
+      6,
+      "2026-02-03",
+      "2026-02-05",
+      "%Y-%m-%d %H:%M:%S",
+      rng=np.random.default_rng(704),
+    ).tolist()
+  except ValueError as error:
+    actual = error
+
+  custom_timestamps = NPCore.gen_unix_timestamps(
+    4,
+    "03/02/2026 00:00:00",
+    "04/02/2026 00:00:00",
+    "%d/%m/%Y %H:%M:%S",
+    rng=np.random.default_rng(704),
+  )
+  assert custom_timestamps.tolist() == [1770133933, 1770109790, 1770108215, 1770151804]
+  assert (custom_timestamps < 1770163200).all()
+  assert NPCore.gen_dates(
+    4,
+    "03/02/2026 00:00:00",
+    "04/02/2026 00:00:00",
+    "%d/%m/%Y %H:%M:%S",
+    rng=np.random.default_rng(704),
+  ).tolist() == [
+    "03/02/2026 15:52:13",
+    "03/02/2026 09:09:50",
+    "03/02/2026 08:43:35",
+    "03/02/2026 20:50:04",
+  ]
+  with pytest.raises(ValueError):
+    NPCore.gen_unix_timestamps(
+      1,
+      "04/02/2026 00:00:00",
+      "03/02/2026 00:00:00",
+      "%d/%m/%Y %H:%M:%S",
+      rng=np.random.default_rng(704),
+    )
+
+  assert actual == [
+    "2026-02-04 07:44:26",
+    "2026-02-03 18:19:41",
+    "2026-02-03 17:27:11",
+    "2026-02-04 17:40:08",
+    "2026-02-03 12:28:56",
+    "2026-02-04 08:48:48",
+  ]
+
+
+@pytest.mark.parametrize(("method", "kwargs", "expected_dtype", "expected_hash"), [
+  ("exponential", {"scale": 2.5, "decimals": 3}, np.dtype("float64"),
+   "e1cd3981cbfdd9fe1ec70f4431508c75202dfe752403bf4e45d3ef9ec1760fba"),
+  ("lognormal", {"mean": 0.5, "std": 1.25, "decimals": 4}, np.dtype("float64"),
+   "af947324566baea876ff400c6fba7ec72a08f01e03361e4e0a3071c5368fa869"),
+  ("poisson", {"lam": 3.5}, np.dtype("int64"),
+   "f3153dcdcec5acc1830dbfa03c5102462b476f3e71773cc8895b242f064b43cd"),
+  ("zipf", {"a": 2.25}, np.dtype("int64"),
+   "ace96f795dae288770a648959bcb1f5f2d3bb24bacebf0d9a0166711496a7b0b"),
+])
+def test_new_distribution_seeded_outputs_match_numpy_family(method, kwargs, expected_dtype, expected_hash):
+  seed, size = 20261008, 1000
+  oracle_kwargs = dict(kwargs)
+  decimals = oracle_kwargs.pop("decimals", None)
+  if method == "lognormal":
+    oracle_kwargs["sigma"] = oracle_kwargs.pop("std")
+  expected = getattr(np.random.default_rng(seed), method)(size=size, **oracle_kwargs)
+  if decimals is not None:
+    expected = np.round(expected, decimals)
+
+  generator = getattr(NPCore, f"gen_{method}", None)
+  assert generator is not None
+  actual = generator(size=size, rng=np.random.default_rng(seed), **kwargs)
+  assert np.array_equal(actual, expected)
+  assert actual.dtype == expected_dtype
+  assert hashlib.sha256(actual.tobytes()).hexdigest() == expected_hash
+
+
+def test_uniform_float_lattice_has_seeded_literal_golden():
+  actual = NPCore.gen_floats(
+    size=1000, min=-12.34, max=56.78, decimals=2,
+    rng=np.random.default_rng(20261008),
+  )
+  expected = np.random.default_rng(20261008).integers(
+    -1234, 5679, size=1000, dtype=np.int64,
+  ) / 100
+  assert np.array_equal(actual, expected)
+  assert hashlib.sha256(actual.tobytes()).hexdigest() == "6b7225c0dab242709fa6172d3b658f431793822cf0a62d7b0805d4acb7990a07"
+
+
+def test_uniform_float_lattice_reaches_exact_fractional_endpoints():
+  values = NPCore.gen_floats(
+    size=10**4, min=9.991, max=10.011, decimals=2,
+    rng=np.random.default_rng(11),
+  )
+  assert set(values) == {10.0, 10.01}
+
+
+def test_uniform_float_lattice_supports_signed_decimals():
+  values = NPCore.gen_floats(
+    size=100, min=91, max=109, decimals=-1,
+    rng=np.random.default_rng(12),
+  )
+  assert values.tolist() == [100.0] * 100
+
+
+def test_uniform_float_lattice_larger_than_int64_remains_supported_without_a_decimals_ceiling():
+  frame = DataGenerator({
+    "value": {
+      "method": "floats",
+      "kwargs": {"min": -1, "max": 1, "decimals": 20},
+    }
+  }, seed=13).size(100).get_df()
+  assert frame["value"].dtype == np.float64
+  assert frame["value"].between(-1, 1, inclusive="both").all()
+
+
+@pytest.mark.parametrize(("value", "decimals"), [
+  (1e308, 2),
+  (-1e308, 2),
+  (1e308, -308),
+  (1e-308, 320),
+])
+def test_uniform_float_lattice_converts_finite_singletons_at_extreme_scales(value, decimals):
+  try:
+    actual = NPCore.gen_floats(
+      size=1, min=value, max=value, decimals=decimals,
+      rng=np.random.default_rng(14),
+    )
+  except OverflowError as error:
+    actual = error
+  assert isinstance(actual, np.ndarray)
+  assert actual.dtype == np.float64
+  assert actual.tolist() == [value]
+
+
+@pytest.mark.parametrize("value", [1.0, -1.0, 1e308, 1e-308])
+def test_uniform_float_lattice_converts_positive_extreme_decimals_without_string_limits(value):
+  digit_limit = sys.get_int_max_str_digits()
+  with localcontext() as context:
+    context.prec = 2
+    try:
+      actual = NPCore.gen_floats(
+        size=1, min=value, max=value, decimals=5000,
+        rng=np.random.default_rng(15),
+      )
+    except ValueError as error:
+      actual = error
+  assert sys.get_int_max_str_digits() == digit_limit
+  assert isinstance(actual, np.ndarray)
+  assert actual.dtype == np.float64
+  assert actual.tolist() == [value]
+
+
+@pytest.mark.parametrize(("value", "decimals"), [
+  (1e308, -308),
+  (0.0, -5000),
+])
+def test_uniform_float_lattice_preserves_negative_extreme_decimals_without_context_or_global_changes(value, decimals):
+  digit_limit = sys.get_int_max_str_digits()
+  with localcontext() as context:
+    context.prec = 2
+    actual = NPCore.gen_floats(
+      size=1, min=value, max=value, decimals=decimals,
+      rng=np.random.default_rng(16),
+    )
+  assert sys.get_int_max_str_digits() == digit_limit
+  assert actual.dtype == np.float64
+  assert actual.tolist() == [value]
+
+
+def test_uniform_float_lattice_wide_domain_seeded_bytes_remain_unchanged():
+  values = NPCore.gen_floats(
+    size=1000, min=-1, max=1, decimals=20,
+    rng=np.random.default_rng(13),
+  )
+  assert hashlib.sha256(values.tobytes()).hexdigest() == "ee024755131895b17e118517ac64a8cf81058c7258f74b470624a81f2e7a7714"
+
+
+def test_legacy_normal_seeded_golden_is_unchanged():
+  values = NPCore.gen_floats_normal(
+    size=1000, mean=12.5, std=3.25, decimals=4,
+    rng=np.random.default_rng(20261008),
+  )
+  assert hashlib.sha256(values.tobytes()).hexdigest() == "9930878da3e03580439114bb2b98d83ccc30718fecc1e87aa894871d7b83fb66"
+
+
+@pytest.mark.parametrize(("value", "expected_dtype"), [
+  (None, "object"),
+  (True, "bool"),
+  (7, "int64"),
+  (1.5, "float64"),
+  ("fixed", "object"),
+  (b"fixed", "object"),
+  (date(2026, 10, 8), "object"),
+  (datetime(2026, 10, 8, 12, 30), "datetime64[ns]"),
+  (Decimal("1.25"), "object"),
+])
+def test_constant_repeats_declared_scalars_with_natural_pandas_dtype(value, expected_dtype):
+  try:
+    result = DataGenerator({
+      "constant": {"method": "constant", "kwargs": {"value": value}}
+    }, seed=14).size(3).get_df()["constant"]
+  except (ColumnGenerationError, KeyError) as error:
+    result = error
+
+  assert not isinstance(result, (ColumnGenerationError, KeyError))
+  assert result.tolist() == [value, value, value]
+  assert str(result.dtype) == expected_dtype
+
+
+def test_constant_consumes_no_rng_and_does_not_change_seeded_columns():
+  random_column = {"method": "integers", "kwargs": {"min": 0, "max": 10}}
+  without_constant = DataGenerator({"random": random_column}, seed=15).size(100).get_df()
+  try:
+    with_constant = DataGenerator({
+      "constant": {"method": "constant", "kwargs": {"value": "fixed"}},
+      "random": random_column,
+    }, seed=15).size(100).get_df()
+  except (ColumnGenerationError, KeyError) as error:
+    with_constant = error
+
+  assert not isinstance(with_constant, (ColumnGenerationError, KeyError))
+  assert with_constant["constant"].tolist() == ["fixed"] * 100
+  assert np.array_equal(with_constant["random"].to_numpy(), without_constant["random"].to_numpy())

@@ -3,38 +3,23 @@ import time
 from typing import Dict, List, Any
 import numpy as np
 from functools import reduce
-from rand_engine.integrations._duckdb_handler import DuckDBHandler
+from rand_engine.core._np_core import NPCore
 
 class PyCore:
 
 
   @classmethod
-  def gen_complex_distincts(cls, size: int, pattern="x.x.x-x", replacement="x", templates=None):
+  def gen_complex_distincts(cls, size: int, pattern="x.x.x-x", replacement="x", templates=None, *, rng: np.random.Generator):
     if templates is None:
       templates = []
-    from rand_engine.core._np_core import NPCore
-    
-    # Mapeamento de strings para métodos
-    method_map = {
-      "integers": NPCore.gen_ints,
-      "int_zfilled": NPCore.gen_ints_zfilled,
-      "floats": NPCore.gen_floats,
-      "floats_normal": NPCore.gen_floats_normal,
-      "distincts": NPCore.gen_distincts,
-      "unix_timestamps": NPCore.gen_unix_timestamps,
-      "uuid4": NPCore.gen_uuid4,
-      "booleans": NPCore.gen_booleans,
-    }
-    
     assert pattern.count(replacement) == len(templates)
     list_of_lists, counter = [], 0
     for replacer_cursor in range(len(pattern)):
       if pattern[replacer_cursor] == replacement:
         method = templates[counter]["method"]
-        # Se for string, mapeia para o callable
         if isinstance(method, str):
-          method = method_map[method]
-        list_of_lists.append(method(size, **templates[counter]["kwargs"]))
+          method = METHODS[method]
+        list_of_lists.append(method(size, rng=rng, **templates[counter]["kwargs"]))
         counter += 1
       else:
         list_of_lists.append(np.array([pattern[replacer_cursor] for i in range(size)]))
@@ -42,35 +27,58 @@ class PyCore:
 
 
   @classmethod  
-  def gen_distincts_untyped(cls, size: int, distinct: List[Any]) -> List[Any]:
-    return list(map(lambda x: distinct[x], np.random.randint(0, len(distinct), size)))
+  def gen_distincts_untyped(cls, size: int, distinct: List[Any], *, rng: np.random.Generator) -> List[Any]:
+    return list(map(lambda x: distinct[x], rng.integers(0, len(distinct), size)))
   
 
   @classmethod
-  def gen_distincts_map(cls, size: int, distincts: Dict[str, List[Any]]) -> np.ndarray:
-    distincts_map = [(i, j) for j in distincts for i in distincts[j]]
+  def gen_distincts_map(cls, size: int, distincts: Dict[str, List[Any]], *, rng: np.random.Generator) -> np.ndarray:
+    distincts_map = [(k, v) for k, values in distincts.items() for v in values]
     assert len(list(set([type(x) for x in distincts]))) == 1
-    return cls.gen_distincts_untyped(size, distincts_map)
+    return cls.gen_distincts_untyped(size, distincts_map, rng=rng)
 
 
   @classmethod
-  def gen_distincts_multi_map(cls, size: int, distincts: Dict[str, List[Any]]) -> np.ndarray:
+  def gen_distincts_multi_map(cls, size: int, distincts: Dict[str, List[Any]], *, rng: np.random.Generator) -> np.ndarray:
     combinations = [list(itertools.product([k], *v)) for k, v in distincts.items()]
     combinations = [[[i for i in tupla] for tupla in sublist] for sublist in combinations]
     distincts = [i for sublist in combinations for i in sublist]
-    return cls.gen_distincts_untyped(size, distincts)
+    return cls.gen_distincts_untyped(size, distincts, rng=rng)
 
   @classmethod
-  def gen_distincts_map_prop(cls, size: int, distincts: Dict[str, List[Any]]) -> np.ndarray:
+  def gen_distincts_map_prop(cls, size: int, distincts: Dict[str, List[Any]], *, rng: np.random.Generator) -> np.ndarray:
     distincts_map_prop = [
       (category, value)
       for category, value_weight_pairs in distincts.items()
       for value, weight in value_weight_pairs
       for _ in range(weight)
     ]
-    return cls.gen_distincts_untyped(size, distincts_map_prop)
+    return cls.gen_distincts_untyped(size, distincts_map_prop, rng=rng)
 
 
+
+# the NumPy engine's one method map: DataGenerator columns and complex_distincts templates
+METHODS = {
+  "integers": NPCore.gen_ints,
+  "int_zfilled": NPCore.gen_ints_zfilled,
+  "floats": NPCore.gen_floats,
+  "floats_normal": NPCore.gen_floats_normal,
+  "exponential": NPCore.gen_exponential,
+  "lognormal": NPCore.gen_lognormal,
+  "poisson": NPCore.gen_poisson,
+  "zipf": NPCore.gen_zipf,
+  "constant": NPCore.gen_constant,
+  "distincts": NPCore.gen_distincts,
+  "distincts_prop": NPCore.gen_distincts_prop,
+  "unix_timestamps": NPCore.gen_unix_timestamps,
+  "uuid4": NPCore.gen_uuid4,
+  "booleans": NPCore.gen_booleans,
+  "dates": NPCore.gen_dates,
+  "distincts_map": PyCore.gen_distincts_map,
+  "distincts_multi_map": PyCore.gen_distincts_multi_map,
+  "distincts_map_prop": PyCore.gen_distincts_map_prop,
+  "complex_distincts": PyCore.gen_complex_distincts,
+}
 
 
 # def test_handle_distincts_lvl_5():

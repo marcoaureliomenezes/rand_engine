@@ -55,18 +55,6 @@ class TestAdvancedRandSpecsAccess:
         assert isinstance(spec, dict)
         assert 'user_id' in spec
     
-    def test_invoices_accessible(self):
-        """Test that invoices spec is accessible."""
-        spec = AdvancedRandSpecs.invoices()
-        assert isinstance(spec, dict)
-        assert 'invoice_number' in spec
-    
-    def test_shipments_accessible(self):
-        """Test that shipments spec is accessible."""
-        spec = AdvancedRandSpecs.shipments()
-        assert isinstance(spec, dict)
-        assert 'tracking_number' in spec
-    
     def test_events_accessible(self):
         """Test that events spec is accessible."""
         spec = RandSpecs.events()
@@ -85,8 +73,6 @@ class TestAllSpecsGeneration:
         ("employees", RandSpecs.employees),
         ("devices", RandSpecs.devices),
         ("users", RandSpecs.users),
-        ("invoices", AdvancedRandSpecs.invoices),  # Advanced spec (DataGenerator only)
-        ("shipments", AdvancedRandSpecs.shipments),  # Advanced spec (DataGenerator only)
         ("events", RandSpecs.events),
         ("sensors", RandSpecs.sensors),
         ("sales", RandSpecs.sales),
@@ -111,8 +97,6 @@ class TestAllSpecsGeneration:
             RandSpecs.employees(),
             RandSpecs.devices(),
             RandSpecs.users(),
-            AdvancedRandSpecs.invoices(),
-            AdvancedRandSpecs.shipments(),
             RandSpecs.events(),
             RandSpecs.sensors(),
             RandSpecs.sales(),
@@ -121,3 +105,16 @@ class TestAllSpecsGeneration:
         for spec in specs:
             assert isinstance(spec, dict)
             assert len(spec) > 0
+
+
+ADVANCED_SPEC_NAMES = [n for n in vars(AdvancedRandSpecs) if not n.startswith('_')]
+
+
+@pytest.mark.parametrize("name", ADVANCED_SPEC_NAMES)
+def test_every_advanced_spec_generates(name):
+    """Every advertised AdvancedRandSpecs spec validates and generates its columns."""
+    spec = getattr(AdvancedRandSpecs, name)()
+    df = DataGenerator(spec, seed=42).size(100).get_df()
+    expected = [c for k, v in spec.items() for c in (v["cols"] if v.get("splitable") else [k])]
+    assert list(df.columns) == expected
+    assert len(df) == 100

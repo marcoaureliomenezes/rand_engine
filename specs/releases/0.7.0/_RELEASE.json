@@ -1,0 +1,164 @@
+{
+  "schema": "release-state-v1",
+  "release": "0.7.0",
+  "phase": "IMPLEMENTATION",
+  "defined": {
+    "sha": "3dee8bdc0e4b0d676d553c2ac3db54b613879d7b",
+    "ts": "2026-10-08T01:21:23Z"
+  },
+  "implemented": {
+    "sha": "69d0d33577ec4c3820e54eeef4989fd08dfe4787",
+    "ts": "2026-10-07T13:33:48Z"
+  },
+  "shipped": null,
+  "log": [
+    {
+      "ts": "2026-10-03T17:09:30Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Release 0.7.0 born"
+    },
+    {
+      "ts": "2026-10-03T20:34:51Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-1",
+      "milestone": "defined",
+      "sha": "56b854b74796768a9292aa4f70da5af8fef87659",
+      "text": "Candidate defined at 56b854b74796768a9292aa4f70da5af8fef87659; phase IMPLEMENTATION."
+    },
+    {
+      "ts": "2026-10-03T21:10:00Z",
+      "agent": "main-thread",
+      "kind": "note",
+      "text": "rc-1 amended per definition review (dd-code-reviewer REJECTED 464e5f7) and re-approved by the operator at 04cbffc (\"Re-approve all three (Recommended)\"); the defined stamp 56b854b predates the amendment because release.py phase writes IMPLEMENTATION once."
+    },
+    {
+      "ts": "2026-10-07T13:33:26Z",
+      "agent": "main-thread",
+      "kind": "note",
+      "text": "Repair the active defined stamp after the documented release.py drift diagnostic: historical 56b854b74796768a9292aa4f70da5af8fef87659 maps to reachable cedc6351ba7289f17c212e350b1cb29ade656f67. Both definition commits have identical stable patch-id a2d403d260e397f9b48a6b3d40c9e1c47467ee7c; historical log entries and original timestamp remain unchanged. Operator release-completion authorization covers this lineage repair."
+    },
+    {
+      "ts": "2026-10-07T13:33:26Z",
+      "agent": "main-thread",
+      "kind": "note",
+      "text": "Operator workflow override: task, stage and job gates run locally; reviewer-approved jobs merge into local feature/0.7.0 after the local job gate. No further wt/* pushes or job remote-CI prerequisites; only the prepared feature branch may be published. Final PR benchmark and promotion gates remain required."
+    },
+    {
+      "ts": "2026-10-07T13:33:48Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-1",
+      "milestone": "implemented",
+      "sha": "69d0d33577ec4c3820e54eeef4989fd08dfe4787",
+      "text": "Candidate implemented at 69d0d33577ec4c3820e54eeef4989fd08dfe4787; phase CLOSURE."
+    },
+    {
+      "ts": "2026-10-07T13:42:47Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over cedc6351ba7289f17c212e350b1cb29ade656f67..e0dd5e079f90: 0 reviewed, 8 changed.",
+      "since": "cedc6351ba7289f17c212e350b1cb29ade656f67",
+      "until": "e0dd5e079f90e1fe62e9c56077f96c76ad73adcd",
+      "reviewed": [],
+      "changed": [
+        "templates-and-examples",
+        "data-generator",
+        "generation-methods",
+        "spark-generator",
+        "writers-and-streaming",
+        "benchmarks",
+        "pk-fk-constraints",
+        "rand-spec-grammar"
+      ]
+    },
+    {
+      "ts": "2026-10-07T13:57:50Z",
+      "agent": "dd-software-engineer",
+      "kind": "summary",
+      "text": "Runtime implementation is locally merged; J3 sets version 0.7.0 (66f6114, closure 69d0d33), with wheel/sdist 0.7.0 MIT metadata and twine checks green. Memory records eight changed atoms; the current catalog has nine atoms and derived sections carry current markers. Corrective memory work remains separately gated. J4 final approval and terminal benchmark proof are pending."
+    },
+    {
+      "ts": "2026-10-07T13:57:50Z",
+      "agent": "dd-software-engineer",
+      "kind": "test-dispositions",
+      "text": "Main-thread local default gates: 692 passed, eight stress cases deselected. Stress and benchmark workloads run only in CI; this metadata task runs no pytest."
+    },
+    {
+      "ts": "2026-10-07T13:57:50Z",
+      "agent": "dd-software-engineer",
+      "kind": "dispositions",
+      "text": "Origin is operator-demand: no picked backlog or audit items require disposition. All 25 bug records are resolved, zero open. No accepted archival ADR authorizes removal; retain the bug ledger."
+    },
+    {
+      "ts": "2026-10-07T13:57:50Z",
+      "agent": "dd-software-engineer",
+      "kind": "drifts",
+      "text": "Run 37416658724 failed at ratio 1.867135399 with same-code source evidence; this is a noise observation, not root-cause proof. Final PR #42 benchmark evidence remains pending after feature publication. Samples, repetitions, RNG contract and FR12 limit 1.3 are unchanged."
+    },
+    {
+      "ts": "2026-10-07T13:57:50Z",
+      "agent": "dd-software-engineer",
+      "kind": "artifact-gc",
+      "text": "Main-thread dry doctor with explicit task specs_dir exited 1: LINT-1/FIXED-2 are under corrective product work; consumer TREE-5 warnings and workspace PROJECTION/HOOKS drift remain reported. Global runtime repair is outside this job; no library, harness or other-project repair authorized. Prior remote worktree refs remain untouched under the no-worktree-push override; no remote deletion performed."
+    },
+    {
+      "ts": "2026-10-07T13:57:50Z",
+      "agent": "dd-software-engineer",
+      "kind": "size",
+      "text": "Measured metadata/memory-only window 69d0d33..f7bf715 before this narrative: git diff --numstat totals 25 files, 375 added and 194 removed lines. This excludes the pending corrective commit and this narrative; no legacy wall time or dispatch count inferred."
+    },
+    {
+      "ts": "2026-10-07T13:57:50Z",
+      "agent": "dd-software-engineer",
+      "kind": "reviews",
+      "text": "Main-thread local APPROVED references cover registry 009d443, README 55ec159 and version 69d0d33/66f6114; version local job gate reported 692 passed, eight deselected in 78.68s. Current reconciliation has no final job approval yet. Local gates and reviewer APPROVED precede feature merge; only prepared feature is published, final CI/benchmark and promotion gates remain required."
+    },
+    {
+      "ts": "2026-10-07T14:49:32Z",
+      "agent": "dd-software-engineer",
+      "kind": "note",
+      "text": "Actual local preparation merge/publication under operator override: first J4 commit 7742bba at 2026-10-07T13:30:35Z; prepared feature head 959f8909b402b37558382a2c3088aa6265d0729e published at 2026-10-07T14:29:10Z (feature CI createdAt). Elapsed to publication was 58 whole minutes, not code-only time. One known preparation job gate: 692 passed in 69.33s after task 692/81.06s and stage 692/75.87s. No job remote-CI prerequisite or worktree push; unknown ritual waits/dispatch counts are not invented, so this actual merge evidence uses note rather than the legacy remote-CI merge shape."
+    },
+    {
+      "ts": "2026-10-07T14:49:32Z",
+      "agent": "dd-software-engineer",
+      "kind": "summary",
+      "text": "J4 precision corrections are locally integrated at 959f890; terminal benchmark proof is now present. Run 37637078229 succeeded at exact head 959f8909b402b37558382a2c3088aa6265d0729e against base c9ed9f422189836d4939a011f187aecbae691ea5: all 36 rows paired, every ratio <= 1.3, maximum 1.075219565773126 on pk at 10000000 rows. docs/benchmarks.json and docs/BENCHMARKS.md reproduce the downloaded artifact byte-for-byte. Samples, repetitions, RNG and threshold unchanged. https://github.com/marcoaureliomenezes/rand_engine/actions/runs/37637078229"
+    },
+    {
+      "ts": "2026-10-07T14:49:32Z",
+      "agent": "dd-software-engineer",
+      "kind": "reviews",
+      "text": "Feature security/matrix/build run 37637078265 succeeded at the same measured head (nine matrix legs plus build and security). Existing local preparation review/gate evidence preceded publication. Terminal owner selectors tests/test_docs.py tests/test_benchmarks.py: 42 passed in 11.70s (ten documentation cases plus benchmark contract cases). J4 terminal task/job integration review and gates remain with the main thread; their success and promotion are not claimed here. https://github.com/marcoaureliomenezes/rand_engine/actions/runs/37637078265"
+    },
+    {
+      "ts": "2026-10-07T16:53:49Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.7.0 (prior candidate closed at 69d0d33577ec4c3820e54eeef4989fd08dfe4787)"
+    },
+    {
+      "ts": "2026-10-07T16:57:45Z",
+      "agent": "main-thread",
+      "kind": "note",
+      "text": "Operator publication override applies across candidates: no wt push or remote worktree CI; task, stage and job gates run locally; reviewer-approved jobs merge locally to feature/0.7.0; feature publication only at final release preparation. RC2 definition continues from locally closed RC1 at 6f74199. PR42 remains open with external review required; no admin merge, protection change or remote bypass is authorized or performed. Closed RC1 history is not rewritten."
+    },
+    {
+      "ts": "2026-10-07T16:57:45Z",
+      "agent": "main-thread",
+      "kind": "note",
+      "text": "RC2 grill: 14 product decisions confirmed via clickable selectors, followed by operator demand to proceed. All five reproduced forensic-review bug proposals confirmed; separate registration tree retains the ledger writer's rc-1 discovery attribution. The resulting Draft SPEC is still subject to operator approval; no implementation claim or milestone is made."
+    },
+    {
+      "ts": "2026-10-08T01:21:23Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-2",
+      "milestone": "defined",
+      "sha": "3dee8bdc0e4b0d676d553c2ac3db54b613879d7b",
+      "text": "Candidate defined at 3dee8bdc0e4b0d676d553c2ac3db54b613879d7b; phase IMPLEMENTATION."
+    }
+  ]
+}
