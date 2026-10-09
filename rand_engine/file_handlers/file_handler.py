@@ -109,7 +109,7 @@ def _typed_null_table(
 def _tz_aware_as_text(df: PDDataFrame) -> PDDataFrame:
   # pyarrow formats tz-aware timestamps through an IANA database Windows lacks; pandas renders them itself.
   tz_columns = [c for c in df.columns if isinstance(df[c].dtype, DatetimeTZDtype)]
-  return df.assign(**{c: df[c].astype(str).where(df[c].notna()) for c in tz_columns}) if tz_columns else df
+  return df.assign(**{c: df[c].astype("string") for c in tz_columns}) if tz_columns else df
 
 
 def _logical_schema(schema: pa.Schema) -> pa.Schema:
