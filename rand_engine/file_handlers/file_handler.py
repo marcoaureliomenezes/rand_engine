@@ -65,13 +65,13 @@ def _arrow_table(df: PDDataFrame) -> pa.Table:
     raise
 
 
-def _concrete_field_type(
+def _field_type(
   schema: pa.Schema | None, name: str
 ) -> pa.DataType | None:
   if schema is None:
     return None
   index = schema.get_field_index(name)
-  if index < 0 or pa.types.is_null(schema.field(index).type):
+  if index < 0:
     return None
   return schema.field(index).type
 
@@ -79,21 +79,35 @@ def _concrete_field_type(
 def _typed_null_table(
   df: PDDataFrame,
   current_schema: pa.Schema | None,
-  declared_schema_def: Callable[[], pa.Schema] | None,
+  declared_schema_def: Callable[[], pa.Schema | None] | None,
 ) -> pa.Table:
   table = _arrow_table(df)
   null_fields = [field for field in table.schema if pa.types.is_null(field.type)]
   if not null_fields:
     return table
 
-  declared_schema = None
+  declared_schema = declared_schema_def() if declared_schema_def is not None else None
   for field in null_fields:
-    target = _concrete_field_type(current_schema, field.name)
-    if target is None and declared_schema_def is not None:
-      if declared_schema is None:
-        declared_schema = declared_schema_def()
-      target = _concrete_field_type(declared_schema, field.name)
-    if target is None:
+    current_type = _field_type(current_schema, field.name)
+    if declared_schema_def is None:
+      target = current_type
+    elif declared_schema is None:
+      target = current_type
+      if target is None or pa.types.is_null(target):
+        raise RandEngineError(
+          f"schema is indeterminate for transformed null field '{field.name}'"
+        )
+    else:
+      target = _field_type(declared_schema, field.name)
+      if target is None:
+        raise RandEngineError(
+          f"declared schema has no field '{field.name}'"
+        )
+      if current_type is not None and not current_type.equals(target):
+        raise RandEngineError(
+          f"schema drift: expected {current_schema}, received {declared_schema}"
+        )
+    if target is None or pa.types.is_null(target):
       continue
     index = table.schema.get_field_index(field.name)
     typed_field = pa.field(
@@ -195,7 +209,7 @@ class _CsvFile:
   def write(
     self,
     frame: PDDataFrame,
-    declared_schema_def: Callable[[], pa.Schema] | None = None,
+    declared_schema_def: Callable[[], pa.Schema | None] | None = None,
   ) -> None:
     if self._closed:
       raise RandEngineError("csv file session is closed")
@@ -279,7 +293,7 @@ class _JsonFile:
   def write(
     self,
     frame: PDDataFrame,
-    declared_schema_def: Callable[[], pa.Schema] | None = None,
+    declared_schema_def: Callable[[], pa.Schema | None] | None = None,
   ) -> None:
     if self._closed:
       raise RandEngineError("json file session is closed")
@@ -379,7 +393,7 @@ class _ParquetFile:
   def write(
     self,
     frame: PDDataFrame,
-    declared_schema_def: Callable[[], pa.Schema] | None = None,
+    declared_schema_def: Callable[[], pa.Schema | None] | None = None,
   ) -> None:
     if self._closed:
       raise RandEngineError("parquet file session is closed")

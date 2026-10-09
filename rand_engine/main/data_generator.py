@@ -17,7 +17,7 @@ from rand_engine.validators.method_specs import METHOD_CATALOG
 @dataclass(frozen=True)
 class _EvaluatedBatch:
   frame: pd.DataFrame
-  declared_schema_def: Callable[[], pa.Schema]
+  declared_schema_def: Callable[[], pa.Schema | None]
 
 
 class DataGenerator:
@@ -84,9 +84,9 @@ class DataGenerator:
     return self._size() if callable(self._size) else self._size
 
 
-  def _declared_schema_for(self, evaluated_spec: dict) -> pa.Schema:
+  def _declared_schema_for(self, evaluated_spec: dict) -> pa.Schema | None:
     if self._transformers or any(config.get("transformers") for config in evaluated_spec.values()):
-      raise RandEngineError("empty output schema is indeterminate when transformers are configured")
+      return None
 
     fields = []
     try:
@@ -106,7 +106,10 @@ class DataGenerator:
 
 
   def _declared_schema(self) -> pa.Schema:
-    return self._declared_schema_for(self.__evaluate_spec())
+    schema = self._declared_schema_for(self.__evaluate_spec())
+    if schema is None:
+      raise RandEngineError("empty output schema is indeterminate when transformers are configured")
+    return schema
   
 
   def get_df(self):
