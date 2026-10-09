@@ -121,12 +121,21 @@ class RandGenerator:
     return all(cls._scalar_preserves_dtype(value, series.dtype) for value in values)
 
 
-  def _validate_modifiers(self, df: pd.DataFrame):
-    for column, config in self.random_spec.items():
+  def _modifier_targets(self) -> list[tuple[str, dict]]:
+    targets = []
+    for spec_key, config in self.random_spec.items():
       anomaly_rate = config.get("anomaly_rate", 0)
       null_rate = config.get("null_rate", 0)
       if not anomaly_rate and not null_rate:
         continue
+      aliases = config.get("cols")
+      targets.append((aliases[0] if aliases else spec_key, config))
+    return targets
+
+
+  def _validate_modifiers(self, df: pd.DataFrame, targets: list[tuple[str, dict]]):
+    for column, config in targets:
+      anomaly_rate = config.get("anomaly_rate", 0)
       if column not in df:
         raise RandEngineError(f"modifier column '{column}' is missing after transformers")
       if anomaly_rate and not self._anomaly_values_are_compatible(df[column], config["anomaly_values"]):
@@ -142,6 +151,8 @@ class RandGenerator:
 
   @staticmethod
   def _assign_nulls(series: pd.Series, mask: np.ndarray) -> pd.Series:
+    if is_object_dtype(series.dtype) or is_string_dtype(series.dtype):
+      return series.astype(object).mask(mask, None)
     if is_integer_dtype(series.dtype):
       nullable = str(series.dtype).replace("uint", "UInt").replace("int", "Int")
       return series.astype(nullable).mask(mask, pd.NA)
@@ -155,12 +166,11 @@ class RandGenerator:
 
 
   def apply_modifiers(self, df: pd.DataFrame, rng: np.random.Generator) -> pd.DataFrame:
-    self._validate_modifiers(df)
-    for column, config in self.random_spec.items():
+    targets = self._modifier_targets()
+    self._validate_modifiers(df, targets)
+    for column, config in targets:
       anomaly_rate = config.get("anomaly_rate", 0)
       null_rate = config.get("null_rate", 0)
-      if not anomaly_rate and not null_rate:
-        continue
       series = df[column]
       if anomaly_rate:
         anomaly_mask = rng.random(len(series)) < anomaly_rate
