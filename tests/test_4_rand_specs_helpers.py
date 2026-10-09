@@ -80,7 +80,6 @@ EXPECTED_SCHEMA_SPEC = {
 }
 
 
-@pytest.mark.xfail(strict=True, reason="J4.S1.T1 RED: from_schema is not implemented")
 def test_from_schema_maps_every_supported_arrow_type_and_generates_declared_outputs():
   from_schema = _helper("from_schema")
 
@@ -111,7 +110,6 @@ def test_from_schema_maps_every_supported_arrow_type_and_generates_declared_outp
   assert frame["nothing"].tolist() == [None] * 4
 
 
-@pytest.mark.xfail(strict=True, reason="J4.S1.T1 RED: from_schema is not implemented")
 def test_from_schema_merges_kwargs_but_whole_method_overrides_replace_defaults():
   from_schema = _helper("from_schema")
   schema = pa.schema([pa.field("count", pa.int16()), pa.field("amount", pa.decimal128(12, 2))])
@@ -132,7 +130,6 @@ def test_from_schema_merges_kwargs_but_whole_method_overrides_replace_defaults()
   }
 
 
-@pytest.mark.xfail(strict=True, reason="J4.S1.T1 RED: from_schema is not implemented")
 def test_from_schema_copies_schema_and_nested_override_inputs():
   from_schema = _helper("from_schema")
   schema = pa.schema([pa.field("value", pa.int32(), metadata={b"source": b"caller"})])
@@ -149,7 +146,6 @@ def test_from_schema_copies_schema_and_nested_override_inputs():
 
 
 @pytest.mark.parametrize("invalid", [{"x": pa.int8()}, pa.table({"x": [1]})])
-@pytest.mark.xfail(strict=True, reason="J4.S1.T1 RED: from_schema is not implemented")
 def test_from_schema_refuses_non_schema_inputs(invalid):
   from_schema = _helper("from_schema")
 
@@ -157,7 +153,6 @@ def test_from_schema_refuses_non_schema_inputs(invalid):
     from_schema(invalid)
 
 
-@pytest.mark.xfail(strict=True, reason="J4.S1.T1 RED: from_schema is not implemented")
 def test_from_schema_refuses_unknown_or_incomplete_overrides():
   from_schema = _helper("from_schema")
   schema = pa.schema([pa.field("count", pa.int16())])
@@ -168,7 +163,6 @@ def test_from_schema_refuses_unknown_or_incomplete_overrides():
     from_schema(schema, overrides={"count": {"method": "constant"}})
 
 
-@pytest.mark.xfail(strict=True, reason="J4.S1.T1 RED: from_schema is not implemented")
 def test_from_schema_refuses_unsupported_and_duplicate_fields_with_a_remedy():
   from_schema = _helper("from_schema")
 
@@ -192,7 +186,6 @@ def test_from_schema_refuses_unsupported_and_duplicate_fields_with_a_remedy():
         (pa.timestamp("us", tz="UTC"), "timestamp"),
     ],
 )
-@pytest.mark.xfail(strict=True, reason="J4.S1.T1 RED: from_schema is not implemented")
 def test_from_schema_requires_complete_overrides_for_every_unsupported_family(arrow_type, type_name):
   from_schema = _helper("from_schema")
   schema = pa.schema([pa.field("payload", arrow_type)])
@@ -208,7 +201,6 @@ def test_from_schema_requires_complete_overrides_for_every_unsupported_family(ar
     "arrow_type, type_name",
     [(pa.uuid(), "uuid"), (pa.json_(), "json")],
 )
-@pytest.mark.xfail(strict=True, reason="J4.S2.T1 RED: installed extension refusal is not implemented")
 def test_from_schema_refuses_installed_extension_types_unless_completely_overridden(arrow_type, type_name):
   from_schema = _helper("from_schema")
   schema = pa.schema([pa.field("payload", arrow_type)])
@@ -220,7 +212,6 @@ def test_from_schema_refuses_installed_extension_types_unless_completely_overrid
   assert from_schema(schema, overrides=override) == override
 
 
-@pytest.mark.xfail(strict=True, reason="J4.S2.T1 RED: merged overrides do not reach normal validation")
 def test_from_schema_validates_the_semantics_of_merged_kwargs_overrides():
   from_schema = _helper("from_schema")
   schema = pa.schema([pa.field("count", pa.int16())])
@@ -229,7 +220,6 @@ def test_from_schema_validates_the_semantics_of_merged_kwargs_overrides():
     from_schema(schema, overrides={"count": {"kwargs": {"min": 101}}})
 
 
-@pytest.mark.xfail(strict=True, reason="J4.S1.T1 RED: from_schema is not implemented")
 def test_from_schema_refuses_a_methodless_override_for_an_unsupported_type():
   from_schema = _helper("from_schema")
   schema = pa.schema([pa.field("payload", pa.binary())])
@@ -239,7 +229,6 @@ def test_from_schema_refuses_a_methodless_override_for_an_unsupported_type():
 
 
 @pytest.mark.parametrize("overrides", [[], {"value": []}])
-@pytest.mark.xfail(strict=True, reason="J4.S1.T1 RED: from_schema is not implemented")
 def test_from_schema_refuses_malformed_override_shapes(overrides):
   from_schema = _helper("from_schema")
   schema = pa.schema([pa.field("value", pa.int32())])
@@ -248,7 +237,6 @@ def test_from_schema_refuses_malformed_override_shapes(overrides):
     from_schema(schema, overrides=overrides)
 
 
-@pytest.mark.xfail(strict=True, reason="J4.S1.T1 RED: faker_pool is not implemented")
 def test_faker_pool_has_a_seeded_literal_pool_and_returns_an_ordinary_spec():
   faker_pool = _helper("faker_pool")
   expected = {
@@ -280,7 +268,6 @@ def test_faker_pool_has_a_seeded_literal_pool_and_returns_an_ordinary_spec():
   assert changed != first
 
 
-@pytest.mark.xfail(strict=True, reason="J4.S1.T1 RED: faker_pool is not implemented")
 def test_faker_pool_does_not_change_python_numpy_or_faker_global_rng_state():
   faker_pool = _helper("faker_pool")
   python_before = random.getstate()
@@ -294,7 +281,6 @@ def test_faker_pool_does_not_change_python_numpy_or_faker_global_rng_state():
   assert faker_random.getstate() == faker_before
 
 
-@pytest.mark.xfail(strict=True, reason="J4.S1.T1 RED: faker_pool is not implemented")
 def test_faker_pool_is_materialized_before_generation(monkeypatch):
   faker_pool = _helper("faker_pool")
   spec = {"person": faker_pool("name", locale="pt_BR", pool_size=5, seed=7)}
@@ -313,7 +299,6 @@ def test_faker_pool_is_materialized_before_generation(monkeypatch):
   assert len(values) == 30
 
 
-@pytest.mark.xfail(strict=True, reason="J4.S1.T1 RED: faker_pool is not implemented")
 def test_faker_pool_translates_a_missing_optional_dependency_at_the_import_boundary(monkeypatch):
   faker_pool = _helper("faker_pool")
   real_import = builtins.__import__
@@ -338,7 +323,6 @@ def test_faker_pool_translates_a_missing_optional_dependency_at_the_import_bound
         ({"provider": "profile", "locale": "pt_BR", "pool_size": 1, "seed": 7}, "scalar"),
     ],
 )
-@pytest.mark.xfail(strict=True, reason="J4.S1.T1 RED: faker_pool is not implemented")
 def test_faker_pool_refuses_invalid_construction_inputs(kwargs, message):
   faker_pool = _helper("faker_pool")
 
@@ -347,7 +331,6 @@ def test_faker_pool_refuses_invalid_construction_inputs(kwargs, message):
 
 
 @pytest.mark.parametrize("pool_size", [-1, 1.5, "5"])
-@pytest.mark.xfail(strict=True, reason="J4.S2.T1 RED: pool_size construction is not implemented")
 def test_faker_pool_refuses_negative_and_non_integer_sizes(pool_size):
   faker_pool = _helper("faker_pool")
 
