@@ -1,6 +1,7 @@
 # Job 7 — integer schema validation prerequisite
 
 **Status:** Approved
+**done:** true
 
 ## Stage J7.S1 — RED
 
