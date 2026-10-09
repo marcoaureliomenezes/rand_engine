@@ -1,10 +1,12 @@
 """Intent: CONTRACT — writer-size-not-from-generator (generator size, int or callable read once per save and split across numFiles files; no size fails before overwrite deletes anything); writer-options-consumed-by-use (a reused writer keeps numFiles); writer-state-shared-across-chains (each .write access is a fresh writer)."""
 import pytest
+import gc
 import os
 import pandas as pd
 import glob
 import time
 import threading
+import weakref
 import gzip, bz2, lzma, zipfile
 from contextlib import contextmanager
 import pyarrow.parquet as pq
@@ -330,3 +332,352 @@ def test_csv_all_midnight_written_in_full(tmp_path):
   FileHandler.to_csv(lambda: pd.DataFrame({"midnight": pd.to_datetime(["2020-01-01"])}), path, {})()
   with open(path, "rb") as f:
     assert f.read() == b'"midnight"\n2020-01-01 00:00:00.000000000\n'
+
+
+PK_SPEC = {"id": {"method": "pk", "kwargs": {"style": "sequence", "start": 1, "step": 1}}}
+
+
+def _save_error(writer, path):
+  try:
+    writer.save(str(path))
+  except (AttributeError, ImportError, TypeError):
+    raise
+  except Exception as error:
+    return error
+  return None
+
+
+def _directory_bytes(path):
+  return {
+    str(file.relative_to(path)): file.read_bytes()
+    for file in sorted(path.rglob("*"))
+    if file.is_file()
+  }
+
+
+def _existing_directory(tmp_path, name):
+  path = tmp_path / name
+  path.mkdir()
+  (path / "part_original.csv").write_bytes(b'"id"\n999\n')
+  return path, _directory_bytes(path)
+
+
+@pytest.mark.xfail(strict=True, reason="J5.S1.T1 RED: batch row plan is not implemented")
+def test_batched_plan_writes_four_final_files_with_literal_offsets_and_bound(tmp_path):
+  observed = []
+
+  def observe(frame):
+    observed.append((len(frame), frame["id"].tolist()))
+    return frame
+
+  path = tmp_path / "parts"
+  error = _save_error(
+    DataGenerator(PK_SPEC, seed=7)
+      .size(23)
+      .transformers([observe])
+      .write
+      .format("parquet")
+      .options(numFiles=4, maxRowsPerBatch=3),
+    path,
+  )
+  files = sorted(path.glob("part_*")) if path.exists() else []
+  frames = [pd.read_parquet(file) for file in files]
+
+  assert error is None
+  assert len(files) == 4
+  assert sorted(len(frame) for frame in frames) == [5, 6, 6, 6]
+  assert sorted(pd.concat(frames)["id"].tolist()) == list(range(1, 24))
+  assert observed == [
+    (3, [1, 2, 3]), (3, [4, 5, 6]),
+    (3, [7, 8, 9]), (3, [10, 11, 12]),
+    (3, [13, 14, 15]), (3, [16, 17, 18]),
+    (3, [19, 20, 21]), (2, [22, 23]),
+  ]
+
+
+def test_unbatched_save_keeps_one_frame_and_one_transformer_call(tmp_path):
+  observed = []
+
+  def observe(frame):
+    observed.append(len(frame))
+    return frame
+
+  path = tmp_path / "unbatched.parquet"
+  DataGenerator(PK_SPEC).size(23).transformers([observe]).write.format("parquet").save(str(path))
+
+  assert observed == [23]
+  assert pd.read_parquet(path)["id"].tolist() == list(range(1, 24))
+
+
+@pytest.mark.xfail(strict=True, reason="J5.S1.T1 RED: None batch limit is not consumed as a writer control")
+def test_none_batch_limit_keeps_old_unbatched_cadence(tmp_path):
+  observed = []
+
+  def observe(frame):
+    observed.append(len(frame))
+    return frame
+
+  path = tmp_path / "none-limit.parquet"
+  error = _save_error(
+    DataGenerator(PK_SPEC)
+      .size(23)
+      .transformers([observe])
+      .write
+      .format("parquet")
+      .option("maxRowsPerBatch", None),
+    path,
+  )
+
+  assert error is None
+  assert observed == [23]
+  assert pd.read_parquet(path)["id"].tolist() == list(range(1, 24))
+
+
+@pytest.mark.parametrize("invalid", [0, -1, True, 1.5, "3"])
+def test_invalid_batch_limit_is_refused_before_destination_changes(tmp_path, invalid):
+  path = tmp_path / f"invalid-{invalid!s}.csv"
+  path.write_bytes(b'"id"\n999\n')
+
+  error = _save_error(
+    DataGenerator(PK_SPEC)
+      .size(2)
+      .write
+      .format("csv")
+      .option("maxRowsPerBatch", invalid),
+    path,
+  )
+
+  assert isinstance(error, RandEngineError)
+  assert path.read_bytes() == b'"id"\n999\n'
+
+
+@pytest.mark.xfail(strict=True, reason="J5.S1.T1 RED: batch controls leak into format options")
+def test_batch_control_options_do_not_reach_the_format_adapter(tmp_path):
+  path = tmp_path / "control-options.csv"
+  error = _save_error(
+    DataGenerator(PK_SPEC)
+      .size(5)
+      .write
+      .format("csv")
+      .options(numFiles=1, maxRowsPerBatch=2),
+    path,
+  )
+
+  assert error is None
+  assert pd.read_csv(path)["id"].tolist() == [1, 2, 3, 4, 5]
+
+
+@pytest.mark.xfail(strict=True, reason="J5.S1.T1 RED: bounded sparse-file plan is not implemented")
+def test_zero_row_final_partitions_skip_generation_and_transformers(tmp_path):
+  observed = []
+
+  def observe(frame):
+    observed.append(len(frame))
+    return frame
+
+  path = tmp_path / "sparse-parts"
+  error = _save_error(
+    DataGenerator(PK_SPEC)
+      .size(2)
+      .transformers([observe])
+      .write
+      .format("parquet")
+      .options(numFiles=4, maxRowsPerBatch=3),
+    path,
+  )
+  files = sorted(path.glob("part_*")) if path.exists() else []
+
+  assert error is None
+  assert len(files) == 4
+  assert observed == [1, 1]
+  assert sorted(len(pd.read_parquet(file)) for file in files) == [0, 0, 1, 1]
+
+
+@pytest.mark.xfail(strict=True, reason="J5.S1.T1 RED: lazy bounded batch consumption is not implemented")
+def test_batched_generation_releases_each_frame_before_consuming_the_next(tmp_path):
+  prior_frames = []
+  observed = []
+
+  def observe(frame):
+    gc.collect()
+    if prior_frames:
+      assert prior_frames[-1]() is None
+    prior_frames.append(weakref.ref(frame))
+    observed.append(len(frame))
+    return frame
+
+  error = _save_error(
+    DataGenerator(PK_SPEC)
+      .size(8)
+      .transformers([observe])
+      .write
+      .format("parquet")
+      .option("maxRowsPerBatch", 3),
+    tmp_path / "lazy.parquet",
+  )
+
+  assert error is None
+  assert observed == [3, 3, 2]
+
+
+def test_bad_format_option_preserves_destination_bytes(tmp_path):
+  path, before = _existing_directory(tmp_path, "bad-option")
+  error = _save_error(
+    DataGenerator(PK_SPEC)
+      .size(4)
+      .write
+      .format("csv")
+      .mode("overwrite")
+      .options(numFiles=2, engine="unknown"),
+    path,
+  )
+
+  assert isinstance(error, RandEngineError)
+  assert _directory_bytes(path) == before
+
+
+@pytest.mark.xfail(strict=True, reason="J5.S1.T1 RED: invalid size mutates the destination")
+def test_invalid_resolved_size_preserves_destination_bytes(tmp_path):
+  path, before = _existing_directory(tmp_path, "bad-size")
+  error = _save_error(
+    DataGenerator(PK_SPEC)
+      .size(-1)
+      .write
+      .format("csv")
+      .mode("overwrite")
+      .option("numFiles", 2),
+    path,
+  )
+
+  assert error is not None
+  assert _directory_bytes(path) == before
+
+
+@pytest.mark.xfail(strict=True, reason="J5.S1.T1 RED: transformer failure mutates the destination")
+def test_transformer_failure_preserves_destination_bytes(tmp_path):
+  path, before = _existing_directory(tmp_path, "transform-failure")
+
+  def fail(_frame):
+    raise RuntimeError("transform failed")
+
+  error = _save_error(
+    DataGenerator(PK_SPEC)
+      .size(4)
+      .transformers([fail])
+      .write
+      .format("csv")
+      .mode("overwrite")
+      .option("numFiles", 2),
+    path,
+  )
+
+  assert isinstance(error, RuntimeError)
+  assert _directory_bytes(path) == before
+
+
+@pytest.mark.xfail(strict=True, reason="J5.S1.T1 RED: anomaly failure mutates the destination")
+def test_anomaly_compatibility_failure_preserves_destination_bytes(tmp_path):
+  path, before = _existing_directory(tmp_path, "anomaly-failure")
+  spec = {
+    "value": {
+      "method": "integers",
+      "kwargs": {"min": 0, "max": 2},
+      "anomaly_rate": 1,
+      "anomaly_values": [1],
+    }
+  }
+
+  def strings(frame):
+    return frame.astype({"value": "string"})
+
+  error = _save_error(
+    DataGenerator(spec)
+      .size(4)
+      .transformers([strings])
+      .write
+      .format("csv")
+      .mode("overwrite")
+      .option("numFiles", 2),
+    path,
+  )
+
+  assert isinstance(error, RandEngineError)
+  assert _directory_bytes(path) == before
+
+
+@pytest.mark.xfail(strict=True, reason="J5.S1.T1 RED: schema failure mutates the destination")
+def test_arrow_schema_failure_preserves_destination_bytes(tmp_path):
+  path, before = _existing_directory(tmp_path, "schema-failure")
+
+  def mixed(frame):
+    frame["id"] = pd.Series([1, "bad"] * (len(frame) // 2), dtype=object)
+    return frame
+
+  error = _save_error(
+    DataGenerator(PK_SPEC)
+      .size(4)
+      .transformers([mixed])
+      .write
+      .format("csv")
+      .mode("overwrite")
+      .option("numFiles", 2),
+    path,
+  )
+
+  assert isinstance(error, RandEngineError)
+  assert _directory_bytes(path) == before
+
+
+@pytest.mark.xfail(strict=True, reason="J5.S1.T1 RED: single-file staged commit is not implemented")
+def test_single_file_commit_failure_preserves_destination_bytes(tmp_path, monkeypatch):
+  path = tmp_path / "commit.csv"
+  path.write_bytes(b'"id"\n999\n')
+  real_replace = os.replace
+
+  def fail_commit(source, destination):
+    if os.path.abspath(destination) == os.path.abspath(path):
+      raise OSError("commit failed")
+    return real_replace(source, destination)
+
+  monkeypatch.setattr(os, "replace", fail_commit)
+  error = _save_error(
+    DataGenerator(PK_SPEC).size(3).write.format("csv").mode("overwrite"),
+    path,
+  )
+
+  assert isinstance(error, OSError)
+  assert path.read_bytes() == b'"id"\n999\n'
+
+
+@pytest.mark.xfail(strict=True, reason="J5.S1.T1 RED: directory staged rollback is not implemented")
+def test_directory_commit_failure_rolls_the_old_destination_back(tmp_path, monkeypatch):
+  path, before = _existing_directory(tmp_path, "rollback")
+  real_rename, real_replace = os.rename, os.replace
+  moves = []
+  failed_commit = False
+
+  def guarded_move(real_move):
+    def move(source, destination):
+      nonlocal failed_commit
+      moves.append((os.path.abspath(source), os.path.abspath(destination)))
+      if os.path.abspath(destination) == os.path.abspath(path) and not failed_commit:
+        failed_commit = True
+        raise OSError("staging commit failed")
+      return real_move(source, destination)
+    return move
+
+  monkeypatch.setattr(os, "rename", guarded_move(real_rename))
+  monkeypatch.setattr(os, "replace", guarded_move(real_replace))
+  error = _save_error(
+    DataGenerator(PK_SPEC)
+      .size(4)
+      .write
+      .format("csv")
+      .mode("overwrite")
+      .option("numFiles", 2),
+    path,
+  )
+
+  assert isinstance(error, OSError)
+  assert len(moves) >= 3
+  assert _directory_bytes(path) == before
