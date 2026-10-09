@@ -362,7 +362,6 @@ def _existing_directory(tmp_path, name):
   return path, _directory_bytes(path)
 
 
-@pytest.mark.xfail(strict=True, reason="J5.S1.T1 RED: batch row plan is not implemented")
 def test_batched_plan_writes_four_final_files_with_literal_offsets_and_bound(tmp_path):
   observed = []
 
@@ -409,7 +408,6 @@ def test_unbatched_save_keeps_one_frame_and_one_transformer_call(tmp_path):
   assert pd.read_parquet(path)["id"].tolist() == list(range(1, 24))
 
 
-@pytest.mark.xfail(strict=True, reason="J5.S1.T1 RED: None batch limit is not consumed as a writer control")
 def test_none_batch_limit_keeps_old_unbatched_cadence(tmp_path):
   observed = []
 
@@ -451,7 +449,6 @@ def test_invalid_batch_limit_is_refused_before_destination_changes(tmp_path, inv
   assert path.read_bytes() == b'"id"\n999\n'
 
 
-@pytest.mark.xfail(strict=True, reason="J5.S1.T1 RED: batch controls leak into format options")
 def test_batch_control_options_do_not_reach_the_format_adapter(tmp_path):
   path = tmp_path / "control-options.csv"
   error = _save_error(
@@ -467,7 +464,6 @@ def test_batch_control_options_do_not_reach_the_format_adapter(tmp_path):
   assert pd.read_csv(path)["id"].tolist() == [1, 2, 3, 4, 5]
 
 
-@pytest.mark.xfail(strict=True, reason="J5.S1.T1 RED: bounded sparse-file plan is not implemented")
 def test_zero_row_final_partitions_skip_generation_and_transformers(tmp_path):
   observed = []
 
@@ -493,7 +489,6 @@ def test_zero_row_final_partitions_skip_generation_and_transformers(tmp_path):
   assert sorted(len(pd.read_parquet(file)) for file in files) == [0, 0, 1, 1]
 
 
-@pytest.mark.xfail(strict=True, reason="J5.S1.T1 RED: lazy bounded batch consumption is not implemented")
 def test_batched_generation_releases_each_frame_before_consuming_the_next(tmp_path):
   prior_frames = []
   observed = []
@@ -536,7 +531,6 @@ def test_bad_format_option_preserves_destination_bytes(tmp_path):
   assert _directory_bytes(path) == before
 
 
-@pytest.mark.xfail(strict=True, reason="J5.S1.T1 RED: invalid size mutates the destination")
 def test_invalid_resolved_size_preserves_destination_bytes(tmp_path):
   path, before = _existing_directory(tmp_path, "bad-size")
   error = _save_error(
@@ -553,7 +547,6 @@ def test_invalid_resolved_size_preserves_destination_bytes(tmp_path):
   assert _directory_bytes(path) == before
 
 
-@pytest.mark.xfail(strict=True, reason="J5.S1.T1 RED: transformer failure mutates the destination")
 def test_transformer_failure_preserves_destination_bytes(tmp_path):
   path, before = _existing_directory(tmp_path, "transform-failure")
 
@@ -575,7 +568,6 @@ def test_transformer_failure_preserves_destination_bytes(tmp_path):
   assert _directory_bytes(path) == before
 
 
-@pytest.mark.xfail(strict=True, reason="J5.S1.T1 RED: anomaly failure mutates the destination")
 def test_anomaly_compatibility_failure_preserves_destination_bytes(tmp_path):
   path, before = _existing_directory(tmp_path, "anomaly-failure")
   spec = {
@@ -605,7 +597,6 @@ def test_anomaly_compatibility_failure_preserves_destination_bytes(tmp_path):
   assert _directory_bytes(path) == before
 
 
-@pytest.mark.xfail(strict=True, reason="J5.S1.T1 RED: schema failure mutates the destination")
 def test_arrow_schema_failure_preserves_destination_bytes(tmp_path):
   path, before = _existing_directory(tmp_path, "schema-failure")
 
@@ -628,7 +619,6 @@ def test_arrow_schema_failure_preserves_destination_bytes(tmp_path):
   assert _directory_bytes(path) == before
 
 
-@pytest.mark.xfail(strict=True, reason="J5.S1.T1 RED: single-file staged commit is not implemented")
 def test_single_file_commit_failure_preserves_destination_bytes(tmp_path, monkeypatch):
   path = tmp_path / "commit.csv"
   path.write_bytes(b'"id"\n999\n')
@@ -649,7 +639,6 @@ def test_single_file_commit_failure_preserves_destination_bytes(tmp_path, monkey
   assert path.read_bytes() == b'"id"\n999\n'
 
 
-@pytest.mark.xfail(strict=True, reason="J5.S1.T1 RED: directory staged rollback is not implemented")
 def test_directory_commit_failure_rolls_the_old_destination_back(tmp_path, monkeypatch):
   path, before = _existing_directory(tmp_path, "rollback")
   real_rename, real_replace = os.rename, os.replace
