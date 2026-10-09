@@ -12,7 +12,7 @@
 | `validators/common_validator.py` intake | common kwargs table plus semantic branches that continue after type errors | `probability-wrong-type-escapes-validation`; registry/schema family | REBUILD | Fundamental intake behavior changes; structure and type validity must gate semantics once. |
 | `validators/advanced_validator.py` intake | repeats common structure; mapped pools permit empty domains; refuses `args` | `distincts-map-empty-pool-validates`, `distincts-multi-map-empty-domain-validates`; registry/schema family | REBUILD | Repeated fixes and the approved kwargs-only migration make additive guards another bug loop. |
 | `validators/method_specs.py` integer semantics | `_integers` validates `int_type` but accepts an inverted `min`/`max` domain | schema-validation family | UPDATE | Normal validation must reject `min > max` at the catalog authority while retaining equal and ordered domains without a new ceiling. |
-| `core/_np_core.py` numeric methods | continuous float draw then rounding; one owned RNG | `float-rounded-domain-violates-bounds`; prior bounds/dtype family | REBUILD | Generate over the representable decimal lattice, add the four distributions and constant, and preserve one RNG. |
+| `core/_np_core.py` numeric/date methods | continuous float draw then rounding; one owned RNG; timestamp bounds are parsed with the requested output format | `float-rounded-domain-violates-bounds`; prior bounds/dtype/date family | REBUILD | Generate over the representable decimal lattice, add the four distributions and constant, preserve one RNG, and parse general ISO date-only bounds independently from timestamp output formatting while retaining custom-format bounds. |
 | `core/_py_core.py` `METHODS` | sole NumPy dispatch map plus correlated implementations | registry and mapped-pool family | UPDATE | Keep one implementation map, add real callers, and delete commented implementation; do not layer another dispatch path. |
 | `core/_spark_core.py` numeric methods | integer result arithmetic passes through double; floats round after draw | `spark-bigint-precision-lost`; prior Spark numeric/date family | REBUILD | Exact result arithmetic and honest supported domains are fundamental; preserve UTC fixes and no Python UDF. |
 | `main/_rand_generator.py` | column generation and embedded transformers; global transformers live above it | registry family | REBUILD | One post-transform modifier step must own anomaly then null application; delete dead `validate` and unused Spark import. |
@@ -41,6 +41,7 @@ Test debt is part of the rebuild: consolidate duplicate-name NumPy tests so Pyth
 | format append/schema/compression state | existing `FileHandler` CSV/JSON/Parquet adapters | writer plan | reopening a destination for each batch |
 | Spark exact integer expression | `SparkCore.gen_ints` | catalog dtype/range validation | double result arithmetic |
 | representable decimal domain | one pure core decimal-lattice helper used by both engines and delegated to by catalog validation | float generators | copied validator-domain calculations, clipping and sample-value branches |
+| date-bound parsing and timestamp rendering | `NPCore.gen_unix_timestamps` with one private canonical input parser | `gen_dates`, the requested output format and core owner tests | helper-specific parsing, hard-coded example dates and coupling every bound to the output format |
 
 ### 1.2 Bug-window disposition coverage
 
@@ -94,25 +95,27 @@ The first multiply/add has inferred precision at most 22 and the second at most 
 
 - `RandSpecs.faker_pool` imports Faker inside the call, creates a local instance, calls `seed_instance`, resolves one named provider and materializes exactly `pool_size` scalar values into the returned ordinary `distincts` column spec. Import/provider/locale/size/output errors become `RandEngineError`. Packaging exposes an optional Faker extra and keeps the ordinary install Faker-free.
 - `RandSpecs.from_schema` accepts only `pyarrow.Schema`, performs the SPEC's literal mapping, rejects duplicate/unsupported fields unless completely overridden, and never reads data. It copies schema/override inputs. Whole-method overrides replace a column; kwargs-only overrides merge into the default then normal validation runs. The result is an ordinary dict.
-- `RandSpecs.from_schema` delegates the assembled result to `AdvancedValidator`; it does not duplicate the catalog's integer range arithmetic. Job 7 therefore supplies the required normal-validation prerequisite before paused helper task J4.S3.T1 resumes; disjoint packaging task J4.S3.T2 is unaffected.
+- `RandSpecs.from_schema` delegates the assembled result to `AdvancedValidator`; it does not duplicate the catalog's integer range arithmetic. Job 7 supplied that normal-validation prerequisite before helper implementation resumed; the disjoint packaging history is unaffected.
+- AC6.1's literal ISO date-only bounds are input values, while `date_format="%Y-%m-%d %H:%M:%S"` controls output. After the helper source merges, Job 4 records a focused unmarked core RED and corrects the existing NumPy date seam: date-only ISO bounds use the canonical ISO parser, established custom-formatted bounds continue to use their declared format, and endpoint/RNG behavior is unchanged. The original helper integration assertion stays intact and its strict marker is retired only after that core owner is green.
 
 ### 2.5 Bounded writer and stable schemas
 
 - Validate writer options, `maxRowsPerBatch`, resolved total size and the complete write plan before touching output. Split total rows across final files first, then subdivide each non-empty file range; maintain one cumulative offset. The iterator holds plan scalars and at most one generated DataFrame.
 - Write each requested output into a unique same-filesystem staging sibling. CSV keeps one compressed stream and emits one header; JSON keeps one stream and appends JSON-lines without forwarding `numFiles`/`maxRowsPerBatch`; Parquet keeps one `ParquetWriter`. The existing three adapters are a real seam—no generic port is added.
-- The first concrete transformed batch establishes field names/order and Arrow schema; nullable/all-null columns remain typed by the DataFrame contract. Every later batch must match. An object column whose transformed output is genuinely indeterminate fails in staging. Empty final partitions use the already established schema; if every partition is empty, the validator's method/dtype plan supplies it, and arbitrary transformers make the request indeterminate and refused without calling them.
+- The first concrete transformed batch establishes field names/order and Arrow schema; nullable/all-null columns remain typed by the DataFrame contract. Every later batch must match. An object column whose transformed output is genuinely indeterminate fails in staging. Empty final partitions use the already established schema; if every partition is empty, `DataGenerator` injects one lazy internal `schema_def` derived from the canonical method catalog and declared RandSpec. No second registry, pool sampling or bound-method introspection is introduced, and arbitrary transformers make the request indeterminate and refused without calling generation, transformation or RNG seams.
+- Before that source work, J5.T4 records an unmarked assertion-first public-save RED for determinate size-zero requests: the literal requested file count, readable zero-row typed schemas across single-file and repeated-format cases, and zero generation, transform and RNG requests. A genuinely indeterminate transformed schema must preserve prior destination bytes. The test observes only the external NumPy RNG boundary and does not patch writer internals or inspect source text.
 - Staging bounds memory while preserving the old destination through option, transformer, anomaly and schema failures. After all files close and read-back metadata is valid, commit the staged single file with `os.replace`; for a multi-file directory, rename the old destination aside, rename staging into place, then remove the aside, rolling back the first rename if the second fails. Cleanup removes only the writer-created staging sibling. Append also builds the complete replacement in staging: copy existing CSV/JSON bytes or files before appending, and stream existing Parquet row groups through the staged `ParquetWriter`; it never mutates the destination before the same commit step and never loads the prior dataset whole.
 - Writer fixture migration follows the same RED/GREEN chronology as production behavior: J5.S1.T3 only records the final `tmp_path` expectation against the current persistent fixture, while J5.S2.T3 changes `f3_integrations.py` and deletes that satisfied marker in the same task. No RED task repairs the fixture early or manufactures an XPASS.
 
 ## 3. Verification and gates
 
-- Every job starts with tests-only Stage 1. Each new acceptance test holds its final expected values, fails by assertion and carries one `@pytest.mark.xfail(strict=True, ...)` line so RED remains explicit and auditable. The green task deletes only that marker line after the implementation satisfies the assertion.
+- Executed stage-based RED/GREEN history and its strict markers remain the immutable record. Remaining production implementations are source-only commits; each already-recorded marker is retired later by an explicit `test(...)` task that deletes only satisfied marker lines and changes no assertion. Fresh Job 4, Job 5 all-empty-schema and Job 8 tests record raw assertion-first RED in separate test-only commits without strict xfail, then their disjoint source/artifact tasks make those owners green.
 - Default tests stay at or below `10**4` rows. Distribution/modifier throughput is measured only by the official same-runner benchmark workflow at final feature preparation.
 - Unit: validator issue collection, numeric lattice/distributions/constants, RNG draw order, masks, helpers, write-plan arithmetic and schema decisions.
 - Integration: Spark expressions, pandas dtypes, stream/sink nulls, read-back CSV/JSON/Parquet, transactional overwrite, public imports.
 - E2E: none; this is a library with no browser or deployed service. Public import plus documented executable examples are the outer interface.
 - Security/privacy: no external data or URLs; Faker stays local/optional; writer staging uses a generated sibling under the caller-selected parent and never follows a new arbitrary remote fetch; errors retain field, option and key-path identifiers without dumping collections, pairs, items or input value payloads; no credentials or PII enter fixtures.
-- Local task/stage/job gates use the repo's existing shared environment and redirected caches. No worktree push or remote worktree CI. The main thread may publish only `feature/0.7.0` during final release preparation to obtain AC2.4/AC4.4 evidence.
+- Local task and job gates use the repo's existing shared environment and redirected caches. No worktree push or remote worktree CI. After Jobs 4/5 and the zero-open bug batch merge, the main thread may publish only the verified `feature/0.7.0` production-source SHA to obtain AC2.4/AC4.4 evidence before Job 8 opens; later Job 8 docs/tests/artifacts prove that measured production and benchmark code did not change.
 
 ## DAG
 
@@ -122,9 +125,10 @@ The first multiply/add has inferred precision at most 22 and the second at most 
 | Job 2 | Job 1 | Numeric implementations require the approved catalog and close the two numeric bugs. |
 | Job 3 | Job 2 | Modifiers consume the catalog, new constant/distributions and RNG contract. |
 | Job 7 | Job 2 | Canonical integer range semantics are a prerequisite for the helper's merged-override normal-validation contract. |
-| Job 4 | Job 7 | Stage 3 is open: disjoint packaging T2 continues, while the clean paused helper T1 rebases after Job 7 and then resumes. |
+| Job 4 | Job 7 | The helper source and package work consume canonical validation; the AC6.1 core RED/fix then precedes helper-marker retirement and job close. |
 | Job 5 | Job 3 | Writer batching consumes the final row-batch/modifier/dtype pipeline. |
-| Job 6 | Job 4, Job 5 | Reconciliation is last; it consumes all public behavior and final feature benchmark evidence. |
+| Job 8 | Job 4, Job 5, zero-open bug batch and prepared-feature CI run | Final executable docs/public evidence and the terminal CI benchmark artifact consume all implemented behavior without pushing a Job 8 branch. |
+| Job 6 | Job 8 | The special reconciliation tree is last and contains only phase, memory and terminal metadata work. |
 
 ### Hot files
 
@@ -135,8 +139,10 @@ The first multiply/add has inferred precision at most 22 and the second at most 
 | method catalog, validator intake and validator registry/domain contracts | 1, 2, 7 | Job 1 serializes catalog/common J1.S2, shared-common/advanced J1.S3 and review corrections J1.S4–J1.S5; after Job 1 merges, Job 2 owns numeric-helper delegation and engine sets; Job 7 then owns only `_integers` range semantics. |
 | `tests/fixtures/f3_integrations.py`, `tests/test_5_writer_fixture_paths.py` | 5 | J5.S1.T3 is tests-only RED; J5.S2.T3 owns the fixture repair and its marker cleanup together. |
 | `rand_engine/main/data_generator.py`, `rand_engine/main/_rand_generator.py` | 3 | J3.S2 owns the coupled pipeline; J3.S4 corrects modifier output-name resolution and object/string null representation in the same RandGenerator seam. |
-| `rand_engine/file_handlers/_writer_batch.py`, `file_handler.py` | 5 | separate task owners use disjoint tests and merge at the stage barrier. |
-| docs/README/`llms.txt`/benchmark artifacts | 6 | reconciliation only, after final behavior is merged. |
+| `rand_engine/core/_np_core.py`, `tests/test_0_np_core.py` | 2, 4 | Job 2's numeric work is closed; Job 4 serially owns only the AC6.1 date-bound RED and canonical parser correction. |
+| `rand_engine/file_handlers/_writer_batch.py`, `file_handler.py` | 5 | separate source-only task owners use disjoint owner tests; marker retirement follows implementation. |
+| `rand_engine/main/data_generator.py`, `rand_engine/validators/method_specs.py` | 1, 2, 3, 5, 7 | prior catalog/pipeline work is closed; Job 5 owns only the lazy typed-schema injection needed when every requested partition is empty. |
+| docs/README/`llms.txt`/benchmark artifacts | 8 | final-surfaces job only, after all behavior jobs are merged. |
 
 ## 5. Job envelopes
 
@@ -144,49 +150,50 @@ The first multiply/add has inferred precision at most 22 and the second at most 
 - Job 2 — numeric methods: NumPy/Spark cores, method map and numeric/core/benchmark tests, plus the existing DataGenerator seeded-output table's six approved numeric-method hash entries, including the two numeric-bug RED/fix owners.
 - Job 3 — DataFrame modifiers: DataGenerator/RandGenerator, stream conversion and modifier benchmark rows/tests.
 - Job 7 — schema validation prerequisite: canonical `_integers` range semantics and focused public validator/generator controls only; no helper-local logic or new domain policy.
-- Job 4 — spec helpers: RandSpecs helpers and optional-Faker packaging plus focused helper/public tests; Stage 3 is open, its disjoint packaging T2 remains authorized, and only helper T1 is paused until Job 7 merges and its clean tree rebases.
-- Job 5 — batch writer: write planner, format sessions and writer fixtures/tests; `writeStream` production stays untouched.
-- Job 6 — canonical reconciliation tree `0.7.0-rc2/reconcile`: executable docs, README/llms, benchmark artifacts and public integration evidence finish first; the main thread then advances to CLOSURE at that exact implementation SHA, the product engineer performs the derived memory worklist in the same tree, and the main thread records the terminal narrative/dispositions/artifact GC before its single review and merge.
+- Job 4 — spec helpers: RandSpecs helpers and optional-Faker packaging plus the focused AC6.1 NumPy date-bound correction; source-only implementation precedes explicit test-marker retirement.
+- Job 5 — batch writer: fresh all-empty-schema public RED, source-only write planner/schema injection and format sessions, followed by disjoint marker retirement and the tests-only writer-fixture repair; `writeStream` production stays untouched.
+- Job 8 — final surfaces: fresh unmarked executable-doc/public and benchmark-artifact RED, derived docs, consumption of the pre-Job-8 exact production-source CI evidence, proof of no measured-code drift, and final build/package checks.
+- Job 6 — canonical reconciliation tree `0.7.0-rc2/reconcile`: phase transition first, then the product engineer's derived memory worklist and the main thread's terminal narrative/dispositions/artifact GC before one review and merge.
 
 ## 6. Task authority and acceptance trace
 
-The canonical task authority is the seven files under `tasks/`, one per DAG job. The current `release.py` validates each stage contract and disjoint `W:` sets; no `TASKS.md`, duplicated marker list or second task description is maintained.
+The canonical task authority is the eight files under `tasks/`, one per DAG job. Executed stage rows remain historical; the pending current-workflow tables give every fresh task an exact write set and behavior owner. No `TASKS.md`, duplicated marker list or second task description is maintained.
 
 | requirement | RED owner | GREEN/closure owner |
 |---|---|---|
-| AC1.1–AC1.6 | J5.S1 | J5.S2; J6 local read-back reconciliation |
+| AC1.1–AC1.6 | J5.S1 plus J5.T4 all-empty typed-schema RED for AC1.6 | J5.S2 source tasks and J5.T1–J5.T2 marker retirement |
 | AC2.1–AC2.3 | J1.S4 totality regression and J2.S1 numeric contracts | J1.S5 validator correction and J2.S2 numeric implementation, including DataGenerator inventory and seeded hashes |
-| AC2.4 | J2.S1 benchmark contract | J6.S2 final-preparation CI artifact |
+| AC2.4 | J2.S1 benchmark contract and J8.T3 terminal-artifact RED | J8.T4 final-feature CI artifact |
 | AC3.1–AC3.3, AC3.5 | J3.S1 and corrective J3.S3 | J3.S2 and corrective J3.S4 |
-| AC3.4 | J3.S1 stream and J5.S1 sinks | J3.S2 and J5.S2 |
+| AC3.4 | J3.S1 stream, J5.S1 sinks and J5.T4 all-empty typed-schema RED | J3.S2 and J5.S2 |
 | AC4.1–AC4.3 | J3.S1 and corrective J3.S3 | J3.S2 and corrective J3.S4 |
-| AC4.4 | J3.S1 benchmark contract | J6.S2 final-preparation CI artifact |
-| AC5.1–AC5.4 | J4.S1 and corrective J4.S2 | J4.S3 |
-| AC6.1, AC6.3–AC6.4 | J4.S1 and corrective J4.S2 | J4.S3 |
+| AC4.4 | J3.S1 benchmark contract and J8.T3 terminal-artifact RED | J8.T4 final-feature CI artifact |
+| AC5.1–AC5.4 | J4.S1 and corrective J4.S2 | J4.S3 source/package tasks and J4.T3 marker retirement |
+| AC6.1, AC6.3–AC6.4 | J4.S1, corrective J4.S2 and focused J4.T1 core RED | J4.S3 helper source, J4.T2 core parser and J4.T3 marker retirement |
 | AC6.2 | J4.S1, corrective J4.S2 and J7.S1 catalog-prerequisite RED | J7.S2 canonical range semantics, then J4.S3 helper delegation |
 | AC7.1 | J1.S4 scalar-structure regression and J2.S1 | J1.S5 shared scalar predicate and J2.S2 |
 | AC7.2–AC7.3 | J2.S1 and J3.S1 | J2.S2 and J3.S2 |
 | AC8.1–AC8.2 | J1.S1 and J1.S4 review regressions | J1.S2–J1.S3 and J1.S5; canonical post-Job-5 bug batch records resolution |
 | AC8.3–AC8.5 | J1.S4 legacy-compatibility regression, J2.S1 and J2.S3 extreme-decimal RED | J1.S5 compatibility correction, J2.S2 and J2.S4 exact tuple-shift conversion, including the approved uniform-float DataGenerator hash replacement; canonical post-Job-5 bug batch records resolution |
 | AC8.6 | J5.S1.T3 tests-only fixture-path RED | J5.S2.T3 fixture repair and satisfied-marker cleanup |
-| AC8.7 | J1.S1 behavioral single-intake/no-generation test | J1.S2–J1.S3, J2.S2 and J3.S2 preserve that interface while their diffs evidence deletion; J6 review confirms no replacement path |
+| AC8.7 | J1.S1 behavioral single-intake/no-generation test | J1.S2–J1.S3, J2.S2 and J3.S2 preserve that interface while their diffs evidence deletion; Job 8 final verification confirms no replacement path |
 | AC9.1 | J2.S1, J2.S3, J3.S1, corrective J3.S3, J5.S1 | owning GREEN stages; J2.S2 owns its DataGenerator inventory/hash reconciliation, J2.S4 owns accepted extreme-decimal generation and J3.S4 owns modifier alias/null correction |
-| AC9.2 | J1.S1, J1.S4 and J2.S1 | J1.S2–J1.S3, J1.S5, J2.S2 and J6 public reconciliation |
-| AC9.3 | J3.S1, corrective J3.S3 and J5.S1 | J3.S2, corrective J3.S4 and J5.S2 |
-| AC9.4 | J4.S1 and J6.S1 | J4.S3 and J6.S2 |
+| AC9.2 | J1.S1, J1.S4, J2.S1 and J8.T1 executable-doc RED | J1.S2–J1.S3, J1.S5, J2.S2 and J8.T2 final surfaces |
+| AC9.3 | J3.S1, corrective J3.S3, J5.S1 and J5.T4 public-save RED | J3.S2, corrective J3.S4 and J5.S2 |
+| AC9.4 | J4.S1 and J8.T1 public-boundary evidence | J4.S3 and J8.T2 |
 
 The five bug paths are exact: J1.S1/J1.S2–J1.S3 own the original RED/fix evidence for `probability-wrong-type-escapes-validation`, `distincts-map-empty-pool-validates` and `distincts-multi-map-empty-domain-validates`; J1.S4/J1.S5 close the additional-review compatibility, totality and scalar-structure gaps before any of those records can resolve. J2.S1/J2.S2 own the evidence for `float-rounded-domain-violates-bounds` and `spark-bigint-precision-lost`. After Job 5, the canonical bug batch outside the DAG reruns each independent RED/GREEN command and resolves all five through the ledger writer before reconciliation opens; it adds no alternate implementation path.
 
-AC8.7's RED is behavioral, not a source tombstone: constructing `DataGenerator` from a counting callable that returns independently invalid common and advanced columns must evaluate that callable once for the failed construction, return one collected issue per column, never enter the generation seam and never leak `TypeError`, `KeyError` or `ColumnGenerationError`. The J1.S3 GREEN keeps that public boundary while the implementation diff deletes the dead validation parameter, imports, redundant branches, commented implementation and history comments. The unmerged provisional `b91a1c8` is superseded by J1.S3.T1 and carries no task authority. Job 1 closes in J1.S5.T2 after corrective GREEN and the repeated additional checkpoint; its official stage gate and closing trailer then establish the exact HEAD for final Job 1 review before canonical merge. Job 2 closes in J2.S4.T2 only after the corrective J2.S3 RED and J2.S4.T1 GREEN; every other job's final stage likewise has one disjoint close task whose only write is that job file's terminal `done`. Each close task runs only after its stage contract is green and commits as `chore(tasks): done <job>`.
+AC8.7's RED is behavioral, not a source tombstone: constructing `DataGenerator` from a counting callable that returns independently invalid common and advanced columns must evaluate that callable once for the failed construction, return one collected issue per column, never enter the generation seam and never leak `TypeError`, `KeyError` or `ColumnGenerationError`. The J1.S3 GREEN keeps that public boundary while the implementation diff deletes the dead validation parameter, imports, redundant branches, commented implementation and history comments. The unmerged provisional `b91a1c8` is superseded by J1.S3.T1 and carries no task authority. Job 1 closed in J1.S5.T2 after corrective GREEN and the repeated additional checkpoint; its historical stage gate and closing trailer established the exact HEAD for final Job 1 review before canonical merge. Job 2 likewise closed through its historical corrective stages. Pending jobs use their fresh current-workflow close task after all source and test-only owners are green; each close task's only write is that job file's terminal `done`.
 
-Job 4's rejected additional checkpoint routes the omitted existing-AC cases into tests-only J4.S2. J4.S3 opened after J4.S2 task and stage gates were green and the reviewer issued an APPROVED checkpoint-recovery verdict; no helper source or packaging task was authorized before that recovery. Its disjoint packaging T2 remains authorized and active while helper T1 is paused cleanly for Job 7.
+Job 4's rejected additional checkpoint routed the omitted existing-AC cases into tests-only J4.S2. J4.S3 opened after J4.S2's historical gates were green and the reviewer issued an APPROVED checkpoint-recovery verdict; no helper source or packaging task was authorized before that recovery. Packaging and helper source then merged under their approved disjoint ownership. The remaining AC6.1 failure is not a helper workaround: J4.T1/J4.T2 correct the canonical input-bound parser before J4.T3 retires the unchanged helper markers.
 
-The merged-override case exposed a pre-existing catalog gap rather than helper-owned validation: `_integers` accepted `min=101, max=100`. Job 7 owns the assertion-first public-boundary RED and the one canonical catalog correction under AC6.2. It must merge before the already-approved J4.S3.T1 helper tree rebases and resumes; fixed Job 4 task IDs and write sets do not change, and disjoint J4.S3.T2 packaging progress is preserved.
+The merged-override case exposed a pre-existing catalog gap rather than helper-owned validation: `_integers` accepted `min=101, max=100`. Job 7 owned the assertion-first public-boundary RED and the one canonical catalog correction under AC6.2; it merged before helper implementation resumed. Its closed history is unchanged.
 
 ## 7. Closure sequence
 
-1. Merge reviewer-approved jobs locally in DAG order, including Job 7 before paused J4.S3.T1 resumes and Job 6 last; disjoint J4.S3.T2 packaging may progress under its existing approval. No worktree push. Run the canonical outside-DAG bug batch and resolve all five records from their existing owners before opening reconciliation.
-2. With benchmark code present, the main thread performs the authorized final-preparation push of `feature/0.7.0`; AC2.4/AC4.4 must pass or the owning job reopens locally.
-3. Open Job 6 only as `0.7.0-rc2/reconcile`. Its RED/green implementation stages consume the exact CI artifact, update derived docs and run local full/default tests, build and package metadata checks.
-4. At Job 6's green implementation SHA, the main thread records the IMPLEMENTATION → CLOSURE transition in that same tree. Only then does the product engineer execute the drift-derived memory worklist and ledger memory entry there; the main thread adds the closure narrative, dispositions and artifact-GC evidence there. No second closure tree or authority is opened.
+1. Finish Jobs 4 and 5 through their source-only and test-only owners, merge their reviewed job results locally, and run the canonical outside-DAG bug batch after Job 5. Resolve all five records from their existing owners and require zero open before closure preparation. No task worktree push.
+2. Verify the resulting feature and publish only that exact `feature/0.7.0` production-source SHA for AC2.4/AC4.4 CI evidence. Retain the real run artifact; a threshold failure reopens its behavior owner. Do not push a Job 8 or task-worktree branch.
+3. Open normal Job 8, record its fresh unmarked RED tests, rebuild final docs/public surfaces, and consume the exact run/base/measured-head artifact. Its later docs/tests/evidence commits must prove no production or benchmark-code drift from the measured SHA. Merge reviewed Job 8 only after those owners, local full/default tests, build and package metadata checks are green.
+4. Open Job 6 only as `0.7.0-rc2/reconcile`. Its first act records IMPLEMENTATION → CLOSURE at the exact merged Job 8 SHA. Only then does the product engineer execute the drift-derived memory worklist and ledger memory entry there; the main thread adds the truthful closure narrative, dispositions and artifact-GC evidence there. No second closure tree or authority is opened.
 5. The reviewer issues one Job 6 verdict over the complete reconciliation HEAD; its merge is the candidate-close boundary. No PR42 bypass, admin merge, release push, tag, deploy or premature candidate-complete claim occurs in a task.
