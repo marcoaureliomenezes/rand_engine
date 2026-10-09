@@ -1,6 +1,7 @@
 # Job 3 — DataFrame modifiers and RNG ordering
 
 **Status:** Approved
+**done:** true
 
 ## Stage J3.S1 — RED
 
