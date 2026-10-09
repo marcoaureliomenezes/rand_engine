@@ -1,6 +1,7 @@
 import time
 import pandas as pd
 import numpy as np
+import pyarrow as pa
 from typing import List, Generator, Callable
 from rand_engine.main._rand_generator import RandGenerator
 from rand_engine.file_handlers._writer_batch import FileBatchWriter
@@ -8,6 +9,7 @@ from rand_engine.file_handlers._writer_stream import FileStreamWriter
 from rand_engine.utils.stream_handler import StreamHandler
 from rand_engine.validators.advanced_validator import AdvancedValidator
 from rand_engine.validators.exceptions import RandEngineError
+from rand_engine.validators.method_specs import METHOD_CATALOG
   
 class DataGenerator:
       
@@ -64,6 +66,28 @@ class DataGenerator:
     if self._size is None:
       raise RandEngineError("No size set: call .size(n) with an int or a callable returning one.")
     return self._size() if callable(self._size) else self._size
+
+
+  def _declared_schema(self) -> pa.Schema:
+    evaluated_spec = self.__evaluate_spec()
+    if self._transformers or any(config.get("transformers") for config in evaluated_spec.values()):
+      raise RandEngineError("empty output schema is indeterminate when transformers are configured")
+
+    fields = []
+    try:
+      for spec_name, config in evaluated_spec.items():
+        names = config.get("cols", [spec_name])
+        types = METHOD_CATALOG[config["method"]].arrow_types(config.get("kwargs", {}))
+        if len(names) != len(types):
+          raise RandEngineError(
+            f"method '{config['method']}' declares {len(types)} output types for {len(names)} columns"
+          )
+        fields.extend(pa.field(name, type_, nullable=True) for name, type_ in zip(names, types))
+    except RandEngineError:
+      raise
+    except Exception as error:
+      raise RandEngineError(f"empty output schema cannot be derived: {type(error).__name__}") from error
+    return pa.schema(fields)
   
 
   def get_df(self):
@@ -88,7 +112,7 @@ class DataGenerator:
 
   @property
   def write(self):
-    return FileBatchWriter(self._resolve_size, self.wrapped_df_generator)
+    return FileBatchWriter(self._resolve_size, self.wrapped_df_generator, self._declared_schema)
 
 
   @property

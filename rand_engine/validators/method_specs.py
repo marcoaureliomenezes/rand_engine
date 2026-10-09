@@ -8,12 +8,15 @@ import sys
 from types import MappingProxyType
 from typing import Any, Callable, Mapping
 
+import pyarrow as pa
+
 from rand_engine.core._np_core import DATE_DIRECTIVES, float_lattice_bounds, poisson_lam_supported
 
 
 TypeRule = type | tuple[type, ...]
 SemanticIssue = tuple[str, str]
 SemanticValidator = Callable[[Mapping[str, Any]], tuple[SemanticIssue, ...]]
+ArrowTypes = Callable[[Mapping[str, Any]], tuple[pa.DataType, ...]]
 
 NUMPY = "numpy"
 SPARK = "spark"
@@ -34,6 +37,7 @@ class MethodSpec:
     engines: frozenset[str]
     kind: str
     semantic: SemanticValidator
+    arrow_types: ArrowTypes
     example: Mapping[str, Any]
     requires_cols: bool = False
     expected_cols: int | None = None
@@ -51,6 +55,71 @@ class MethodSpec:
 
 def _no_semantics(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
     return ()
+
+
+def _fixed_arrow_types(*types: pa.DataType) -> ArrowTypes:
+    return lambda _kwargs: types
+
+
+def _array_type(values: list[Any]) -> pa.DataType:
+    return pa.array(values, from_pandas=True).type
+
+
+def _integer_arrow_type(kwargs: Mapping[str, Any]) -> tuple[pa.DataType, ...]:
+    int_types = {
+        "int8": pa.int8(),
+        "int16": pa.int16(),
+        "int32": pa.int32(),
+        "int64": pa.int64(),
+        "uint8": pa.uint8(),
+        "uint16": pa.uint16(),
+        "uint32": pa.uint32(),
+        "uint64": pa.uint64(),
+    }
+    return (int_types[kwargs.get("int_type", "int32")],)
+
+
+def _constant_arrow_type(kwargs: Mapping[str, Any]) -> tuple[pa.DataType, ...]:
+    value = kwargs["value"]
+    return (pa.null() if value is None else pa.scalar(value).type,)
+
+
+def _distinct_arrow_type(kwargs: Mapping[str, Any]) -> tuple[pa.DataType, ...]:
+    return (_array_type(kwargs["distincts"]),)
+
+
+def _weighted_distinct_arrow_type(kwargs: Mapping[str, Any]) -> tuple[pa.DataType, ...]:
+    return (_array_type(list(kwargs["distincts"])),)
+
+
+def _mapped_arrow_types(kwargs: Mapping[str, Any]) -> tuple[pa.DataType, ...]:
+    distincts = kwargs["distincts"]
+    values = [value for pool in distincts.values() for value in pool]
+    return _array_type(list(distincts)), _array_type(values)
+
+
+def _weighted_mapped_arrow_types(kwargs: Mapping[str, Any]) -> tuple[pa.DataType, ...]:
+    distincts = kwargs["distincts"]
+    values = [item[0] for pool in distincts.values() for item in pool]
+    return _array_type(list(distincts)), _array_type(values)
+
+
+def _multi_mapped_arrow_types(kwargs: Mapping[str, Any]) -> tuple[pa.DataType, ...]:
+    distincts = kwargs["distincts"]
+    pools = list(distincts.values())
+    level_types = tuple(
+        _array_type([value for levels in pools for value in levels[index]])
+        for index in range(len(pools[0]))
+    )
+    return (_array_type(list(distincts)), *level_types)
+
+
+def _pk_arrow_type(kwargs: Mapping[str, Any]) -> tuple[pa.DataType, ...]:
+    return (pa.string() if kwargs.get("format") is not None else pa.int64(),)
+
+
+def _fk_arrow_type(kwargs: Mapping[str, Any]) -> tuple[pa.DataType, ...]:
+    return _pk_arrow_type(kwargs["parent"].get("kwargs", {}))
 
 
 def _positive_decimals(kwargs: Mapping[str, Any]) -> list[SemanticIssue]:
@@ -205,6 +274,7 @@ def _spec(
     engines: tuple[str, ...] = (NUMPY, SPARK),
     kind: str = ORDINARY,
     semantic: SemanticValidator = _no_semantics,
+    arrow_types: ArrowTypes,
     example: Mapping[str, Any],
     requires_cols: bool = False,
     expected_cols: int | None = None,
@@ -216,6 +286,7 @@ def _spec(
         engines=frozenset(engines),
         kind=kind,
         semantic=semantic,
+        arrow_types=arrow_types,
         example=MappingProxyType(dict(example)),
         requires_cols=requires_cols,
         expected_cols=expected_cols,
@@ -229,6 +300,7 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
             optional={"int_type": str},
             defaults={"int_type": "int64"},
             semantic=_integers,
+            arrow_types=_integer_arrow_type,
             example={
                 "method": "integers",
                 "kwargs": {"min": 18, "max": 65, "int_type": "int32"},
@@ -236,6 +308,7 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
         ),
         "int_zfilled": _spec(
             required={"length": int},
+            arrow_types=_fixed_arrow_types(pa.string()),
             example={"method": "int_zfilled", "kwargs": {"length": 8}},
         ),
         "floats": _spec(
@@ -243,6 +316,7 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
             optional={"decimals": int},
             defaults={"decimals": 2},
             semantic=_floats,
+            arrow_types=_fixed_arrow_types(pa.float64()),
             example={
                 "method": "floats",
                 "kwargs": {"min": 0, "max": 1000, "decimals": 2},
@@ -253,6 +327,7 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
             optional={"decimals": int},
             defaults={"decimals": 2},
             semantic=_normal,
+            arrow_types=_fixed_arrow_types(pa.float64()),
             example={
                 "method": "floats_normal",
                 "kwargs": {"mean": 170, "std": 10, "decimals": 2},
@@ -262,11 +337,13 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
             optional={"true_prob": (int, float)},
             defaults={"true_prob": 0.5},
             semantic=_booleans,
+            arrow_types=_fixed_arrow_types(pa.bool_()),
             example={"method": "booleans", "kwargs": {"true_prob": 0.7}},
         ),
         "distincts": _spec(
             required={"distincts": list},
             semantic=_distincts,
+            arrow_types=_distinct_arrow_type,
             example={
                 "method": "distincts",
                 "kwargs": {"distincts": ["free", "premium"]},
@@ -275,6 +352,7 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
         "distincts_prop": _spec(
             required={"distincts": dict},
             semantic=_distincts_prop,
+            arrow_types=_weighted_distinct_arrow_type,
             example={
                 "method": "distincts_prop",
                 "kwargs": {"distincts": {"mobile": 70, "desktop": 30}},
@@ -284,6 +362,7 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
             required={"start": str, "end": str},
             optional={"date_format": str},
             defaults={"date_format": "%Y-%m-%d"},
+            arrow_types=_fixed_arrow_types(pa.int64()),
             example={
                 "method": "unix_timestamps",
                 "kwargs": {
@@ -298,6 +377,7 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
             optional={"date_format": str},
             defaults={"date_format": "%Y-%m-%d"},
             semantic=_dates,
+            arrow_types=_fixed_arrow_types(pa.string()),
             example={
                 "method": "dates",
                 "kwargs": {
@@ -307,12 +387,16 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
                 },
             },
         ),
-        "uuid4": _spec(example={"method": "uuid4", "kwargs": {}}),
+        "uuid4": _spec(
+            arrow_types=_fixed_arrow_types(pa.string()),
+            example={"method": "uuid4", "kwargs": {}},
+        ),
         "exponential": _spec(
             optional={"scale": (int, float), "decimals": int},
             defaults={"scale": 1.0, "decimals": 2},
             engines=(NUMPY,),
             semantic=_exponential,
+            arrow_types=_fixed_arrow_types(pa.float64()),
             example={"method": "exponential", "kwargs": {}},
         ),
         "lognormal": _spec(
@@ -324,6 +408,7 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
             defaults={"mean": 0.0, "std": 1.0, "decimals": 2},
             engines=(NUMPY,),
             semantic=_lognormal,
+            arrow_types=_fixed_arrow_types(pa.float64()),
             example={"method": "lognormal", "kwargs": {}},
         ),
         "poisson": _spec(
@@ -331,6 +416,7 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
             defaults={"lam": 1.0},
             engines=(NUMPY,),
             semantic=_poisson,
+            arrow_types=_fixed_arrow_types(pa.int64()),
             example={"method": "poisson", "kwargs": {}},
         ),
         "zipf": _spec(
@@ -338,12 +424,14 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
             defaults={"a": 2.0},
             engines=(NUMPY,),
             semantic=_zipf,
+            arrow_types=_fixed_arrow_types(pa.int64()),
             example={"method": "zipf", "kwargs": {}},
         ),
         "constant": _spec(
             required={"value": object},
             engines=(NUMPY,),
             semantic=_constant,
+            arrow_types=_constant_arrow_type,
             example={"method": "constant", "kwargs": {"value": None}},
         ),
         "distincts_map": _spec(
@@ -351,6 +439,7 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
             engines=(NUMPY,),
             kind=CORRELATED,
             semantic=_mapped_values,
+            arrow_types=_mapped_arrow_types,
             example={
                 "method": "distincts_map",
                 "cols": ["category", "value"],
@@ -363,6 +452,7 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
             required={"distincts": dict},
             engines=(NUMPY,),
             kind=CORRELATED,
+            arrow_types=_weighted_mapped_arrow_types,
             example={
                 "method": "distincts_map_prop",
                 "cols": ["category", "value"],
@@ -376,6 +466,7 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
             engines=(NUMPY,),
             kind=CORRELATED,
             semantic=_multi_mapped_values,
+            arrow_types=_multi_mapped_arrow_types,
             example={
                 "method": "distincts_multi_map",
                 "cols": ["category", "value"],
@@ -387,6 +478,7 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
             required={"pattern": str, "replacement": str, "templates": list},
             engines=(NUMPY,),
             kind=CORRELATED,
+            arrow_types=_fixed_arrow_types(pa.string()),
             example={
                 "method": "complex_distincts",
                 "kwargs": {
@@ -407,6 +499,7 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
             },
             engines=(NUMPY,),
             kind=KEY,
+            arrow_types=_pk_arrow_type,
             example={
                 "method": "pk",
                 "kwargs": {"style": "sequence", "start": 1, "step": 1},
@@ -417,6 +510,7 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
             optional={"skew": (int, float)},
             engines=(NUMPY,),
             kind=KEY,
+            arrow_types=_fk_arrow_type,
             example={
                 "method": "fk",
                 "kwargs": {
