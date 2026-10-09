@@ -133,7 +133,7 @@ The first multiply/add has inferred precision at most 22 and the second at most 
 | Job 4 | Job 7 | The helper source and package work consume canonical validation; the AC6.1 core RED/fix then precedes helper-marker retirement and job close. |
 | Job 5 | Job 3 | Writer batching consumes the final row-batch/modifier/dtype pipeline. |
 | Job 8 | Job 4, Job 5, zero-open bug batch and prepared-feature CI run | Final executable docs/public evidence and the terminal CI benchmark artifact consume all implemented behavior without pushing a Job 8 branch. |
-| Job 6 | Job 8 | The special reconciliation tree is last and contains only phase, memory and terminal metadata work. |
+| Job 6 | Job 8 | The special reconciliation tree is last and contains only phase, current-product memory/derived-document reconciliation and terminal metadata work. |
 
 ### Hot files
 
@@ -147,7 +147,7 @@ The first multiply/add has inferred precision at most 22 and the second at most 
 | `rand_engine/core/_np_core.py`, `tests/test_0_np_core.py` | 2, 4 | Job 2's numeric work is closed; Job 4 serially owns only the AC6.1 date-bound RED and canonical parser correction. |
 | `rand_engine/file_handlers/_writer_batch.py`, `file_handler.py` | 5 | format/session corrections through J5.T10 are complete; J5.T12/J5.T13 then serialize the callable-carrier RED and planner correction before the replacement close. |
 | `rand_engine/main/data_generator.py`, `rand_engine/validators/method_specs.py` | 1, 2, 3, 5, 7 | prior catalog/pipeline work and J5.T8 catalog normalization are closed; J5.T13 changes only DataGenerator's private batch result so the planner consumes the same evaluated spec without another registry or generation path. |
-| docs/README/`llms.txt`/benchmark artifacts | 8 | final-surfaces job only, after all behavior jobs are merged. |
+| README/`llms.txt`/affected docs | 8, 6 | Job 8 owns behavioral documentation and benchmark evidence; after CLOSURE, Job 6 sequentially reconciles derived current-product truth from changed memory and keeps already-correct files byte-identical. |
 
 ## 5. Job envelopes
 
@@ -157,8 +157,8 @@ The first multiply/add has inferred precision at most 22 and the second at most 
 - Job 7 — schema validation prerequisite: canonical `_integers` range semantics and focused public validator/generator controls only; no helper-local logic or new domain policy.
 - Job 4 — spec helpers: RandSpecs helpers and optional-Faker packaging plus the focused AC6.1 NumPy date-bound correction; source-only implementation precedes explicit test-marker retirement.
 - Job 5 — batch writer: all-empty-schema, declared-carrier, disabled-JSON, CSV physical-carrier and callable-carrier REDs; source-only write planner/schema injection and format/catalog corrections; disjoint marker retirement and the tests-only writer-fixture repair; `writeStream` production stays untouched.
-- Job 8 — final surfaces: fresh unmarked executable-doc/public and benchmark-artifact RED, derived docs, consumption of the pre-Job-8 exact production-source CI evidence, proof of no measured-code drift, and final build/package checks.
-- Job 6 — canonical reconciliation tree `0.7.0-rc2/reconcile`: phase transition first, then the product engineer's derived memory worklist and the main thread's terminal narrative/dispositions/artifact GC before one review and merge.
+- Job 8 — final surfaces: fresh unmarked executable-doc/public and benchmark-artifact RED, behavioral docs, consumption of the pre-Job-8 exact production-source CI evidence, proof of no measured-code drift, and final build/package checks.
+- Job 6 — canonical reconciliation tree `0.7.0-rc2/reconcile`: phase transition first, then the product engineer's memory worklist and sequential derived current-product truth reconciliation, followed by the main thread's terminal narrative/dispositions/artifact GC before one review and merge.
 
 ## 6. Task authority and acceptance trace
 
@@ -199,6 +199,6 @@ The merged-override case exposed a pre-existing catalog gap rather than helper-o
 
 1. Finish Jobs 4 and 5 through their source-only and test-only owners, merge their reviewed job results locally, and run the canonical outside-DAG bug batch after Job 5. Resolve all five records from their existing owners and require zero open before closure preparation. No task worktree push.
 2. Verify the resulting feature and publish only that exact `feature/0.7.0` production-source SHA for AC2.4/AC4.4 CI evidence. Retain the real run artifact; a threshold failure reopens its behavior owner. Do not push a Job 8 or task-worktree branch.
-3. Open normal Job 8, record its fresh unmarked RED tests, rebuild final docs/public surfaces, and consume the exact run/base/measured-head artifact. Its later docs/tests/evidence commits must prove no production or benchmark-code drift from the measured SHA. Merge reviewed Job 8 only after those owners, local full/default tests, build and package metadata checks are green.
-4. Open Job 6 only as `0.7.0-rc2/reconcile`. Its first act records IMPLEMENTATION → CLOSURE at the exact merged Job 8 SHA. Only then does the product engineer execute the drift-derived memory worklist and ledger memory entry there; the main thread adds the truthful closure narrative, dispositions and artifact-GC evidence there. No second closure tree or authority is opened.
+3. Open normal Job 8, record its fresh unmarked RED tests, rebuild final behavioral docs/public surfaces, and consume the exact run/base/measured-head artifact. Its later docs/tests/evidence commits must prove no production or benchmark-code drift from the measured SHA. Merge reviewed Job 8 only after those owners, local full/default tests, build and package metadata checks are green.
+4. Open Job 6 only as `0.7.0-rc2/reconcile`. Its first act records IMPLEMENTATION → CLOSURE at the exact merged Job 8 SHA. Only then does the product engineer execute the drift-derived memory worklist, reconcile affected derived current-product documents from that changed memory and record the ledger memory entry there; already-correct derived files remain byte-identical. The main thread then adds the truthful closure narrative, dispositions and artifact-GC evidence. No second closure tree or authority is opened.
 5. The reviewer issues one Job 6 verdict over the complete reconciliation HEAD; its merge is the candidate-close boundary. No PR42 bypass, admin merge, release push, tag, deploy or premature candidate-complete claim occurs in a task.
