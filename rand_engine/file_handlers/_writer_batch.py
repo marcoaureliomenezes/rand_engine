@@ -122,6 +122,9 @@ class FileBatchWriter(FileWriter):
     single_append_from: Path | None,
   ) -> pa.Schema | None:
     single = len(file_sizes) == 1
+    declared_schema_def = (
+      None if self.write_format == "json" and batch_limit is None else self.schema_def
+    )
     for file_size in file_sizes:
       file_path = staging / f"output.{extension}" if single else self._part_path(staging, extension)
       append_from = single_append_from if single else None
@@ -133,7 +136,7 @@ class FileBatchWriter(FileWriter):
       ) as session:
         for batch_size in self._batches(file_size, batch_limit):
           frame = self.microbatch_def(batch_size, offset)()
-          session.write(frame)
+          session.write(frame, declared_schema_def)
           offset += batch_size
           del frame
           if batch_limit is not None and session.schema is None:

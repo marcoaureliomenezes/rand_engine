@@ -81,7 +81,18 @@ def _integer_arrow_type(kwargs: Mapping[str, Any]) -> tuple[pa.DataType, ...]:
 
 def _constant_arrow_type(kwargs: Mapping[str, Any]) -> tuple[pa.DataType, ...]:
     value = kwargs["value"]
-    return (pa.null() if value is None else pa.scalar(value).type,)
+    if value is None:
+        return (pa.null(),)
+    scalar = pa.scalar(value)
+    if pa.types.is_timestamp(scalar.type):
+        natural_type = pa.timestamp("ns", tz=scalar.type.tz)
+        try:
+            scalar.cast(natural_type, safe=True)
+        except pa.ArrowInvalid:
+            pass
+        else:
+            return (natural_type,)
+    return (scalar.type,)
 
 
 def _distinct_arrow_type(kwargs: Mapping[str, Any]) -> tuple[pa.DataType, ...]:

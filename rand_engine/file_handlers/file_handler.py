@@ -65,6 +65,47 @@ def _arrow_table(df: PDDataFrame) -> pa.Table:
     raise
 
 
+def _concrete_field_type(
+  schema: pa.Schema | None, name: str
+) -> pa.DataType | None:
+  if schema is None:
+    return None
+  index = schema.get_field_index(name)
+  if index < 0 or pa.types.is_null(schema.field(index).type):
+    return None
+  return schema.field(index).type
+
+
+def _typed_null_table(
+  df: PDDataFrame,
+  current_schema: pa.Schema | None,
+  declared_schema_def: Callable[[], pa.Schema] | None,
+) -> pa.Table:
+  table = _arrow_table(df)
+  null_fields = [field for field in table.schema if pa.types.is_null(field.type)]
+  if not null_fields:
+    return table
+
+  declared_schema = None
+  for field in null_fields:
+    target = _concrete_field_type(current_schema, field.name)
+    if target is None and declared_schema_def is not None:
+      if declared_schema is None:
+        declared_schema = declared_schema_def()
+      target = _concrete_field_type(declared_schema, field.name)
+    if target is None:
+      continue
+    index = table.schema.get_field_index(field.name)
+    typed_field = pa.field(
+      field.name,
+      target,
+      nullable=field.nullable,
+      metadata=field.metadata,
+    )
+    table = table.set_column(index, typed_field, table.column(index).cast(target))
+  return table
+
+
 def _tz_aware_as_text(df: PDDataFrame) -> PDDataFrame:
   # pyarrow formats tz-aware timestamps through an IANA database Windows lacks; pandas renders them itself.
   tz_columns = [c for c in df.columns if isinstance(df[c].dtype, DatetimeTZDtype)]
@@ -151,10 +192,16 @@ class _CsvFile:
       self._file_context = None
     self._closed = True
 
-  def write(self, frame: PDDataFrame) -> None:
+  def write(
+    self,
+    frame: PDDataFrame,
+    declared_schema_def: Callable[[], pa.Schema] | None = None,
+  ) -> None:
     if self._closed:
       raise RandEngineError("csv file session is closed")
-    table = _arrow_table(_tz_aware_as_text(frame))
+    table = _typed_null_table(
+      _tz_aware_as_text(frame), self._schema, declared_schema_def
+    )
     self._schema = _require_same_schema(self._schema, table)
     self._open()
     options = pa_csv.WriteOptions(
@@ -229,14 +276,18 @@ class _JsonFile:
       self._file_context = None
     self._closed = True
 
-  def write(self, frame: PDDataFrame) -> None:
+  def write(
+    self,
+    frame: PDDataFrame,
+    declared_schema_def: Callable[[], pa.Schema] | None = None,
+  ) -> None:
     if self._closed:
       raise RandEngineError("json file session is closed")
     if self._deferred_payload is not None:
       raise RandEngineError("json schema is indeterminate across batches")
     payload = frame.to_json(None, orient="records", lines=True, **self._options).encode("utf-8")
     try:
-      table = _arrow_table(frame)
+      table = _typed_null_table(frame, self._schema, declared_schema_def)
     except RandEngineError as error:
       # Pandas can serialize heterogeneous object columns that Arrow cannot type.
       if self._schema is not None or not isinstance(
@@ -325,10 +376,14 @@ class _ParquetFile:
       self._writer = None
     self._closed = True
 
-  def write(self, frame: PDDataFrame) -> None:
+  def write(
+    self,
+    frame: PDDataFrame,
+    declared_schema_def: Callable[[], pa.Schema] | None = None,
+  ) -> None:
     if self._closed:
       raise RandEngineError("parquet file session is closed")
-    table = _arrow_table(frame)
+    table = _typed_null_table(frame, self._schema, declared_schema_def)
     self._schema = _require_same_schema(self._schema, table)
     if self._physical_schema is None:
       self._physical_schema = table.schema
