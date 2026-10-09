@@ -1,6 +1,7 @@
 # Job 5 — bounded batch writer and stable sinks
 
 **Status:** Approved
+**done:** true
 
 The stage rows below remain the executed historical record. J5.T1 and J5.T2 retired their satisfied markers without changing an assertion, and the CSV physical-carrier correction is complete. The J5.T3 and J5.T14 close commits remain history: final review rejected J5.T3 because callable RandSpec carrier fallback re-evaluated the spec, and repeated review rejected J5.T14 because a later all-null batch bypassed its available batch-local carrier. Neither is terminal authority:
 
