@@ -64,6 +64,8 @@ def _integers(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
     issues: list[SemanticIssue] = []
     if kwargs.get("int_type") not in (None, *INTEGER_TYPES):
         issues.append(("int_type", f"must be one of {list(INTEGER_TYPES)}"))
+    if kwargs["min"] > kwargs["max"]:
+        issues.append(("min/max", "minimum must be less than or equal to maximum"))
     return tuple(issues)
 
 

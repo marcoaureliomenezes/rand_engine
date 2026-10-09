@@ -493,7 +493,6 @@ def test_integer_range_equal_and_ordered_domains_validate_and_generate(kwargs, e
     assert str(values.dtype) == dtype
 
 
-@pytest.mark.xfail(strict=True, reason="integer min greater than max is not yet validated")
 def test_integer_range_inverted_domain_is_collected_before_generation():
     from rand_engine.validators.advanced_validator import AdvancedValidator
 
