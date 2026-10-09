@@ -1,6 +1,7 @@
 # Job 4 — RandSpecs schema and Faker helpers
 
 **Status:** Approved
+**done:** true
 
 ## Stage J4.S1 — RED
 
