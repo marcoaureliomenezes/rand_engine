@@ -1,5 +1,6 @@
 import gzip
 import json
+from datetime import datetime, timezone
 
 import pandas as pd
 import pyarrow as pa
@@ -128,6 +129,57 @@ def test_csv_batches_share_one_compressed_stream_and_one_header(tmp_path):
     content = gzip.open(output, "rt", encoding="utf-8").read() if output else ""
 
     assert (error, content) == (None, '"id"\n0\n1\n2\n3\n4\n')
+
+
+@pytest.mark.parametrize(
+    "seed, expected_rows",
+    [
+        (
+            3,
+            [
+                "",
+                "",
+                '"2024-01-01 12:30:00+00:00"',
+                '"2024-01-01 12:30:00+00:00"',
+            ],
+        ),
+        (
+            15,
+            [
+                '"2024-01-01 12:30:00+00:00"',
+                '"2024-01-01 12:30:00+00:00"',
+                "",
+                "",
+            ],
+        ),
+        (45, ['"2024-01-01 12:30:00+00:00"'] * 4),
+    ],
+    ids=["null-first", "null-last", "no-nulls"],
+)
+def test_csv_timezone_batches_keep_one_text_carrier_across_null_layouts(
+    tmp_path, seed, expected_rows
+):
+    path = tmp_path / f"timezone-{seed}"
+    spec = {
+        "event_at": {
+            "method": "constant",
+            "kwargs": {
+                "value": datetime(2024, 1, 1, 12, 30, tzinfo=timezone.utc)
+            },
+            "null_rate": 0.5,
+        }
+    }
+
+    error = _save(
+        DataGenerator(spec, seed=seed).size(4),
+        path,
+        "csv",
+        maxRowsPerBatch=2,
+    )
+    output = _single_output(path) if error is None else None
+    rows = output.read_text(encoding="utf-8").splitlines() if output else None
+
+    assert (error, rows) == (None, ['"event_at"', *expected_rows])
 
 
 def test_json_batches_keep_lines_options_unicode_and_null(tmp_path):
