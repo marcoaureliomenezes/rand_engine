@@ -123,6 +123,16 @@ def _expected_readback(format_type):
     )
 
 
+def _null_constant_spec(value):
+    return {
+        "value": {
+            "method": "constant",
+            "kwargs": {"value": value},
+            "null_rate": 1,
+        }
+    }
+
+
 @pytest.mark.parametrize("format_type", ["csv", "json", "parquet"])
 @pytest.mark.parametrize("file_count", [1, 3])
 def test_determinate_empty_saves_repeat_with_typed_files_and_no_rng(
@@ -248,6 +258,108 @@ def test_constant_string_all_null_parquet_retains_declared_logical_type(tmp_path
         None,
         pa.schema([pa.field("label", pa.string())]),
         {"label": [None, None, None]},
+    )
+
+
+def test_callable_all_null_parquet_uses_the_generated_batch_string_carrier(tmp_path):
+    calls = []
+
+    def changing_spec():
+        calls.append(len(calls) + 1)
+        value = "current-batch" if len(calls) <= 2 else 7
+        return _null_constant_spec(value)
+
+    result = _parquet_result(
+        DataGenerator(changing_spec, seed=5).size(2).write.format("parquet"),
+        tmp_path / "callable-string",
+    )
+
+    assert (result, calls) == (
+        (
+            None,
+            pa.schema([pa.field("value", pa.string())]),
+            {"value": [None, None]},
+        ),
+        [1, 2],
+    )
+
+
+def test_callable_all_null_parquet_calls_once_per_generated_batch(tmp_path):
+    calls = []
+
+    def string_spec():
+        calls.append(len(calls) + 1)
+        return _null_constant_spec(f"batch-{len(calls)}")
+
+    result = _parquet_result(
+        DataGenerator(string_spec, seed=7)
+        .size(4)
+        .write.format("parquet")
+        .option("maxRowsPerBatch", 2),
+        tmp_path / "callable-batches",
+    )
+
+    assert (result, calls) == (
+        (
+            None,
+            pa.schema([pa.field("value", pa.string())]),
+            {"value": [None, None, None, None]},
+        ),
+        [1, 2, 3],
+    )
+
+
+def test_repeated_callable_saves_use_each_generated_batch_carrier(tmp_path):
+    calls = []
+    values = ["validated", "first-save", 7, 8, 9]
+
+    def changing_spec():
+        calls.append(len(calls) + 1)
+        return _null_constant_spec(values[len(calls) - 1])
+
+    writer = DataGenerator(changing_spec, seed=11).size(1).write.format("parquet")
+    first = _parquet_result(writer, tmp_path / "first-save")
+    second = _parquet_result(writer, tmp_path / "second-save")
+
+    assert (first, second, calls) == (
+        (
+            None,
+            pa.schema([pa.field("value", pa.string())]),
+            {"value": [None]},
+        ),
+        (
+            None,
+            pa.schema([pa.field("value", pa.int64())]),
+            {"value": [None]},
+        ),
+        [1, 2, 3],
+    )
+
+
+def test_empty_callable_parquet_evaluates_one_lazy_schema_without_rng(
+    tmp_path, monkeypatch
+):
+    calls = []
+
+    def changing_spec():
+        calls.append(len(calls) + 1)
+        value = "validated" if len(calls) == 1 else 7
+        return _null_constant_spec(value)
+
+    requests = _observe_numpy_requests(monkeypatch)
+    result = _parquet_result(
+        DataGenerator(changing_spec, seed=13).size(0).write.format("parquet"),
+        tmp_path / "empty-callable",
+    )
+
+    assert (result, calls, requests) == (
+        (
+            None,
+            pa.schema([pa.field("value", pa.int64())]),
+            {"value": []},
+        ),
+        [1, 2],
+        [],
     )
 
 
