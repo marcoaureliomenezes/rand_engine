@@ -12,6 +12,13 @@ DATE_DIRECTIVES = ("%Y", "%m", "%d", "%H", "%M", "%S", "%f")
 DATE_SPLIT = re.compile(f"({'|'.join(DATE_DIRECTIVES)})")
 
 
+def _parse_date_bound(value: str, date_format: str) -> dt:
+  try:
+    return dt.strptime(value, date_format)
+  except ValueError:
+    return dt.strptime(value, "%Y-%m-%d")
+
+
 def _shift_decimal(value: Decimal, places: int) -> Decimal:
   sign, digits, exponent = value.as_tuple()
   return Decimal((sign, digits, exponent + places))
@@ -156,7 +163,7 @@ class NPCore:
 
   @classmethod
   def gen_unix_timestamps(cls, size: int, start: str, end: str, date_format: str = "%Y-%m-%d", *, rng: np.random.Generator) -> np.ndarray:
-    dt_start, dt_end = dt.strptime(start, date_format), dt.strptime(end, date_format)
+    dt_start, dt_end = (_parse_date_bound(value, date_format) for value in (start, end))
     if dt_start < dt(1970, 1, 1): dt_start = dt(1970, 1, 1)
     timestamp_start, timestamp_end = (int(d.replace(tzinfo=timezone.utc).timestamp()) for d in (dt_start, dt_end))
     # Use int64 to handle large Unix timestamps on Windows
