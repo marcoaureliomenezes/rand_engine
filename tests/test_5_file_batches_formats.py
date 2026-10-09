@@ -114,7 +114,6 @@ def test_json_batched_indeterminate_schema_preserves_destination(tmp_path):
     )
 
 
-@pytest.mark.xfail(strict=True, reason="CSV batching does not yet share one file session")
 def test_csv_batches_share_one_compressed_stream_and_one_header(tmp_path):
     path = tmp_path / "rows"
     error = _save(
@@ -131,7 +130,6 @@ def test_csv_batches_share_one_compressed_stream_and_one_header(tmp_path):
     assert (error, content) == (None, '"id"\n0\n1\n2\n3\n4\n')
 
 
-@pytest.mark.xfail(strict=True, reason="JSON batching does not yet share one file session")
 def test_json_batches_keep_lines_options_unicode_and_null(tmp_path):
     path = tmp_path / "rows"
 
@@ -163,7 +161,6 @@ def test_json_batches_keep_lines_options_unicode_and_null(tmp_path):
     )
 
 
-@pytest.mark.xfail(strict=True, reason="Parquet batching does not yet hold one stable schema")
 def test_parquet_batches_keep_nullable_schema_when_first_batch_is_all_null(tmp_path):
     path = tmp_path / "rows"
 
@@ -189,7 +186,6 @@ def test_parquet_batches_keep_nullable_schema_when_first_batch_is_all_null(tmp_p
 
 
 @pytest.mark.parametrize("format_type", ["csv", "json", "parquet"])
-@pytest.mark.xfail(strict=True, reason="append does not yet preserve one bounded final file")
 def test_append_preserves_existing_rows_and_bounded_batch_layout(tmp_path, format_type):
     path = tmp_path / f"rows-{format_type}"
     first_error = _save(
@@ -229,7 +225,6 @@ def test_append_preserves_existing_rows_and_bounded_batch_layout(tmp_path, forma
     )
 
 
-@pytest.mark.xfail(strict=True, reason="zero-row partitions still enter the generation pipeline")
 def test_zero_row_partitions_are_typed_without_generation_pipeline_calls(tmp_path):
     path = tmp_path / "parts"
     calls = []
@@ -263,7 +258,6 @@ def test_zero_row_partitions_are_typed_without_generation_pipeline_calls(tmp_pat
     ) == (None, [1, 1], 4, [0, 0, 1, 1], [pa.int8()] * 4)
 
 
-@pytest.mark.xfail(strict=True, reason="empty transformed schemas are not yet resolved before writing")
 def test_indeterminate_empty_transform_fails_without_call_or_destination_mutation(tmp_path):
     path = tmp_path / "rows"
     assert _save(DataGenerator(PK_SPEC).size(1), path, "parquet") is None
@@ -291,7 +285,6 @@ def test_indeterminate_empty_transform_fails_without_call_or_destination_mutatio
     ) == (RandEngineError, [], True, True)
 
 
-@pytest.mark.xfail(strict=True, reason="cross-batch schema drift is not yet validated")
 def test_schema_drift_fails_before_replacing_existing_destination(tmp_path):
     path = tmp_path / "rows"
     assert _save(DataGenerator(PK_SPEC).size(1), path, "parquet") is None
