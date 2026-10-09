@@ -365,6 +365,58 @@ def test_gen_dates_zero_rows_returns_empty():
   assert NPCore.gen_dates(0, "2020-01-01", "2024-12-31", "%Y-%m-%d", rng=RNG).tolist() == []
 
 
+def test_date_only_iso_bounds_are_independent_from_timestamp_output_format():
+  try:
+    actual = NPCore.gen_dates(
+      6,
+      "2026-02-03",
+      "2026-02-05",
+      "%Y-%m-%d %H:%M:%S",
+      rng=np.random.default_rng(704),
+    ).tolist()
+  except ValueError as error:
+    actual = error
+
+  custom_timestamps = NPCore.gen_unix_timestamps(
+    4,
+    "03/02/2026 00:00:00",
+    "04/02/2026 00:00:00",
+    "%d/%m/%Y %H:%M:%S",
+    rng=np.random.default_rng(704),
+  )
+  assert custom_timestamps.tolist() == [1770133933, 1770109790, 1770108215, 1770151804]
+  assert (custom_timestamps < 1770163200).all()
+  assert NPCore.gen_dates(
+    4,
+    "03/02/2026 00:00:00",
+    "04/02/2026 00:00:00",
+    "%d/%m/%Y %H:%M:%S",
+    rng=np.random.default_rng(704),
+  ).tolist() == [
+    "03/02/2026 15:52:13",
+    "03/02/2026 09:09:50",
+    "03/02/2026 08:43:35",
+    "03/02/2026 20:50:04",
+  ]
+  with pytest.raises(ValueError):
+    NPCore.gen_unix_timestamps(
+      1,
+      "04/02/2026 00:00:00",
+      "03/02/2026 00:00:00",
+      "%d/%m/%Y %H:%M:%S",
+      rng=np.random.default_rng(704),
+    )
+
+  assert actual == [
+    "2026-02-04 07:44:26",
+    "2026-02-03 18:19:41",
+    "2026-02-03 17:27:11",
+    "2026-02-04 17:40:08",
+    "2026-02-03 12:28:56",
+    "2026-02-04 08:48:48",
+  ]
+
+
 @pytest.mark.parametrize(("method", "kwargs", "expected_dtype", "expected_hash"), [
   ("exponential", {"scale": 2.5, "decimals": 3}, np.dtype("float64"),
    "e1cd3981cbfdd9fe1ec70f4431508c75202dfe752403bf4e45d3ef9ec1760fba"),
