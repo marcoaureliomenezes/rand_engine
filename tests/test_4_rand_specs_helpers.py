@@ -204,6 +204,31 @@ def test_from_schema_requires_complete_overrides_for_every_unsupported_family(ar
   assert from_schema(schema, overrides=override) == override
 
 
+@pytest.mark.parametrize(
+    "arrow_type, type_name",
+    [(pa.uuid(), "uuid"), (pa.json_(), "json")],
+)
+@pytest.mark.xfail(strict=True, reason="J4.S2.T1 RED: installed extension refusal is not implemented")
+def test_from_schema_refuses_installed_extension_types_unless_completely_overridden(arrow_type, type_name):
+  from_schema = _helper("from_schema")
+  schema = pa.schema([pa.field("payload", arrow_type)])
+  override = {"payload": {"method": "constant", "kwargs": {"value": "literal"}}}
+
+  with pytest.raises(SpecValidationError, match=rf"payload.*{type_name}.*override"):
+    from_schema(schema)
+
+  assert from_schema(schema, overrides=override) == override
+
+
+@pytest.mark.xfail(strict=True, reason="J4.S2.T1 RED: merged overrides do not reach normal validation")
+def test_from_schema_validates_the_semantics_of_merged_kwargs_overrides():
+  from_schema = _helper("from_schema")
+  schema = pa.schema([pa.field("count", pa.int16())])
+
+  with pytest.raises(SpecValidationError, match=r"count.*min.*max"):
+    from_schema(schema, overrides={"count": {"kwargs": {"min": 101}}})
+
+
 @pytest.mark.xfail(strict=True, reason="J4.S1.T1 RED: from_schema is not implemented")
 def test_from_schema_refuses_a_methodless_override_for_an_unsupported_type():
   from_schema = _helper("from_schema")
@@ -319,3 +344,12 @@ def test_faker_pool_refuses_invalid_construction_inputs(kwargs, message):
 
   with pytest.raises(RandEngineError, match=message):
     faker_pool(**kwargs)
+
+
+@pytest.mark.parametrize("pool_size", [-1, 1.5, "5"])
+@pytest.mark.xfail(strict=True, reason="J4.S2.T1 RED: pool_size construction is not implemented")
+def test_faker_pool_refuses_negative_and_non_integer_sizes(pool_size):
+  faker_pool = _helper("faker_pool")
+
+  with pytest.raises(RandEngineError, match="pool_size"):
+    faker_pool("name", locale="pt_BR", pool_size=pool_size, seed=7)
