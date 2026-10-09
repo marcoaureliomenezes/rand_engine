@@ -58,6 +58,62 @@ def test_csv_preserves_timezone_text_and_single_column_null_quoting(tmp_path):
     )
 
 
+@pytest.mark.parametrize(
+    "batch_options",
+    [{}, {"maxRowsPerBatch": None}],
+    ids=["absent", "none"],
+)
+def test_json_heterogeneous_object_rows_keep_unbatched_compatibility(
+    tmp_path,
+    batch_options,
+):
+    path = tmp_path / "mixed"
+    calls = []
+
+    def heterogeneous_column(frame):
+        calls.append(len(frame))
+        return pd.DataFrame({"mixed": [1, "a"]})
+
+    error = _save(
+        DataGenerator(PK_SPEC).transformers([heterogeneous_column]).size(2),
+        path,
+        "json",
+        **batch_options,
+    )
+    output = _single_output(path) if error is None else None
+
+    assert (
+        type(error) if error else None,
+        calls,
+        output.read_text(encoding="utf-8") if output else None,
+    ) == (None, [2], '{"mixed":1}\n{"mixed":"a"}\n')
+
+
+def test_json_batched_indeterminate_schema_preserves_destination(tmp_path):
+    path = tmp_path / "mixed"
+    assert _save(DataGenerator(PK_SPEC).size(1), path, "json") is None
+    output = _single_output(path)
+    before = output.read_bytes()
+    calls = []
+
+    def heterogeneous_column(frame):
+        calls.append(len(frame))
+        return pd.DataFrame({"mixed": [1, "a"]})
+
+    error = _save(
+        DataGenerator(PK_SPEC).transformers([heterogeneous_column]).size(2),
+        path,
+        "json",
+        maxRowsPerBatch=2,
+    )
+
+    assert (type(error), calls, output.read_bytes() == before) == (
+        RandEngineError,
+        [2],
+        True,
+    )
+
+
 @pytest.mark.xfail(strict=True, reason="CSV batching does not yet share one file session")
 def test_csv_batches_share_one_compressed_stream_and_one_header(tmp_path):
     path = tmp_path / "rows"
