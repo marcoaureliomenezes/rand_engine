@@ -9,7 +9,7 @@
 - Demand: deliver the seven RC2 themes deferred by RC1 §5, repair the five defects confirmed by the full forensic review, and rebuild recurrent validation, numeric and writer units instead of layering exceptions.
 - Sources: confirmed grill handoff `2026-10-07T165344Z-main-thread-grill-rc2-confirmed`; forensic report `2026-10-07T153804Z-main-thread-bug-forensics-rc2.html`; RC1 SPEC §5; operator instruction to proceed.
 - Approval: operator, 2026-10-07, verbatim: “aprovo a Spec Atual da RC2” — the current contract, including the product-engineer API spellings/defaults below, is approved without substantive amendment.
-- Amendment 1 (2026-10-10): grill handoff `2026-10-10T215645Z-main-thread-grill-rc2-amendment` after the rc-2 hard review. Amendment approved by the operator in the 2026-10-10 grill (handoff above). The operator approves by name the bodies `NPCore.gen_floats`, `SparkCore.gen_ints`, `SparkCore.gen_floats` and `StreamHandler.convert_dt_to_str`: each returns to the operator's style (2-space indentation, one-line guards, terse NumPy) carrying only the minimal bug fix; a float grid beyond `int64` and a Spark width above 2^53 are refused, not handled.
+- Amendment 1 (2026-10-10): grill handoff `2026-10-10T215645Z-main-thread-grill-rc2-amendment` after the rc-2 hard review. Amendment approved by the operator in the 2026-10-10 grill (handoff above). The operator approves by name the bodies `NPCore.gen_floats`, `NPCore.gen_poisson`, `NPCore.gen_zipf` (alias-table samplers, AC2.1), `SparkCore.gen_ints`, `SparkCore.gen_floats` and `StreamHandler.convert_dt_to_str`: each returns to the operator's style (2-space indentation, one-line guards, terse NumPy) carrying only the minimal bug fix; a float grid beyond `int64` and a Spark width above 2^53 are refused, not handled.
 
 ## Bug window review
 
@@ -93,7 +93,7 @@ Bound writer generation by rows and broaden NumPy-first RandSpecs without hidden
 ### FR2 — Four distributions
 
 - AC2.1 (unit): seeded outputs match literal 1,000-row golden hashes and their distribution family; exponential/lognormal are rounded `float64`, poisson/zipf `int64`. Poisson and zipf use alias-table samplers, the zipf tail beyond the table sampled exactly; their goldens are re-pinned to these samplers, not NumPy's `rng.poisson`/`rng.zipf` stream.
-- AC2.2 (unit): `scale<=0`, `std<0`, `lam<0`, `a<=1`, or non-integer/negative `decimals` raises collected `SpecValidationError` before generation.
+- AC2.2 (unit): `scale<=0`, `std<0`, `lam<0`, `lam>10**6`, `a<=1`, or non-integer/negative `decimals` raises collected `SpecValidationError` before generation.
 - AC2.3 (unit): existing uniform `floats` and normal `floats_normal` names, defaults, dtypes and seeded goldens are unchanged except the explicit representable-domain replacement for `floats` in AC8.3.
 - AC2.4 (CI benchmark): each new method is no slower than 1.5x its sibling in the same official run — poisson and zipf against `distincts_prop`, exponential and lognormal against `floats_normal`; large loads remain CI-only.
 
@@ -151,12 +151,12 @@ Bound writer generation by rows and broaden NumPy-first RandSpecs without hidden
 - Public positional `args` are removed as a 0.7.0 breaking migration: use named `kwargs`. Approval is prospective and does not retroactively authorize commit `4147b088`.
 - AC8.1 (unit): `true_prob="abc"` and every wrong numeric type produce only collected `SpecValidationError`, never raw `TypeError`.
 - AC8.2 (unit): every `distincts_map` pool and every required `distincts_multi_map` level is non-empty; both confirmed reproductions fail validation, not generation.
-- AC8.3 (unit): rounded `floats(min,max,decimals=d)` sample integer lattice `ceil(min*10^d)..floor(max*10^d)` divided by `10^d`; an empty lattice, including `9.991..9.991` at 2 decimals, is refused, and so is a lattice wider than `int64`. No clipping/special value branch. Spark shares the contract.
-- AC8.4 (Spark integration): `int8/16/32/64` and `uint8/16/32` use exact inclusive result arithmetic, never double; min=max=`9007199254740993`, `int64`, yields that literal. Spark refuses `uint64` because signed `bigint` cannot carry its full domain, and refuses an integer or float-lattice width above 2^53; every other unsupported exact domain is refused before execution.
+- AC8.3 (unit): rounded `floats(min,max,decimals=d)` sample integer lattice `ceil(min*10^d)..floor(max*10^d)` divided by `10^d`; an empty lattice, including `9.991..9.991` at 2 decimals, is refused, and so is a lattice wider than `int64` or `|decimals|>308` (collected `SpecValidationError`). No clipping/special value branch. Spark shares the contract.
+- AC8.4 (Spark integration): `int8/16/32/64` and `uint8/16/32` use exact inclusive result arithmetic, never double; min=max=`9007199254740993`, `int64`, yields that literal. Spark refuses `uint64` because signed `bigint` cannot carry its full domain, and refuses an integer or float-lattice width above 2^53 and `int_zfilled` with `length>15` (collected `SpecValidationError`); every other unsupported exact domain is refused before execution.
 - AC8.5 (unit): duplicate NumPy test names become single collected parameter tables; useful original uniform, normal, categorical, timezone and dtype asserts remain.
 - AC8.6 (integration): writer fixtures use pytest `tmp_path`, never persistent `tests/test_outputs` or recursive repo cleanup.
 - AC8.7 (unit): dead validation parameters, unused imports, redundant branches, commented implementation and history comments leave; no flag/wrapper replaces them. Also deleted: empty `TODOs.md`, `tests/docker-compose.yml`, `tests/test_3_spark_generator_fails.py`; duplicate fixtures `tests/fixtures/f2_spark_generator_specs_wrong.py`, `f5_spark_fixtures.py`; unimportable `tests/fixtures/fixtures_templates.py`; `img/`; `rand_engine/file_handlers/fs_utils.py`; `rand_engine/utils/logger.py` if unused; obsolete `.github/copilot-instructions.md`; the unused METHOD_CATALOG `defaults` table (engines keep their own defaults: NumPy `int32`, Spark `long`). `SparkGenerator.get_df()` without `.size()` raises `RandEngineError` naming `.size(n)`.
-- AC8.8 (unit): an unknown column-level key, and integer bounds outside the declared `int_type` range, raise collected `SpecValidationError`.
+- AC8.8 (unit): an unknown column-level key, and integer bounds outside the `int_type` range, raise collected `SpecValidationError`; an undeclared `int_type` is checked against the engine default (NumPy `int32`, Spark `long`).
 
 ### FR9 — Compatibility and boundaries
 
