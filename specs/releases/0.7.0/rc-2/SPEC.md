@@ -9,6 +9,7 @@
 - Demand: deliver the seven RC2 themes deferred by RC1 §5, repair the five defects confirmed by the full forensic review, and rebuild recurrent validation, numeric and writer units instead of layering exceptions.
 - Sources: confirmed grill handoff `2026-10-07T165344Z-main-thread-grill-rc2-confirmed`; forensic report `2026-10-07T153804Z-main-thread-bug-forensics-rc2.html`; RC1 SPEC §5; operator instruction to proceed.
 - Approval: operator, 2026-10-07, verbatim: “aprovo a Spec Atual da RC2” — the current contract, including the product-engineer API spellings/defaults below, is approved without substantive amendment.
+- Amendment 1 (2026-10-10): grill handoff `2026-10-10T215645Z-main-thread-grill-rc2-amendment` after the rc-2 hard review. Amendment approved by the operator in the 2026-10-10 grill (handoff above). The operator approves by name the bodies `NPCore.gen_floats`, `SparkCore.gen_ints`, `SparkCore.gen_floats` and `StreamHandler.convert_dt_to_str`: each returns to the operator's style (2-space indentation, one-line guards, terse NumPy) carrying only the minimal bug fix; a float grid beyond `int64` and a Spark width above 2^53 are refused, not handled.
 
 ## Bug window review
 
@@ -44,6 +45,8 @@ All 25 resolved records, cited tests and current seams were reviewed. KEEP prese
 
 Five confirmed bugs enter: `float-rounded-domain-violates-bounds`, `distincts-map-empty-pool-validates`, `distincts-multi-map-empty-domain-validates`, `probability-wrong-type-escapes-validation`, `spark-bigint-precision-lost`. Each uses its independent failing public reproduction; no historical RED chronology or causal link is invented.
 
+Amendment 1 adds three confirmed bugs, fixed in this rc: `spark-floats-lattice-quadratic-slowdown`, `unbatched-save-refuses-transformed-null-column`, `fk-parent-args-validates`.
+
 ## 1. Problem and context
 
 - A final file is generated as one whole DataFrame. The factory list is lazy, but a large file has no row-batch bound.
@@ -65,7 +68,7 @@ Bound writer generation by rows and broaden NumPy-first RandSpecs without hidden
 - Order: generation → embedded transformers → global transformers → anomalies → nulls; null wins on overlap.
 - New methods/modifiers are NumPy/DataGenerator-first. Spark explicitly refuses unsupported method names/keys; no dummy columns or Python UDF.
 - Same seed, spec, size and row-batch configuration reproduces values. Changing row-batch size may change ordinary values. Disabled features consume no RNG.
-- With batching, global transformers run once per row batch. Without it, the old one-frame path and call count stay.
+- With batching, global transformers run once per row batch. With `maxRowsPerBatch` absent, the original RC1 one-frame path is used unchanged.
 - Faker is optional and locally seeded; PyArrow is already required. No data samples, business inference, SQL, database or persisted relations.
 
 ### Draft API proposals
@@ -84,14 +87,15 @@ Bound writer generation by rows and broaden NumPy-first RandSpecs without hidden
 - AC1.3 (unit): absent/`None` is disabled; zero, negative, bool or non-int raises `RandEngineError` before overwrite removes output.
 - AC1.4 (integration): a counting global transformer runs once unbatched and once per row batch when enabled. Same configuration reproduces; different batch sizes need not match ordinary values. Keys keep row-index semantics.
 - AC1.5 (unit): one linear cumulative-offset plan holds lazy factories, not DataFrames, and releases each generated batch after writing.
-- AC1.6 (integration): when enabled and `size < numFiles`, the existing split retains `numFiles`; each zero-row partition becomes one empty typed file without a zero-length generation/transformer call or RNG draw. Validated method/dtype contracts establish one stable schema per final file before destructive overwrite; typed nullable/all-null batches are valid and cannot cause later schema drift, while a genuinely indeterminate transformed output fails before mutation.
+- AC1.6 (integration): when enabled and `size < numFiles`, the existing split retains `numFiles`; each zero-row partition becomes one empty typed file without a zero-length generation/transformer call or RNG draw. The spec is evaluated once per final file; column types come from the method catalog, transformer-added columns from the first batch. A column all-null in the first batch that later receives values raises `RandEngineError` before any destination mutation.
+- AC1.7 (integration): `mode('append')` appends for single-file and multi-file saves; any other mode overwrites. A multi-file append writes only the new part files beside the existing ones, which are never copied or rewritten.
 
 ### FR2 — Four distributions
 
-- AC2.1 (unit): seeded outputs match literal 1,000-row golden hashes and their NumPy family; exponential/lognormal are rounded `float64`, poisson/zipf `int64`.
+- AC2.1 (unit): seeded outputs match literal 1,000-row golden hashes and their distribution family; exponential/lognormal are rounded `float64`, poisson/zipf `int64`. Poisson and zipf use alias-table samplers, the zipf tail beyond the table sampled exactly; their goldens are re-pinned to these samplers, not NumPy's `rng.poisson`/`rng.zipf` stream.
 - AC2.2 (unit): `scale<=0`, `std<0`, `lam<0`, `a<=1`, or non-integer/negative `decimals` raises collected `SpecValidationError` before generation.
 - AC2.3 (unit): existing uniform `floats` and normal `floats_normal` names, defaults, dtypes and seeded goldens are unchanged except the explicit representable-domain replacement for `floats` in AC8.3.
-- AC2.4 (CI benchmark): each new method is no slower than 1.5x its closest sibling in the same official run; large loads remain CI-only.
+- AC2.4 (CI benchmark): each new method is no slower than 1.5x its sibling in the same official run — poisson and zipf against `distincts_prop`, exponential and lognormal against `floats_normal`; large loads remain CI-only.
 
 ### FR3 — Null modifier
 
@@ -106,7 +110,7 @@ Bound writer generation by rows and broaden NumPy-first RandSpecs without hidden
 - AC4.1 (unit): rate 0 is bit-identical/zero-RNG; rate 1 replaces every row from `anomaly_values`; a seeded configuration has a literal mask/value golden.
 - AC4.2 (unit/integration): spec validation requires a positive rate to carry a non-empty list of structurally valid scalars and refuses wrong rates or nested values. Because arbitrary transformers make the resulting dtype unknowable at construction, value compatibility is checked after transformers and before replacement/return or any writer mutation; incompatibility raises `RandEngineError` and never silently widens.
 - AC4.3 (unit): keys/correlated methods refuse modifiers. No orphan FK, duplicate PK, implicit corruption rule or exact-count promise is added.
-- AC4.4 (CI benchmark): either modifier costs at most 25% over its unmodified method in the official same-runner run.
+- AC4.4 (CI benchmark): either modifier's overhead (modified column time minus unmodified column time) is at most 1.25x the bare `rng.random(n) < p` draw at the same rows in the same official run. Per-row Bernoulli selection and the approved literal mask goldens are unchanged.
 
 ### FR5 — Optional Faker pool
 
@@ -147,11 +151,12 @@ Bound writer generation by rows and broaden NumPy-first RandSpecs without hidden
 - Public positional `args` are removed as a 0.7.0 breaking migration: use named `kwargs`. Approval is prospective and does not retroactively authorize commit `4147b088`.
 - AC8.1 (unit): `true_prob="abc"` and every wrong numeric type produce only collected `SpecValidationError`, never raw `TypeError`.
 - AC8.2 (unit): every `distincts_map` pool and every required `distincts_multi_map` level is non-empty; both confirmed reproductions fail validation, not generation.
-- AC8.3 (unit): rounded `floats(min,max,decimals=d)` sample integer lattice `ceil(min*10^d)..floor(max*10^d)` divided by `10^d`; an empty lattice, including `9.991..9.991` at 2 decimals, is refused. No clipping/special value branch. Spark shares the contract.
-- AC8.4 (Spark integration): `int8/16/32/64` and `uint8/16/32` use exact inclusive result arithmetic, never double; min=max=`9007199254740993`, `int64`, yields that literal. Spark refuses `uint64` because signed `bigint` cannot carry its full domain; every other unsupported exact domain is refused before execution. This criterion proves bounds/representability, not exact statistical uniformity across arbitrary 64-bit spans; the technical review below must prevent a silently biased modulo implementation.
+- AC8.3 (unit): rounded `floats(min,max,decimals=d)` sample integer lattice `ceil(min*10^d)..floor(max*10^d)` divided by `10^d`; an empty lattice, including `9.991..9.991` at 2 decimals, is refused, and so is a lattice wider than `int64`. No clipping/special value branch. Spark shares the contract.
+- AC8.4 (Spark integration): `int8/16/32/64` and `uint8/16/32` use exact inclusive result arithmetic, never double; min=max=`9007199254740993`, `int64`, yields that literal. Spark refuses `uint64` because signed `bigint` cannot carry its full domain, and refuses an integer or float-lattice width above 2^53; every other unsupported exact domain is refused before execution.
 - AC8.5 (unit): duplicate NumPy test names become single collected parameter tables; useful original uniform, normal, categorical, timezone and dtype asserts remain.
 - AC8.6 (integration): writer fixtures use pytest `tmp_path`, never persistent `tests/test_outputs` or recursive repo cleanup.
-- AC8.7 (unit): dead validation parameters, unused imports, redundant branches, commented implementation and history comments leave; no flag/wrapper replaces them.
+- AC8.7 (unit): dead validation parameters, unused imports, redundant branches, commented implementation and history comments leave; no flag/wrapper replaces them. Also deleted: empty `TODOs.md`, `tests/docker-compose.yml`, `tests/test_3_spark_generator_fails.py`; duplicate fixtures `tests/fixtures/f2_spark_generator_specs_wrong.py`, `f5_spark_fixtures.py`; unimportable `tests/fixtures/fixtures_templates.py`; `img/`; `rand_engine/file_handlers/fs_utils.py`; `rand_engine/utils/logger.py` if unused; obsolete `.github/copilot-instructions.md`; the unused METHOD_CATALOG `defaults` table (engines keep their own defaults: NumPy `int32`, Spark `long`). `SparkGenerator.get_df()` without `.size()` raises `RandEngineError` naming `.size(n)`.
+- AC8.8 (unit): an unknown column-level key, and integer bounds outside the declared `int_type` range, raise collected `SpecValidationError`.
 
 ### FR9 — Compatibility and boundaries
 
@@ -163,6 +168,10 @@ Bound writer generation by rows and broaden NumPy-first RandSpecs without hidden
 ## 4. Replaces
 
 - Whole-final-file generation, misleading DataFrame names/types for factories and quadratic offsets → FR1 linear lazy row-batch plan.
+- Per-batch spec evaluation and null-carrier reconciliation layers → once-per-file evaluation, catalog types, first-batch transformer columns (AC1.6).
+- Multi-file append by folder copy → new part files only (AC1.7).
+- Helper stacks inside `NPCore.gen_floats`, `SparkCore.gen_ints`, `SparkCore.gen_floats`, `StreamHandler.convert_dt_to_str` → operator-style bodies with the minimal fix.
+- NumPy `rng.poisson`/`rng.zipf` sampling → alias tables (AC2.1).
 - Repeated validator ownership and semantic fallthrough after structural failure → FR8 single intake/method authority.
 - Positional `args` grammar/dispatch → named `kwargs`, authorized by approval now, not retroactively.
 - Uniform-then-round floats that leave bounds → representable decimal lattice/refusal.
@@ -170,7 +179,7 @@ Bound writer generation by rows and broaden NumPy-first RandSpecs without hidden
 - Spark acceptance of `uint64` despite lacking an exact carrier → explicit validation refusal.
 - Empty correlated domains and raw type errors after validation → AC8.1–AC8.2.
 - Overwritten NumPy tests and persistent writer-fixture output → AC8.5–AC8.6.
-- Dead `validate` parameter, unused imports, redundant branches, commented implementation/history → deletion under AC8.7.
+- Dead `validate` parameter, unused imports, redundant branches, commented implementation/history, litter files and the METHOD_CATALOG `defaults` table → deletion under AC8.7.
 
 ## 5. Out of scope
 
@@ -181,6 +190,7 @@ Bound writer generation by rows and broaden NumPy-first RandSpecs without hidden
 - Faker core dependency/runtime engine; inference from data; business defaults; nested/decimal/binary/time/tz-aware Arrow defaults.
 - Existing uniform/normal changes beyond AC8.3; schema registry, new engine/writer/public class or unrelated grammar.
 - RC3/backlog items; PR42 admin merge/rule bypass; rewriting closed RC1.
+- A Spark benchmark gate: Spark gets nothing new, and no gate is added by reflex.
 
 ## 6. Dependencies and risks
 
@@ -198,4 +208,4 @@ Bound writer generation by rows and broaden NumPy-first RandSpecs without hidden
 | Faker becomes global/mandatory | local instance, fixed pool, optional import |
 | recurring fixes add branches | replace three units and require deletions |
 | Spark bigint fix moves precision loss | exact >2^53 literal plus refusal |
-| modulo of a 64-bit word can make points up to 2x likelier on spans above 2^63 | before implementation, engineer and reviewer quantify the proposed native-expression distribution across small, negative, crossing-zero and wide domains; if material bias cannot be avoided without narrowing the public domain, stop for an explicit SPEC amendment rather than silently weakening random-integer intent |
+| Spark spans beyond exact double arithmetic | widths above 2^53 are refused (AC8.4) |
