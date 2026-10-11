@@ -4,7 +4,6 @@ import json
 from typing import Any
 import warnings
 
-from rand_engine.core._np_core import float_lattice_bounds
 from rand_engine.validators.exceptions import SpecValidationError
 from rand_engine.validators.method_specs import (
     COMMON_METHOD_SPECS,
@@ -238,17 +237,11 @@ class CommonValidator:
 
     @staticmethod
     def _spark_width_errors(col_name: str, method: str, kwargs: dict[str, Any]) -> list[str]:
-        """Spark carries exact domains in doubles: widths beyond 2**53 are refused."""
+        """Spark carries exact domains in doubles: integer widths beyond 2**53 are refused."""
         if method == "integers" and kwargs["max"] - kwargs["min"] > 2**53:
             problem = "width (max - min) must be <= 2**53"
         elif method == "int_zfilled" and kwargs["length"] > 15:
             problem = "'length' must be <= 15 (exact digits in a double)"
-        elif method == "floats":
-            low, high = float_lattice_bounds(kwargs["min"], kwargs["max"], kwargs.get("decimals", 2))
-            if high - low + 1 > 2**53:
-                problem = "grid width must be <= 2**53"
-            else:
-                return []
         else:
             return []
         return [f"❌ Column '{col_name}': method '{method}' {problem} in SparkGenerator"]
