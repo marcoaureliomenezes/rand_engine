@@ -111,13 +111,18 @@ def serve(req):
   gen = DataGenerator({"c": column(row, req.get("modifier"))}, seed=42).size(rows)
   if "extra" not in req:
     if "modifier" not in req: return {"s": timed(gen.get_df)}
-    rng, name = np.random.default_rng(42), req["modifier"]
+    name = req["modifier"]
     p, pool = MODIFIERS[name][name], MODIFIERS[name].get("anomaly_values")  # the rate is keyed by the modifier's name
+    k = np.count_nonzero(np.random.default_rng(42).random(rows) < p)  # the hit count, outside the timed region
 
-    def draws():  # the modifier's own random draws, as apply_modifiers performs them
-      hits = np.flatnonzero(rng.random(rows) < p)
-      if pool: rng.choice(len(pool), size=len(hits))
-    return {"s": timed(gen.get_df), "draws_s": statistics.median(timed(draws) for _ in range(RUNS))}
+    def draws_s():  # a fresh identical rng per run; only the ruled random draws are timed
+      rng = np.random.default_rng(42)
+
+      def draws():
+        rng.random(rows)
+        if pool: rng.choice(len(pool), size=k)
+      return timed(draws)
+    return {"s": timed(gen.get_df), "draws_s": statistics.median(draws_s() for _ in range(RUNS))}
   core = RandGenerator({"c": column(row)}).map_methods(np.random.default_rng(42), 0, 0, "c")[row]
   core_s = statistics.median(timed(lambda: core(rows, **SAMPLE_KWARGS[row])) for _ in range(RUNS))
   tracemalloc.start(); gen.get_df(); peak = tracemalloc.get_traced_memory()[1]; tracemalloc.stop()
