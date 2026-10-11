@@ -70,7 +70,7 @@ def test_official_run_exits_non_zero_naming_the_method_over_its_sibling(tmp_path
     def ask(self, request):
       if "extra" in request: return {**request, "core_s": 0.5, "peak_mib": 2.0}
       seconds = {"exponential": 1.51, "poisson": 1.5}.get(request["row"], 1.0)
-      return {**request, "s": seconds, **({"mask_s": 1.0} if "modifier" in request else {})}
+      return {**request, "s": seconds, **({"draws_s": 1.0} if "modifier" in request else {})}
 
     def reason(self):
       return "unexpected worker failure"
@@ -90,24 +90,24 @@ def test_modifier_benchmark_inventory_is_literal():
       "anomaly_values": [-1],
     },
   }
-  assert getattr(speed, "MODIFIER_LIMIT", None) == 1.25
+  assert getattr(speed, "MODIFIER_LIMIT", None) == 1.5
 
 
 def mod_records(null_s, anomaly_s):
-  # overhead = modified - unmodified integers; limit = 1.25 * mask_s (0.5 -> 0.625, exact in binary)
+  # overhead = modified - unmodified integers; limit = 1.5 * draws_s (0.5 -> 0.75, exact in binary)
   return [
     {"method": "integers", "rows": 10**4, "get_df_s": 2.0},
-    {"modifier": "null_rate", "method": "integers", "rows": 10**4, "get_df_s": null_s, "mask_s": 0.5},
-    {"modifier": "anomaly_rate", "method": "integers", "rows": 10**4, "get_df_s": anomaly_s, "mask_s": 0.5},
+    {"modifier": "null_rate", "method": "integers", "rows": 10**4, "get_df_s": null_s, "draws_s": 0.5},
+    {"modifier": "anomaly_rate", "method": "integers", "rows": 10**4, "get_df_s": anomaly_s, "draws_s": 0.5},
   ]
 
 
-def test_modifier_overhead_passes_at_1_25_times_the_mask_draw_and_fails_only_over():
-  assert speed.compare_modifiers(mod_records(2.625, 2.625)) == []
-  assert speed.compare_modifiers(mod_records(2.625, 2.626)) == [("anomaly_rate", 10**4)]
+def test_modifier_overhead_passes_at_1_5_times_its_own_draws_and_fails_only_over():
+  assert speed.compare_modifiers(mod_records(2.75, 2.75)) == []
+  assert speed.compare_modifiers(mod_records(2.75, 2.751)) == [("anomaly_rate", 10**4)]
 
 
-def test_official_run_exits_non_zero_naming_the_modifier_over_the_mask_draw(tmp_path):
+def test_official_run_exits_non_zero_naming_the_modifier_over_its_own_draws(tmp_path):
   class ModifierWorker:
     keys = ("integers",)
     returncode = None
@@ -115,7 +115,7 @@ def test_official_run_exits_non_zero_naming_the_modifier_over_the_mask_draw(tmp_
     def ask(self, request):
       if "extra" in request: return {**request, "core_s": 0.5, "peak_mib": 2.0}
       if "modifier" not in request: return {**request, "s": 1.0}
-      return {**request, "s": {"null_rate": 1.625, "anomaly_rate": 1.626}[request["modifier"]], "mask_s": 0.5}
+      return {**request, "s": {"null_rate": 1.75, "anomaly_rate": 1.751}[request["modifier"]], "draws_s": 0.5}
 
     def reason(self):
       return "unexpected worker failure"
@@ -123,8 +123,8 @@ def test_official_run_exits_non_zero_naming_the_modifier_over_the_mask_draw(tmp_
   with pytest.raises(SystemExit) as caught:
     speed.run(ModifierWorker(), None, [10**4], tmp_path, "no base tree")
   report = json.loads((tmp_path / "benchmarks.json").read_text(encoding="utf-8"))
-  assert [(r["modifier"], r["get_df_s"], r["mask_s"]) for r in report["records"] if "modifier" in r] == [
-    ("null_rate", 1.625, 0.5), ("anomaly_rate", 1.626, 0.5)]
+  assert [(r["modifier"], r["get_df_s"], r["draws_s"]) for r in report["records"] if "modifier" in r] == [
+    ("null_rate", 1.75, 0.5), ("anomaly_rate", 1.751, 0.5)]
   message = str(caught.value)
   assert "anomaly_rate" in message and "null_rate" not in message and "modifier" in message
 
@@ -177,7 +177,7 @@ class Fake:
     if "modifier" not in req: self.log.append((self.name, req))
     if (len(self.log), self.name) in self.fail: return self.fail[(len(self.log), self.name)]
     if "extra" in req: return {**req, "core_s": 0.5, "peak_mib": 2.0}
-    return {**req, **({"mask_s": 0.1} if "modifier" in req else {}), "s": 1.0 if self.name == "B" else [1.2, 1.2, 3.0][sum(n == "H" and r == req for n, r in self.log) % 3]}
+    return {**req, **({"draws_s": 0.1} if "modifier" in req else {}), "s": 1.0 if self.name == "B" else [1.2, 1.2, 3.0][sum(n == "H" and r == req for n, r in self.log) % 3]}
 
   def reason(self):
     return "MemoryError: boom"
