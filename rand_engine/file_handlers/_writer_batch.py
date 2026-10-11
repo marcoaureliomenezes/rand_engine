@@ -65,17 +65,18 @@ class FileBatchWriter(FileWriter):
 
 
   @staticmethod
-  def _copy_existing(source: Path, staging: Path) -> None:
-    if not source.exists():
-      return
-    if not source.is_dir():
-      raise RandEngineError(f"append destination '{source}' is not a directory")
-    for entry in source.iterdir():
-      target = staging / entry.name
-      if entry.is_dir():
-        shutil.copytree(entry, target)
-      else:
-        shutil.copy2(entry, target)
+  def _add_parts(staging: Path, destination: Path) -> None:
+    if not destination.is_dir():
+      raise RandEngineError(f"append destination '{destination}' is not a directory")
+    moved = []
+    try:
+      for part in staging.iterdir():
+        os.replace(part, destination / part.name)
+        moved.append(destination / part.name)
+    except Exception:
+      for path in moved:
+        path.unlink(missing_ok=True)
+      raise
 
 
   @staticmethod
@@ -176,8 +177,6 @@ class FileBatchWriter(FileWriter):
     committed = False
     try:
       append = self.write_mode == "append"
-      if num_files > 1 and append:
-        self._copy_existing(destination, staging)
       append_from = destination if num_files == 1 and append and destination.exists() else None
       self._stage_files(
         staging,
@@ -192,12 +191,13 @@ class FileBatchWriter(FileWriter):
       if num_files == 1:
         os.replace(staging / f"output.{extension}", destination)
         committed = True
+      elif append and destination.exists():
+        self._add_parts(staging, destination)
+        committed = True
       else:
         self._commit_directory(staging, destination)
         committed = True
     finally:
-      if not committed and staging.exists():
-        shutil.rmtree(staging)
-      elif num_files == 1 and staging.exists():
+      if staging.exists() and (not committed or num_files == 1 or append):
         shutil.rmtree(staging)
 
