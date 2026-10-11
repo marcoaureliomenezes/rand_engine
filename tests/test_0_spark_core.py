@@ -382,6 +382,23 @@ class TestSparkCoreNumeric:
         assert len(values) == 100
         assert all(minimum <= value <= maximum for value in values)
 
+    @pytest.mark.parametrize(("mean", "std", "decimals"), [
+        (10**20, 1, 0),
+        (0, 10**20, 0),
+    ])
+    def test_floats_normal_int_kwargs_beyond_int64_generate_finite_doubles(
+        self, spark_session, spark_functions, mean, std, decimals,
+    ):
+        import math
+        result = SparkCore.gen_floats_normal(
+            spark_session, spark_functions, spark_session.range(100),
+            "value", mean=mean, std=std, decimals=decimals,
+        )
+        values = [row["value"] for row in result.collect()]
+        assert result.schema["value"].dataType.simpleString() == "double"
+        assert len(values) == 100
+        assert all(math.isfinite(value) for value in values)
+
     def test_float_lattice_width_exactly_2_pow_53_is_generated_within_bounds(
         self, spark_session, spark_functions,
     ):
