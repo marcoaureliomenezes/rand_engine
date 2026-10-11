@@ -27,7 +27,7 @@ gitflow: {"principal": "master", "integration": "development", "work": "feature/
 9. Tests write output to pytest `tmp_path` or the workspace `.dadaia/tmp/`, never to a persistent directory in the repo tree.
 10. The core generates data with Python, NumPy and pandas alone: Spark, Faker, a message broker or a database server is never required to generate data.
 11. A runtime dependency, build tool, supported Python range or release mechanism changes only through an approved SPEC, with `specs/memory/ARCHITECTURE.md` `## Tech Stack` updated in the same change.
-12. A function body under `rand_engine/core/` or `StreamHandler` is the operator's hand-written code: it changes only when the operator approves that function by name in the SPEC Origin, and the change keeps the operator's style (2-space indentation, one-line guards, terse NumPy). A SPEC REBUILD row alone never authorizes it; reviewers reject otherwise.
+12. The function bodies released in v0.6.4 (the `gen_*` functions of `rand_engine/core/_np_core.py`, `_spark_core.py`, `_py_core.py`, and `StreamHandler`) are the operator's hand-written code: each changes only when the operator approves that function by name in the SPEC Origin, and the change keeps the operator's style (2-space indentation, one-line guards, terse NumPy). A SPEC REBUILD row alone never authorizes it; reviewers reject otherwise.
 
 ## Exclusions
 
