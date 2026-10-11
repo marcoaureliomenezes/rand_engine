@@ -47,8 +47,8 @@ class SparkCore:
   @staticmethod
   def gen_floats(spark, F, df, col_name, min=0.0, max=10.0, decimals=2):
     if min > max: raise ValueError(f"min ({min}) must be <= max ({max})")
-    low, high = float_lattice_bounds(min, max, decimals)
-    if high - low + 1 > 2 ** 53 or low < -2 ** 63 or high >= 2 ** 63: return df.withColumn(col_name, (F.rand() * (max - min) + min).cast("double"))
+    low, high, fine = float_lattice_bounds(min, max, decimals)
+    if fine: return df.withColumn(col_name, (F.rand() * (max - min) + min).cast("double"))
     scale = F.lit(float(10 ** abs(decimals)))
     value = F.lit(low) + F.floor(F.rand() * (high - low + 1))
     return df.withColumn(col_name, (value / scale if decimals >= 0 else value * scale).cast("double"))
