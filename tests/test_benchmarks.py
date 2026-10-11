@@ -70,7 +70,7 @@ def test_official_run_exits_non_zero_naming_the_method_over_its_sibling(tmp_path
     def ask(self, request):
       if "extra" in request: return {**request, "core_s": 0.5, "peak_mib": 2.0}
       seconds = {"exponential": 1.51, "poisson": 1.5}.get(request["row"], 1.0)
-      return {**request, "s": seconds, **({"draws_s": 1.0} if "modifier" in request else {})}
+      return {**request, "s": seconds}
 
     def reason(self):
       return "unexpected worker failure"
@@ -179,7 +179,7 @@ class Fake:
     if "modifier" not in req: self.log.append((self.name, req))
     if (len(self.log), self.name) in self.fail: return self.fail[(len(self.log), self.name)]
     if "extra" in req: return {**req, "core_s": 0.5, "peak_mib": 2.0}
-    return {**req, **({"draws_s": 0.1} if "modifier" in req else {}), "s": 1.0 if self.name == "B" else [1.2, 1.2, 3.0][sum(n == "H" and r == req for n, r in self.log) % 3]}
+    return {**req, "s": 1.0 if self.name == "B" else [1.2, 1.2, 3.0][sum(n == "H" and r == req for n, r in self.log) % 3]}
 
   def reason(self):
     return "MemoryError: boom"
