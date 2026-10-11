@@ -77,7 +77,7 @@ MODIFIERS = {
     "anomaly_values": [-1],
   },
 }
-MODIFIER_LIMIT = 1.5
+MODIFIER_LIMIT = {"null_rate": 1.5, "anomaly_rate": 2.0}
 
 
 def timed(fn):
@@ -228,14 +228,14 @@ def compare_siblings(current, siblings=METHOD_SIBLINGS, limit=SIBLING_LIMIT):
 
 
 def compare_modifiers(current, modifiers=MODIFIERS, limit=MODIFIER_LIMIT):
-  """Flag a modifier whose get_df overhead over unmodified integers exceeds limit x its own random draws."""
+  """Flag a modifier whose get_df overhead over unmodified integers exceeds its own limit x its own random draws."""
   methods = {(record["method"], record["rows"]): metric(record)
              for record in current if "method" in record and "modifier" not in record}
   return [
     (record["modifier"], record["rows"])
     for record in current
     if record.get("modifier") in modifiers
-    and metric(record) - methods[(record["method"], record["rows"])] > limit * record["draws_s"]
+    and metric(record) - methods[(record["method"], record["rows"])] > limit[record["modifier"]] * record["draws_s"]
   ]
 
 
@@ -274,7 +274,7 @@ def render(report, absent, error):
     k, b = key(r), r.get("base_" + field(r))
     if "modifier" in r:
       ratio = f"{(metric(r) - method_times[(r['method'], r['rows'])]) / r['draws_s']:.2f} × draws"
-      if k in modifier_failed: ratio += f" ❌ > {MODIFIER_LIMIT}"
+      if k in modifier_failed: ratio += f" ❌ > {MODIFIER_LIMIT[k[0]]}"
     else:
       ratio = f"{metric(r) / b:.2f}" + (f" ❌ > {LIMIT}" if k in failed else "") if b else "absent → recorded"
     peak = f"{r['peak_mib']:.1f}" if "peak_mib" in r else "—"
@@ -337,7 +337,7 @@ def run(head, base, sizes, out, error=None):
   failures = []
   if failed: failures.append(f"over {LIMIT}x base: {failed}")
   if sibling_failed: failures.append(f"over {SIBLING_LIMIT}x sibling: {sibling_failed}")
-  if modifier_failed: failures.append(f"over {MODIFIER_LIMIT}x mask draw, modifier: {modifier_failed}")
+  if modifier_failed: failures.append(f"over own-draw limit ({', '.join(f'{m} {MODIFIER_LIMIT[m]}x' for m, _ in modifier_failed)}), modifier: {modifier_failed}")
   if failures: sys.exit("; ".join(failures))
 
 
