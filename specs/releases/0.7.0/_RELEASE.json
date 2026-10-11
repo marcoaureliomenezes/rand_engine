@@ -189,6 +189,12 @@
         "benchmarks",
         "rand-spec-grammar"
       ]
+    },
+    {
+      "ts": "2026-10-11T21:33:20Z",
+      "agent": "main-thread",
+      "kind": "summary",
+      "text": "delivered: rc-2 closed at 2dec025 (implemented); Amendment 1 corrective Job 9 (operator-style gen_* bodies restored; alias poisson/zipf samplers; per-file writer schema; append adds parts; legacy keys and args refused; NumPy and Spark fine float grids; Spark float kwargs; finite rounding; one decimals predicate; anomaly write into a private copy), Job 8 executable docs and migration notes, bug batches 1-6 (0 open of 40 records); CI green on 2dec025 (Tests on Push 38175230976, PR validation 38175234934, Benchmarks 38175235026); terminal benchmark artifact run 38170880052 at measured 5920630, no production drift since; AC4.4 re-ruled by the operator to overhead over the unmodified column (null 1.75x, anomaly 2.5x) after the own-draws ratio followed the CI runner on identical code; size since 19ec087: rand_engine +259/-653, tests +734/-1008, benchmarks +12/-10, docs +475/-231; 0.7.0 vs v0.6.4 rand_engine +2488/-2254; full suite 1050 passed, 8 deselected; package 0.7.0 wheel and sdist build; carried: non-blocking review findings for the next candidate: PLAN.md mask-draw wording (:29, :89, :174, :205); SPEC Origin '(modifier metric)' should name the superseded '(modifier gate)'/'(anomaly gate)' lines; docs/4_CONSTRAINTS.md:97 stale derived-from marker; bug causes for float-decimals-unbounded-validates and float-round-overflows-to-inf name stage-form ids that bugs.py cannot link because rc-2 job1/job2 files list tasks as bullets, not task tables; benchmarks/speed.py exit message repeats a limit per failing row; tests/test_docs.py runs 1_DATA_GENERATOR.md blocks three times and its refusal test does not prove the modifier is the refusal cause; stale splitable docstring in rand_engine/examples/advanced_rand_specs.py:139-140; test-only FileBatchWriter two-arg constructor; open Dependabot alert 17 (setuptools in poetry.lock, dev/build); backlog exits: none (rc-2 origin is operator demand; no backlog entry was picked)."
     }
   ]
 }
