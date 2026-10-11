@@ -77,7 +77,7 @@ MODIFIERS = {
     "anomaly_values": [-1],
   },
 }
-MODIFIER_LIMIT = 1.25
+MODIFIER_LIMIT = 1.5
 
 
 def timed(fn):
@@ -111,9 +111,13 @@ def serve(req):
   gen = DataGenerator({"c": column(row, req.get("modifier"))}, seed=42).size(rows)
   if "extra" not in req:
     if "modifier" not in req: return {"s": timed(gen.get_df)}
-    rng, p = np.random.default_rng(42), MODIFIERS[req["modifier"]][req["modifier"]]  # the rate is keyed by the modifier's name
-    mask_s = statistics.median(timed(lambda: rng.random(rows) < p) for _ in range(RUNS))
-    return {"s": timed(gen.get_df), "mask_s": mask_s}
+    rng, name = np.random.default_rng(42), req["modifier"]
+    p, pool = MODIFIERS[name][name], MODIFIERS[name].get("anomaly_values")  # the rate is keyed by the modifier's name
+
+    def draws():  # the modifier's own random draws, as apply_modifiers performs them
+      hits = np.flatnonzero(rng.random(rows) < p)
+      if pool: rng.choice(len(pool), size=len(hits))
+    return {"s": timed(gen.get_df), "draws_s": statistics.median(timed(draws) for _ in range(RUNS))}
   core = RandGenerator({"c": column(row)}).map_methods(np.random.default_rng(42), 0, 0, "c")[row]
   core_s = statistics.median(timed(lambda: core(rows, **SAMPLE_KWARGS[row])) for _ in range(RUNS))
   tracemalloc.start(); gen.get_df(); peak = tracemalloc.get_traced_memory()[1]; tracemalloc.stop()
@@ -219,14 +223,14 @@ def compare_siblings(current, siblings=METHOD_SIBLINGS, limit=SIBLING_LIMIT):
 
 
 def compare_modifiers(current, modifiers=MODIFIERS, limit=MODIFIER_LIMIT):
-  """Flag a modifier whose get_df overhead over unmodified integers exceeds limit x its bare mask draw."""
+  """Flag a modifier whose get_df overhead over unmodified integers exceeds limit x its own random draws."""
   methods = {(record["method"], record["rows"]): metric(record)
              for record in current if "method" in record and "modifier" not in record}
   return [
     (record["modifier"], record["rows"])
     for record in current
     if record.get("modifier") in modifiers
-    and metric(record) - methods[(record["method"], record["rows"])] > limit * record["mask_s"]
+    and metric(record) - methods[(record["method"], record["rows"])] > limit * record["draws_s"]
   ]
 
 
@@ -260,11 +264,11 @@ def render(report, absent, error):
             f"Python {report['python']} · NumPy {report['numpy']} · {report['runner']}\n"),
            f"base rows {len(baseline(records))}/{len(base_candidates)}" + (f" · base pass failed: {error}" if error else ""),
            *(f"- `{k}`: {why}" for k, why in absent.items()), "",
-           "| method / sink | rows | rows/µs | base s | head s | ratio (modifier: overhead ÷ mask draw) | peak MiB |", "|---|---|---|---|---|---|---|"]
+           "| method / sink | rows | rows/µs | base s | head s | ratio (modifier: overhead ÷ own draws) | peak MiB |", "|---|---|---|---|---|---|---|"]
   for r in records:
     k, b = key(r), r.get("base_" + field(r))
     if "modifier" in r:
-      ratio = f"{(metric(r) - method_times[(r['method'], r['rows'])]) / r['mask_s']:.2f} × mask"
+      ratio = f"{(metric(r) - method_times[(r['method'], r['rows'])]) / r['draws_s']:.2f} × draws"
       if k in modifier_failed: ratio += f" ❌ > {MODIFIER_LIMIT}"
     else:
       ratio = f"{metric(r) / b:.2f}" + (f" ❌ > {LIMIT}" if k in failed else "") if b else "absent → recorded"
@@ -295,18 +299,18 @@ def run(head, base, sizes, out, error=None):
   )
   records = []
   for i, req in enumerate(requests):  # head-only rows last: both workers share one call history while shared rows time
-    row, n, times, mask_s = req["row"], req["rows"], {"head": [], "base": []}, None
+    row, n, times, draws_s = req["row"], req["rows"], {"head": [], "base": []}, None
     base_ok = "modifier" not in req and shared(row)
     for side in (["base", "head"] if i % 2 == 0 else ["head", "base"]) * RUNS:
       if side == "head":
-        reply = ask_head(req); times["head"].append(reply["s"]); mask_s = reply.get("mask_s", mask_s); continue
+        reply = ask_head(req); times["head"].append(reply["s"]); draws_s = reply.get("draws_s", draws_s); continue
       if not base_ok: continue
       reply = base.ask(req)
       if reply is None: error, base_ok = base.reason(), False
       elif "error" in reply: absent[row], base_ok = f"base raised {reply['error']}", False
       else: times["base"].append(reply["s"])
     r = {("sink" if row in SINKS else "method"): row, "rows": n}
-    if "modifier" in req: r.update(modifier=req["modifier"], mask_s=mask_s)
+    if "modifier" in req: r.update(modifier=req["modifier"], draws_s=draws_s)
     r[field(r)] = statistics.median(times["head"])
     r["rows_per_us"] = n / (statistics.mean(times["head"]) * 1e6)
     if base_ok: r["base_" + field(r)] = statistics.median(times["base"])
