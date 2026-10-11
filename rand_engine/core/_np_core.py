@@ -25,7 +25,6 @@ def float_lattice_bounds(min: int | float, max: int | float, decimals: int) -> t
   if not (low.is_finite() and high.is_finite()): raise ValueError("float bounds must be finite")
   low, high = (int(x.scaleb(decimals, Context(prec=400)).to_integral_value(r)) for x, r in ((low, ROUND_CEILING), (high, ROUND_FLOOR)))
   if low > high: raise ValueError(f"no representable value between min ({min}) and max ({max}) at decimals={decimals}")
-  if low < np.iinfo(np.int64).min or high > np.iinfo(np.int64).max: raise ValueError("float bounds exceed the int64 lattice")
   return low, high
 
 
@@ -71,6 +70,7 @@ class NPCore:
   @classmethod
   def gen_floats(cls, size: int, min: int | float, max: int | float, decimals: int = 2, *, rng: np.random.Generator) -> np.ndarray:
     low, high = float_lattice_bounds(min, max, decimals)
+    if high - low + 1 > 2 ** 53: return rng.uniform(min, max, size)
     scale = float(10 ** abs(decimals))
     values = rng.integers(low, high, size, dtype=np.int64, endpoint=True)
     return values / scale if decimals >= 0 else values * scale
