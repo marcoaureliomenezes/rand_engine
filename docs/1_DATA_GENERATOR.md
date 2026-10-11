@@ -50,7 +50,7 @@ assert not gen.get_df().equals(gen.get_df())
 
 ## Methods
 
-<!-- derived-from: generation-methods sha256:d4b764fe7ef0 -->
+<!-- derived-from: generation-methods sha256:739e81e44532 -->
 
 Each column is `{"method": <name>, "kwargs": {...}}`. Bounds of `integers` are inclusive.
 
@@ -111,7 +111,7 @@ assert (df["source"] == "web").all()
 ### Float rules
 
 - `decimals` is an integer with |decimals| ≤ 308 for every float method; beyond that the spec fails validation. `exponential` and `lognormal` take only `decimals ≥ 0`.
-- `floats` draws on the `decimals` grid between `min` and `max`. A grid of more than 2^53 steps, or integer bounds beyond int64, draws uniformly within [`min`, `max`] instead.
+- `floats` draws on the `decimals` grid between `min` and `max`. A grid of more than 2^53 steps, or a grid end (bound times 10^`decimals`) beyond int64, draws uniformly within [`min`, `max`] instead.
 - Bounds are compared in float64: an integer bound above 2^53 that a double cannot hold may round to the nearest double.
 - Rounding never turns a finite draw into `inf`. Parameters near the float64 limit can still draw `inf` from the distribution itself; that is accepted.
 - `poisson` `lam` is capped at 10^6.

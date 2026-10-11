@@ -94,7 +94,7 @@ assert [r["event_id"] for r in records] == list(range(1, 26))
 
 ## Spark
 
-<!-- derived-from: spark-generator sha256:963951e9fea8 -->
+<!-- derived-from: spark-generator sha256:83346bb3087e -->
 
 `SparkGenerator` refuses `pk` and `fk` with a `SpecValidationError`: keys run on the NumPy engine only.
 Generate the keyed tables with `DataGenerator` and hand them to Spark with `spark.createDataFrame`.

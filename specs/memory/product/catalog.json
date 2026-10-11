@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-11T21:29:45Z",
+  "generated_at": "2026-10-11T22:01:06Z",
   "features": [
     {
       "rank": 1,
@@ -99,7 +99,7 @@
         "distributions",
         "modifiers"
       ],
-      "token_estimate": 949,
+      "token_estimate": 953,
       "depends_on": [
         "data-generator",
         "spark-generator",
@@ -124,7 +124,7 @@
         "pyspark",
         "generator"
       ],
-      "token_estimate": 306,
+      "token_estimate": 321,
       "depends_on": [
         "rand-spec-grammar",
         "generation-methods"

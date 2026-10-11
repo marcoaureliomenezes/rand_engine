@@ -32,7 +32,7 @@ sources:
 
 - One predicate decides `decimals`: an `int` with absolute value at most 308. `exponential` and `lognormal` additionally need `decimals >= 0`; `floats` and `floats_normal` accept negative decimals.
 - `floats` draws a uniform integer on the grid `ceil(min*10^d)..floor(max*10^d)` and divides by `10^d`, so every value lies inside the bounds and both representable ends can occur. An empty grid or a span that overflows float64 is refused. Values are float64: an integer bound a double cannot hold comes out as the nearest double.
-- A grid with more than 2^53 steps, or an integer bound outside `int64`, is drawn uniformly in `[min, max]` on pandas and Spark alike; rounding at that precision changes nothing.
+- A grid with more than 2^53 steps, or a grid end (bound times 10^`decimals`) outside `int64`, is drawn uniformly in `[min, max]` on pandas and Spark alike; rounding at that precision changes nothing.
 - Rounding never turns a finite draw into infinity; a draw that is infinite itself, at a distribution's float64 limit, is returned as drawn.
 - Spark float methods compute on the float form of their kwargs, so Python ints beyond `int64` never reach a Spark expression.
 

@@ -57,7 +57,7 @@ assert (np.random.get_state()[1] == state).all()
 
 ## Faker pools at scale
 
-<!-- derived-from: generation-methods sha256:d4b764fe7ef0 -->
+<!-- derived-from: generation-methods sha256:739e81e44532 -->
 
 Install the optional Faker dependency with `pip install faker` before running this example.
 Faker is slow per value; draw a pool once and let rand-engine sample it.

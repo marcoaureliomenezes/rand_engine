@@ -4,7 +4,7 @@ Short, runnable patterns. Every `python` block runs in CI, in order, in one name
 
 ## Faker pools
 
-<!-- derived-from: generation-methods sha256:d4b764fe7ef0 -->
+<!-- derived-from: generation-methods sha256:739e81e44532 -->
 <!-- derived-from: templates-and-examples sha256:85481f658af5 -->
 
 Faker is slow per value; `RandSpecs.faker_pool` draws a pool once and returns a `distincts` spec
