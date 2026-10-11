@@ -670,3 +670,58 @@ def test_directory_commit_failure_rolls_the_old_destination_back(tmp_path, monke
   assert isinstance(error, OSError)
   assert len(moves) >= 3
   assert _directory_bytes(path) == before
+
+
+def _append_dir(tmp_path, name):
+  path = tmp_path / name
+  DataGenerator(PK_SPEC).size(4).write.format("csv").option("numFiles", 2).save(str(path))
+  return path
+
+
+def _stats(path):
+  return {
+    file.name: (file.read_bytes(), file.stat().st_ino, file.stat().st_mtime_ns)
+    for file in path.iterdir()
+  }
+
+
+def test_multi_file_append_leaves_existing_parts_untouched_and_adds_new_ones(tmp_path):
+  path = _append_dir(tmp_path, "append-parts")
+  before = _stats(path)
+  assert len(before) == 2
+
+  DataGenerator(PK_SPEC).size(4).write.format("csv").option("numFiles", 2).mode("append").save(str(path))
+
+  after = _stats(path)
+  assert len(after) == 4
+  assert {name: after[name] for name in before} == before  # bytes, inode and mtime of old parts
+  assert sorted(len(pd.read_csv(path / name)) for name in after) == [2, 2, 2, 2]
+  assert sorted(os.listdir(tmp_path)) == ["append-parts"]
+
+
+def test_failed_multi_file_append_leaves_destination_and_no_staging_sibling(tmp_path):
+  path = _append_dir(tmp_path, "append-fail")
+  before = _stats(path)
+
+  def fail(_frame):
+    raise RuntimeError("transform failed")
+
+  error = _save_error(
+    DataGenerator(PK_SPEC).size(4).transformers([fail]).write.format("csv").option("numFiles", 2).mode("append"),
+    path,
+  )
+
+  assert isinstance(error, RuntimeError)
+  assert _stats(path) == before
+  assert sorted(os.listdir(tmp_path)) == ["append-fail"]
+
+
+@pytest.mark.parametrize("mode", ["overwrite", "ignore", "errorifexists"])
+def test_any_mode_but_append_replaces_the_multi_file_destination(tmp_path, mode):
+  path = _append_dir(tmp_path, "replace")
+  old = set(os.listdir(path))
+
+  DataGenerator(PK_SPEC).size(4).write.format("csv").option("numFiles", 2).mode(mode).save(str(path))
+
+  new = set(os.listdir(path))
+  assert len(new) == 2 and not new & old
