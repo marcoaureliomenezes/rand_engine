@@ -424,5 +424,27 @@ def test_wheel_exposes_faker_only_as_the_approved_optional_extra(tmp_path):
     assert faker_requirements == ['faker (>=28.4.1,<29.0.0) ; extra == "faker"']
 
 
+@pytest.mark.parametrize("legacy", [{"args": [0, 3]}, {"splitable": True}, {"sep": ","}, {"pk": 1}])
+def test_legacy_column_keys_are_refused_at_validation(legacy):
+    from rand_engine import DataGenerator
+    from rand_engine.validators.exceptions import SpecValidationError
+
+    with pytest.raises(SpecValidationError):
+        DataGenerator({"a": {"method": "integers", "kwargs": {"min": 0, "max": 3}, **legacy}})
+
+
+@pytest.mark.parametrize("column, remedy", [
+    ({"method": "poisson", "kwargs": {"lam": 2}}, "method 'poisson' is NumPy engine only"),
+    ({"method": "integers", "kwargs": {"min": 0, "max": 3}, "null_rate": 0.1}, "modifier 'null_rate' is NumPy engine only"),
+])
+def test_spark_refuses_new_methods_and_modifiers_naming_datagenerator(column, remedy):
+    from rand_engine import SparkGenerator
+    from rand_engine.validators.exceptions import SpecValidationError
+
+    with pytest.raises(SpecValidationError) as error:
+        SparkGenerator(None, None, {"x": column})
+    assert remedy in str(error.value) and "Use DataGenerator" in str(error.value)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])
