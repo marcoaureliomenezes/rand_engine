@@ -55,7 +55,7 @@ class SparkCore:
 
   @staticmethod
   def gen_floats_normal(spark, F, df, col_name, mean=0.0, std=1.0, decimals=2):
-    return df.withColumn(col_name, F.round(F.randn() * std + mean, decimals))
+    return df.withColumn(col_name, F.round(F.randn() * float(std) + float(mean), decimals))
 
   @staticmethod
   def gen_distincts(spark, F, df, col_name, distincts=[]):
