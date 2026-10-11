@@ -301,3 +301,31 @@ def test_worker_hung_past_the_cap_is_killed_at_the_cap(tmp_path, monkeypatch):
   w = Worker(tmp_path)
   assert (w.keys, w.returncode) == (None, -9 if os.name != "nt" else 1)  # Windows kill = TerminateProcess(1)
   assert time.monotonic() - t < 10
+
+
+TERMINAL_HEAD = "5920630f665757799a09250323446f439704a6cc"
+TERMINAL_BASE = "959f8909b402b37558382a2c3088aa6265d0729e"
+
+
+@pytest.fixture(scope="module")
+def committed_report():
+  return json.loads((Path(__file__).parents[1] / "docs" / "benchmarks.json").read_text(encoding="utf-8"))
+
+
+def test_committed_benchmark_artifact_names_the_final_feature_and_base_commits(committed_report):
+  assert (committed_report["commit"], committed_report["base_commit"]) == (TERMINAL_HEAD, TERMINAL_BASE)
+
+
+def test_committed_benchmark_artifact_has_every_inventory_row_at_1m_and_10m(committed_report):
+  sizes = (10**6, 10**7)
+  expected = ({(m, n) for m in speed.SAMPLE_KWARGS for n in sizes}
+              | {(s, sizes[0]) for s in speed.SINKS}
+              | {(m, n) for m in speed.MODIFIERS for n in sizes})
+  records = committed_report["records"]
+  assert sorted(map(speed.key, records)) == sorted(expected)
+
+
+def test_committed_benchmark_artifact_passes_every_repo_decider(committed_report):
+  records = committed_report["records"]
+  assert (speed.compare(records, speed.baseline(records))[0], speed.compare_siblings(records),
+          speed.compare_modifiers(records)) == ([], [], [])
