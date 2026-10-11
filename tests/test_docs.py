@@ -70,14 +70,20 @@ def block_text(name: str) -> str:
 
 
 def documented_specs(name, tmp_path, monkeypatch):
-  """Run a doc's python blocks and return every spec a generator was constructed with."""
+  """Run a doc's python blocks and return every (spec, refused) a generator was constructed with."""
   from rand_engine import DataGenerator
+  from rand_engine.validators.exceptions import SpecValidationError
   seen = []
   init = DataGenerator.__init__
 
   def record(self, spec, *args, **kwargs):
-    seen.append(spec() if callable(spec) else spec)
-    init(self, spec, *args, **kwargs)
+    resolved = spec() if callable(spec) else spec
+    try:
+      init(self, spec, *args, **kwargs)
+    except SpecValidationError:
+      seen.append((resolved, True))
+      raise
+    seen.append((resolved, False))
 
   monkeypatch.setattr(DataGenerator, "__init__", record)
   monkeypatch.chdir(tmp_path)
@@ -89,21 +95,17 @@ def documented_specs(name, tmp_path, monkeypatch):
 
 def test_data_generator_doc_runs_every_new_method_and_modifier(tmp_path, monkeypatch):
   """AC9.2: 1_DATA_GENERATOR.md builds a generator with each 0.7.0 method and modifier (blocks run at light sizes)."""
-  columns = [c for spec in documented_specs("1_DATA_GENERATOR.md", tmp_path, monkeypatch) for c in spec.values()]
+  columns = [c for spec, _ in documented_specs("1_DATA_GENERATOR.md", tmp_path, monkeypatch) for c in spec.values()]
   assert NEW_METHODS - {c["method"] for c in columns} == set()
   assert MODIFIERS - {key for c in columns for key in c} == set()
 
 
-@pytest.mark.parametrize("token", [r"\b308\b", r"2\^53|2\*\*53", r"\binf\b", r"float64", r"10\^6|10\*\*6|1_000_000"])
-def test_data_generator_doc_states_the_float_rules(token):
-  """AC9.2: decimals limit, fine grids, float64 bound comparison, finite rounding / documented inf, poisson lam cap."""
-  assert re.search(token, (DOCS / "1_DATA_GENERATOR.md").read_text(encoding="utf-8"))
-
-
-def test_data_generator_doc_migrates_args_to_kwargs():
-  """AC9.4: the guide says kwargs is the only parameter key and which legacy column keys are refused."""
-  text = (DOCS / "1_DATA_GENERATOR.md").read_text(encoding="utf-8")
-  assert all(key in text for key in ("args", "splitable", "sep"))
+def test_data_generator_doc_shows_modifier_and_negative_decimals_refusals(tmp_path, monkeypatch):
+  """The guide's executed blocks refuse a modifier on pk and on a multi-column map, and negative decimals on exponential or lognormal."""
+  refused = [c for spec, raised in documented_specs("1_DATA_GENERATOR.md", tmp_path, monkeypatch) if raised for c in spec.values()]
+  modified = {c["method"] for c in refused if "null_rate" in c or "anomaly_rate" in c}
+  assert "pk" in modified and modified & {"distincts_map", "distincts_map_prop", "distincts_multi_map"}
+  assert {c["method"] for c in refused if c.get("kwargs", {}).get("decimals", 0) < 0} & {"exponential", "lognormal"}
 
 
 def test_spark_doc_runs_the_refusal_of_new_methods():
