@@ -774,7 +774,7 @@ No secrets are needed! PyPI Trusted Publishing uses OIDC.#### 4. `auto_tag_publi
 
 This is expected. Tests automatically skip PySpark on Windows + Python 3.12.
 
-See `tests/fixtures/f5_spark_fixtures.py` for the skip logic.### 🎨 Benefícios dos Summaries
+### 🎨 Benefícios dos Summaries
 
 
 
