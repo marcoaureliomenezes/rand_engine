@@ -115,6 +115,6 @@ def test_every_advanced_spec_generates(name):
     """Every advertised AdvancedRandSpecs spec validates and generates its columns."""
     spec = getattr(AdvancedRandSpecs, name)()
     df = DataGenerator(spec, seed=42).size(100).get_df()
-    expected = [c for k, v in spec.items() for c in (v["cols"] if v.get("splitable") else [k])]
+    expected = [c for k, v in spec.items() for c in (v["cols"] if "cols" in v else [k])]
     assert list(df.columns) == expected
     assert len(df) == 100

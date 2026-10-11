@@ -39,7 +39,6 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ['3.10', '3.11', '3.12']
         # Note: Spark tests automatically skip on Windows + Python 3.12 (worker crashes)
-        # This is handled in tests/fixtures/f5_spark_fixtures.py
         # All other tests run normally on all combinations
       fail-fast: false
     
