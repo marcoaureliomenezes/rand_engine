@@ -9,7 +9,7 @@
 - Demand: deliver the seven RC2 themes deferred by RC1 §5, repair the five defects confirmed by the full forensic review, and rebuild recurrent validation, numeric and writer units instead of layering exceptions.
 - Sources: confirmed grill handoff `2026-10-07T165344Z-main-thread-grill-rc2-confirmed`; forensic report `2026-10-07T153804Z-main-thread-bug-forensics-rc2.html`; RC1 SPEC §5; operator instruction to proceed.
 - Approval: operator, 2026-10-07, verbatim: “aprovo a Spec Atual da RC2” — the current contract, including the product-engineer API spellings/defaults below, is approved without substantive amendment.
-- Amendment 1 (2026-10-10): grill handoff `2026-10-10T215645Z-main-thread-grill-rc2-amendment` after the rc-2 hard review. Amendment approved by the operator in the 2026-10-10 grill (handoff above). The operator approves by name the bodies `NPCore.gen_floats`, `SparkCore.gen_ints`, `SparkCore.gen_floats` and `StreamHandler.convert_dt_to_str`: each returns to the operator's style (2-space indentation, one-line guards, terse NumPy) carrying only the minimal bug fix; a float grid beyond `int64` and a Spark width above 2^53 are refused, not handled.
+- Amendment 1 (2026-10-10): grill handoff `2026-10-10T215645Z-main-thread-grill-rc2-amendment` after the rc-2 hard review. Amendment approved by the operator in the 2026-10-10 grill (handoff above). The operator approves by name the bodies `NPCore.gen_floats`, `SparkCore.gen_ints`, `SparkCore.gen_floats` and `StreamHandler.convert_dt_to_str`: each returns to the operator's style (2-space indentation, one-line guards, terse NumPy) carrying only the minimal bug fix; a float-grid endpoint outside `int64` and a Spark width above 2^53 are refused, not handled.
 
 ## Bug window review
 
