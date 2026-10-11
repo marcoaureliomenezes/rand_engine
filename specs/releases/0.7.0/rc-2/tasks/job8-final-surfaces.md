@@ -1,6 +1,7 @@
 # Job 8 — final public surfaces and performance evidence
 
 **Status:** Approved
+**done:** true
 
 Job 8 is a normal implementation job after Jobs 4, 5 and 9 and the zero-open bug batch. Before it opens, the main thread verifies the merged feature, publishes that exact production-source SHA from `feature/0.7.0`, and retains the real CI run artifacts. Job 8 moves the still-unopened executable-documentation, public-boundary and terminal-performance evidence out of reconciliation. New RED assertions are recorded in separate test-only commits and are not hidden under strict xfail markers.
 
