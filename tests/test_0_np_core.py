@@ -449,6 +449,16 @@ def _four_sigma(draws, k, probability):
   return abs(int((draws == k).sum()) - SAMPLER_ROWS * probability) <= 4 * sigma
 
 
+@pytest.mark.parametrize(("method", "kwargs", "expected_hash"), [
+  ("poisson", {"lam": 3.5}, "9c9915d7611e9843dc55743d16e17332b8b6801db0819686c8d4e71d4ee97304"),
+  ("zipf", {"a": 2.25}, "098ca44c0eec624a00636e55453bdd024216c8e1adab95ea45ae351c67ee50bd"),
+])
+def test_alias_samplers_seeded_output_hash(method, kwargs, expected_hash):
+  actual = getattr(NPCore, f"gen_{method}")(size=1000, rng=np.random.default_rng(20261008), **kwargs)
+  assert actual.dtype == np.dtype("int64")
+  assert hashlib.sha256(actual.tobytes()).hexdigest() == expected_hash
+
+
 @pytest.mark.parametrize(("method", "kwargs"), [("poisson", {"lam": 3.5}), ("zipf", {"a": 2.25})])
 def test_alias_samplers_do_not_replay_the_numpy_stream(method, kwargs):
   actual = getattr(NPCore, f"gen_{method}")(size=1000, rng=np.random.default_rng(SAMPLER_SEED), **kwargs)
