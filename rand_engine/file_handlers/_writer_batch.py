@@ -14,23 +14,13 @@ from rand_engine.validators.exceptions import RandEngineError
 
 class FileBatchWriter(FileWriter):
 
-  def __init__(
-    self,
-    size_def,
-    microbatch_def,
-    schema_def=None,
-    *,
-    evaluated_batch_def=None,
-  ):
-    super().__init__(size_def, microbatch_def, schema_def)
-    self.evaluated_batch_def = evaluated_batch_def
+  def __init__(self, size_def, microbatch_def, file_def=None):
+    super().__init__(size_def, microbatch_def)
+    # file_def() -> (catalog schema def, batch factory), evaluated once per final file.
+    self.file_def = file_def or (
+      lambda: (lambda exact=False: None, lambda size, offset: microbatch_def(size, offset)())
+    )
 
-
-  def _generated_batch(self, size: int, offset: int):
-    if self.evaluated_batch_def is None:
-      return self.microbatch_def(size, offset)(), self.schema_def
-    batch = self.evaluated_batch_def(size, offset)
-    return batch.frame, batch.declared_schema_def
 
   @staticmethod
   def _positive_integer(name: str, value: object) -> int:
@@ -136,38 +126,31 @@ class FileBatchWriter(FileWriter):
     options: dict,
     offset: int,
     batch_limit: int | None,
-    stable_schema: pa.Schema | None,
     single_append_from: Path | None,
-  ) -> pa.Schema | None:
+  ) -> None:
     single = len(file_sizes) == 1
-    use_declared_schema = not (
-      self.write_format == "json" and batch_limit is None
-    )
+    stable_schema = None
     for file_size in file_sizes:
       file_path = staging / f"output.{extension}" if single else self._part_path(staging, extension)
-      append_from = single_append_from if single else None
+      # One spec evaluation per final file; a row-less file reuses the previous file's schema.
+      catalog_def, batch = self.file_def() if file_size or stable_schema is None else (None, None)
+      if not file_size:
+        expected_schema = stable_schema or catalog_def(True)
+      else:
+        expected_schema = stable_schema if batch_limit else None
       with self._open_session(
         file_path,
         options,
-        append_from=append_from,
-        expected_schema=stable_schema,
+        append_from=single_append_from if single else None,
+        expected_schema=expected_schema,
       ) as session:
         for batch_size in self._batches(file_size, batch_limit):
-          frame, declared_schema_def = self._generated_batch(batch_size, offset)
-          session.write(
-            frame,
-            declared_schema_def if use_declared_schema else None,
-          )
+          session.write(batch(batch_size, offset), catalog_def)
           offset += batch_size
-          del frame
-          del declared_schema_def
           if batch_limit is not None and session.schema is None:
             raise RandEngineError("schema is indeterminate when row batching is enabled")
-          if session.schema is not None:
-            stable_schema = session.schema.remove_metadata()
-        if session.schema is not None:
-          stable_schema = session.schema.remove_metadata()
-    return stable_schema
+      if session.schema is not None:
+        stable_schema = session.schema.remove_metadata()
 
 
   def save(self, path: str) -> None:
@@ -184,7 +167,6 @@ class FileBatchWriter(FileWriter):
     parent = Path(base_path or ".")
     destination = parent / file_name if num_files > 1 else parent / f"{file_name}.{extension}"
     file_sizes = self._file_sizes(total, num_files)
-    stable_schema = self.schema_def() if total == 0 else None
     self.writer_method[self.write_format](
       lambda: None, str(destination), write_options, ("numFiles",)
     )
@@ -204,7 +186,6 @@ class FileBatchWriter(FileWriter):
         write_options,
         0,
         batch_limit,
-        stable_schema,
         append_from,
       )
 

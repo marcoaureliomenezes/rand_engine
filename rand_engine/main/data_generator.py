@@ -1,5 +1,4 @@
-from dataclasses import dataclass
-from functools import partial
+from functools import cache, partial
 import time
 import pandas as pd
 import numpy as np
@@ -12,12 +11,6 @@ from rand_engine.utils.stream_handler import StreamHandler
 from rand_engine.validators.advanced_validator import AdvancedValidator
 from rand_engine.validators.exceptions import RandEngineError
 from rand_engine.validators.method_specs import METHOD_CATALOG
-
-
-@dataclass(frozen=True)
-class _EvaluatedBatch:
-  frame: pd.DataFrame
-  declared_schema_def: Callable[[], pa.Schema | None]
 
 
 class DataGenerator:
@@ -44,28 +37,28 @@ class DataGenerator:
     AdvancedValidator.validate_and_raise(evaluated_spec)
 
   
-  def _evaluated_batch(self, size: int, offset: int = 0) -> _EvaluatedBatch:
+  def _file_seam(self) -> tuple[Callable[..., pa.Schema], Callable[[int, int], pd.DataFrame]]:
+    """Evaluate the spec once; return its catalog schema and a batch factory over that mapping."""
     evaluated_spec = self.__evaluate_spec()
     rand_generator = RandGenerator(evaluated_spec)
 
-    frame = rand_generator.generate_first_level(size=size, rng=self._rng, key_seed=self._key_seed, offset=offset)
-    frame = rand_generator.apply_embedded_transformers(frame)
-    frame = rand_generator.apply_global_transformers(frame, self._transformers)
-    if not isinstance(frame, pd.DataFrame) or len(frame.index) != size:
-      actual = len(frame.index) if isinstance(frame, pd.DataFrame) else "non-DataFrame"
-      raise RandEngineError(f"global transformers must preserve row count {size}; got {actual}")
-    frame = rand_generator.apply_modifiers(frame, self._rng)
-    return _EvaluatedBatch(
-      frame,
-      partial(self._declared_schema_for, evaluated_spec),
-    )
+    def batch(size: int, offset: int = 0) -> pd.DataFrame:
+      frame = rand_generator.generate_first_level(size=size, rng=self._rng, key_seed=self._key_seed, offset=offset)
+      frame = rand_generator.apply_embedded_transformers(frame)
+      frame = rand_generator.apply_global_transformers(frame, self._transformers)
+      if not isinstance(frame, pd.DataFrame) or len(frame.index) != size:
+        actual = len(frame.index) if isinstance(frame, pd.DataFrame) else "non-DataFrame"
+        raise RandEngineError(f"global transformers must preserve row count {size}; got {actual}")
+      return rand_generator.apply_modifiers(frame, self._rng)
+
+    return cache(partial(self._catalog_schema, evaluated_spec)), batch
 
 
   def wrapped_df_generator(
     self, size: int, offset: int = 0
   ) -> Callable[[], pd.DataFrame]:
     """Return one lazy generation/transform/modifier row-batch pipeline."""
-    return lambda: self._evaluated_batch(size, offset).frame
+    return lambda: self._file_seam()[1](size, offset)
   
 
   def transformers(self, transformers: List[Callable]):
@@ -84,10 +77,10 @@ class DataGenerator:
     return self._size() if callable(self._size) else self._size
 
 
-  def _declared_schema_for(self, evaluated_spec: dict) -> pa.Schema | None:
-    if self._transformers or any(config.get("transformers") for config in evaluated_spec.values()):
-      return None
-
+  def _catalog_schema(self, evaluated_spec: dict, exact: bool = False) -> pa.Schema:
+    """Schema of the spec's declared columns; `exact` (an empty file) refuses when transformers can change it."""
+    if exact and (self._transformers or any(config.get("transformers") for config in evaluated_spec.values())):
+      raise RandEngineError("empty output schema is indeterminate when transformers are configured")
     fields = []
     try:
       for spec_name, config in evaluated_spec.items():
@@ -104,13 +97,6 @@ class DataGenerator:
       raise RandEngineError(f"empty output schema cannot be derived: {type(error).__name__}") from error
     return pa.schema(fields)
 
-
-  def _declared_schema(self) -> pa.Schema:
-    schema = self._declared_schema_for(self.__evaluate_spec())
-    if schema is None:
-      raise RandEngineError("empty output schema is indeterminate when transformers are configured")
-    return schema
-  
 
   def get_df(self):
     lazy_dataframe = self.wrapped_df_generator(size=self._resolve_size())
@@ -134,12 +120,7 @@ class DataGenerator:
 
   @property
   def write(self):
-    return FileBatchWriter(
-      self._resolve_size,
-      self.wrapped_df_generator,
-      self._declared_schema,
-      evaluated_batch_def=self._evaluated_batch,
-    )
+    return FileBatchWriter(self._resolve_size, self.wrapped_df_generator, self._file_seam)
 
 
   @property

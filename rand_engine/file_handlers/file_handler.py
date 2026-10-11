@@ -65,58 +65,24 @@ def _arrow_table(df: PDDataFrame) -> pa.Table:
     raise
 
 
-def _field_type(
-  schema: pa.Schema | None, name: str
-) -> pa.DataType | None:
-  if schema is None:
-    return None
-  index = schema.get_field_index(name)
-  if index < 0:
-    return None
-  return schema.field(index).type
-
-
 def _typed_null_table(
   df: PDDataFrame,
   current_schema: pa.Schema | None,
-  declared_schema_def: Callable[[], pa.Schema | None] | None,
+  catalog_def: Callable[[], pa.Schema | None] | None,
 ) -> pa.Table:
+  """Type each Arrow-null field by the session schema, else by the catalog; leave it null otherwise."""
   table = _arrow_table(df)
-  null_fields = [field for field in table.schema if pa.types.is_null(field.type)]
-  if not null_fields:
-    return table
-
-  declared_schema = declared_schema_def() if declared_schema_def is not None else None
-  for field in null_fields:
-    current_type = _field_type(current_schema, field.name)
-    if declared_schema_def is None:
-      target = current_type
-    elif declared_schema is None:
-      target = current_type
-      if target is None or pa.types.is_null(target):
-        raise RandEngineError(
-          f"schema is indeterminate for transformed null field '{field.name}'"
-        )
-    else:
-      target = _field_type(declared_schema, field.name)
-      if target is None:
-        raise RandEngineError(
-          f"declared schema has no field '{field.name}'"
-        )
-      if current_type is not None and not current_type.equals(target):
-        raise RandEngineError(
-          f"schema drift: expected {current_schema}, received {declared_schema}"
-        )
-    if target is None or pa.types.is_null(target):
+  for index, field in enumerate(table.schema):
+    if not pa.types.is_null(field.type):
       continue
-    index = table.schema.get_field_index(field.name)
-    typed_field = pa.field(
-      field.name,
-      target,
-      nullable=field.nullable,
-      metadata=field.metadata,
-    )
-    table = table.set_column(index, typed_field, table.column(index).cast(target))
+    target = None
+    for schema in (current_schema, catalog_def() if catalog_def is not None else None):
+      if schema is not None and schema.get_field_index(field.name) >= 0:
+        target = schema.field(field.name).type
+        break
+    if target is not None and not pa.types.is_null(target):
+      typed_field = pa.field(field.name, target, nullable=field.nullable, metadata=field.metadata)
+      table = table.set_column(index, typed_field, table.column(index).cast(target))
   return table
 
 
@@ -209,12 +175,12 @@ class _CsvFile:
   def write(
     self,
     frame: PDDataFrame,
-    declared_schema_def: Callable[[], pa.Schema | None] | None = None,
+    catalog_def: Callable[[], pa.Schema | None] | None = None,
   ) -> None:
     if self._closed:
       raise RandEngineError("csv file session is closed")
     table = _typed_null_table(
-      _tz_aware_as_text(frame), self._schema, declared_schema_def
+      _tz_aware_as_text(frame), self._schema, catalog_def
     )
     self._schema = _require_same_schema(self._schema, table)
     self._open()
@@ -256,7 +222,6 @@ class _JsonFile:
     self._file_context = None
     self._closed = False
     self._has_content = False
-    self._deferred_payload = None
 
   @property
   def schema(self) -> pa.Schema | None:
@@ -293,36 +258,27 @@ class _JsonFile:
   def write(
     self,
     frame: PDDataFrame,
-    declared_schema_def: Callable[[], pa.Schema | None] | None = None,
+    catalog_def: Callable[[], pa.Schema | None] | None = None,
   ) -> None:
     if self._closed:
       raise RandEngineError("json file session is closed")
-    if self._deferred_payload is not None:
-      raise RandEngineError("json schema is indeterminate across batches")
-    payload = frame.to_json(None, orient="records", lines=True, **self._options).encode("utf-8")
     try:
-      table = _typed_null_table(frame, self._schema, declared_schema_def)
-    except RandEngineError as error:
-      # Pandas can serialize heterogeneous object columns that Arrow cannot type.
-      if self._schema is not None or not isinstance(
-        error.__cause__, (pa.ArrowInvalid, pa.ArrowTypeError)
-      ):
+      table = _typed_null_table(frame, self._schema, catalog_def)
+    except RandEngineError:
+      # Pandas can serialize heterogeneous object columns that Arrow cannot type; the schema stays None.
+      if self._schema is not None:
         raise
-      self._deferred_payload = payload
-      return
-    self._schema = _require_same_schema(self._schema, table)
+      table = None
+    if table is not None:
+      self._schema = _require_same_schema(self._schema, table)
     self._open()
+    payload = frame.to_json(None, orient="records", lines=True, **self._options).encode("utf-8")
     self._file.write(payload)
     self._has_content = self._has_content or bool(payload)
 
   def close(self) -> None:
     if self._closed:
       return
-    if self._deferred_payload is not None:
-      self._open()
-      self._file.write(self._deferred_payload)
-      self._has_content = self._has_content or bool(self._deferred_payload)
-      self._deferred_payload = None
     if not self._has_content:
       if self._schema is None and self._append_from is None:
         self._closed = True
@@ -393,11 +349,11 @@ class _ParquetFile:
   def write(
     self,
     frame: PDDataFrame,
-    declared_schema_def: Callable[[], pa.Schema | None] | None = None,
+    catalog_def: Callable[[], pa.Schema | None] | None = None,
   ) -> None:
     if self._closed:
       raise RandEngineError("parquet file session is closed")
-    table = _typed_null_table(frame, self._schema, declared_schema_def)
+    table = _typed_null_table(frame, self._schema, catalog_def)
     self._schema = _require_same_schema(self._schema, table)
     if self._physical_schema is None:
       self._physical_schema = table.schema
