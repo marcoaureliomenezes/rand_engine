@@ -151,18 +151,21 @@ class RandGenerator:
 
   @staticmethod
   def _assign_nulls(series: pd.Series, mask: np.ndarray) -> pd.Series:
-    if is_object_dtype(series.dtype) or is_string_dtype(series.dtype):
-      return series.astype(object).mask(mask, None)
-    if is_integer_dtype(series.dtype):
-      nullable = str(series.dtype).replace("uint", "UInt").replace("int", "Int")
-      return series.astype(nullable).mask(mask, pd.NA)
-    if is_bool_dtype(series.dtype):
-      return series.astype("boolean").mask(mask, pd.NA)
-    if is_datetime64_any_dtype(series.dtype):
-      return series.mask(mask, pd.NaT)
-    if is_float_dtype(series.dtype):
-      return series.mask(mask, np.nan)
-    return series.mask(mask, None)
+    dtype = series.dtype
+    if is_object_dtype(dtype) or is_string_dtype(dtype):
+      values = series.to_numpy(dtype=object, copy=True)
+      values[mask] = None
+    elif not isinstance(dtype, np.dtype):
+      values = series.array.copy()
+      values[mask] = pd.NA
+    elif dtype.kind in "iu":
+      values = pd.arrays.IntegerArray(series.to_numpy(), mask)
+    elif dtype.kind == "b":
+      values = pd.arrays.BooleanArray(series.to_numpy(), mask)
+    else:
+      values = series.to_numpy(copy=True)
+      values[mask] = np.array("NaT", dtype=dtype) if dtype.kind in "mM" else np.nan
+    return pd.Series(values, index=series.index, name=series.name)
 
 
   def apply_modifiers(self, df: pd.DataFrame, rng: np.random.Generator) -> pd.DataFrame:
@@ -176,8 +179,9 @@ class RandGenerator:
         anomaly_mask = rng.random(len(series)) < anomaly_rate
         pool = np.asarray(config["anomaly_values"], dtype=object)
         selected = rng.choice(pool, size=int(anomaly_mask.sum()))
-        series = series.copy()
-        series.iloc[np.flatnonzero(anomaly_mask)] = self._coerce_anomaly_values(series, selected)
+        values = series.to_numpy(copy=True) if isinstance(series.dtype, np.dtype) else series.array.copy()
+        values[np.flatnonzero(anomaly_mask)] = self._coerce_anomaly_values(series, selected)
+        series = pd.Series(values, index=series.index, name=series.name)
       if null_rate:
         null_mask = rng.random(len(series)) < null_rate
         series = self._assign_nulls(series, null_mask)
