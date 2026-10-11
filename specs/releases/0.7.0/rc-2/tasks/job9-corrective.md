@@ -1,7 +1,6 @@
 # Job 9 — corrective rebuild (SPEC Amendment 1)
 
 **Status:** Approved
-**done:** true
 
 Job 9 executes SPEC Amendment 1 after Jobs 4 and 5 and before Job 8. It is deletion-first: every GREEN diff must hold or shrink its feature (net lines <= 0; a task that cannot says why in its commit body). Constitution invariant 12 covers the v0.6.4 `gen_*` bodies and `StreamHandler`; Job 9 changes only the four the SPEC Origin names (`NPCore.gen_floats`, `SparkCore.gen_ints`, `SparkCore.gen_floats`, `StreamHandler.convert_dt_to_str`), with 2-space indentation, one-line guards, terse NumPy; no new helper stack. Each behavior task is a test-only RED (`test(J9.Tn)`, assertion-first, no strict xfail, <= 10^4 rows) then a source-only GREEN; a GREEN never touches `tests/`. Tests listed as superseded are deleted by the RED commit (named in its body) because the amended AC replaces them; no other old assert is edited.
 
@@ -38,6 +37,7 @@ Operator rulings (2026-10-10, recorded in the SPEC):
 | J9.T22 | AC4.4 | `benchmarks/speed.py` | GREEN for T21; owner `tests/test_benchmarks.py`. Record `draws_s` = the modifier's own draws per AC4.4 (`null_rate`: the bare `rng.random(n) < p` mask; `anomaly_rate`: mask plus the `rng.choice(len(pool), size=hits)` value-choice draw), `MODIFIER_LIMIT = 1.5`, `compare_modifiers` compares against `draws_s`; `mask_s` goes. |
 | J9.T23 | AC4.4 | `tests/test_benchmarks.py` | RED for the review finding on the modifier gate denominator: the timed `draws` callable of `serve` makes only the ruled draws (`null_rate`: `rng.random(n)`; `anomaly_rate`: that draw then `rng.choice(len(pool), size=hits)`) and calls neither `np.flatnonzero` nor `np.nonzero`; rng and numpy are the only fakes. Owner this file. |
 | J9.T24 | AC4.4 | `benchmarks/speed.py` | GREEN for T23; owner `tests/test_benchmarks.py`. `draws` times only the ruled draws; the hit count is taken outside the timed region. `MODIFIER_LIMIT` stays 1.5. |
-| J9.T25 | AC1.6, AC1.7, AC2.1, AC2.4, AC4.4, AC8.3, AC8.4, AC8.7, AC8.8 | `specs/releases/0.7.0/rc-2/tasks/job9-corrective.md` | Re-close job; owner every file above. After T19, T24 and the full suite are green, write terminal `**done:** true` exactly once. |
+| J9.T26 | AC4.4, AC4.1, AC9.1 | `rand_engine/main/_rand_generator.py` | Modifier speed, reopened by the official CI run 38153640990 at cc17f97: `anomaly_rate` at 10M rows measured 1.85x its own draws against the 1.5x limit (1M: 1.31x; `null_rate` 0.60x/1.19x). Source-only, behavior and goldens kept: same `rng` draws in the same order, same values and dtypes; the threshold does not move. Local profile: the cost beyond the draws is the fresh 10M-row copy (`to_numpy(copy=True)`, page faults) plus the column reassignment and `flatnonzero`. |
+| J9.T27 | AC1.6, AC1.7, AC2.1, AC2.4, AC4.4, AC8.3, AC8.4, AC8.7, AC8.8 | `specs/releases/0.7.0/rc-2/tasks/job9-corrective.md` | Re-close job; owner every file above. After T26 and the full suite are green, write terminal `**done:** true` exactly once. |
 
 Waves (at most 5 task worktrees open): A = T1, T4, T6, T8, T14 (disjoint test files). B = T2, T5, T9, T15, T13. C = T7 (after T5), T10 (after T1), T3, T16. D = T11 (after T10, T2, T9), T17 (after T16). E = T12. F = T18. A GREEN opens only after its RED is merged.
