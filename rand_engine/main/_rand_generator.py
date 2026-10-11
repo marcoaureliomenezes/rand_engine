@@ -179,11 +179,10 @@ class RandGenerator:
         hits = np.flatnonzero(rng.random(len(series)) < anomaly_rate)
         pool = self._coerce_anomaly_values(series, np.asarray(config["anomaly_values"], dtype=object))
         chosen = pool[rng.choice(len(pool), size=len(hits))]
-        values = series.to_numpy(copy=True) if isinstance(series.dtype, np.dtype) else series.array.copy()
-        values[hits] = chosen
-        series = pd.Series(values, index=series.index, name=series.name)
+        df[column] = series  # pandas copies here: the iloc write below lands in this private copy
+        df.iloc[hits, df.columns.get_loc(column)] = chosen
+        series = df[column]
       if null_rate:
         null_mask = rng.random(len(series)) < null_rate
-        series = self._assign_nulls(series, null_mask)
-      df[column] = series
+        df[column] = self._assign_nulls(series, null_mask)
     return df
