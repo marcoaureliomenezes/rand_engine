@@ -1,7 +1,6 @@
 # Job 9 — corrective rebuild (SPEC Amendment 1)
 
 **Status:** Approved
-**done:** true
 
 Job 9 executes SPEC Amendment 1 after Jobs 4 and 5 and before Job 8. It is deletion-first: every GREEN diff must hold or shrink its feature (net lines <= 0; a task that cannot says why in its commit body). Constitution invariant 12 covers the v0.6.4 `gen_*` bodies and `StreamHandler`; Job 9 changes only the four the SPEC Origin names (`NPCore.gen_floats`, `SparkCore.gen_ints`, `SparkCore.gen_floats`, `StreamHandler.convert_dt_to_str`), with 2-space indentation, one-line guards, terse NumPy; no new helper stack. Each behavior task is a test-only RED (`test(J9.Tn)`, assertion-first, no strict xfail, <= 10^4 rows) then a source-only GREEN; a GREEN never touches `tests/`. Tests listed as superseded are deleted by the RED commit (named in its body) because the amended AC replaces them; no other old assert is edited.
 
@@ -45,6 +44,7 @@ Operator rulings (2026-10-10, recorded in the SPEC):
 | J9.T32 | AC4.4 | `benchmarks/speed.py` | GREEN for T31; owner `tests/test_benchmarks.py`. `MODIFIER_LIMIT` becomes `{"null_rate": 1.5, "anomaly_rate": 2.0}`; `compare_modifiers`, the report column and the exit message use each modifier's own limit. Denominator unchanged (the modifier's own draws). |
 | J9.T34 | AC4.4 | `tests/test_benchmarks.py` | RED for the 2026-10-11 AC4.4 metric ruling (operator: "Overhead vs column time (Recommended)", limits null 1.75x, anomaly 2.5x): `MODIFIER_LIMIT == {"null_rate": 1.75, "anomaly_rate": 2.5}`; overhead (modified minus unmodified `integers` `get_df_s`, same rows, same run) passes at exactly limit x the unmodified time and fails just over; the official run's failure names the modifier with its limit; the modifier record carries no `draws_s`. Supersedes the own-draws tests (T21/T23/T31 assertions, deleted by this commit, named in its body). Owner this file. |
 | J9.T35 | AC4.4 | `benchmarks/speed.py` | GREEN for T34; owner `tests/test_benchmarks.py`. `MODIFIER_LIMIT = {"null_rate": 1.75, "anomaly_rate": 2.5}`; `compare_modifiers`, the report column and the exit message divide by the unmodified column time; the `draws_s` timing in the worker and its record field are deleted. |
-| J9.T36 | AC1.6, AC1.7, AC2.1, AC2.4, AC4.4, AC8.3, AC8.4, AC8.7, AC8.8 | `specs/releases/0.7.0/rc-2/tasks/job9-corrective.md` | Re-close job; owner every file above. After T34, T35 and the full suite are green, write terminal `**done:** true` exactly once. |
+| J9.T37 | AC4.4 | `tests/test_benchmarks.py` | Test-only cleanup (review HIGH on T35): delete the two leftover `draws_s` keys in the `SiblingWorker` and `Fake` replies; no assertion changes. `git grep -n draws_s -- benchmarks tests` leaves only the negative assertion. Owner this file. |
+| J9.T38 | AC1.6, AC1.7, AC2.1, AC2.4, AC4.4, AC8.3, AC8.4, AC8.7, AC8.8 | `specs/releases/0.7.0/rc-2/tasks/job9-corrective.md` | Re-close job; owner every file above. After T34, T35, T37 and the full suite are green, write terminal `**done:** true` exactly once. |
 
 Waves (at most 5 task worktrees open): A = T1, T4, T6, T8, T14 (disjoint test files). B = T2, T5, T9, T15, T13. C = T7 (after T5), T10 (after T1), T3, T16. D = T11 (after T10, T2, T9), T17 (after T16). E = T12. F = T18. A GREEN opens only after its RED is merged.
