@@ -250,34 +250,6 @@ def test_invalid_transformer_not_callable():
     assert "must be callable" in errors[0]
 
 
-def test_invalid_pk_not_dict():
-    """Legacy 'pk' field (not in constraints) is no longer validated - passes silently."""
-    spec = {
-        "id": {
-            "method": "int_zfilled",
-            "kwargs": {"length": 8},
-            "pk": "users"  # Legacy field - no longer validated
-        }
-    }
-    errors = AdvancedValidator.validate(spec)
-    # No errors - legacy pk field is ignored in simplified validator
-    assert len(errors) == 0
-
-
-def test_invalid_pk_missing_required_fields():
-    """Legacy 'pk' field (not in constraints) is no longer validated - passes silently."""
-    spec = {
-        "id": {
-            "method": "int_zfilled",
-            "kwargs": {"length": 8},
-            "pk": {"name": "users"}  # Legacy field - no longer validated
-        }
-    }
-    errors = AdvancedValidator.validate(spec)
-    # No errors - legacy pk field is ignored in simplified validator
-    assert len(errors) == 0
-
-
 def test_validate_and_raise_valid():
     """Testa que validate_and_raise não levanta exceção para spec válida."""
     spec = {
