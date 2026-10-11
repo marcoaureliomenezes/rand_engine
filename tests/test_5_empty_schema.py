@@ -285,94 +285,6 @@ def test_callable_all_null_parquet_uses_the_generated_batch_string_carrier(tmp_p
     )
 
 
-def test_callable_all_null_parquet_calls_once_per_generated_batch(tmp_path):
-    calls = []
-
-    def string_spec():
-        calls.append(len(calls) + 1)
-        return _null_constant_spec(f"batch-{len(calls)}")
-
-    result = _parquet_result(
-        DataGenerator(string_spec, seed=7)
-        .size(4)
-        .write.format("parquet")
-        .option("maxRowsPerBatch", 2),
-        tmp_path / "callable-batches",
-    )
-
-    assert (result, calls) == (
-        (
-            None,
-            pa.schema([pa.field("value", pa.string())]),
-            {"value": [None, None, None, None]},
-        ),
-        [1, 2, 3],
-    )
-
-
-def test_callable_later_null_carrier_drift_preserves_destination(tmp_path):
-    path = tmp_path / "existing.parquet"
-    DataGenerator(_null_constant_spec("original")).size(1).write.format(
-        "parquet"
-    ).save(str(path))
-    before = path.read_bytes()
-    calls = []
-
-    def changing_spec():
-        calls.append(len(calls) + 1)
-        value = "first-batch" if len(calls) <= 2 else b"second-batch"
-        return _null_constant_spec(value)
-
-    error = _save_error(
-        DataGenerator(changing_spec, seed=17)
-        .size(4)
-        .write.format("parquet")
-        .mode("overwrite")
-        .option("maxRowsPerBatch", 2),
-        path,
-    )
-
-    assert (
-        type(error),
-        "schema" in str(error).lower(),
-        calls,
-        path.read_bytes() == before,
-    ) == (RandEngineError, True, [1, 2, 3], True)
-
-
-def test_first_transformed_all_null_batch_remains_indeterminate(tmp_path):
-    path = tmp_path / "existing.parquet"
-    DataGenerator(_null_constant_spec("original")).size(1).write.format(
-        "parquet"
-    ).save(str(path))
-    before = path.read_bytes()
-    transform_calls = []
-
-    def all_null(frame):
-        transform_calls.append(len(frame))
-        return frame.assign(value=None)
-
-    error = _save_error(
-        DataGenerator(
-            {"value": {"method": "constant", "kwargs": {"value": "declared"}}},
-            seed=19,
-        )
-        .size(4)
-        .transformers([all_null])
-        .write.format("parquet")
-        .mode("overwrite")
-        .option("maxRowsPerBatch", 2),
-        path,
-    )
-
-    assert (
-        type(error),
-        "schema" in str(error).lower() or "indeterminate" in str(error).lower(),
-        transform_calls,
-        path.read_bytes() == before,
-    ) == (RandEngineError, True, [2], True)
-
-
 def test_later_transformed_all_null_batch_reuses_concrete_carrier(tmp_path):
     transform_calls = []
 
@@ -510,3 +422,54 @@ def test_constant_string_null_first_batch_keeps_schema_for_later_values(tmp_path
         pa.schema([pa.field("label", pa.string())]),
         {"label": [None, None, "declared", "declared"]},
     )
+
+
+def test_catalog_type_survives_first_all_null_batch_and_later_values(tmp_path):
+    seen = []
+
+    def null_first_batch(frame):
+        seen.append(len(frame))
+        return frame.assign(label=None) if len(seen) == 1 else frame
+
+    spec = {"label": {"method": "constant", "kwargs": {"value": "declared"}}}
+    result = _parquet_result(
+        DataGenerator(spec, seed=23)
+        .size(4)
+        .transformers([null_first_batch])
+        .write.format("parquet")
+        .option("maxRowsPerBatch", 2),
+        tmp_path / "catalog-null-first",
+    )
+
+    assert result == (
+        None,
+        pa.schema([pa.field("label", pa.string())]),
+        {"label": [None, None, "declared", "declared"]},
+    )
+
+
+def test_transformer_added_column_null_then_values_preserves_destination(tmp_path):
+    path = tmp_path / "existing.parquet"
+    DataGenerator(_null_constant_spec("original")).size(1).write.format(
+        "parquet"
+    ).save(str(path))
+    before = path.read_bytes()
+    seen = []
+
+    def add_note(frame):
+        seen.append(len(frame))
+        return frame.assign(note=None if len(seen) == 1 else "late")
+
+    error = _save_error(
+        DataGenerator(
+            {"label": {"method": "constant", "kwargs": {"value": "x"}}}, seed=19
+        )
+        .size(4)
+        .transformers([add_note])
+        .write.format("parquet")
+        .mode("overwrite")
+        .option("maxRowsPerBatch", 2),
+        path,
+    )
+
+    assert (type(error), path.read_bytes() == before) == (RandEngineError, True)

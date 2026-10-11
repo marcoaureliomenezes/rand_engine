@@ -362,3 +362,75 @@ def test_schema_drift_fails_before_replacing_existing_destination(tmp_path):
         output.read_bytes() == before,
         "schema" in str(error).lower(),
     ) == (RandEngineError, [2, 2], True, True)
+
+
+@pytest.mark.parametrize("format_type", ["csv", "parquet"])
+def test_unbatched_save_accepts_transformer_added_null_column(tmp_path, format_type):
+    path = tmp_path / "rows"
+    spec = {"a": {"method": "integers", "kwargs": {"min": 0, "max": 9}}}
+
+    error = _save(
+        DataGenerator(spec, seed=1)
+        .size(3)
+        .transformers([lambda df: df.assign(note=None)]),
+        path,
+        format_type,
+    )
+    output = _single_output(path) if error is None else None
+    frame = (
+        pd.read_csv(output) if format_type == "csv" else pd.read_parquet(output)
+    ) if output else None
+
+    assert (
+        error,
+        list(frame.columns) if frame is not None else None,
+        frame["note"].isna().tolist() if frame is not None else None,
+    ) == (None, ["a", "note"], [True, True, True])
+
+
+def test_unbatched_json_save_keeps_transformer_added_null_column(tmp_path):
+    path = tmp_path / "rows"
+    spec = {"a": {"method": "constant", "kwargs": {"value": 1}}}
+
+    error = _save(
+        DataGenerator(spec).size(2).transformers([lambda df: df.assign(note=None)]),
+        path,
+        "json",
+    )
+    output = _single_output(path) if error is None else None
+
+    assert (error, output.read_text(encoding="utf-8") if output else None) == (
+        None,
+        '{"a":1,"note":null}\n{"a":1,"note":null}\n',
+    )
+
+
+@pytest.mark.parametrize(
+    "size, options, expected_calls",
+    [
+        (4, {"maxRowsPerBatch": 2}, [1, 2]),
+        (4, {"numFiles": 2, "maxRowsPerBatch": 1}, [1, 2, 3]),
+        (4, {}, [1, 2]),
+        (0, {}, [1, 2]),
+        (1, {"numFiles": 3}, [1, 2]),
+    ],
+    ids=["one-file-batched", "two-files-batch-1", "unbatched", "empty", "size-lt-files"],
+)
+def test_callable_spec_is_evaluated_once_per_final_file(
+    tmp_path, size, options, expected_calls
+):
+    calls = []
+
+    def counting_spec():
+        calls.append(len(calls) + 1)
+        return {"a": {"method": "integers", "kwargs": {"min": 0, "max": 9}}}
+
+    error = _save(
+        DataGenerator(counting_spec, seed=2).size(size),
+        tmp_path / "rows",
+        "parquet",
+        **options,
+    )
+
+    assert (error, calls) == (None, expected_calls)
+
