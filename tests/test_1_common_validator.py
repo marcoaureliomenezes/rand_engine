@@ -563,3 +563,14 @@ class TestSparkExactDomainRefusals:
     def test_integer_bounds_default_to_long(self):
         errors = self._validate("integers", min=0, max=2**63)
         assert len(errors) == 1
+
+
+def test_spark_float_span_overflowing_float64_is_refused():
+    """floats-span-overflow-validates: max - min is inf in float64."""
+    spec = {"v": {"method": "floats", "kwargs": {"min": -1e308, "max": 1e308, "decimals": 0}}}
+    assert len(CommonValidator.validate_spark_spec(spec)) == 1
+
+
+def test_spark_float_span_finite_is_accepted():
+    spec = {"v": {"method": "floats", "kwargs": {"min": -1e307, "max": 1e307, "decimals": 0}}}
+    assert CommonValidator.validate_spark_spec(spec) == []

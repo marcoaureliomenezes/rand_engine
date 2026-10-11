@@ -669,3 +669,21 @@ def test_numpy_floats_decimals_309_is_a_collected_issue():
     errors = AdvancedValidator.validate(spec)
     assert len(errors) == 1
     assert "decimals" in errors[0]
+
+
+def _float_span_spec(bound):
+    return {"v": {"method": "floats", "kwargs": {"min": -bound, "max": bound, "decimals": 0}}}
+
+
+def test_float_span_overflowing_float64_is_refused_at_construction():
+    """floats-span-overflow-validates: max - min is inf in float64."""
+    spec = _float_span_spec(1e308)
+    assert len(AdvancedValidator.validate(spec)) == 1
+    with pytest.raises(SpecValidationError):
+        DataGenerator(spec)
+
+
+def test_float_span_finite_is_accepted():
+    spec = _float_span_spec(1e307)
+    assert AdvancedValidator.validate(spec) == []
+    DataGenerator(spec)
