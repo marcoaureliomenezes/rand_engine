@@ -364,18 +364,21 @@ class TestSparkCoreNumeric:
         assert all(minimum <= value <= maximum for value in values)
 
     @pytest.mark.parametrize(("minimum", "maximum", "decimals"), [
-        (0.0, 9007199254740992.0, 0),
-        (0.0, 90071992547409.92, 2),
-        (-9007199254740992.0, 0.0, 0),
+        (1e19, 1e19, 0),
+        (1e6, 1e6 + 1, 13),
+        (-1e19, -1e19 + 1e5, 0),
     ])
-    def test_float_lattice_width_above_2_pow_53_is_refused_before_frame_execution(
+    def test_float_fine_grid_or_int64_overflow_endpoint_draws_within_bounds(
         self, spark_session, spark_functions, minimum, maximum, decimals,
     ):
-        with pytest.raises(ValueError):
-            SparkCore.gen_floats(
-                spark_session, spark_functions, _NoExecutionFrame(),
-                "value", min=minimum, max=maximum, decimals=decimals,
-            )
+        result = SparkCore.gen_floats(
+            spark_session, spark_functions, spark_session.range(100),
+            "value", min=minimum, max=maximum, decimals=decimals,
+        )
+        values = [row["value"] for row in result.collect()]
+        assert result.schema["value"].dataType.simpleString() == "double"
+        assert len(values) == 100
+        assert all(minimum <= value <= maximum for value in values)
 
     def test_float_lattice_width_exactly_2_pow_53_is_generated_within_bounds(
         self, spark_session, spark_functions,
