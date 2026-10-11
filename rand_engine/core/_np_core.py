@@ -79,6 +79,12 @@ def _zipf_tail(count: int, a: float, first: int, rng: np.random.Generator) -> np
   return out
 
 
+def _round_finite(x: np.ndarray, decimals: int) -> np.ndarray:
+  if float(max(x.max(initial=0), -x.min(initial=0))) * 10.0 ** abs(decimals) < 1e308: return np.round(x, decimals, out=x)
+  with np.errstate(over='ignore'): r = np.round(x, decimals)
+  return np.where(np.isinf(r), x, r)
+
+
 class NPCore:
 
 
@@ -120,17 +126,17 @@ class NPCore:
 
   @classmethod
   def gen_floats_normal(cls, size: int, mean: int, std: int, decimals: int = 2, *, rng: np.random.Generator) -> np.ndarray:
-    return np.round(rng.normal(mean, std, size), decimals)
+    return _round_finite(rng.normal(mean, std, size), decimals)
 
 
   @classmethod
   def gen_exponential(cls, size: int, scale: int | float = 1.0, decimals: int = 2, *, rng: np.random.Generator) -> np.ndarray:
-    return np.round(rng.exponential(scale, size), decimals)
+    return _round_finite(rng.exponential(scale, size), decimals)
 
 
   @classmethod
   def gen_lognormal(cls, size: int, mean: int | float = 0.0, std: int | float = 1.0, decimals: int = 2, *, rng: np.random.Generator) -> np.ndarray:
-    return np.round(rng.lognormal(mean, std, size), decimals)
+    return _round_finite(rng.lognormal(mean, std, size), decimals)
 
 
   @classmethod
