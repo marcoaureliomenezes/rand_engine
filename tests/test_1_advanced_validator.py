@@ -683,6 +683,14 @@ def test_float_span_overflowing_float64_is_refused_at_construction():
         DataGenerator(spec)
 
 
+def test_float_int_bound_beyond_float64_is_one_issue():
+    """floats-span-overflow-validates: int bound 10**400 is one issue, not OverflowError."""
+    spec = {"v": {"method": "floats", "kwargs": {"min": 0, "max": 10**400, "decimals": 0}}}
+    assert len(AdvancedValidator.validate(spec)) == 1
+    with pytest.raises(SpecValidationError):
+        DataGenerator(spec)
+
+
 def test_float_span_finite_is_accepted():
     spec = _float_span_spec(1e307)
     assert AdvancedValidator.validate(spec) == []

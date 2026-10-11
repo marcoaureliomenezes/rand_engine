@@ -571,6 +571,12 @@ def test_spark_float_span_overflowing_float64_is_refused():
     assert len(CommonValidator.validate_spark_spec(spec)) == 1
 
 
+def test_spark_float_int_bound_beyond_float64_is_one_issue():
+    """floats-span-overflow-validates: int bound 10**400 is one issue, not OverflowError."""
+    spec = {"v": {"method": "floats", "kwargs": {"min": 0, "max": 10**400, "decimals": 0}}}
+    assert len(CommonValidator.validate_spark_spec(spec)) == 1
+
+
 def test_spark_float_span_finite_is_accepted():
     spec = {"v": {"method": "floats", "kwargs": {"min": -1e307, "max": 1e307, "decimals": 0}}}
     assert CommonValidator.validate_spark_spec(spec) == []
