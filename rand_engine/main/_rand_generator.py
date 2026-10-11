@@ -176,16 +176,12 @@ class RandGenerator:
       null_rate = config.get("null_rate", 0)
       series = df[column]
       if anomaly_rate:
-        mask = rng.random(len(series)) < anomaly_rate
+        hits = np.flatnonzero(rng.random(len(series)) < anomaly_rate)
         pool = self._coerce_anomaly_values(series, np.asarray(config["anomaly_values"], dtype=object))
-        chosen = pool[rng.choice(len(pool), size=np.count_nonzero(mask))]
-        df[column] = series  # pandas copies here: the write below lands in this private copy
-        target = df[column]
-        if isinstance(series.dtype, np.dtype):
-          np.place(target.to_numpy(), mask, np.asarray(chosen))  # to_numpy() is a view for numpy dtypes
-        else:
-          target.array[mask] = chosen
-        series = target
+        chosen = pool[rng.choice(len(pool), size=len(hits))]
+        df[column] = series  # pandas copies here: the iloc write below lands in this private copy
+        df.iloc[hits, df.columns.get_loc(column)] = chosen
+        series = df[column]
       if null_rate:
         null_mask = rng.random(len(series)) < null_rate
         df[column] = self._assign_nulls(series, null_mask)
