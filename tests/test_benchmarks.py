@@ -129,6 +129,39 @@ def test_official_run_exits_non_zero_naming_the_modifier_over_its_own_draws(tmp_
   assert "anomaly_rate" in message and "null_rate" not in message and "modifier" in message
 
 
+class RecordingRng:
+  # boundary fake: delegates to a real Generator, logs the draws and the mask each random() returned
+  def __init__(self, real, log): self.real, self.log = real, log
+  def random(self, *a, **k):
+    out = self.real.random(*a, **k); self.log.append(("random", a, k, out)); return out
+  def choice(self, *a, **k):
+    out = self.real.choice(*a, **k); self.log.append(("choice", a, k, out)); return out
+  def __getattr__(self, name): return getattr(self.real, name)
+
+
+@pytest.mark.parametrize("modifier", ["null_rate", "anomaly_rate"])
+def test_modifier_draws_time_only_the_ruled_random_draws(monkeypatch, modifier):
+  import numpy as np
+  rows, log, placed = 1000, [], []
+  real_default_rng = np.random.default_rng
+  monkeypatch.setattr(speed.np.random, "default_rng", lambda *a: RecordingRng(real_default_rng(*a), log))
+  for name in ("flatnonzero", "nonzero"):
+    monkeypatch.setattr(speed.np, name, lambda *a, _f=getattr(np, name), _n=name, **k: (placed.append(_n), _f(*a, **k))[1])
+
+  def timed(fn):
+    if fn.__name__ == "draws":
+      log.clear(); placed.clear(); fn()
+    return 0.0
+  monkeypatch.setattr(speed, "timed", timed)
+  speed.serve({"row": "integers", "rows": rows, "modifier": modifier})
+
+  mask = log[0][3] < 0.1
+  expected = [("random", (rows,), {})]
+  if modifier == "anomaly_rate": expected.append(("choice", (1,), {"size": int(mask.sum())}))
+  assert [c[:3] for c in log] == expected
+  assert placed == []
+
+
 def test_check_tree_exits_3_on_a_foreign_rand_engine():
   with pytest.raises(SystemExit) as e:
     check_tree("/head/rand_engine/__init__.py", "/base")
