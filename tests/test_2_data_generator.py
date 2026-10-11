@@ -336,6 +336,24 @@ def test_modifier_anomaly_rate_one_replaces_every_non_null_row_without_widening(
   assert str(series.dtype) == "int8"
 
 
+def test_modifier_anomaly_write_never_touches_caller_array_or_sibling_column():
+  caller = np.arange(5, dtype=np.int64)
+  spec = {
+    "value": {
+      "method": "constant", "kwargs": {"value": 0},
+      "anomaly_rate": 1, "anomaly_values": [-1],
+    }
+  }
+
+  df = DataGenerator(spec, seed=2026).transformers([
+    lambda frame: pd.DataFrame({"value": caller, "sibling": caller}, copy=False)
+  ]).size(5).get_df()
+
+  assert df["value"].tolist() == [-1, -1, -1, -1, -1]
+  assert caller.tolist() == [0, 1, 2, 3, 4]
+  assert df["sibling"].tolist() == [0, 1, 2, 3, 4]
+
+
 @pytest.mark.parametrize("source, anomaly", [
   ("base", "replacement"),
   (None, "replacement"),
