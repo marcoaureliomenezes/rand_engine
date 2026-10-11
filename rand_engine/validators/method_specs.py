@@ -239,10 +239,8 @@ def _lognormal(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
 
 def _poisson(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
     lam = kwargs.get("lam", 1.0)
-    if not _is_finite_float_domain(lam) or lam < 0:
-        return (("lam", "must be finite and greater than or equal to 0"),)
-    if not poisson_lam_supported(lam):
-        return (("lam", "is outside NumPy's supported int64 result domain"),)
+    if not _is_finite_float_domain(lam) or lam < 0 or not poisson_lam_supported(lam):
+        return (("lam", "must be finite and between 0 and 10**6"),)
     return ()
 
 

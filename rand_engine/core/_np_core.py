@@ -1,4 +1,5 @@
 
+import math
 import uuid
 import re
 import numpy as np
@@ -28,13 +29,49 @@ def float_lattice_bounds(min: int | float, max: int | float, decimals: int) -> t
   return low, high
 
 
+POISSON_LAM_MAX = 10**6
+ZIPF_TABLE = 1000  # the table covers k <= 1000 and the exact tail sampler covers the rest, so this only trades build cost against tail draws
+_INT64_TOP = 9223372036854774784.0  # largest float64 below 2**63
+
+
 def poisson_lam_supported(lam: int | float) -> bool:
-  """Whether NumPy can produce its int64 Poisson result for this lambda."""
-  try:
-    np.random.default_rng(0).poisson(lam=lam, size=0)
-  except (OverflowError, ValueError):
-    return False
-  return True
+  """Whether the alias table stays small: lam is at most POISSON_LAM_MAX."""
+  return lam <= POISSON_LAM_MAX
+
+
+def _alias_draw(weights: np.ndarray, size: int, rng: np.random.Generator) -> np.ndarray:
+  """Walker/Vose alias draw of bucket indexes proportional to weights."""
+  n = len(weights)
+  scaled = weights * (n / weights.sum())
+  prob, alias = np.ones(n), np.arange(n)
+  small = [i for i in range(n) if scaled[i] < 1]
+  large = [i for i in range(n) if scaled[i] >= 1]
+  while small and large:
+    s, l = small.pop(), large.pop()
+    prob[s], alias[s] = scaled[s], l
+    scaled[l] -= 1 - scaled[s]
+    (small if scaled[l] < 1 else large).append(l)
+  i = rng.integers(0, n, size)
+  return np.where(rng.random(size) < prob[i], i, alias[i])
+
+
+def _zipf_tail(count: int, a: float, first: int, rng: np.random.Generator) -> np.ndarray:
+  """Exact draws of k >= first with P(k) proportional to k**-a, by rejection from floor(Pareto).
+
+  The proposal q(k) is the integral of x**-a over [k, k+1); p/q is r(k) below, decreasing in k,
+  so r(first) bounds it. Draws are limited to int64 by truncating the Pareto uniform, not by redrawing.
+  """
+  def ratio(k):
+    return (a - 1) / (k * -np.expm1((1 - a) * np.log1p(1 / k)))
+  bound, floor_u = ratio(float(first)), (first / 2.0 ** 63) ** (a - 1)
+  out, pending = np.empty(count, np.int64), np.arange(count)
+  while pending.size:
+    u = floor_u + (1 - floor_u) * (1 - rng.random(pending.size))
+    k = np.floor(np.minimum(first * u ** (-1 / (a - 1)), _INT64_TOP))
+    accepted = rng.random(pending.size) * bound < ratio(k)
+    out[pending[accepted]] = k[accepted]
+    pending = pending[~accepted]
+  return out
 
 
 class NPCore:
@@ -93,12 +130,23 @@ class NPCore:
 
   @classmethod
   def gen_poisson(cls, size: int, lam: int | float = 1.0, *, rng: np.random.Generator) -> np.ndarray:
-    return rng.poisson(lam, size)
+    if lam == 0: return np.zeros(size, np.int64)
+    width = 12 * lam ** 0.5 + 20  # P(|X - lam| > width) is below 1e-16, folded into the normalisation
+    low = max(0, int(lam - width))
+    k = np.arange(low, int(lam + width) + 1)
+    log_pmf = -lam + k * np.log(lam) - np.array([math.lgamma(x + 1) for x in k])
+    return low + _alias_draw(np.exp(log_pmf - log_pmf.max()), size, rng).astype(np.int64)
 
 
   @classmethod
   def gen_zipf(cls, size: int, a: int | float = 2.0, *, rng: np.random.Generator) -> np.ndarray:
-    return rng.zipf(a, size)
+    n = ZIPF_TABLE + 1  # exact tail weight sum_{k>n-1}: Euler-Maclaurin to the n**-(a+3) term, error below 1e-20 relative
+    tail = n ** (1 - a) / (a - 1) + n ** -a / 2 + a * n ** (-a - 1) / 12 - a * (a + 1) * (a + 2) * n ** (-a - 3) / 720
+    weights = np.append(np.arange(1, n, dtype=float) ** -a, tail)
+    out = _alias_draw(weights, size, rng).astype(np.int64) + 1
+    in_tail = out == n
+    out[in_tail] = _zipf_tail(int(in_tail.sum()), a, n, rng)
+    return out
 
 
   @classmethod
