@@ -553,9 +553,9 @@ class TestSparkExactDomainRefusals:
     def test_int_zfilled_length_15_is_accepted(self):
         assert self._validate("int_zfilled", length=15) == []
 
-    def test_float_grid_wider_than_2_53_is_refused(self):
-        errors = self._validate("floats", min=0, max=10**15, decimals=2)
-        assert len(errors) == 1
+    def test_float_grid_wider_than_2_53_is_accepted(self):
+        assert self._validate("floats", min=0, max=10**15, decimals=2) == []
+        assert self._validate("floats", min=1e19, max=1e19, decimals=0) == []
 
     def test_float_grid_within_2_53_is_accepted(self):
         assert self._validate("floats", min=0, max=10**6, decimals=2) == []
