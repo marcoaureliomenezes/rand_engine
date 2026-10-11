@@ -627,3 +627,73 @@ def test_failed_callable_spec_collects_once_without_entering_generation():
   assert "Found 2 error(s)" in message
   assert message.count("Column 'bad_probability'") == 1
   assert message.count("Column 'bad_pool'") == 1
+
+
+def _int_spec(min_, max_, int_type=None):
+    kwargs = {"min": min_, "max": max_}
+    if int_type:
+        kwargs["int_type"] = int_type
+    return {"c": {"method": "integers", "kwargs": kwargs}}
+
+
+def test_unknown_column_key_is_one_collected_issue():
+    spec = {"c": {"method": "integers", "kwargs": {"min": 0, "max": 9}, "nul_rate": 0.1}}
+    errors = AdvancedValidator.validate(spec)
+    assert len(errors) == 1
+    assert "nul_rate" in errors[0]
+    with pytest.raises(SpecValidationError, match="nul_rate"):
+        DataGenerator(spec, seed=1)
+
+
+def test_every_accepted_column_key_validates():
+    spec = {"c": {"method": "integers", "kwargs": {"min": 0, "max": 9}, "transformers": [],
+                  "null_rate": 0.1, "anomaly_rate": 0.1, "anomaly_values": [99]}}
+    assert AdvancedValidator.validate(spec) == []
+
+
+@pytest.mark.parametrize("min_,max_,int_type", [
+    (0, 128, "int8"), (-129, 0, "int8"),
+    (0, 256, "uint8"), (-1, 5, "uint8"),
+    (0, 65536, "uint16"),
+    (0, 2**63, "int64"), (-2**63 - 1, 0, "int64"),
+    (0, 2**64, "uint64"),
+    (0, 2**31, None),
+    (-2**31 - 1, 0, None),
+])
+def test_integer_bounds_outside_type_range_are_refused(min_, max_, int_type):
+    errors = AdvancedValidator.validate(_int_spec(min_, max_, int_type))
+    assert len(errors) == 1
+    with pytest.raises(SpecValidationError):
+        DataGenerator(_int_spec(min_, max_, int_type), seed=1)
+
+
+@pytest.mark.parametrize("min_,max_,int_type", [
+    (-128, 127, "int8"), (0, 255, "uint8"), (0, 65535, "uint16"),
+    (-2**63, 2**63 - 1, "int64"), (0, 2**64 - 1, "uint64"),
+    (0, 2**31 - 1, None),
+])
+def test_integer_bounds_inside_type_range_are_accepted(min_, max_, int_type):
+    assert AdvancedValidator.validate(_int_spec(min_, max_, int_type)) == []
+
+
+def test_fk_parent_positional_args_are_refused_naming_args():
+    spec = {"c": {"method": "fk", "kwargs": {"parent": {"method": "pk", "args": [5]}, "parent_size": 10}}}
+    errors = AdvancedValidator.validate(spec)
+    assert len(errors) == 1
+    assert "args" in errors[0]
+
+
+def test_fk_parent_transformers_are_refused():
+    spec = {"c": {"method": "fk", "kwargs": {
+        "parent": {"method": "pk", "kwargs": {"length": 5}, "transformers": [str]},
+        "parent_size": 10}}}
+    errors = AdvancedValidator.validate(spec)
+    assert len(errors) == 1
+    assert "transformers" in errors[0]
+
+
+def test_numpy_floats_decimals_309_is_a_collected_issue():
+    spec = {"c": {"method": "floats", "kwargs": {"min": 0, "max": 1, "decimals": 309}}}
+    errors = AdvancedValidator.validate(spec)
+    assert len(errors) == 1
+    assert "decimals" in errors[0]

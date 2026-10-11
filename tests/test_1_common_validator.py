@@ -512,3 +512,44 @@ def test_integer_range_inverted_domain_is_collected_before_generation():
         "Column 'value'" in message,
         "'min/max'" in message,
     ) == (1, SpecValidationError, True, True)
+
+
+class TestSparkExactDomainRefusals:
+    """AC8.3/AC8.4/AC8.8: unsupported exact domains are collected issues, never raw ValueError."""
+
+    @staticmethod
+    def _validate(method, **kwargs):
+        return CommonValidator.validate_spark_spec({"c": {"method": method, "kwargs": kwargs}})
+
+    def test_unknown_column_key_is_one_collected_issue(self):
+        spec = {"c": {"method": "integers", "kwargs": {"min": 0, "max": 9}, "nul_rate": 0.1}}
+        errors = CommonValidator.validate_spark_spec(spec)
+        assert len(errors) == 1
+        assert "nul_rate" in errors[0]
+
+    def test_integer_width_above_2_53_is_refused(self):
+        errors = self._validate("integers", min=0, max=2**53 + 1)
+        assert len(errors) == 1
+        assert "2^53" in errors[0] or "2**53" in errors[0]
+
+    def test_integer_width_2_53_is_accepted(self):
+        assert self._validate("integers", min=0, max=2**53) == []
+
+    def test_int_zfilled_length_16_is_refused(self):
+        errors = self._validate("int_zfilled", length=16)
+        assert len(errors) == 1
+        assert "length" in errors[0]
+
+    def test_int_zfilled_length_15_is_accepted(self):
+        assert self._validate("int_zfilled", length=15) == []
+
+    def test_float_grid_wider_than_2_53_is_refused(self):
+        errors = self._validate("floats", min=0, max=10**15, decimals=2)
+        assert len(errors) == 1
+
+    def test_float_grid_within_2_53_is_accepted(self):
+        assert self._validate("floats", min=0, max=10**6, decimals=2) == []
+
+    def test_integer_bounds_default_to_long(self):
+        errors = self._validate("integers", min=0, max=2**63)
+        assert len(errors) == 1
