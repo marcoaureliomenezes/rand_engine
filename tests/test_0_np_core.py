@@ -594,6 +594,17 @@ def test_legacy_normal_seeded_golden_is_unchanged():
   assert hashlib.sha256(values.tobytes()).hexdigest() == "9930878da3e03580439114bb2b98d83ccc30718fecc1e87aa894871d7b83fb66"
 
 
+@pytest.mark.parametrize(("method", "kwargs"), [
+  pytest.param("gen_floats_normal", {"mean": 1e300, "std": 1, "decimals": 10}, id="normal-huge-mean"),
+  pytest.param("gen_floats_normal", {"mean": 0, "std": 10, "decimals": 308}, id="normal-decimals-308"),
+  pytest.param("gen_exponential", {"scale": 1, "decimals": 308}, id="exponential-decimals-308"),
+  pytest.param("gen_lognormal", {"mean": 0, "std": 1, "decimals": 308}, id="lognormal-decimals-308"),
+])
+def test_rounding_never_turns_a_finite_draw_into_inf(method, kwargs):
+  values = getattr(NPCore, method)(size=1000, rng=np.random.default_rng(7), **kwargs)
+  assert np.isfinite(values).all()
+
+
 @pytest.mark.parametrize(("value", "expected_dtype"), [
   (None, "object"),
   (True, "bool"),
