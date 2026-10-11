@@ -1,6 +1,7 @@
 # Job 6 — reconciliation and terminal evidence
 
 **Status:** Approved
+**done:** true
 
 Job 6 is the final special `reconcile` tree. It opens only after Job 8 has merged, the original five-bug batch has been resolved with zero open records, and every normal implementation gate is green. It owns no new executable-documentation behavior, public-boundary tests, benchmark generation or product source; after memory changes, it only reconciles derived current-product truth and keeps already-correct files byte-identical.
 
