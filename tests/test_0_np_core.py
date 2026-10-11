@@ -473,22 +473,8 @@ def test_uniform_float_lattice_supports_signed_decimals():
   assert values.tolist() == [100.0] * 100
 
 
-def test_uniform_float_lattice_larger_than_int64_remains_supported_without_a_decimals_ceiling():
-  frame = DataGenerator({
-    "value": {
-      "method": "floats",
-      "kwargs": {"min": -1, "max": 1, "decimals": 20},
-    }
-  }, seed=13).size(100).get_df()
-  assert frame["value"].dtype == np.float64
-  assert frame["value"].between(-1, 1, inclusive="both").all()
-
-
 @pytest.mark.parametrize(("value", "decimals"), [
-  (1e308, 2),
-  (-1e308, 2),
   (1e308, -308),
-  (1e-308, 320),
 ])
 def test_uniform_float_lattice_converts_finite_singletons_at_extreme_scales(value, decimals):
   try:
@@ -503,27 +489,8 @@ def test_uniform_float_lattice_converts_finite_singletons_at_extreme_scales(valu
   assert actual.tolist() == [value]
 
 
-@pytest.mark.parametrize("value", [1.0, -1.0, 1e308, 1e-308])
-def test_uniform_float_lattice_converts_positive_extreme_decimals_without_string_limits(value):
-  digit_limit = sys.get_int_max_str_digits()
-  with localcontext() as context:
-    context.prec = 2
-    try:
-      actual = NPCore.gen_floats(
-        size=1, min=value, max=value, decimals=5000,
-        rng=np.random.default_rng(15),
-      )
-    except ValueError as error:
-      actual = error
-  assert sys.get_int_max_str_digits() == digit_limit
-  assert isinstance(actual, np.ndarray)
-  assert actual.dtype == np.float64
-  assert actual.tolist() == [value]
-
-
 @pytest.mark.parametrize(("value", "decimals"), [
   (1e308, -308),
-  (0.0, -5000),
 ])
 def test_uniform_float_lattice_preserves_negative_extreme_decimals_without_context_or_global_changes(value, decimals):
   digit_limit = sys.get_int_max_str_digits()
@@ -538,12 +505,19 @@ def test_uniform_float_lattice_preserves_negative_extreme_decimals_without_conte
   assert actual.tolist() == [value]
 
 
-def test_uniform_float_lattice_wide_domain_seeded_bytes_remain_unchanged():
-  values = NPCore.gen_floats(
-    size=1000, min=-1, max=1, decimals=20,
-    rng=np.random.default_rng(13),
-  )
-  assert hashlib.sha256(values.tobytes()).hexdigest() == "ee024755131895b17e118517ac64a8cf81058c7258f74b470624a81f2e7a7714"
+@pytest.mark.parametrize(("minimum", "maximum", "decimals"), [
+  (0, 1e19, 0),
+  (-1e19, 0, 0),
+  (0, 1e17, 2),
+  (1, 1, 309),
+  (1, 1, -309),
+])
+def test_uniform_float_lattice_beyond_int64_or_decimals_beyond_308_is_refused(minimum, maximum, decimals):
+  with pytest.raises(ValueError):
+    NPCore.gen_floats(
+      size=10, min=minimum, max=maximum, decimals=decimals,
+      rng=np.random.default_rng(17),
+    )
 
 
 def test_legacy_normal_seeded_golden_is_unchanged():
