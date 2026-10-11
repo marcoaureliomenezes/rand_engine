@@ -72,13 +72,13 @@ The SPEC's 25-row review is binding. The rebuild jobs preserve all assertions be
 
 ### 2.2 Numeric domains and new methods
 
-- Float bounds convert with `Decimal(str(value))`; for decimals `d` the grid is the integers `ceil(min*10**d)..floor(max*10**d)`. An empty grid, an endpoint outside int64 and `abs(d) > 308` are refused (`ValueError` in the cores, a collected issue in the catalog through the slim `float_lattice_bounds`). NumPy draws `rng.integers(low, high, size, endpoint=True)` and scales by `10**d` as float; Spark draws `lit(low) + floor(rand() * width)` and scales alike. These are the bodies of `NPCore.gen_floats` and `SparkCore.gen_floats` in the operator's style (invariant 12). The seeded lattice golden does not move because the integer draw is the same call.
+- Float bounds convert with `Decimal(str(value))`; for decimals `d` the grid is the integers `ceil(min*10**d)..floor(max*10**d)`. An empty grid, an endpoint outside int64 and `abs(d) > 308` are refused as a collected `SpecValidationError` at validation (invariant 3): the catalog `_floats` through the slim `float_lattice_bounds`, and for Spark `CommonValidator.validate_spark_spec`; the cores keep only their one-line `ValueError` guard for direct calls. NumPy draws `rng.integers(low, high, size, endpoint=True)` and scales by `10**d` as float; Spark draws `lit(low) + floor(rand() * width)` and scales alike. These are the bodies of `NPCore.gen_floats` and `SparkCore.gen_floats` in the operator's style (invariant 12). The seeded lattice golden does not move because the integer draw is the same call.
 - `NPCore` adds direct vectorized owned-RNG calls for exponential and lognormal, rounded to the declared decimals. Poisson and zipf are alias-table samplers through one private helper; the zipf tail beyond the table is sampled exactly by rejection and poisson has a finite `lam` ceiling (OD1 of Job 9). Their goldens are re-pinned to these samplers. `constant` broadcasts an immutable approved scalar without touching RNG.
 - Preserve existing uniform/normal goldens except the declared lattice change; consolidated NumPy tests keep every useful original bound, timezone, dtype, categorical and normal assertion. The executed Job 2 stages remain history; Job 9 supersedes only the tests its RED commits name.
 
 #### Spark integers
 
-Spark validates the logical dtype before expression construction: signed int8/16/32/64 and uint8/16/32 bounds must fit both their logical domain and the signed Spark carrier; `uint64`, bools, out-of-domain endpoints and any width above 2^53 are refused. The value is the exact bigint `lit(min) + floor(rand() * width)` cast to the carrier: below 2^53 the product and its floor are exact, so no limb, chunk or double result arithmetic exists, and min=max=`9007199254740993` `int64` stays a literal. Uniformity is that of Spark's own `rand()`, as before. No Python UDF. Floats draw the same expression over the grid.
+`CommonValidator.validate_spark_spec` refuses, as collected issues beside its `uint64` refusal, any integer or float-grid width above 2^53 and `int_zfilled` length above 15; the core still checks the logical dtype (signed int8/16/32/64 and uint8/16/32 bounds within their domain and the signed carrier) before expression construction. The value is the exact bigint `lit(min) + floor(rand() * width)` cast to the carrier: below 2^53 the product and its floor are exact, so no limb, chunk or double result arithmetic exists, and min=max=`9007199254740993` `int64` stays a literal. Uniformity is that of Spark's own `rand()`, as before. No Python UDF. Floats draw the same expression over the grid.
 
 ### 2.3 DataFrame pipeline and modifiers
 
@@ -178,8 +178,8 @@ The canonical task authority is the nine files under `tasks/`, one per DAG job. 
 | AC7.1 | J1.S4 scalar-structure regression and J2.S1 | J1.S5 shared scalar predicate and J2.S2 |
 | AC7.2–AC7.3 | J2.S1, J3.S1 and J5.T7 declared-carrier writer RED for AC7.2 | J2.S2, J3.S2 and J5.T8 declared-schema correction |
 | AC8.1–AC8.2 | J1.S1 and J1.S4 review regressions | J1.S2–J1.S3 and J1.S5; canonical post-Job-5 bug batch records resolution |
-| AC8.3 | J1.S4 legacy-compatibility regression, J2.S1; J9.T1 grid refusal and goldens (supersede the J2.S3 extreme-decimal RED) | J1.S5, J2.S2; J9.T2 operator-style restore (supersedes the J2.S4 conversion); canonical bug batch records `spark-floats-lattice-quadratic-slowdown` |
-| AC8.4 | J2.S1 Spark exact-integer RED; J9.T1 width-above-2^53 refusal | J2.S2; J9.T2 |
+| AC8.3 | J1.S4 legacy-compatibility regression, J2.S1; J9.T1 grid refusal and goldens (supersede the J2.S3 extreme-decimal RED); J9.T8 validation refusal | J1.S5, J2.S2; J9.T2 operator-style restore (supersedes the J2.S4 conversion); J9.T9 catalog refusal; canonical bug batch records `spark-floats-lattice-quadratic-slowdown` |
+| AC8.4 | J2.S1 Spark exact-integer RED; J9.T1 width-above-2^53 refusal; J9.T8 Spark validation refusal | J2.S2; J9.T2; J9.T9 Spark validator rule |
 | AC8.5 | J2.S1 consolidated tables | J2.S2 |
 | AC8.6 | J5.S1.T3 tests-only fixture-path RED | J5.S2.T3 fixture repair and satisfied-marker cleanup |
 | AC8.7 | J1.S1 behavioral single-intake test; J9.T16 SparkGenerator size error and test-side deletions | J1.S2–J1.S3, J2.S2 and J3.S2 preserve that interface; J9.T9 deletes the `defaults` table, J9.T17 the litter files; Job 8 final verification confirms no replacement path |
@@ -197,7 +197,7 @@ Job 4's rejected additional checkpoint routed the omitted existing-AC cases into
 
 The merged-override case exposed a pre-existing catalog gap rather than helper-owned validation: `_integers` accepted `min=101, max=100`. Job 7 owned the assertion-first public-boundary RED and the one canonical catalog correction under AC6.2; it merged before helper implementation resumed. Its closed history is unchanged.
 
-Job 9 restores operator-written bodies only where the SPEC Origin names them (constitution invariant 12); its REDs delete only the tests they list as superseded and rewrite no other assert. Without strict xfail, a RED task's tests fail until its GREEN merges; the job gate runs after the whole job is green.
+Constitution invariant 12 covers the v0.6.4 `gen_*` bodies and `StreamHandler`; Job 9 changes only the four the SPEC Origin names, while agent-written helpers (`float_lattice_bounds`, `poisson_lam_supported`, the deleted lattice helpers, the new sampler helper) need no name; its REDs delete only the tests they list as superseded and rewrite no other assert. Without strict xfail, a RED task's tests fail until its GREEN merges; the job gate runs after the whole job is green.
 
 ## 7. Closure sequence
 
