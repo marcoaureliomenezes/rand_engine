@@ -90,11 +90,11 @@ def test_modifier_benchmark_inventory_is_literal():
       "anomaly_values": [-1],
     },
   }
-  assert getattr(speed, "MODIFIER_LIMIT", None) == 1.5
+  assert getattr(speed, "MODIFIER_LIMIT", None) == {"null_rate": 1.5, "anomaly_rate": 2.0}
 
 
 def mod_records(null_s, anomaly_s):
-  # overhead = modified - unmodified integers; limit = 1.5 * draws_s (0.5 -> 0.75, exact in binary)
+  # overhead = modified - unmodified integers; limit = per-modifier factor * draws_s (0.5 -> null 0.75, anomaly 1.0, exact in binary)
   return [
     {"method": "integers", "rows": 10**4, "get_df_s": 2.0},
     {"modifier": "null_rate", "method": "integers", "rows": 10**4, "get_df_s": null_s, "draws_s": 0.5},
@@ -102,9 +102,10 @@ def mod_records(null_s, anomaly_s):
   ]
 
 
-def test_modifier_overhead_passes_at_1_5_times_its_own_draws_and_fails_only_over():
-  assert speed.compare_modifiers(mod_records(2.75, 2.75)) == []
-  assert speed.compare_modifiers(mod_records(2.75, 2.751)) == [("anomaly_rate", 10**4)]
+def test_modifier_overhead_passes_at_its_own_limit_times_its_draws_and_fails_only_over():
+  assert speed.compare_modifiers(mod_records(2.75, 3.0)) == []
+  assert speed.compare_modifiers(mod_records(2.751, 3.0)) == [("null_rate", 10**4)]
+  assert speed.compare_modifiers(mod_records(2.75, 3.001)) == [("anomaly_rate", 10**4)]
 
 
 def test_official_run_exits_non_zero_naming_the_modifier_over_its_own_draws(tmp_path):
@@ -115,7 +116,7 @@ def test_official_run_exits_non_zero_naming_the_modifier_over_its_own_draws(tmp_
     def ask(self, request):
       if "extra" in request: return {**request, "core_s": 0.5, "peak_mib": 2.0}
       if "modifier" not in request: return {**request, "s": 1.0}
-      return {**request, "s": {"null_rate": 1.75, "anomaly_rate": 1.751}[request["modifier"]], "draws_s": 0.5}
+      return {**request, "s": {"null_rate": 1.75, "anomaly_rate": 2.001}[request["modifier"]], "draws_s": 0.5}
 
     def reason(self):
       return "unexpected worker failure"
@@ -124,9 +125,9 @@ def test_official_run_exits_non_zero_naming_the_modifier_over_its_own_draws(tmp_
     speed.run(ModifierWorker(), None, [10**4], tmp_path, "no base tree")
   report = json.loads((tmp_path / "benchmarks.json").read_text(encoding="utf-8"))
   assert [(r["modifier"], r["get_df_s"], r["draws_s"]) for r in report["records"] if "modifier" in r] == [
-    ("null_rate", 1.75, 0.5), ("anomaly_rate", 1.751, 0.5)]
+    ("null_rate", 1.75, 0.5), ("anomaly_rate", 2.001, 0.5)]
   message = str(caught.value)
-  assert "anomaly_rate" in message and "null_rate" not in message and "modifier" in message
+  assert "anomaly_rate" in message and "null_rate" not in message and "modifier" in message and "2.0" in message
 
 
 class RecordingRng:
