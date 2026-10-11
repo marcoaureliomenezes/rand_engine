@@ -70,7 +70,7 @@ class NPCore:
   @classmethod
   def gen_floats(cls, size: int, min: int | float, max: int | float, decimals: int = 2, *, rng: np.random.Generator) -> np.ndarray:
     low, high = float_lattice_bounds(min, max, decimals)
-    if high - low + 1 > 2 ** 53: return rng.uniform(min, max, size)
+    if high - low + 1 > 2 ** 53 or low < -2 ** 63 or high >= 2 ** 63: return rng.uniform(min, max, size)
     scale = float(10 ** abs(decimals))
     values = rng.integers(low, high, size, dtype=np.int64, endpoint=True)
     return values / scale if decimals >= 0 else values * scale
