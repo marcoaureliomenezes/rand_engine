@@ -47,49 +47,38 @@ def test_benchmark_inventory_covers_every_numpy_catalog_method():
   assert set(speed.SAMPLE_KWARGS) == expected
 
 
-@pytest.mark.parametrize(("method", "sibling"), [
-  ("exponential", "floats"),
-  ("lognormal", "floats_normal"),
-  ("poisson", "integers"),
-  ("zipf", "integers"),
-])
-def test_new_distribution_nearest_sibling_limit_is_1_5(method, sibling):
-  siblings = getattr(speed, "METHOD_SIBLINGS", None)
-  compare_siblings = getattr(speed, "compare_siblings", None)
-  assert siblings is not None
-  assert compare_siblings is not None
-  assert siblings[method] == sibling
+def test_method_siblings_are_the_fair_sampling_peers():
+  assert speed.METHOD_SIBLINGS == {
+    "poisson": "distincts_prop", "zipf": "distincts_prop",
+    "exponential": "floats_normal", "lognormal": "floats_normal"}
 
-  boundary = [
-    {"method": sibling, "rows": 10**6, "get_df_s": 2.0},
-    {"method": method, "rows": 10**6, "get_df_s": 3.0},
-  ]
+
+@pytest.mark.parametrize("method", ["poisson", "zipf", "exponential", "lognormal"])
+def test_sibling_limit_passes_at_exactly_1_5_and_fails_just_over(method):
+  sibling = speed.METHOD_SIBLINGS[method]
+  boundary = [{"method": sibling, "rows": 10**6, "get_df_s": 2.0}, {"method": method, "rows": 10**6, "get_df_s": 3.0}]
   over = [{**row, "get_df_s": 3.01} if row["method"] == method else row for row in boundary]
-  assert compare_siblings(boundary) == []
-  assert compare_siblings(over) == [(method, 10**6)]
+  assert speed.compare_siblings(boundary) == []
+  assert speed.compare_siblings(over) == [(method, 10**6)]
 
 
-def test_official_run_enforces_the_new_distribution_sibling_limit(tmp_path):
+def test_official_run_exits_non_zero_naming_the_method_over_its_sibling(tmp_path):
   class SiblingWorker:
-    keys = ("integers", "floats", "floats_normal", "exponential", "lognormal", "poisson", "zipf")
+    keys = ("integers", "floats_normal", "distincts_prop", "exponential", "poisson")
     returncode = None
 
     def ask(self, request):
-      if "extra" in request:
-        return {**request, "core_s": 0.5, "peak_mib": 2.0}
-      seconds = {"floats": 1.0, "exponential": 1.51}.get(request["row"], 1.0)
-      return {**request, "s": seconds}
+      if "extra" in request: return {**request, "core_s": 0.5, "peak_mib": 2.0}
+      seconds = {"exponential": 1.51, "poisson": 1.5}.get(request["row"], 1.0)
+      return {**request, "s": seconds, **({"mask_s": 1.0} if "modifier" in request else {})}
 
     def reason(self):
       return "unexpected worker failure"
 
   with pytest.raises(SystemExit) as caught:
     speed.run(SiblingWorker(), None, [10], tmp_path, "no base tree")
-
   message = str(caught.value)
-  assert "exponential" in message
-  assert "1.5" in message
-  assert "sibling" in message
+  assert "exponential" in message and "poisson" not in message and "sibling" in message
 
 
 def test_modifier_benchmark_inventory_is_literal():
@@ -104,56 +93,40 @@ def test_modifier_benchmark_inventory_is_literal():
   assert getattr(speed, "MODIFIER_LIMIT", None) == 1.25
 
 
-def test_modifier_comparison_passes_at_1_25_and_fails_only_over():
-  compare_modifiers = getattr(speed, "compare_modifiers", None)
-  assert compare_modifiers is not None
-
-  boundary = [
+def mod_records(null_s, anomaly_s):
+  # overhead = modified - unmodified integers; limit = 1.25 * mask_s (0.5 -> 0.625, exact in binary)
+  return [
     {"method": "integers", "rows": 10**4, "get_df_s": 2.0},
-    {"modifier": "null_rate", "method": "integers", "rows": 10**4, "get_df_s": 2.5},
-    {"modifier": "anomaly_rate", "method": "integers", "rows": 10**4, "get_df_s": 2.5},
+    {"modifier": "null_rate", "method": "integers", "rows": 10**4, "get_df_s": null_s, "mask_s": 0.5},
+    {"modifier": "anomaly_rate", "method": "integers", "rows": 10**4, "get_df_s": anomaly_s, "mask_s": 0.5},
   ]
-  over = [
-    {**row, "get_df_s": 2.51} if row.get("modifier") == "anomaly_rate" else row
-    for row in boundary
-  ]
-  assert compare_modifiers(boundary) == []
-  assert compare_modifiers(over) == [("anomaly_rate", 10**4)]
 
 
-def test_official_run_enforces_modifier_rows(tmp_path):
+def test_modifier_overhead_passes_at_1_25_times_the_mask_draw_and_fails_only_over():
+  assert speed.compare_modifiers(mod_records(2.625, 2.625)) == []
+  assert speed.compare_modifiers(mod_records(2.625, 2.626)) == [("anomaly_rate", 10**4)]
+
+
+def test_official_run_exits_non_zero_naming_the_modifier_over_the_mask_draw(tmp_path):
   class ModifierWorker:
     keys = ("integers",)
     returncode = None
 
     def ask(self, request):
-      if "extra" in request:
-        return {**request, "core_s": 0.5, "peak_mib": 2.0}
-      seconds = {
-        "null_rate": 1.25,
-        "anomaly_rate": 1.26,
-      }.get(request.get("modifier"), 1.0)
-      return {**request, "s": seconds}
+      if "extra" in request: return {**request, "core_s": 0.5, "peak_mib": 2.0}
+      if "modifier" not in request: return {**request, "s": 1.0}
+      return {**request, "s": {"null_rate": 1.625, "anomaly_rate": 1.626}[request["modifier"]], "mask_s": 0.5}
 
     def reason(self):
       return "unexpected worker failure"
 
   with pytest.raises(SystemExit) as caught:
     speed.run(ModifierWorker(), None, [10**4], tmp_path, "no base tree")
-
   report = json.loads((tmp_path / "benchmarks.json").read_text(encoding="utf-8"))
-  modifier_rows = [record for record in report["records"] if "modifier" in record]
-  assert [
-    (record["modifier"], record["method"], record["rows"], record["get_df_s"])
-    for record in modifier_rows
-  ] == [
-    ("null_rate", "integers", 10**4, 1.25),
-    ("anomaly_rate", "integers", 10**4, 1.26),
-  ]
+  assert [(r["modifier"], r["get_df_s"], r["mask_s"]) for r in report["records"] if "modifier" in r] == [
+    ("null_rate", 1.625, 0.5), ("anomaly_rate", 1.626, 0.5)]
   message = str(caught.value)
-  assert "anomaly_rate" in message
-  assert "1.25" in message
-  assert "modifier" in message
+  assert "anomaly_rate" in message and "null_rate" not in message and "modifier" in message
 
 
 def test_check_tree_exits_3_on_a_foreign_rand_engine():
@@ -204,7 +177,7 @@ class Fake:
     if "modifier" not in req: self.log.append((self.name, req))
     if (len(self.log), self.name) in self.fail: return self.fail[(len(self.log), self.name)]
     if "extra" in req: return {**req, "core_s": 0.5, "peak_mib": 2.0}
-    return {**req, "s": 1.0 if self.name == "B" else [1.2, 1.2, 3.0][sum(n == "H" and r == req for n, r in self.log) % 3]}
+    return {**req, **({"mask_s": 0.1} if "modifier" in req else {}), "s": 1.0 if self.name == "B" else [1.2, 1.2, 3.0][sum(n == "H" and r == req for n, r in self.log) % 3]}
 
   def reason(self):
     return "MemoryError: boom"
