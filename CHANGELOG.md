@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `uuid4` values are drawn from the seeded PCG64 rng (RFC 4122 v4), so a seed reproduces them.
 - `uuid4` no longer takes its ignored `length` parameter.
 - The positional `args` column key is removed: a column carrying it fails validation on both engines; pass parameters by name in `kwargs`.
-- The `splitable`, `sep` and `pk` column keys are refused with `SpecValidationError`: remove them; a delimiter is the csv writer's `sep` option and keys are `"method": "pk"` columns.
+- The `splitable`, `sep` and `pk` column keys are refused with `SpecValidationError`: replace `splitable`/`sep` by naming the output columns with `cols` on `distincts_map`, `distincts_map_prop` or `distincts_multi_map`; replace `pk` with a `"method": "pk"` column.
 - `distincts_map` emits the key first: `cols[0]` is the key (category), `cols[1]` a value, like `distincts_map_prop`.
 - `distincts_multi_map` `cols` must name levels + 1 columns; any other count fails validation (fewer names used to drop levels silently).
 - `complex_distincts` templates naming a method by string are validated like a column: unknown parameters, missing required ones and multi-column methods fail validation; `dates` and `distincts_prop` templates now generate.
