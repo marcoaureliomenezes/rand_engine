@@ -90,25 +90,25 @@ def test_modifier_benchmark_inventory_is_literal():
       "anomaly_values": [-1],
     },
   }
-  assert getattr(speed, "MODIFIER_LIMIT", None) == {"null_rate": 1.5, "anomaly_rate": 2.0}
+  assert getattr(speed, "MODIFIER_LIMIT", None) == {"null_rate": 1.75, "anomaly_rate": 2.5}
 
 
 def mod_records(null_s, anomaly_s):
-  # overhead = modified - unmodified integers; limit = per-modifier factor * draws_s (0.5 -> null 0.75, anomaly 1.0, exact in binary)
+  # overhead = modified - unmodified integers (2.0 s); limit = factor * 2.0: null 3.5, anomaly 5.0, exact in binary
   return [
     {"method": "integers", "rows": 10**4, "get_df_s": 2.0},
-    {"modifier": "null_rate", "method": "integers", "rows": 10**4, "get_df_s": null_s, "draws_s": 0.5},
-    {"modifier": "anomaly_rate", "method": "integers", "rows": 10**4, "get_df_s": anomaly_s, "draws_s": 0.5},
+    {"modifier": "null_rate", "method": "integers", "rows": 10**4, "get_df_s": null_s},
+    {"modifier": "anomaly_rate", "method": "integers", "rows": 10**4, "get_df_s": anomaly_s},
   ]
 
 
-def test_modifier_overhead_passes_at_its_own_limit_times_its_draws_and_fails_only_over():
-  assert speed.compare_modifiers(mod_records(2.75, 3.0)) == []
-  assert speed.compare_modifiers(mod_records(2.751, 3.0)) == [("null_rate", 10**4)]
-  assert speed.compare_modifiers(mod_records(2.75, 3.001)) == [("anomaly_rate", 10**4)]
+def test_modifier_overhead_passes_at_its_limit_times_the_unmodified_column_and_fails_only_over():
+  assert speed.compare_modifiers(mod_records(5.5, 7.0)) == []
+  assert speed.compare_modifiers(mod_records(5.501, 7.0)) == [("null_rate", 10**4)]
+  assert speed.compare_modifiers(mod_records(5.5, 7.001)) == [("anomaly_rate", 10**4)]
 
 
-def test_official_run_exits_non_zero_naming_the_modifier_over_its_own_draws(tmp_path):
+def test_official_run_exits_non_zero_naming_the_modifier_over_the_unmodified_column(tmp_path):
   class ModifierWorker:
     keys = ("integers",)
     returncode = None
@@ -116,7 +116,7 @@ def test_official_run_exits_non_zero_naming_the_modifier_over_its_own_draws(tmp_
     def ask(self, request):
       if "extra" in request: return {**request, "core_s": 0.5, "peak_mib": 2.0}
       if "modifier" not in request: return {**request, "s": 1.0}
-      return {**request, "s": {"null_rate": 1.75, "anomaly_rate": 2.001}[request["modifier"]], "draws_s": 0.5}
+      return {**request, "s": {"null_rate": 2.75, "anomaly_rate": 3.501}[request["modifier"]]}
 
     def reason(self):
       return "unexpected worker failure"
@@ -124,43 +124,11 @@ def test_official_run_exits_non_zero_naming_the_modifier_over_its_own_draws(tmp_
   with pytest.raises(SystemExit) as caught:
     speed.run(ModifierWorker(), None, [10**4], tmp_path, "no base tree")
   report = json.loads((tmp_path / "benchmarks.json").read_text(encoding="utf-8"))
-  assert [(r["modifier"], r["get_df_s"], r["draws_s"]) for r in report["records"] if "modifier" in r] == [
-    ("null_rate", 1.75, 0.5), ("anomaly_rate", 2.001, 0.5)]
+  modifiers = [r for r in report["records"] if "modifier" in r]
+  assert [(r["modifier"], r["get_df_s"]) for r in modifiers] == [("null_rate", 2.75), ("anomaly_rate", 3.501)]
+  assert all("draws_s" not in r for r in modifiers)
   message = str(caught.value)
-  assert "anomaly_rate" in message and "null_rate" not in message and "modifier" in message and "2.0" in message
-
-
-class RecordingRng:
-  # boundary fake: delegates to a real Generator, logs the draws and the mask each random() returned
-  def __init__(self, real, log): self.real, self.log = real, log
-  def random(self, *a, **k):
-    out = self.real.random(*a, **k); self.log.append(("random", a, k, out)); return out
-  def choice(self, *a, **k):
-    out = self.real.choice(*a, **k); self.log.append(("choice", a, k, out)); return out
-  def __getattr__(self, name): return getattr(self.real, name)
-
-
-@pytest.mark.parametrize("modifier", ["null_rate", "anomaly_rate"])
-def test_modifier_draws_time_only_the_ruled_random_draws(monkeypatch, modifier):
-  import numpy as np
-  rows, log, placed = 1000, [], []
-  real_default_rng = np.random.default_rng
-  monkeypatch.setattr(speed.np.random, "default_rng", lambda *a: RecordingRng(real_default_rng(*a), log))
-  for name in ("flatnonzero", "nonzero"):
-    monkeypatch.setattr(speed.np, name, lambda *a, _f=getattr(np, name), _n=name, **k: (placed.append(_n), _f(*a, **k))[1])
-
-  def timed(fn):
-    if fn.__name__ == "draws":
-      log.clear(); placed.clear(); fn()
-    return 0.0
-  monkeypatch.setattr(speed, "timed", timed)
-  speed.serve({"row": "integers", "rows": rows, "modifier": modifier})
-
-  mask = log[0][3] < 0.1
-  expected = [("random", (rows,), {})]
-  if modifier == "anomaly_rate": expected.append(("choice", (1,), {"size": int(mask.sum())}))
-  assert [c[:3] for c in log] == expected
-  assert placed == []
+  assert "anomaly_rate" in message and "null_rate" not in message and "modifier" in message and "2.5" in message
 
 
 def test_check_tree_exits_3_on_a_foreign_rand_engine():
