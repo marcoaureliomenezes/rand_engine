@@ -367,6 +367,8 @@ class TestSparkCoreNumeric:
         (1e19, 1e19, 0),
         (1e6, 1e6 + 1, 13),
         (-1e19, -1e19 + 1e5, 0),
+        (0, 10**20, 0),
+        (-10**19, 10**19, 0),
     ])
     def test_float_fine_grid_or_int64_overflow_endpoint_draws_within_bounds(
         self, spark_session, spark_functions, minimum, maximum, decimals,
