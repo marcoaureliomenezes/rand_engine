@@ -5,7 +5,7 @@ import numpy as np
 
 from typing import List, Any, Dict
 from datetime import datetime as dt, timezone
-from decimal import Decimal, InvalidOperation, ROUND_CEILING, ROUND_FLOOR
+from decimal import Context, Decimal, ROUND_CEILING, ROUND_FLOOR
 
 
 DATE_DIRECTIVES = ("%Y", "%m", "%d", "%H", "%M", "%S", "%f")
@@ -19,26 +19,14 @@ def _parse_date_bound(value: str, date_format: str) -> dt:
     return dt.strptime(value, "%Y-%m-%d")
 
 
-def _shift_decimal(value: Decimal, places: int) -> Decimal:
-  sign, digits, exponent = value.as_tuple()
-  return Decimal((sign, digits, exponent + places))
-
-
-def float_lattice_bounds(minimum: int | float, maximum: int | float, decimals: int) -> tuple[int, int, Decimal]:
-  """Return inclusive integer endpoints and exact scale for a decimal lattice."""
-  if isinstance(decimals, bool) or not isinstance(decimals, int):
-    raise ValueError("decimals must be an integer")
-  try:
-    low, high = Decimal(str(minimum)), Decimal(str(maximum))
-  except (InvalidOperation, ValueError) as error:
-    raise ValueError("float bounds must be finite numbers") from error
-  if not low.is_finite() or not high.is_finite():
-    raise ValueError("float bounds must be finite numbers")
-  lower = int(_shift_decimal(low, decimals).to_integral_value(rounding=ROUND_CEILING))
-  upper = int(_shift_decimal(high, decimals).to_integral_value(rounding=ROUND_FLOOR))
-  if lower > upper:
-    raise ValueError("float bounds contain no representable value at the requested decimals")
-  return lower, upper, Decimal((0, (1,), decimals))
+def float_lattice_bounds(min: int | float, max: int | float, decimals: int) -> tuple[int, int]:
+  if type(decimals) is not int or abs(decimals) > 308: raise ValueError(f"decimals ({decimals}) must be an int with abs <= 308")
+  low, high = Decimal(str(min)), Decimal(str(max))
+  if not (low.is_finite() and high.is_finite()): raise ValueError("float bounds must be finite")
+  low, high = (int(x.scaleb(decimals, Context(prec=400)).to_integral_value(r)) for x, r in ((low, ROUND_CEILING), (high, ROUND_FLOOR)))
+  if low > high: raise ValueError(f"no representable value between min ({min}) and max ({max}) at decimals={decimals}")
+  if low < np.iinfo(np.int64).min or high > np.iinfo(np.int64).max: raise ValueError("float bounds exceed the int64 lattice")
+  return low, high
 
 
 def poisson_lam_supported(lam: int | float) -> bool:
@@ -48,32 +36,6 @@ def poisson_lam_supported(lam: int | float) -> bool:
   except (OverflowError, ValueError):
     return False
   return True
-
-
-def _unbiased_python_ints(rng: np.random.Generator, size: int, lower: int, upper: int) -> list[int]:
-  width = upper - lower + 1
-  limbs = (width.bit_length() + 63) // 64
-  source_width = 1 << (64 * limbs)
-  limit = source_width - source_width % width
-  values: list[int] = []
-  while len(values) < size:
-    word = 0
-    for limb in rng.bit_generator.random_raw(limbs):
-      word = word << 64 | int(limb)
-    if word < limit:
-      values.append(lower + word % width)
-  return values
-
-
-def _lattice_to_float64(values: np.ndarray | list[int], scale: Decimal, decimals: int) -> np.ndarray:
-  float_scale = float(scale)
-  if isinstance(values, np.ndarray) and np.isfinite(float_scale) and float_scale != 0:
-    return np.asarray(values, dtype=np.float64) / float_scale
-  return np.fromiter(
-    (float(_shift_decimal(Decimal(int(value)), -decimals)) for value in values),
-    dtype=np.float64,
-    count=len(values),
-  )
 
 
 class NPCore:
@@ -108,13 +70,10 @@ class NPCore:
   
   @classmethod
   def gen_floats(cls, size: int, min: int | float, max: int | float, decimals: int = 2, *, rng: np.random.Generator) -> np.ndarray:
-    lower, upper, scale = float_lattice_bounds(min, max, decimals)
-    int64 = np.iinfo(np.int64)
-    if int64.min <= lower <= upper <= int64.max:
-      values = rng.integers(lower, upper, size, dtype=np.int64, endpoint=True)
-    else:
-      values = _unbiased_python_ints(rng, size, lower, upper)
-    return _lattice_to_float64(values, scale, decimals)
+    low, high = float_lattice_bounds(min, max, decimals)
+    scale = float(10 ** abs(decimals))
+    values = rng.integers(low, high, size, dtype=np.int64, endpoint=True)
+    return values / scale if decimals >= 0 else values * scale
 
 
   @classmethod
