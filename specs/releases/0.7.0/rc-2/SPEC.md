@@ -14,6 +14,7 @@
 - Amendment 1 ruling 2026-10-11 (modifier gate): operator ruling recorded in the last finding of the grill handoff above. AC4.4 compares modifier overhead with the modifier's own draws at 1.5x, not the bare mask draw at 1.25x. Reason: the 1.25x gate is unreachable for anomalies (they also draw and place values and pay one pandas column copy); measured at 1M: anomaly 2.75-3.2x, null 1.04-1.44x of the mask draw.
 - Amendment 1 ruling 2026-10-11 (Spark float kwargs): operator confirmed bug `spark-floats-normal-int-kwargs-beyond-int64-crash` and approves by name `SparkCore.gen_floats_normal`: it computes on `float(std)` and `float(mean)`, so Python ints beyond `int64` never reach a Spark expression (same cause as `spark-floats-int-bounds-beyond-int64-crash`).
 - Amendment 1 ruling 2026-10-11 (finite rounding): operator confirmed bug `float-round-overflows-to-inf` and approves by name `NPCore.gen_floats_normal`: rounding to `decimals` never turns a finite draw into `inf`; `gen_exponential` and `gen_lognormal` share the same rounding.
+- Amendment 1 ruling 2026-10-11 (anomaly gate): operator ruling "anomaly 2.0×, null stays 1.5×", after "Drop T29; re-rule the gate (Recommended)". AC4.4 limits per modifier: `null_rate` 1.5x and `anomaly_rate` 2.0x their own draws. Reason: `anomaly_rate` also pays a private column copy and the value write that `null_rate` does not; no copy-then-write design reached 1.5x.
 
 ## Bug window review
 
@@ -114,7 +115,7 @@ Bound writer generation by rows and broaden NumPy-first RandSpecs without hidden
 - AC4.1 (unit): rate 0 is bit-identical/zero-RNG; rate 1 replaces every row from `anomaly_values`; a seeded configuration has a literal mask/value golden.
 - AC4.2 (unit/integration): spec validation requires a positive rate to carry a non-empty list of structurally valid scalars and refuses wrong rates or nested values. Because arbitrary transformers make the resulting dtype unknowable at construction, value compatibility is checked after transformers and before replacement/return or any writer mutation; incompatibility raises `RandEngineError` and never silently widens.
 - AC4.3 (unit): keys/correlated methods refuse modifiers. No orphan FK, duplicate PK, implicit corruption rule or exact-count promise is added.
-- AC4.4 (CI benchmark): modifier overhead (modified column time minus unmodified integers time, same rows, same official run) is at most 1.5x the modifier's own random draws: for `null_rate` the bare `rng.random(n) < p` mask draw; for `anomaly_rate` the mask draw plus the anomaly value-choice draw. Per-row Bernoulli selection and the approved literal mask goldens are unchanged.
+- AC4.4 (CI benchmark): modifier overhead (modified column time minus unmodified integers time, same rows, same official run) is at most, per modifier, a multiple of its own random draws: for `null_rate` 1.5x the bare `rng.random(n) < p` mask draw; for `anomaly_rate` 2.0x the mask draw plus the anomaly value-choice draw. Per-row Bernoulli selection and the approved literal mask goldens are unchanged.
 
 ### FR5 — Optional Faker pool
 
