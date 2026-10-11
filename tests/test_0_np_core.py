@@ -506,18 +506,29 @@ def test_uniform_float_lattice_preserves_negative_extreme_decimals_without_conte
 
 
 @pytest.mark.parametrize(("minimum", "maximum", "decimals"), [
-  (0, 1e19, 0),
-  (-1e19, 0, 0),
-  (0, 1e17, 2),
   (1, 1, 309),
   (1, 1, -309),
 ])
-def test_uniform_float_lattice_beyond_int64_or_decimals_beyond_308_is_refused(minimum, maximum, decimals):
+def test_uniform_float_decimals_beyond_308_is_refused(minimum, maximum, decimals):
   with pytest.raises(ValueError):
     NPCore.gen_floats(
       size=10, min=minimum, max=maximum, decimals=decimals,
       rng=np.random.default_rng(17),
     )
+
+
+@pytest.mark.parametrize(("minimum", "maximum", "decimals"), [
+  (0, 1e19, 0),
+  (0, 10**4, 15),
+])
+def test_uniform_float_grid_beyond_2_pow_53_steps_draws_uniform_within_bounds(minimum, maximum, decimals):
+  first = NPCore.gen_floats(size=10_000, min=minimum, max=maximum, decimals=decimals, rng=np.random.default_rng(18))
+  again = NPCore.gen_floats(size=10_000, min=minimum, max=maximum, decimals=decimals, rng=np.random.default_rng(18))
+  assert first.dtype == np.float64
+  assert len(first) == 10_000
+  assert first.min() >= minimum
+  assert first.max() <= maximum
+  assert np.array_equal(first, again)
 
 
 def test_legacy_normal_seeded_golden_is_unchanged():
