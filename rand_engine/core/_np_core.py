@@ -20,8 +20,12 @@ def _parse_date_bound(value: str, date_format: str) -> dt:
     return dt.strptime(value, "%Y-%m-%d")
 
 
+def float_decimals_supported(decimals) -> bool:
+  return type(decimals) is int and abs(decimals) <= 308
+
+
 def float_lattice_bounds(min: int | float, max: int | float, decimals: int) -> tuple[int, int, bool]:
-  if type(decimals) is not int or abs(decimals) > 308: raise ValueError(f"decimals ({decimals}) must be an int with abs <= 308")
+  if not float_decimals_supported(decimals): raise ValueError(f"decimals ({decimals}) must be an int with abs <= 308")
   low, high = Decimal(str(min)), Decimal(str(max))
   if not (low.is_finite() and high.is_finite()): raise ValueError("float bounds must be finite")
   if not math.isfinite(float(high - low)): raise ValueError(f"span between min ({min}) and max ({max}) overflows float64")

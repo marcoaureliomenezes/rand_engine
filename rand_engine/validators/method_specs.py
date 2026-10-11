@@ -10,7 +10,7 @@ from typing import Any, Callable, Mapping
 
 import pyarrow as pa
 
-from rand_engine.core._np_core import DATE_DIRECTIVES, float_lattice_bounds, poisson_lam_supported
+from rand_engine.core._np_core import DATE_DIRECTIVES, float_decimals_supported, float_lattice_bounds, poisson_lam_supported
 
 
 TypeRule = type | tuple[type, ...]
@@ -134,8 +134,8 @@ def _fk_arrow_type(kwargs: Mapping[str, Any]) -> tuple[pa.DataType, ...]:
 
 def _positive_decimals(kwargs: Mapping[str, Any]) -> list[SemanticIssue]:
     decimals = kwargs.get("decimals")
-    if decimals is not None and decimals < 0:
-        return [("decimals", "must be a non-negative integer")]
+    if decimals is not None and (decimals < 0 or not float_decimals_supported(decimals)):
+        return [("decimals", "must be a non-negative integer within float range")]
     return []
 
 
@@ -155,10 +155,13 @@ def _integers(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
 
 
 def _normal(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
-    std = kwargs.get("std", 1.0)
-    if std < 0:
-        return (("std", "must be greater than or equal to 0"),)
-    return ()
+    issues: list[SemanticIssue] = []
+    if kwargs.get("std", 1.0) < 0:
+        issues.append(("std", "must be greater than or equal to 0"))
+    decimals = kwargs.get("decimals")
+    if decimals is not None and not float_decimals_supported(decimals):
+        issues.append(("decimals", "must be an int within float range"))
+    return tuple(issues)
 
 
 def _floats(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
