@@ -119,7 +119,7 @@ def serve(req):
       rng = np.random.default_rng(42)
 
       def draws():
-        rng.random(rows)
+        rng.random(rows) < p
         if pool: rng.choice(len(pool), size=k)
       return timed(draws)
     return {"s": timed(gen.get_df), "draws_s": statistics.median(draws_s() for _ in range(RUNS))}
