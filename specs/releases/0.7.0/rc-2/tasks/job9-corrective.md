@@ -1,6 +1,7 @@
 # Job 9 — corrective rebuild (SPEC Amendment 1)
 
 **Status:** Approved
+**done:** true
 
 Job 9 executes SPEC Amendment 1 after Jobs 4 and 5 and before Job 8. It is deletion-first: every GREEN diff must hold or shrink its feature (net lines <= 0; a task that cannot says why in its commit body). Constitution invariant 12 covers the v0.6.4 `gen_*` bodies and `StreamHandler`; Job 9 changes only the four the SPEC Origin names (`NPCore.gen_floats`, `SparkCore.gen_ints`, `SparkCore.gen_floats`, `StreamHandler.convert_dt_to_str`), with 2-space indentation, one-line guards, terse NumPy; no new helper stack. Each behavior task is a test-only RED (`test(J9.Tn)`, assertion-first, no strict xfail, <= 10^4 rows) then a source-only GREEN; a GREEN never touches `tests/`. Tests listed as superseded are deleted by the RED commit (named in its body) because the amended AC replaces them; no other old assert is edited.
 
