@@ -46,7 +46,9 @@ the NumPy engine.
 - `distincts_map`, `distincts_map_prop`, `distincts_multi_map`, `complex_distincts` validate with a
   warning and produce a NULL string column.
 - `pk` and `fk` are refused: they run on the NumPy engine only ([4_CONSTRAINTS.md](4_CONSTRAINTS.md)).
-- `args` is refused; use `kwargs`.
+- `exponential`, `lognormal`, `poisson`, `zipf`, `constant` and the `null_rate` / `anomaly_rate`
+  modifiers are NumPy engine only: `SparkGenerator` refuses them and points at `DataGenerator`.
+- `kwargs` is the only parameter key; `args`, `splitable`, `sep` and `pk` as column keys are refused.
 
 ```python
 from rand_engine.validators.exceptions import SpecValidationError
@@ -55,6 +57,13 @@ try:
     SparkGenerator(spark, F, {"id": {"method": "pk", "kwargs": {}}})
 except SpecValidationError as error:
     assert "NumPy engine only" in str(error)
+else:
+    raise AssertionError("expected SpecValidationError")
+
+try:
+    SparkGenerator(spark, F, {"visits": {"method": "poisson", "kwargs": {"lam": 4}}})
+except SpecValidationError as error:
+    assert "DataGenerator" in str(error)
 else:
     raise AssertionError("expected SpecValidationError")
 ```

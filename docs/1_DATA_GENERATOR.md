@@ -60,6 +60,11 @@ Each column is `{"method": <name>, "kwargs": {...}}`. Bounds of `integers` are i
 | `int_zfilled` | `length` | — |
 | `floats` | `min`, `max` | `decimals` (default 2) |
 | `floats_normal` | `mean`, `std` | `decimals` (default 2) |
+| `exponential` | — | `scale` (> 0, default 1.0), `decimals` (default 2) |
+| `lognormal` | — | `mean` (default 0.0), `std` (≥ 0, default 1.0), `decimals` (default 2) |
+| `poisson` | — | `lam` (0 to 10^6, default 1.0); int64 column |
+| `zipf` | — | `a` (> 1, default 2.0); int64 column |
+| `constant` | `value` (a scalar) | — |
 | `booleans` | — | `true_prob` (default 0.5) |
 | `distincts` | `distincts` (list) | — |
 | `distincts_prop` | `distincts` (dict value → integer weight) | — |
@@ -84,6 +89,58 @@ spec = {
 }
 df = DataGenerator(spec, seed=1).size(1_000).get_df()
 assert df["created_at"].str.match(r"^2024-\d\d-\d\d \d\d:\d\d:\d\d$").all()
+```
+
+`exponential`, `lognormal`, `poisson`, `zipf` and `constant` run on the NumPy engine only.
+
+```python
+from rand_engine.validators.exceptions import SpecValidationError
+
+spec = {
+    "wait_s": {"method": "exponential", "kwargs": {"scale": 2.5}},
+    "amount": {"method": "lognormal", "kwargs": {"mean": 3.0, "std": 0.5}},
+    "visits": {"method": "poisson", "kwargs": {"lam": 4}},
+    "rank": {"method": "zipf", "kwargs": {"a": 1.5}},
+    "source": {"method": "constant", "kwargs": {"value": "web"}},
+}
+df = DataGenerator(spec, seed=1).size(1_000).get_df()
+assert (df["wait_s"] > 0).all() and (df["rank"] >= 1).all()
+assert (df["source"] == "web").all()
+```
+
+### Float rules
+
+- `decimals` is an integer with |decimals| ≤ 308 for every float method; beyond that the spec fails validation.
+- `floats` draws on the `decimals` grid between `min` and `max`. A grid of more than 2^53 steps, or integer bounds beyond int64, draws uniformly within [`min`, `max`] instead.
+- Bounds are compared in float64: an integer bound above 2^53 that a double cannot hold may round to the nearest double.
+- Rounding never turns a finite draw into `inf`. Parameters near the float64 limit can still draw `inf` from the distribution itself; that is accepted.
+- `poisson` `lam` is capped at 10^6.
+
+```python
+for bad in ({"method": "floats", "kwargs": {"min": 0, "max": 1, "decimals": 309}},
+            {"method": "poisson", "kwargs": {"lam": 2_000_000}}):
+    try:
+        DataGenerator({"x": bad})
+    except SpecValidationError:
+        pass
+    else:
+        raise AssertionError("expected SpecValidationError")
+```
+
+### Null and anomaly rates
+
+Any NumPy-engine column may carry `null_rate` (share of rows set to null) and `anomaly_rate` (share
+replaced by a draw from `anomaly_values`, a non-empty list of scalars required when the rate is
+above 0). Both are in [0, 1]; anomalies apply first, then nulls. SparkGenerator refuses them.
+
+```python
+spec = {
+    "age": {"method": "integers", "kwargs": {"min": 18, "max": 80}, "null_rate": 0.1},
+    "price": {"method": "floats", "kwargs": {"min": 1, "max": 100},
+              "anomaly_rate": 0.05, "anomaly_values": [-1.0, 9999.0]},
+}
+df = DataGenerator(spec, seed=5).size(2_000).get_df()
+assert df["age"].isna().any() and df["price"].isin([-1.0, 9999.0]).any()
 ```
 
 ### Multi-column methods (NumPy engine only)
@@ -118,6 +175,21 @@ assert list(df.columns) == ["device", "os", "sector", "sub_sector", "size", "ip"
 assert set(zip(df["device"], df["os"])) <= {("phone", "android"), ("phone", "ios"), ("desktop", "linux"), ("desktop", "windows")}
 ```
 
+## Migration to `kwargs`
+
+`kwargs` is the only parameter key. A column carrying `args`, `splitable`, `sep` or `pk` as a key
+raises `SpecValidationError` (`pk` stays a method, see [4_CONSTRAINTS.md](4_CONSTRAINTS.md)).
+
+```python
+for key in ("args", "splitable", "sep", "pk"):
+    try:
+        DataGenerator({"age": {"method": "integers", "kwargs": {"min": 0, "max": 9}, key: 1}})
+    except SpecValidationError:
+        pass
+    else:
+        raise AssertionError(key)
+```
+
 ## Transformers
 
 <!-- derived-from: data-generator sha256:2a69edeee8a2 -->
@@ -149,8 +221,6 @@ An invalid spec raises `SpecValidationError` (a `RandEngineError`) on constructi
 error with a corrected example.
 
 ```python
-from rand_engine.validators.exceptions import SpecValidationError
-
 try:
     DataGenerator({"age": {"method": "integers", "kwargs": {"min": 0}}})
 except SpecValidationError as error:

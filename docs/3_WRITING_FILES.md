@@ -35,7 +35,7 @@ assert len(os.listdir("out/clients_json")) == 4
 | `csv` | `sep` (delimiter, default `,`); `compression`: `gzip`, `bz2`, `xz`, `zip`; `index`: only `False` (Arrow writes no index) |
 | `parquet` | `compression`: `snappy` (default), `gzip`, `zstd`, `brotli`, `lz4` |
 | `json` | `force_ascii`, `indent`, `compression` (`gzip`, `bz2`, `zip`); `orient`: only `"records"` |
-| `write` (batch) | `numFiles` (default 1) |
+| `write` (batch) | `numFiles` (default 1); `maxRowsPerBatch` (positive int; rows generated and written per batch, so memory stays bounded) |
 | `writeStream` | `timeout` in seconds (default 20) |
 
 - A column holding mixed types (e.g. ints and strings in one object column) raises
@@ -62,6 +62,8 @@ else:
 - With `numFiles` > 1, `path` (extensions stripped) is a folder of `part_<id>.<ext>` files sharing
   the `size` rows; `mode("overwrite")` (the default) empties that folder first, any other mode
   adds files beside the old ones.
+- A final file has one schema: with `maxRowsPerBatch` every batch of a file must produce the same
+  schema, and `mode("append")` to a single file must match the existing one.
 - Keys continue across the files: `pk` values never repeat between parts.
 
 ```python
@@ -71,6 +73,14 @@ gen.write.format("csv").options(numFiles=3, sep=";").save("out/parts.csv")
 parts = [pd.read_csv(f"out/parts/{f}", sep=";") for f in sorted(os.listdir("out/parts"))]
 ids = pd.concat(parts)["id"]
 assert len(ids) == 1_000 and ids.is_unique
+
+spec_log = {"level": {"method": "distincts", "kwargs": {"distincts": ["info", "warn"]}}}
+log = DataGenerator(spec_log, seed=2).size(1_000)
+log.write.format("csv").options(numFiles=2, maxRowsPerBatch=100).save("out/log.csv")
+log.write.format("csv").options(numFiles=2).mode("append").save("out/log.csv")
+logs = os.listdir("out/log")
+assert len(logs) == 4
+assert sum(len(pd.read_csv(f"out/log/{f}")) for f in logs) == 2_000
 ```
 
 ## Stream: `writeStream`

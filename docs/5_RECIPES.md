@@ -6,22 +6,32 @@ Short, runnable patterns. Every `python` block runs in CI, in order, in one name
 
 <!-- derived-from: generation-methods sha256:b3bed2e747eb -->
 
-Faker is slow per value; draw a pool once and sample it with `distincts`.
+Faker is slow per value; `RandSpecs.faker_pool` draws a pool once and returns a `distincts` spec
+(needs the optional `rand-engine[faker]`). `seed` fixes the pool.
 
 ```python
-from faker import Faker
-from rand_engine import DataGenerator
+from rand_engine import DataGenerator, RandSpecs
 
-fake = Faker("pt_BR")
-Faker.seed(0)
-names = [fake.name() for _ in range(500)]
-emails = [fake.email() for _ in range(500)]
-
+name_spec = RandSpecs.faker_pool("name", locale="pt_BR", pool_size=500, seed=0)
 people = DataGenerator({
-    "name": {"method": "distincts", "kwargs": {"distincts": names}},
-    "email": {"method": "distincts", "kwargs": {"distincts": emails}},
+    "name": name_spec,
+    "email": RandSpecs.faker_pool("email", pool_size=500, seed=0),
 }, seed=1).size(2_000).get_df()
-assert people["name"].isin(names).all()
+assert people["name"].isin(name_spec["kwargs"]["distincts"]).all()
+```
+
+## Spec from an Arrow schema
+
+`RandSpecs.from_schema` maps each field's Arrow type to a method and validates the result;
+`overrides` replaces or tunes a field (a `method` key replaces it, other keys merge into it).
+
+```python
+import pyarrow as pa
+
+schema = pa.schema([("id", pa.int64()), ("score", pa.float64()), ("active", pa.bool_())])
+spec = RandSpecs.from_schema(schema, overrides={"score": {"kwargs": {"min": 0, "max": 10}}})
+df = DataGenerator(spec, seed=1).size(500).get_df()
+assert list(df.columns) == ["id", "score", "active"] and df["score"].between(0, 10).all()
 ```
 
 ## Kafka or any queue

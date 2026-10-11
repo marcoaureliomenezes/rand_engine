@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `uuid4` values are drawn from the seeded PCG64 rng (RFC 4122 v4), so a seed reproduces them.
 - `uuid4` no longer takes its ignored `length` parameter.
 - The positional `args` column key is removed: a column carrying it fails validation on both engines; pass parameters by name in `kwargs`.
+- The `splitable`, `sep` and `pk` column keys are refused with `SpecValidationError`: remove them; a delimiter is the csv writer's `sep` option and keys are `"method": "pk"` columns.
 - `distincts_map` emits the key first: `cols[0]` is the key (category), `cols[1]` a value, like `distincts_map_prop`.
 - `distincts_multi_map` `cols` must name levels + 1 columns; any other count fails validation (fewer names used to drop levels silently).
 - `complex_distincts` templates naming a method by string are validated like a column: unknown parameters, missing required ones and multi-column methods fail validation; `dates` and `distincts_prop` templates now generate.
@@ -40,6 +41,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `pk` key columns (`sequence` or `permuted`, optional `format`) and `fk` columns referencing a parent `pk` (uniform or `skew`), stateless: keys come from the seed-independent key function and the row index, consistent across batches, streams, files and processes.
+- Methods `exponential` (`scale`), `lognormal` (`mean`, `std`), `poisson` (`lam`, at most 10^6), `zipf` (`a`) and `constant` (`value`), NumPy engine only; `SparkGenerator` refuses them pointing at `DataGenerator`.
+- Column modifiers `null_rate` and `anomaly_rate` / `anomaly_values` (NumPy engine only).
+- Float rules: `decimals` limited to |d| ≤ 308 on every float method; rounding never turns a finite draw into `inf`; `floats` grids beyond 2^53 steps draw uniformly in [`min`, `max`].
+- Batch writer option `maxRowsPerBatch`, bounding the rows generated and written per batch.
+- `RandSpecs.faker_pool(provider, ...)` and `RandSpecs.from_schema(pa.schema(...), overrides=...)`.
 - `LICENSE` (MIT) and full package metadata (licence, keywords, classifiers, project URLs).
 
 ### Fixed
