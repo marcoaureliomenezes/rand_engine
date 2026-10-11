@@ -15,7 +15,7 @@ rand-engine generates synthetic data very fast, for any platform and any sink, f
 RandSpec: the NumPy core ([[data-generator]]) yields pandas DataFrames, record streams and files
 ([[writers-and-streaming]]) the user forwards to any queue, lake, database or file; Spark is
 supported through the same spec ([[spark-generator]]). Correlated columns and pattern strings
-([[generation-methods]]), checkpoint-backed PK/FK relations ([[pk-fk-constraints]]) and
+([[generation-methods]]), stateless PK/FK relations ([[pk-fk-constraints]]) and
 ready-made specs ([[templates-and-examples]]) sit on a vectorized NumPy core.
 
 ## Users
@@ -38,27 +38,27 @@ ready-made specs ([[templates-and-examples]]) sit on a vectorized NumPy core.
 
 | slug | title | tldr |
 |------|-------|------|
-| `templates-and-examples` | Templates and examples | Ready RandSpecs — ten cross-engine CommonRandSpecs, ten pandas-only AdvancedRandSpecs, and a UTC WebServerLogs template. |
+| `templates-and-examples` | Templates and examples | Ready RandSpecs (ten cross-engine, ten pandas-only), a UTC WebServerLogs template, and Faker-pool and Arrow-schema spec builders. |
 
 ### generation
 
 | slug | title | tldr |
 |------|-------|------|
 | `data-generator` | DataGenerator | The pandas generator validates a RandSpec, owns its random generator, and returns DataFrames, files, file streams or an endless record stream. |
-| `generation-methods` | Generation methods | Ten common methods run on pandas and Spark; four correlated methods plus pk and fk run on pandas. |
-| `spark-generator` | SparkGenerator | The Spark generator builds a Spark DataFrame from common RandSpec methods with native expressions and no Python UDF. |
+| `generation-methods` | Generation methods | Ten common methods run on pandas and Spark; distributions, constant, correlated methods, pk, fk and null/anomaly modifiers run on pandas. |
+| `spark-generator` | SparkGenerator | The Spark generator builds a Spark DataFrame from the ten common RandSpec methods with native expressions, no Python UDF, and refuses NumPy-only features. |
 
 ### output
 
 | slug | title | tldr |
 |------|-------|------|
-| `writers-and-streaming` | Writers and streaming | DataGenerator writes CSV, JSON lines and Parquet batches or repeated file-stream microbatches through a Spark-style builder. |
+| `writers-and-streaming` | Writers and streaming | DataGenerator writes CSV, JSON lines and Parquet batches, bounded by rows when asked, or repeated file-stream microbatches through a Spark-style builder. |
 
 ### quality
 
 | slug | title | tldr |
 |------|-------|------|
-| `benchmarks` | Performance benchmarks | A CI-only same-runner A/B benchmark measures every generation method and built-in sink, publishes its table and enforces a relative regression limit. |
+| `benchmarks` | Performance benchmarks | A CI-only same-runner A/B benchmark times every method, modifier and built-in sink, publishes its table and enforces base, sibling and modifier limits. |
 
 ### relations
 
@@ -70,7 +70,7 @@ ready-made specs ([[templates-and-examples]]) sit on a vectorized NumPy core.
 
 | slug | title | tldr |
 |------|-------|------|
-| `rand-spec-grammar` | RandSpec grammar | A RandSpec maps output columns to a method, named kwargs and optional multi-column or transformer metadata, and is validated before generation. |
+| `rand-spec-grammar` | RandSpec grammar | A RandSpec maps output columns to a method, named kwargs and optional cols, transformers or modifiers, validated through one method catalog. |
 
 ## Capability map
 
@@ -81,12 +81,11 @@ graph TD
   V --> SG[SparkGenerator]
   DG --> NP[NPCore / PyCore methods]
   SG --> SC[SparkCore expressions]
-  DG --> C[PK/FK constraints]
-  C --> DB[(SQLite / DuckDB checkpoints)]
+  DG --> C[pk / fk key columns]
   DG --> W[write / writeStream]
   DG --> SD[stream_dict]
   E[RandSpecs / templates] --> S
-  FK[Faker value pools] --> S
+  B[faker_pool / from_schema] --> S
   DG --> DF[pandas DataFrame]
   SG --> SDF[Spark DataFrame]
   DF --> U[user-forwarded sinks: queues, lakes, databases]
@@ -96,8 +95,8 @@ graph TD
 
 ## Known limits
 
-- Correlated methods, transformers and constraints run on pandas only; Spark runs the ten common methods.
+- Distributions, constants, null and anomaly modifiers, correlated methods, transformers and pk/fk run on pandas only; Spark runs the ten common methods and refuses the rest.
 - Seeds reach the pandas path only; Spark output is unseeded.
-- PK/FK relations link generators through time-stamped checkpoint rows in one process.
+- PK/FK relations are stateless: parent and child link through definitions, seeds and row indexes, with no stored keys.
 - Built-in sinks are files only; queues, object storage and databases are reached by forwarding DataFrames or `stream_dict` records.
-- pandas generation holds the whole batch in memory in one process.
+- pandas generation runs in one process and holds one frame in memory: the whole size for `get_df`, one row batch at a time per file when `maxRowsPerBatch` is set.

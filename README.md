@@ -9,7 +9,7 @@ Synthetic data, very fast, from a declarative spec — for batch and streaming, 
 
 ## Install
 
-<!-- derived-from: public-api sha256:0d1a9b54e4a7 -->
+<!-- derived-from: public-api sha256:889c68fd0f20 -->
 
 ```bash
 pip install rand-engine
@@ -17,8 +17,8 @@ pip install rand-engine
 
 ## Quickstart
 
-<!-- derived-from: data-generator sha256:2a69edeee8a2 -->
-<!-- derived-from: rand-spec-grammar sha256:8956fa6e6298 -->
+<!-- derived-from: data-generator sha256:8af2e4c55309 -->
+<!-- derived-from: rand-spec-grammar sha256:77ed429317a3 -->
 
 A spec maps each column to a `method` and its `kwargs`.
 
@@ -38,7 +38,7 @@ assert df.shape == (1_000, 4) and df["age"].between(18, 80).all()
 
 ## Seeded reproducibility
 
-<!-- derived-from: data-generator sha256:2a69edeee8a2 -->
+<!-- derived-from: data-generator sha256:8af2e4c55309 -->
 
 The seed is per generator: each `DataGenerator` owns its own NumPy `Generator` (PCG64), so the
 caller's NumPy global state is never read or reset. The same spec, seed and size give the same
@@ -57,7 +57,7 @@ assert (np.random.get_state()[1] == state).all()
 
 ## Faker pools at scale
 
-<!-- derived-from: generation-methods sha256:b3bed2e747eb -->
+<!-- derived-from: generation-methods sha256:d4b764fe7ef0 -->
 
 Install the optional Faker dependency with `pip install faker` before running this example.
 Faker is slow per value; draw a pool once and let rand-engine sample it.
@@ -94,8 +94,8 @@ assert set(orders["customer_id"]) <= set(customers["customer_id"])
 
 ## Streams and files
 
-<!-- derived-from: data-generator sha256:2a69edeee8a2 -->
-<!-- derived-from: writers-and-streaming sha256:6b17969e7cb2 -->
+<!-- derived-from: data-generator sha256:8af2e4c55309 -->
+<!-- derived-from: writers-and-streaming sha256:21b53d28967c -->
 
 `stream_dict` yields records forever at a bounded rate; `write` writes csv, json or parquet.
 
@@ -114,8 +114,8 @@ assert len(pd.read_parquet("out/orders.parquet")) == 1_000
 
 ## Learn more
 
-<!-- derived-from: public-api sha256:0d1a9b54e4a7 -->
-<!-- derived-from: benchmarks sha256:42b63a34e160 -->
+<!-- derived-from: public-api sha256:889c68fd0f20 -->
+<!-- derived-from: benchmarks sha256:005825e85875 -->
 
 - [DataGenerator](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/1_DATA_GENERATOR.md): methods, seeds, streams.
 - [SparkGenerator](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/2_SPARK_GENERATOR.md): the same spec as a Spark DataFrame.

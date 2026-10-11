@@ -18,7 +18,7 @@ assert df["age"].between(18, 80).all()
 
 ## API
 
-<!-- derived-from: data-generator sha256:2a69edeee8a2 -->
+<!-- derived-from: data-generator sha256:8af2e4c55309 -->
 
 | Call | Does |
 |---|---|
@@ -33,7 +33,7 @@ Calling `get_df` without `.size` raises `RandEngineError`.
 
 ## Seeds
 
-<!-- derived-from: data-generator sha256:2a69edeee8a2 -->
+<!-- derived-from: data-generator sha256:8af2e4c55309 -->
 
 A seed fixes the output: the same spec, seed and size give the same frame. Each generator owns
 its own `numpy.random.Generator` (PCG64), so generators never share or reset NumPy's global state.
@@ -50,7 +50,7 @@ assert not gen.get_df().equals(gen.get_df())
 
 ## Methods
 
-<!-- derived-from: generation-methods sha256:b3bed2e747eb -->
+<!-- derived-from: generation-methods sha256:d4b764fe7ef0 -->
 
 Each column is `{"method": <name>, "kwargs": {...}}`. Bounds of `integers` are inclusive.
 
@@ -204,7 +204,7 @@ for key in ("args", "splitable", "sep", "pk"):
 
 ## Transformers
 
-<!-- derived-from: data-generator sha256:2a69edeee8a2 -->
+<!-- derived-from: data-generator sha256:8af2e4c55309 -->
 
 A column may carry `"transformers"`: functions applied value by value. `.transformers([...])` takes
 whole-frame functions, run after the column ones.
@@ -227,7 +227,7 @@ assert (df["adult"] == (df["age"] >= 18)).all()
 
 ## Validation
 
-<!-- derived-from: rand-spec-grammar sha256:8956fa6e6298 -->
+<!-- derived-from: rand-spec-grammar sha256:77ed429317a3 -->
 
 An invalid spec raises `SpecValidationError` (a `RandEngineError`) on construction, listing every
 error with a corrected example.
@@ -243,7 +243,7 @@ else:
 
 ## Streaming dicts
 
-<!-- derived-from: data-generator sha256:2a69edeee8a2 -->
+<!-- derived-from: data-generator sha256:8af2e4c55309 -->
 
 `stream_dict` never ends: it generates `size` rows per microbatch, converts datetime columns to
 strings and adds `timestamp_created` (epoch seconds) to each record. Stop it yourself.

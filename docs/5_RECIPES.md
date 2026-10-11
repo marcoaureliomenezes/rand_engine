@@ -4,7 +4,8 @@ Short, runnable patterns. Every `python` block runs in CI, in order, in one name
 
 ## Faker pools
 
-<!-- derived-from: generation-methods sha256:b3bed2e747eb -->
+<!-- derived-from: generation-methods sha256:d4b764fe7ef0 -->
+<!-- derived-from: templates-and-examples sha256:85481f658af5 -->
 
 Faker is slow per value; `RandSpecs.faker_pool` draws a pool once and returns a `distincts` spec
 (needs the optional `rand-engine[faker]`). `seed` fixes the pool.
@@ -22,6 +23,8 @@ assert people["name"].isin(name_spec["kwargs"]["distincts"]).all()
 
 ## Spec from an Arrow schema
 
+<!-- derived-from: templates-and-examples sha256:85481f658af5 -->
+
 `RandSpecs.from_schema` maps each field's Arrow type to a method and validates the result;
 `overrides` replaces or tunes a field (a `method` key replaces it, other keys merge into it).
 
@@ -36,7 +39,7 @@ assert list(df.columns) == ["id", "score", "active"] and df["score"].between(0, 
 
 ## Kafka or any queue
 
-<!-- derived-from: data-generator sha256:2a69edeee8a2 -->
+<!-- derived-from: data-generator sha256:8af2e4c55309 -->
 
 `stream_dict` yields JSON-ready dicts at a bounded rate; send them with your client.
 
@@ -65,7 +68,7 @@ for record in events.stream_dict(min_throughput=10, max_throughput=50):
 
 ## Parquet lake
 
-<!-- derived-from: writers-and-streaming sha256:6b17969e7cb2 -->
+<!-- derived-from: writers-and-streaming sha256:21b53d28967c -->
 
 One folder per partition value, several files each.
 

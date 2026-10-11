@@ -17,7 +17,7 @@ tags:
 
 ## Test architecture
 
-- One pytest suite under `tests/`: numbered files `test_<n>_<area>.py` ordered by layer — 0 core methods, 1 validators, 2 `DataGenerator`, 3 Spark and advanced specs, 4 example specs, 5 batch and stream writers, 6 `stream_dict`, 7 templates, 8 PK/FK consistency — plus the public-import contract, benchmark-script contract and executable documentation contract.
+- One pytest suite under `tests/`: numbered files `test_<n>_<area>.py` ordered by layer — 0 core methods, 1 validators, 2 `DataGenerator`, 3 Spark and advanced specs, 4 example specs and the `RandSpecs` builders, 5 batch and stream writers, 6 `stream_dict`, 7 templates, 8 PK/FK consistency — plus the public-import contract, benchmark-script contract and executable documentation contract.
 - Specs under test live as fixtures in `tests/fixtures/f<n>_*.py`; `conftest.py` loads the Spark fixtures as a plugin.
 - Spark tests start a local `SparkSession` and skip when PySpark is absent or on Windows with Python 3.12+.
 - The default selector excludes `stress`; default tests generate at most 10^4 rows, while large-volume tests and benchmarks run in the CI benchmark job.
@@ -29,7 +29,7 @@ tags:
 - Push to any branch but `master`/`development` with no open PR: the pytest matrix (Ubuntu, Windows, macOS × Python 3.10-3.12) with coverage reported.
 - PR to `development`: source must not be `master`; the matrix with `--cov-fail-under=60`; Bandit, Semgrep, Safety and Trivy run advisory (they never fail the job); CodeQL analyzes.
 - PR to `master`: source must be `development`; the matrix with coverage.
-- PR to `master` or `development`: the benchmark workflow runs stress tests and a same-runner A/B speed comparison, publishes its summary/comment/artifact and fails a comparable row above the configured ratio.
+- PR to `master` or `development`: the benchmark workflow runs stress tests and a same-runner A/B speed comparison, publishes its summary/comment/artifact and fails a comparable row above the base ratio, a distribution method above its sibling or a modifier above its overhead limit.
 - Merge to `development`: tests (Ubuntu, Python 3.10-3.12), build with the next `rcN` version, `twine check`, a wheel install smoke, the RC tag, PyPI publish.
 - Merge to `master`: tests, build of the `pyproject.toml` version (no RC suffix), the tag, PyPI publish, a GitHub release.
 - No lint or type checker is configured.

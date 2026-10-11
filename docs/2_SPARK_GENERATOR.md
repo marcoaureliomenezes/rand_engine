@@ -23,7 +23,7 @@ assert df.columns == ["user_id", "age", "is_active", "signup"]
 
 ## API
 
-<!-- derived-from: spark-generator sha256:963951e9fea8 -->
+<!-- derived-from: spark-generator sha256:f5f88f6ad32e -->
 
 | Call | Does |
 |---|---|
@@ -35,8 +35,8 @@ There is no seed, no `.transformers`, no `.write`: use Spark's own `withColumn` 
 
 ## Methods
 
-<!-- derived-from: spark-generator sha256:963951e9fea8 -->
-<!-- derived-from: generation-methods sha256:b3bed2e747eb -->
+<!-- derived-from: spark-generator sha256:f5f88f6ad32e -->
+<!-- derived-from: generation-methods sha256:d4b764fe7ef0 -->
 
 Supported, with the same kwargs as [1_DATA_GENERATOR.md](1_DATA_GENERATOR.md): `integers`,
 `int_zfilled`, `floats`, `floats_normal`, `booleans`, `distincts`, `distincts_prop`, `uuid4`,
@@ -70,6 +70,6 @@ else:
 
 ## Writing
 
-<!-- derived-from: spark-generator sha256:963951e9fea8 -->
+<!-- derived-from: spark-generator sha256:f5f88f6ad32e -->
 
 Use Spark's own `df.write`; rand-engine does not own Spark writing.

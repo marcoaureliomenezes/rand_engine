@@ -22,7 +22,8 @@ commit that carries its accepted ADR.
 - pandas `^2.2` — DataFrame assembly, transformers and JSON-lines output.
 - PyArrow `^23.0` — CSV and Parquet conversion and output for the batch and stream writers.
 - PySpark `^3.5` (test group only) — `SparkGenerator` runs on the caller's `SparkSession` and `pyspark.sql.functions`; the package never imports PySpark.
-- pytest `^9.0`, pytest-cov, Faker (test group) — the suite and its fixture data.
+- Faker `>=28.4.1,<29` (optional extra `faker`, also in the test group) — backs `RandSpecs.faker_pool` only; generation never calls it.
+- pytest `^9.0`, pytest-cov (test group) — the suite and its fixture data.
 - GitHub Actions — test matrix, advisory security scans, same-runner A/B benchmarks, and RC and stable publishing through PyPI Trusted Publishing.
 
 ## Structure
@@ -32,26 +33,30 @@ rand_engine/
   __init__.py        public surface: DataGenerator, SparkGenerator, RandSpecs
   main/              composition roots
     data_generator.py      DataGenerator — pandas pipeline, writers, stream_dict
-    _rand_generator.py     RandGenerator — method dispatch table, column assembly, transformers
+    _rand_generator.py     RandGenerator — method dispatch, column assembly, transformers, null/anomaly modifiers
     spark_generator.py     SparkGenerator — Spark dispatch table over spark.range(size)
   core/              stateless generation primitives
     _keys.py               stateless PK/FK sequence, permutation and parent selection
-    _np_core.py            NPCore — vectorized NumPy methods
-    _py_core.py            PyCore — correlated tuples and pattern strings
+    _np_core.py            NPCore — vectorized NumPy methods, alias samplers, float grid helpers
+    _py_core.py            PyCore — correlated tuples and pattern strings; METHODS, the NumPy method map
     _spark_core.py         SparkCore — native Spark column expressions
-  validators/        RandSpec grammar: CommonValidator, AdvancedValidator, exceptions
-  file_handlers/     FileBatchWriter, FileStreamWriter, FileHandler, fs_utils
-  examples/          CommonRandSpecs (alias RandSpecs), AdvancedRandSpecs
+  validators/        RandSpec grammar
+    method_specs.py        METHOD_CATALOG — the one method authority
+    common_validator.py    CommonValidator — ordinary methods, column keys, Spark intake
+    advanced_validator.py  AdvancedValidator — DataGenerator intake, correlated and key methods
+    exceptions.py          RandEngineError family
+  file_handlers/     writer.py (FileWriter), _writer_batch.py (FileBatchWriter), _writer_stream.py (FileStreamWriter), file_handler.py (per-format file sessions)
+  examples/          CommonRandSpecs (alias RandSpecs, with faker_pool and from_schema), AdvancedRandSpecs
   templates/         WebServerLogs template, IRandomSpec
-  utils/             logger, StreamHandler
+  utils/             StreamHandler
 ```
 
-- Dependency direction: `main` -> `core`, `validators`, `file_handlers`, `utils`; `validators.common_validator` -> `core._np_core.DATE_DIRECTIVES` for the shared date grammar; `core` imports no generator; `examples` are plain dicts with no import of the engine.
-- A RandSpec is a dict keyed by column name; the NumPy path has one method-name -> function map shared by columns and nested templates, while validators own the accepted grammar.
+- Dependency direction: `main` -> `core`, `validators`, `file_handlers`, `utils`; `validators.method_specs` -> `core._np_core` for date directives and float-domain predicates, so grammar and engine decide each numeric rule once; `core._keys` and `file_handlers` import only `validators.exceptions`; `examples.common_rand_specs` runs `AdvancedValidator` on `from_schema` output; `core` imports no generator and `examples` import no engine.
+- A RandSpec is a dict keyed by column name; the NumPy path has one method-name -> function map shared by columns and nested templates, while `METHOD_CATALOG` owns the accepted grammar: names, parameters, engines and Arrow output types.
 - Generation is NumPy-first: every column is one array call, assembled into one DataFrame, then transformed.
 - The Spark path builds columns as native expressions plus one broadcast join per `distincts` column; it runs no Python UDF.
 - Relations are stateless `pk` and `fk` column methods; no integration package, database, checkpoint or retained key state is present.
-- `img/` sits outside the package: README illustration images and a standalone script.
+- File writers stage output beside the destination and commit it only after every file closes; with `maxRowsPerBatch` a final file is generated one row batch at a time.
 
 <!-- dadaia:fixed slop-code -->
 ### Slop — code (fixed)

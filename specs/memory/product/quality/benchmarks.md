@@ -1,8 +1,8 @@
 ---
 slug: benchmarks
 title: Performance benchmarks
-tldr: "A CI-only same-runner A/B benchmark measures every generation method and built-in sink, publishes its table and enforces a relative regression limit."
-summary: "The benchmark coordinator alternates timed requests between long-lived base and head workers per row, reports method and sink throughput, publishes Markdown and JSON artifacts, and fails when a comparable head row exceeds the configured ratio."
+tldr: "A CI-only same-runner A/B benchmark times every method, modifier and built-in sink, publishes its table and enforces base, sibling and modifier limits."
+summary: "The benchmark coordinator alternates timed requests between long-lived base and head workers per row, reports method, modifier and sink throughput, publishes Markdown and JSON artifacts, and fails when a comparable head row exceeds the base ratio, a new distribution exceeds its sibling method, or a modifier costs more than its overhead limit."
 tags: [performance, benchmarks, ci, regression]
 sources:
   - benchmarks/**
@@ -11,7 +11,8 @@ sources:
 
 ## Coverage
 
-- The sample catalog covers every key in the NumPy generator's method map at two large row sizes, plus CSV, Parquet, JSON and `stream_dict` sinks.
+- The sample catalog covers every key in the NumPy generator's method map at two large row sizes by default, plus CSV, Parquet, JSON and `stream_dict` sinks.
+- Two modifier rows per size time an `integers` column with `null_rate` and with `anomaly_rate`.
 - The script refuses a head method missing from its samples and reports methods added to or deleted from one side of the comparison.
 
 ## Measurement
@@ -24,4 +25,6 @@ sources:
 
 - Pull requests to the principal or integration branch run stress tests and the speed benchmark in one CI job.
 - The generated Markdown is placed in the job summary and one updated pull-request comment; Markdown and JSON are uploaded as artifacts.
-- Any comparable method or sink row slower than the configured relative limit fails the job.
+- Any comparable method or sink row slower than 1.3 times its base fails the job.
+- Within the same run, `poisson` and `zipf` may cost at most 1.5 times `distincts_prop`, and `exponential` and `lognormal` at most 1.5 times `floats_normal`.
+- A modifier's overhead (its row time minus the unmodified `integers` time) may be at most 1.75 times that unmodified time for `null_rate` and 2.5 times for `anomaly_rate`; a modified column therefore costs at most 2.75 and 3.5 times the plain column. Modifier rows have no base comparison.
