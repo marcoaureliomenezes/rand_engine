@@ -24,7 +24,7 @@ def float_lattice_bounds(min: int | float, max: int | float, decimals: int) -> t
   if type(decimals) is not int or abs(decimals) > 308: raise ValueError(f"decimals ({decimals}) must be an int with abs <= 308")
   low, high = Decimal(str(min)), Decimal(str(max))
   if not (low.is_finite() and high.is_finite()): raise ValueError("float bounds must be finite")
-  if not math.isfinite(float(max) - float(min)): raise ValueError(f"span between min ({min}) and max ({max}) overflows float64")
+  if not math.isfinite(float(high - low)): raise ValueError(f"span between min ({min}) and max ({max}) overflows float64")
   low, high = (int(x.scaleb(decimals, Context(prec=400)).to_integral_value(r)) for x, r in ((low, ROUND_CEILING), (high, ROUND_FLOOR)))
   if low > high: raise ValueError(f"no representable value between min ({min}) and max ({max}) at decimals={decimals}")
   return low, high, high - low + 1 > 2 ** 53 or low < -2 ** 63 or high >= 2 ** 63
