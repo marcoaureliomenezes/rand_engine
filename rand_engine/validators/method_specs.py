@@ -33,7 +33,6 @@ INTEGER_TYPES = (
 class MethodSpec:
     required: Mapping[str, TypeRule]
     optional: Mapping[str, TypeRule]
-    defaults: Mapping[str, Any]
     engines: frozenset[str]
     kind: str
     semantic: SemanticValidator
@@ -146,6 +145,12 @@ def _integers(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
         issues.append(("int_type", f"must be one of {list(INTEGER_TYPES)}"))
     if kwargs["min"] > kwargs["max"]:
         issues.append(("min/max", "minimum must be less than or equal to maximum"))
+    int_type = kwargs.get("int_type", "int32")
+    if int_type in INTEGER_TYPES:
+        bits = int(int_type.lstrip("uint"))
+        low, high = (0, 2**bits - 1) if int_type[0] == "u" else (-2**(bits - 1), 2**(bits - 1) - 1)
+        if kwargs["min"] < low or kwargs["max"] > high:
+            issues.append(("min/max", f"must stay within the {int_type} range [{low}, {high}]"))
     return tuple(issues)
 
 
@@ -281,7 +286,6 @@ def _spec(
     *,
     required: Mapping[str, TypeRule] | None = None,
     optional: Mapping[str, TypeRule] | None = None,
-    defaults: Mapping[str, Any] | None = None,
     engines: tuple[str, ...] = (NUMPY, SPARK),
     kind: str = ORDINARY,
     semantic: SemanticValidator = _no_semantics,
@@ -293,7 +297,6 @@ def _spec(
     return MethodSpec(
         required=MappingProxyType(dict(required or {})),
         optional=MappingProxyType(dict(optional or {})),
-        defaults=MappingProxyType(dict(defaults or {})),
         engines=frozenset(engines),
         kind=kind,
         semantic=semantic,
@@ -309,7 +312,6 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
         "integers": _spec(
             required={"min": int, "max": int},
             optional={"int_type": str},
-            defaults={"int_type": "int64"},
             semantic=_integers,
             arrow_types=_integer_arrow_type,
             example={
@@ -325,7 +327,6 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
         "floats": _spec(
             required={"min": (int, float), "max": (int, float)},
             optional={"decimals": int},
-            defaults={"decimals": 2},
             semantic=_floats,
             arrow_types=_fixed_arrow_types(pa.float64()),
             example={
@@ -336,7 +337,6 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
         "floats_normal": _spec(
             required={"mean": (int, float), "std": (int, float)},
             optional={"decimals": int},
-            defaults={"decimals": 2},
             semantic=_normal,
             arrow_types=_fixed_arrow_types(pa.float64()),
             example={
@@ -346,7 +346,6 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
         ),
         "booleans": _spec(
             optional={"true_prob": (int, float)},
-            defaults={"true_prob": 0.5},
             semantic=_booleans,
             arrow_types=_fixed_arrow_types(pa.bool_()),
             example={"method": "booleans", "kwargs": {"true_prob": 0.7}},
@@ -372,7 +371,6 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
         "unix_timestamps": _spec(
             required={"start": str, "end": str},
             optional={"date_format": str},
-            defaults={"date_format": "%Y-%m-%d"},
             arrow_types=_fixed_arrow_types(pa.int64()),
             example={
                 "method": "unix_timestamps",
@@ -386,7 +384,6 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
         "dates": _spec(
             required={"start": str, "end": str},
             optional={"date_format": str},
-            defaults={"date_format": "%Y-%m-%d"},
             semantic=_dates,
             arrow_types=_fixed_arrow_types(pa.string()),
             example={
@@ -404,7 +401,6 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
         ),
         "exponential": _spec(
             optional={"scale": (int, float), "decimals": int},
-            defaults={"scale": 1.0, "decimals": 2},
             engines=(NUMPY,),
             semantic=_exponential,
             arrow_types=_fixed_arrow_types(pa.float64()),
@@ -416,7 +412,6 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
                 "std": (int, float),
                 "decimals": int,
             },
-            defaults={"mean": 0.0, "std": 1.0, "decimals": 2},
             engines=(NUMPY,),
             semantic=_lognormal,
             arrow_types=_fixed_arrow_types(pa.float64()),
@@ -424,7 +419,6 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
         ),
         "poisson": _spec(
             optional={"lam": (int, float)},
-            defaults={"lam": 1.0},
             engines=(NUMPY,),
             semantic=_poisson,
             arrow_types=_fixed_arrow_types(pa.int64()),
@@ -432,7 +426,6 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
         ),
         "zipf": _spec(
             optional={"a": (int, float)},
-            defaults={"a": 2.0},
             engines=(NUMPY,),
             semantic=_zipf,
             arrow_types=_fixed_arrow_types(pa.int64()),

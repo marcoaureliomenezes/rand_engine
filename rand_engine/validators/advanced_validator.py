@@ -85,6 +85,9 @@ class AdvancedValidator:
                 f"❌ Column '{col_name}': 'args' was removed in 0.7.0; "
                 "pass parameters by name in 'kwargs'"
             ]
+        unknown = CommonValidator.unknown_key_errors(col_name, col_config)
+        if unknown:
+            return unknown
 
         method_spec = METHOD_CATALOG.get(method)
         if method_spec is None or NUMPY not in method_spec.engines:
@@ -342,13 +345,13 @@ class AdvancedValidator:
                 "e.g. {'method': 'pk', 'kwargs': {'start': 1}}"
             ]
 
-        foreign = sorted(set(parent) - {"method", "kwargs", "args", "transformers"})
+        foreign = sorted(set(parent) - {"method", "kwargs"})
         errors = (
-            [f"❌ Column '{col_name}': fk 'parent' takes only 'method' and 'kwargs', not {foreign}"]
+            [f"❌ Column '{col_name}': fk 'parent' ({col_name}.parent) takes only 'method' and 'kwargs', not {foreign}"]
             if foreign
             else []
         )
-        errors.extend(cls._pk_errors(f"{col_name}.parent", parent))
+        errors.extend(cls._pk_errors(f"{col_name}.parent", {k: parent[k] for k in ("method", "kwargs") if k in parent}))
         if isinstance(size, bool) or (isinstance(size, int) and size < 1):
             errors.append(f"❌ Column '{col_name}': fk 'parent_size' must be an integer >= 1")
         parent_kwargs = parent.get("kwargs")

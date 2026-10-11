@@ -4,6 +4,7 @@ import json
 from typing import Any
 import warnings
 
+from rand_engine.core._np_core import float_lattice_bounds
 from rand_engine.validators.exceptions import SpecValidationError
 from rand_engine.validators.method_specs import (
     COMMON_METHOD_SPECS,
@@ -15,6 +16,11 @@ from rand_engine.validators.method_specs import (
     is_declared_scalar,
     matches_type,
     type_name,
+)
+
+
+COLUMN_KEYS = (
+    "method", "kwargs", "cols", "transformers", "null_rate", "anomaly_rate", "anomaly_values"
 )
 
 
@@ -104,6 +110,15 @@ class CommonValidator:
         return errors
 
     @staticmethod
+    def unknown_key_errors(col_name: str, col_config: dict[str, Any]) -> list[str]:
+        """One collected issue per column key outside the accepted set."""
+        return [
+            f"❌ Column '{col_name}': unknown column key '{key}'\n   Accepted keys: {', '.join(COLUMN_KEYS)}"
+            for key in col_config
+            if key not in COLUMN_KEYS
+        ]
+
+    @staticmethod
     def _type_error(col_name: str, parameter: str, rule: Any, value: Any) -> str:
         return (
             f"⚠️  Column '{col_name}': parameter '{parameter}' must be {type_name(rule)}\n"
@@ -188,6 +203,10 @@ class CommonValidator:
                 f"   Available methods: {available}"
             ]
 
+        unknown = cls.unknown_key_errors(col_name, col_config)
+        if unknown:
+            return unknown
+
         modifiers = [name for name in ("anomaly_rate", "null_rate") if name in col_config]
         if modifiers:
             names = "', '".join(modifiers)
@@ -212,7 +231,27 @@ class CommonValidator:
         kwargs = col_config.get("kwargs", {})
         if method == "integers" and isinstance(kwargs, dict) and kwargs.get("int_type") == "uint64":
             return [f"❌ Column '{col_name}': 'uint64' is not representable by the Spark signed integer carrier"]
-        return cls.validate_column(col_name, col_config)
+        if method == "integers" and isinstance(kwargs, dict):
+            col_config = {**col_config, "kwargs": {"int_type": "int64", **kwargs}}
+        errors = cls.validate_column(col_name, col_config)
+        return errors or cls._spark_width_errors(col_name, method, kwargs)
+
+    @staticmethod
+    def _spark_width_errors(col_name: str, method: str, kwargs: dict[str, Any]) -> list[str]:
+        """Spark carries exact domains in doubles: widths beyond 2**53 are refused."""
+        if method == "integers" and kwargs["max"] - kwargs["min"] > 2**53:
+            problem = "width (max - min) must be <= 2**53"
+        elif method == "int_zfilled" and kwargs["length"] > 15:
+            problem = "'length' must be <= 15 (exact digits in a double)"
+        elif method == "floats":
+            low, high = float_lattice_bounds(kwargs["min"], kwargs["max"], kwargs.get("decimals", 2))
+            if high - low + 1 > 2**53:
+                problem = "grid width must be <= 2**53"
+            else:
+                return []
+        else:
+            return []
+        return [f"❌ Column '{col_name}': method '{method}' {problem} in SparkGenerator"]
 
     @classmethod
     def validate_spark_and_raise(cls, spec: dict[str, dict[str, Any]]) -> None:

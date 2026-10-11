@@ -167,9 +167,7 @@ class AdvancedRandSpecs:
             },
             "currency_country": {
                 "method": "distincts_map",
-                "splitable": True,
                 "cols": ["country", "currency"],
-                "sep": ";",
                 "kwargs": {
                     "distincts": {
                         "US": ["USD"],
@@ -223,9 +221,7 @@ class AdvancedRandSpecs:
             },
             "department_level_role": {
                 "method": "distincts_multi_map",
-                "splitable": True,
                 "cols": ["department", "level", "role"],
-                "sep": ";",
                 "kwargs": {
                     "distincts": {
                         "Engineering": [
@@ -291,9 +287,7 @@ class AdvancedRandSpecs:
             },
             "status_priority": {
                 "method": "distincts_map_prop",
-                "splitable": True,
                 "cols": ["status", "priority"],
-                "sep": ";",
                 "kwargs": {
                     "distincts": {
                         "Online": [("Low", 70), ("Medium", 20), ("High", 10)],
@@ -415,9 +409,7 @@ class AdvancedRandSpecs:
             },
             "carrier_destination": {
                 "method": "distincts_map",
-                "splitable": True,
                 "cols": ["carrier", "destination"],
-                "sep": ";",
                 "kwargs": {
                     "distincts": {
                         "FedEx": ["US", "CA"],
@@ -558,9 +550,7 @@ class AdvancedRandSpecs:
             },
             "make_model_year": {
                 "method": "distincts_multi_map",
-                "splitable": True,
                 "cols": ["make", "model", "year"],
-                "sep": ";",
                 "kwargs": {
                     "distincts": {
                         "Toyota": [
@@ -630,9 +620,7 @@ class AdvancedRandSpecs:
             },
             "city_type": {
                 "method": "distincts_map",
-                "splitable": True,
                 "cols": ["city", "type"],
-                "sep": ";",
                 "kwargs": {
                     "distincts": {
                         "Manhattan": ["Apartment", "Condo"],
@@ -703,9 +691,7 @@ class AdvancedRandSpecs:
             },
             "diagnosis_treatment": {
                 "method": "distincts_map_prop",
-                "splitable": True,
                 "cols": ["diagnosis", "treatment"],
-                "sep": ";",
                 "kwargs": {
                     "distincts": {
                         "Flu": [("Medication", 80), ("Hospitalization", 20)],
