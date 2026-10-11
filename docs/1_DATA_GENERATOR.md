@@ -110,7 +110,7 @@ assert (df["source"] == "web").all()
 
 ### Float rules
 
-- `decimals` is an integer with |decimals| ≤ 308 for every float method; beyond that the spec fails validation.
+- `decimals` is an integer with |decimals| ≤ 308 for every float method; beyond that the spec fails validation. `exponential` and `lognormal` take only `decimals ≥ 0`.
 - `floats` draws on the `decimals` grid between `min` and `max`. A grid of more than 2^53 steps, or integer bounds beyond int64, draws uniformly within [`min`, `max`] instead.
 - Bounds are compared in float64: an integer bound above 2^53 that a double cannot hold may round to the nearest double.
 - Rounding never turns a finite draw into `inf`. Parameters near the float64 limit can still draw `inf` from the distribution itself; that is accepted.
@@ -129,9 +129,10 @@ for bad in ({"method": "floats", "kwargs": {"min": 0, "max": 1, "decimals": 309}
 
 ### Null and anomaly rates
 
-Any NumPy-engine column may carry `null_rate` (share of rows set to null) and `anomaly_rate` (share
+Any single-column NumPy-engine method may carry `null_rate` (share of rows set to null) and `anomaly_rate` (share
 replaced by a draw from `anomaly_values`, a non-empty list of scalars required when the rate is
-above 0). Both are in [0, 1]; anomalies apply first, then nulls. SparkGenerator refuses them.
+above 0). Both are in [0, 1]; anomalies apply first, then nulls. `pk`, `fk` and the multi-column methods
+(`distincts_map`, `distincts_map_prop`, `distincts_multi_map`, `complex_distincts`) refuse them, and so does SparkGenerator.
 
 ```python
 spec = {
@@ -141,6 +142,17 @@ spec = {
 }
 df = DataGenerator(spec, seed=5).size(2_000).get_df()
 assert df["age"].isna().any() and df["price"].isin([-1.0, 9999.0]).any()
+
+for bad in ({"id": {"method": "pk", "kwargs": {"start": 1}, "null_rate": 0.1}},
+            {"d": {"method": "distincts_map", "cols": ["device", "os"], "null_rate": 0.1,
+                   "kwargs": {"distincts": {"phone": ["android", "ios"]}}}},
+            {"x": {"method": "exponential", "kwargs": {"scale": 2, "decimals": -1}}}):
+    try:
+        DataGenerator(bad)
+    except SpecValidationError:
+        pass
+    else:
+        raise AssertionError("expected SpecValidationError")
 ```
 
 ### Multi-column methods (NumPy engine only)

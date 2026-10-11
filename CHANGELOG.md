@@ -43,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `pk` key columns (`sequence` or `permuted`, optional `format`) and `fk` columns referencing a parent `pk` (uniform or `skew`), stateless: keys come from the seed-independent key function and the row index, consistent across batches, streams, files and processes.
 - Methods `exponential` (`scale`), `lognormal` (`mean`, `std`), `poisson` (`lam`, at most 10^6), `zipf` (`a`) and `constant` (`value`), NumPy engine only; `SparkGenerator` refuses them pointing at `DataGenerator`.
 - Column modifiers `null_rate` and `anomaly_rate` / `anomaly_values` (NumPy engine only).
-- Float rules: `decimals` limited to |d| ≤ 308 on every float method; rounding never turns a finite draw into `inf`; `floats` grids beyond 2^53 steps draw uniformly in [`min`, `max`].
+- Float rules: `decimals` limited to |d| ≤ 308 on every float method (`exponential` and `lognormal`: `decimals ≥ 0` only); rounding never turns a finite draw into `inf`; `floats` grids beyond 2^53 steps draw uniformly in [`min`, `max`].
 - Batch writer option `maxRowsPerBatch`, bounding the rows generated and written per batch.
 - `RandSpecs.faker_pool(provider, ...)` and `RandSpecs.from_schema(pa.schema(...), overrides=...)`.
 - `LICENSE` (MIT) and full package metadata (licence, keywords, classifiers, project URLs).
