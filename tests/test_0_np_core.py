@@ -422,10 +422,6 @@ def test_date_only_iso_bounds_are_independent_from_timestamp_output_format():
    "e1cd3981cbfdd9fe1ec70f4431508c75202dfe752403bf4e45d3ef9ec1760fba"),
   ("lognormal", {"mean": 0.5, "std": 1.25, "decimals": 4}, np.dtype("float64"),
    "af947324566baea876ff400c6fba7ec72a08f01e03361e4e0a3071c5368fa869"),
-  ("poisson", {"lam": 3.5}, np.dtype("int64"),
-   "f3153dcdcec5acc1830dbfa03c5102462b476f3e71773cc8895b242f064b43cd"),
-  ("zipf", {"a": 2.25}, np.dtype("int64"),
-   "ace96f795dae288770a648959bcb1f5f2d3bb24bacebf0d9a0166711496a7b0b"),
 ])
 def test_new_distribution_seeded_outputs_match_numpy_family(method, kwargs, expected_dtype, expected_hash):
   seed, size = 20261008, 1000
@@ -443,6 +439,53 @@ def test_new_distribution_seeded_outputs_match_numpy_family(method, kwargs, expe
   assert np.array_equal(actual, expected)
   assert actual.dtype == expected_dtype
   assert hashlib.sha256(actual.tobytes()).hexdigest() == expected_hash
+
+
+SAMPLER_SEED, SAMPLER_ROWS = 20261010, 10**4
+
+
+def _four_sigma(draws, k, probability):
+  sigma = (SAMPLER_ROWS * probability * (1 - probability)) ** 0.5
+  return abs(int((draws == k).sum()) - SAMPLER_ROWS * probability) <= 4 * sigma
+
+
+@pytest.mark.parametrize(("method", "kwargs"), [("poisson", {"lam": 3.5}), ("zipf", {"a": 2.25})])
+def test_alias_samplers_do_not_replay_the_numpy_stream(method, kwargs):
+  actual = getattr(NPCore, f"gen_{method}")(size=1000, rng=np.random.default_rng(SAMPLER_SEED), **kwargs)
+  numpy_stream = getattr(np.random.default_rng(SAMPLER_SEED), method)(size=1000, **kwargs)
+  assert actual.dtype == np.dtype("int64")
+  assert not np.array_equal(actual, numpy_stream)
+
+
+@pytest.mark.parametrize("lam", [1, 3])
+def test_poisson_support_and_pmf_within_four_sigma(lam):
+  draws = NPCore.gen_poisson(size=SAMPLER_ROWS, lam=lam, rng=np.random.default_rng(SAMPLER_SEED))
+  assert draws.dtype == np.dtype("int64") and draws.min() >= 0
+  pmf = {1: {0: 0.36787944117144233, 1: 0.36787944117144233, 2: 0.18393972058572117},
+         3: {0: 0.049787068367863944, 2: 0.22404180765538775, 3: 0.22404180765538775, 5: 0.10081881344492448}}[lam]
+  assert all(_four_sigma(draws, k, p) for k, p in pmf.items())
+
+
+def test_zipf_support_and_pmf_within_four_sigma():
+  draws = NPCore.gen_zipf(size=SAMPLER_ROWS, a=2, rng=np.random.default_rng(SAMPLER_SEED))
+  assert draws.dtype == np.dtype("int64") and draws.min() >= 1
+  zeta2 = 1.6449340668482264
+  assert all(_four_sigma(draws, k, k ** -2 / zeta2) for k in (1, 2, 3, 4))
+
+
+def test_zipf_heavy_tail_is_exact_beyond_any_table():
+  # a=1.05: P(X > 10**7) ~ 0.43 per row, so a missing value above 10**7 in 10**4 rows
+  # means the tail is truncated at a table size.
+  draws = NPCore.gen_zipf(size=SAMPLER_ROWS, a=1.05, rng=np.random.default_rng(SAMPLER_SEED))
+  assert draws.dtype == np.dtype("int64") and draws.min() >= 1
+  assert draws.max() > 10**7
+
+
+def test_poisson_lam_zero_is_all_zeros_and_ceiling_generates():
+  rng = np.random.default_rng(SAMPLER_SEED)
+  assert NPCore.gen_poisson(size=50, lam=0, rng=rng).tolist() == [0] * 50
+  at_ceiling = NPCore.gen_poisson(size=10, lam=10**6, rng=rng)
+  assert at_ceiling.dtype == np.dtype("int64") and len(at_ceiling) == 10 and at_ceiling.min() > 0
 
 
 def test_uniform_float_lattice_has_seeded_literal_golden():

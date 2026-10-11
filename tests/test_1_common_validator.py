@@ -477,6 +477,16 @@ def test_poisson_lambda_beyond_numpy_int64_result_domain_is_collected_before_gen
     assert "'lam'" in str(error)
 
 
+def test_poisson_lambda_ceiling_is_one_million_and_refusal_names_lam():
+    assert DataGenerator({"v": {"method": "poisson", "kwargs": {"lam": 10**6}}}, seed=1).size(10).get_df()["v"].min() > 0
+
+    error = _caught_validation(lambda: DataGenerator({
+        "v": {"method": "poisson", "kwargs": {"lam": 10**6 + 1}}
+    }))
+    assert isinstance(error, SpecValidationError)
+    assert "Column 'v'" in str(error) and "'lam'" in str(error)
+
+
 @pytest.mark.parametrize(("kwargs", "expected", "dtype"), [
     ({"min": 7, "max": 7, "int_type": "int8"}, [7, 7, 7, 7, 7, 7], "int8"),
     ({"min": -2, "max": 2, "int_type": "int8"}, [-1, 1, -1, -2, -2, 2], "int8"),
