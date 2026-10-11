@@ -520,6 +520,8 @@ def test_uniform_float_decimals_beyond_308_is_refused(minimum, maximum, decimals
 @pytest.mark.parametrize(("minimum", "maximum", "decimals"), [
   (0, 1e19, 0),
   (0, 10**4, 15),
+  (1e19, 1e19 + 1e5, 0),
+  (-1e19, -1e19 + 10, 0),
 ])
 def test_uniform_float_grid_beyond_2_pow_53_steps_draws_uniform_within_bounds(minimum, maximum, decimals):
   first = NPCore.gen_floats(size=10_000, min=minimum, max=maximum, decimals=decimals, rng=np.random.default_rng(18))
