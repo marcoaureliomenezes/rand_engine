@@ -13,34 +13,24 @@ without hand-building fixtures.
 
 ## Spec Structure
 
-Specs live under `specs/`. Load them in this order before making any change:
+Specs live under `specs/` (dadaia canon; tree and status tokens: `specs/AGENTS.md`).
+Ground every session with `dd-spec-navigator`, in this order:
 
 1. `specs/constitution.md`
-2. `specs/memory/tech-stack.md`
-3. `specs/memory/architecture.md`
-4. `specs/memory/product/index.md`
-5. The relevant product memory atoms under `specs/memory/product/`
-6. `specs/releases/ACTIVE.md`
-7. `specs/releases/<active-release>/SPEC.md`
-8. `specs/releases/<active-release>/PLAN.md`
-9. `specs/releases/<active-release>/TASKS.md`
-10. `specs/backlog/candidates.md`
+2. `specs/memory/ARCHITECTURE.md` (its `## Tech Stack` included) and `specs/memory/QUALITY.md`
+3. `specs/memory/product/index.md`, then the relevant atoms under `specs/memory/product/<area>/`
+4. The live release: `specs/releases/<M.m.p>/_RELEASE.json` (`phase`) and the highest `rc-<N>/` trio — `SPEC.md`, `PLAN.md`, `TASKS.md`
 
-Approval marker: `**Status:** Aprovado` in SPEC, PLAN, and TASKS is required
-before implementation. Newly rebuilt artifacts stay `Em revisão` until the
-operator explicitly approves them.
+Production edits need the live release in `IMPLEMENTATION` and its trio at
+`**Status:** Approved`; a bug fix follows the workspace bug flow instead.
 
 ## Repo-Specific Stop Conditions
 
-- Stop before any production edit under `rand_engine/`, `tests/`, docs, package
-  metadata, or workflows unless the active release SPEC/PLAN/TASKS are
-  `Aprovado` and the task is reserved in `TASKS.md`.
-- Stop before treating DuckDB as a correlation engine. Current truth is:
-  DuckDB supports integration/checkpoint state; correlation-engine behavior is
-  future design work.
-- Stop before changing public API names, generation method grammar, writer
-  semantics, release/version policy, or supported Python/Spark matrix without
-  updating specs first.
+- Relations are stateless `pk`/`fk` columns computed per row; stop before adding
+  any persisted key state or database to generation.
+- Stop before changing public API names, RandSpec method grammar, writer
+  semantics, release/version policy, or the supported Python/Spark matrix without
+  an approved SPEC.
 - Stop if a command would create repo-local caches such as `.venv/`,
   `.pytest_cache/`, `.coverage`, `coverage/`, `test-results/`, or
   `playwright-report/`.
@@ -49,16 +39,18 @@ operator explicitly approves them.
 
 - `rand_engine/main/data_generator.py` - Pandas generation composition root.
 - `rand_engine/main/spark_generator.py` - Spark generation facade.
-- `rand_engine/main/_constraints_handler.py` - DuckDB-backed PK/FK checkpoint state.
 - `rand_engine/core/` - NumPy, Python, and Spark generation primitives.
 - `rand_engine/validators/` - RandSpec grammar validation.
 - `rand_engine/file_handlers/` - batch and stream writers.
-- `rand_engine/integrations/` - DuckDB and SQLite handlers.
 - `rand_engine/examples/` and `rand_engine/templates/` - built-in specs/templates.
 - `tests/` - pytest suite; run with caches disabled or redirected outside the repo.
 - `specs/` - dadaia-workspace SDD truth.
 
 ## Key Commands
+
+verify: env POETRY_VIRTUALENVS_IN_PROJECT=false PYTHONDONTWRITEBYTECODE=1 sh -c 'export POETRY_CACHE_DIR="$(git rev-parse --path-format=absolute --git-common-dir)/../../../.dadaia/tmp/poetry-cache"; poetry install --with test --no-root --no-interaction -q && poetry run python -m pytest -q -p no:cacheprovider tests/' --
+verify-stage: env POETRY_VIRTUALENVS_IN_PROJECT=false PYTHONDONTWRITEBYTECODE=1 sh -c 'export POETRY_CACHE_DIR="$(git rev-parse --path-format=absolute --git-common-dir)/../../../.dadaia/tmp/poetry-cache"; poetry install --with test --no-root --no-interaction -q && poetry run python -m pytest -q -p no:cacheprovider tests/' --
+verify-task: env POETRY_VIRTUALENVS_IN_PROJECT=false PYTHONDONTWRITEBYTECODE=1 sh -c 'export POETRY_CACHE_DIR="$(git rev-parse --path-format=absolute --git-common-dir)/../../../.dadaia/tmp/poetry-cache"; poetry install --with test --no-root --no-interaction -q && poetry run python -m pytest -q -p no:cacheprovider tests/' --
 
 ```bash
 # Install dependencies
@@ -76,5 +68,5 @@ COVERAGE_FILE=$WORKSPACE_ROOT/.dadaia/tmp/rand-engine.coverage \
 poetry build
 
 # Validate specs from workspace root
-DADAIA_CONTEXT=rand-engine .dadaia/.venv/bin/dadaia specs doctor
+.dadaia/.venv/bin/dadaia doctor --context rand-engine
 ```

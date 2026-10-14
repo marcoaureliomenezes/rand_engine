@@ -52,9 +52,9 @@ def rand_spec_with_related_columns():
                     method="distincts_multi_map", cols = ["setor", "sub_setor", "porte", "codigo_municipio"],
                     kwargs=dict(distincts={
                       "setor_1": [
-                          ["agro", "mineração", "petróleo", "pecuária"], [0.25, 0.15], [None], ["01", "02"]], 
+                          ["agro", "mineração", "petróleo", "pecuária"], [None], ["01", "02"]], 
                       "setor_2": [
-                          ["indústria", "construção"], [0.30, 0.20, 0.10], ["micro", "pequena", "média"], ["03", "04", "05"]]
+                          ["indústria", "construção"], ["micro", "pequena", "média"], ["03", "04", "05"]]
         })),
     }
 
@@ -70,10 +70,10 @@ def rand_spec_case_1_transformer():
 def rand_engine_splitable_benchmark_baseline():
   return {
     "id":        dict(method="int_zfilled", kwargs=dict(length=8)),
-    "device": dict(method="distincts", args=[["mobile", "desktop"]]),
-    "platform": dict(method="distincts", args=[["IOS", "Android", "Windows", "MacOS", "Linux"]]),
-    "http_request": dict(method="distincts", args=[["GET /home", "GET /login", "POST /login", "GET /logout"]]),
-    "http_status": dict(method="distincts", args=[["200", "201", "400", "404", "500"]]),
+    "device": dict(method="distincts", kwargs=dict(distincts=["mobile", "desktop"])),
+    "platform": dict(method="distincts", kwargs=dict(distincts=["IOS", "Android", "Windows", "MacOS", "Linux"])),
+    "http_request": dict(method="distincts", kwargs=dict(distincts=["GET /home", "GET /login", "POST /login", "GET /logout"])),
+    "http_status": dict(method="distincts", kwargs=dict(distincts=["200", "201", "400", "404", "500"])),
   }
 
 

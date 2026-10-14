@@ -1,6 +1,5 @@
-from datetime import datetime as dt
+from datetime import datetime as dt, timezone
 
-from rand_engine.utils.update import Changer
 from rand_engine.templates.i_random_spec import IRandomSpec
 
 
@@ -18,7 +17,7 @@ class WebServerLogs(IRandomSpec):
   - Response sizes
   
   Example output:
-    172.45.123.89 - - [15/Oct/2024:14:23:45 -0700] "GET /home HTTP/1.1" 200 1234
+    172.45.123.89 - - [15/Oct/2024:14:23:45 +0000] "GET /home HTTP/1.1" 200 1234
   """
 
   def __init__(self):
@@ -54,7 +53,7 @@ class WebServerLogs(IRandomSpec):
       "datetime": dict(
         method="unix_timestamps",
         kwargs=dict(start='2024-07-05', end='2024-07-06', date_format="%Y-%m-%d"),
-        transformers=[lambda ts: dt.fromtimestamp(ts).strftime("%d/%b/%Y:%H:%M:%S")]
+        transformers=[lambda ts: dt.fromtimestamp(ts, timezone.utc).strftime("%d/%b/%Y:%H:%M:%S")]
       ),
       "http_version": dict(
         method="distincts_prop",
@@ -79,7 +78,7 @@ class WebServerLogs(IRandomSpec):
     Applies transformations to combine all fields into Apache Common Log Format.
     
     Format: IP - - [datetime timezone] "request version" status size
-    Example: 172.45.123.89 - - [15/Oct/2024:14:23:45 -0700] "GET /home HTTP/1.1" 200 1234
+    Example: 172.45.123.89 - - [15/Oct/2024:14:23:45 +0000] "GET /home HTTP/1.1" 200 1234
     
     Returns:
         List of transformer functions to be applied sequentially
@@ -90,7 +89,7 @@ class WebServerLogs(IRandomSpec):
           df['ip_address'] + ' ' + 
           df['identificador'] + ' ' + 
           df['user'] + ' [' + 
-          df['datetime'] + ' -0700] "' + 
+          df['datetime'] + ' +0000] "' + 
           df['http_request'] + ' ' + 
           df['http_version'] + '" ' + 
           df['http_status'] + ' ' + 

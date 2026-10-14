@@ -1,4 +1,11 @@
+import copy
 from typing import Dict, Any
+
+import pyarrow as pa
+
+from rand_engine.validators.advanced_validator import AdvancedValidator
+from rand_engine.validators.exceptions import RandEngineError, SpecValidationError
+from rand_engine.validators.method_specs import is_declared_scalar
 
 
 class CommonRandSpecs:
@@ -7,6 +14,149 @@ class CommonRandSpecs:
     
     All specs use the unified API with date_format parameter.
     """
+
+    @classmethod
+    def faker_pool(
+        cls,
+        provider: str,
+        locale: str = "en_US",
+        pool_size: int = 100,
+        seed: int | None = None,
+    ) -> Dict[str, Any]:
+        """Build one materialized distincts spec with a local Faker instance."""
+        if isinstance(pool_size, bool) or not isinstance(pool_size, int) or pool_size < 1:
+            raise RandEngineError("pool_size must be a positive integer")
+
+        try:
+            from faker import Faker
+        except ImportError as error:
+            raise RandEngineError(
+                "Faker is an optional dependency; install rand-engine[faker]"
+            ) from error
+
+        try:
+            faker = Faker(locale)
+        except Exception as error:
+            raise RandEngineError("locale is not supported by Faker") from error
+
+        try:
+            faker.seed_instance(seed)
+            factory = getattr(faker, provider)
+        except (AttributeError, TypeError, ValueError) as error:
+            raise RandEngineError("provider is not supported by Faker") from error
+        if not callable(factory):
+            raise RandEngineError("provider is not callable")
+
+        try:
+            values = [factory() for _ in range(pool_size)]
+        except Exception as error:
+            raise RandEngineError("provider failed while constructing the pool") from error
+        if any(not is_declared_scalar(value) for value in values):
+            raise RandEngineError("provider outputs must be scalar values")
+
+        return {"method": "distincts", "kwargs": {"distincts": values}}
+
+    @classmethod
+    def from_schema(
+        cls,
+        schema: pa.Schema,
+        overrides: dict[str, dict[str, Any]] | None = None,
+    ) -> Dict[str, Any]:
+        """Build a validated RandSpec from Arrow field metadata only."""
+        if not isinstance(schema, pa.Schema):
+            raise SpecValidationError("from_schema requires a pyarrow.Schema")
+        if overrides is None:
+            overrides = {}
+        if not isinstance(overrides, dict):
+            raise SpecValidationError("overrides must be a dictionary")
+        if any(not isinstance(value, dict) for value in overrides.values()):
+            raise SpecValidationError("each field override must be a dictionary")
+
+        names = schema.names
+        duplicate_names = sorted({name for name in names if names.count(name) > 1})
+        if duplicate_names:
+            details = ", ".join(
+                f"{name} ({', '.join(str(field.type) for field in schema if field.name == name)})"
+                for name in duplicate_names
+            )
+            raise SpecValidationError(
+                f"duplicate schema fields: {details}; rename or remove each duplicate"
+            )
+
+        unknown = sorted(set(overrides) - set(names))
+        if unknown:
+            raise SpecValidationError(
+                f"override names missing schema fields: {', '.join(unknown)}"
+            )
+
+        copied_overrides = copy.deepcopy(overrides)
+        result: Dict[str, Any] = {}
+        for field in schema:
+            override = copied_overrides.get(field.name, {})
+            if "method" in override:
+                result[field.name] = override
+                continue
+
+            recipe = cls._schema_recipe(field.type)
+            if recipe is None:
+                raise SpecValidationError(
+                    f"field '{field.name}' type '{field.type}' requires a complete override with method"
+                )
+
+            column = copy.deepcopy(recipe)
+            override_kwargs = override.get("kwargs", {})
+            if not isinstance(override_kwargs, dict):
+                raise SpecValidationError(
+                    f"field '{field.name}' override kwargs must be a dictionary"
+                )
+            column["kwargs"].update(override_kwargs)
+            column.update({key: value for key, value in override.items() if key != "kwargs"})
+            result[field.name] = column
+
+        AdvancedValidator.validate_and_raise(result)
+        return result
+
+    @staticmethod
+    def _schema_recipe(arrow_type: pa.DataType) -> Dict[str, Any] | None:
+        if pa.types.is_boolean(arrow_type):
+            return {"method": "booleans", "kwargs": {"true_prob": 0.5}}
+        if pa.types.is_integer(arrow_type):
+            return {
+                "method": "integers",
+                "kwargs": {
+                    "min": 0,
+                    "max": min(100, 2 ** arrow_type.bit_width - 1),
+                    "int_type": str(arrow_type),
+                },
+            }
+        if pa.types.is_floating(arrow_type):
+            return {
+                "method": "floats",
+                "kwargs": {"min": 0, "max": 1, "decimals": 2},
+            }
+        if pa.types.is_string(arrow_type) or pa.types.is_large_string(arrow_type):
+            return {"method": "uuid4", "kwargs": {}}
+        if pa.types.is_date(arrow_type):
+            return {
+                "method": "dates",
+                "kwargs": {
+                    "start": "2000-01-01",
+                    "end": "2030-12-31",
+                    "date_format": "%Y-%m-%d",
+                },
+            }
+        if pa.types.is_timestamp(arrow_type) and arrow_type.tz is None:
+            return {
+                "method": "dates",
+                "kwargs": {
+                    "start": "2000-01-01",
+                    "end": "2030-12-31",
+                    "date_format": "%Y-%m-%d %H:%M:%S",
+                },
+            }
+        if pa.types.is_null(arrow_type):
+            return {"method": "constant", "kwargs": {"value": None}}
+        return None
 
     @classmethod
     def customers(cls) -> Dict[str, Any]:

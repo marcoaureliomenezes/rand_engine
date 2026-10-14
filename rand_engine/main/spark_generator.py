@@ -1,5 +1,6 @@
 from rand_engine.core._spark_core import SparkCore
 from rand_engine.validators.common_validator import CommonValidator
+from rand_engine.validators.exceptions import RandEngineError
 
 
 
@@ -23,7 +24,7 @@ class SparkGenerator:
     self.spark = spark
     self.F = F
     self.metadata = metadata
-    _size = 0
+    self._size = None
 
   def map_methods(self):
     return {
@@ -49,11 +50,13 @@ class SparkGenerator:
 
 
   def get_df(self):
+    if self._size is None:
+      raise RandEngineError("size not set: call .size(n) before get_df()")
     mapped_methods = self.map_methods()
     dataframe = self.spark.range(self._size)
     for k, v in self.metadata.items():
       generator_method = mapped_methods[v["method"]]
-      dataframe = generator_method(self.spark, F=self.F, df=dataframe, col_name=k, **v["kwargs"])
+      dataframe = generator_method(self.spark, F=self.F, df=dataframe, col_name=k, **v.get("kwargs", {}))
     # Remove the technical 'id' column from spark.range() only if not in spec
     if "id" not in self.metadata:
       return dataframe.drop("id")

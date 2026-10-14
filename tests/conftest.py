@@ -26,7 +26,7 @@ def pytest_configure(config):
     Configure pytest settings.
     
     - Filters PySpark deprecation warnings (known issues with pandas/distutils)
-    - Spark compatibility handled in fixtures (see f5_spark_fixtures.py)
+    - Spark compatibility handled in fixtures
     """
     warnings.filterwarnings(
         "ignore",
