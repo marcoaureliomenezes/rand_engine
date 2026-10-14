@@ -10,7 +10,11 @@
     "sha": "2dec025b64974fb4458a3ed217fd7f98f7d0c495",
     "ts": "2026-10-11T21:21:05Z"
   },
-  "shipped": null,
+  "shipped": {
+    "sha": "5c000bf59e837e5fd67eabb0a1bf4eaa0629df16",
+    "pr": 43,
+    "ts": "2026-10-14T03:33:29Z"
+  },
   "log": [
     {
       "ts": "2026-10-03T17:09:30Z",
