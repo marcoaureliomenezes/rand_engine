@@ -9,7 +9,8 @@
 - Demand: make the published 0.7.0 adoptable — public-surface docstrings, a landing README, a docs site with `llms.txt`, a five-case get-started CLI and an Agent Skill — and close the eight open bugs, including the carried Spark width bug.
 - Sources: grill handoff `2026-10-14T132004Z-main-thread-adoption-grill` (8 operator decisions, 6 inspection facts); backlog handoff `2026-10-14T132152Z-dd-product-engineer-adoption-backlog`; the five backlog entries above; the eight open records of `specs/bugs/BUGS.jsonl`.
 - Operator decisions carried: one release 0.8.0 with everything ("Uma release 0.8.0 com tudo"); numpydoc on the public surface only; GitHub Pages + Zensical + mkdocstrings, MkDocs-Material fallback; CLI "no maximo 5 casos de uso scaffoldeados", the five adoption cases; the Databricks case teaches native `SparkGenerator` with a note; Agent Skill in the repo plus a Context7 submission by the operator; promote-review findings F2–F7 registered as bugs for this batch.
-- Premise correction (main thread, 2026-10-14): `workflow-actions-mutable-refs` names `auto_tag_publish_master.yml:156` as the only `id-token: write` job; `auto_tag_publish_development.yml:250` holds a second one, also running `pypa/gh-action-pypi-publish@release/v1` (`:260`). AC2.3 covers both.
+- As-is review: handoff `2026-10-14T191156Z-dd-sw-engineer-sr-asis-080-rc1` (27 units, measured gate costs); the main thread's 16 rulings on it (2026-10-14), cited below as "ruling n".
+- Premise corrections (bug records are append-only, so the ACs carry the scope; ruling 14): `workflow-actions-mutable-refs` covers 6 refs, not 2, and its repro regex misses `@v4` (AC2.3); `workflow-summary-text-stale` covers only the `0.5.6` literals and `.github/workflow_info.md`, since the `__version__` hints become true with FR3 (AC8.1).
 
 ## Bug window review
 
@@ -37,32 +38,36 @@ The audit history is empty, so the window is the whole history. The prior candid
 
 ## 1. Problem
 
-- 0.7.0 is on PyPI but hard to adopt: public methods are undocumented (`DataGenerator` 1/8, `SparkGenerator` 1/4, writers 0/5), the package has no `__version__` or `py.typed`, and the README is a reference manual whose Faker install line installs a Faker major the extra excludes.
+- 0.7.0 is on PyPI but hard to adopt: public methods are undocumented (`DataGenerator` 1/8, `SparkGenerator` 1/4, writers 0/5), the package has no `__version__` or `py.typed`, four package directories lack `__init__.py` so no API reference can resolve them, and the README is a reference manual whose Faker install line installs a Faker major the extra excludes.
 - Docs live as GitHub-browsed Markdown; there is no site, no generated API reference, and the `llms.txt` links point at GitHub blobs.
 - A new user has no scaffold for the five uses the constitution names (pipeline tests, lake, streaming, Spark, realism), and agents have no skill describing the RandSpec grammar.
-- Leftovers: the CHANGELOG calls the published 0.7.0 Unreleased; four workflows run with the default token scope and three third-party actions run mutable refs, two of them in the jobs holding `id-token: write`; publish summaries state stale facts; two test-group packages carry open advisories; a Spark integers spec of width exactly 2^53 validates and then raises.
+- Leftovers: the CHANGELOG calls the published 0.7.0 Unreleased; four workflows run with the default token scope and six third-party action refs are mutable, two of them in the jobs holding `id-token: write`; publish summaries state `0.5.6`; two test-group packages carry open advisories; a Spark integers spec of width exactly 2^53 validates and then raises, and an existing assert encodes that bug.
 
 ## 2. Measurable goals
 
-- Every public method of the public surface has a numpydoc docstring whose examples run.
-- `rand-engine list` and `rand-engine get-started <case>` scaffold five runnable files, each executed in CI.
+- Every public callable of the public surface has a numpydoc docstring whose examples run.
+- `rand-engine list` and `rand-engine get-started <case>` scaffold five runnable files, each executed in the suite.
 - A strict-built docs site with an API reference, five tutorials and `/llms.txt` deploys to GitHub Pages.
 - The README is a landing page; all eight bugs are resolved; no new runtime dependency.
 
 ## 3. Non-goals
 
-- The core `gen_*` bodies and `StreamHandler` (constitution invariant 12), unless the operator approves `SparkCore.gen_ints` by name (§6).
+- The core `gen_*` bodies and `StreamHandler` (constitution invariant 12), unless the operator approves `SparkCore.gen_ints` by name (§6 Open question 1).
 - Spark pk/fk parity, a DB key sink, event-time fk, stream-dict via Arrow (other backlog entries).
 - Outreach (awesome lists, comparison page, posts, Discussions, conda-forge): backlog after 0.8.0.
 - The Context7 submission, enabling GitHub Pages and pointing the GitHub homepage at the site: operator or main-thread acts outside every AC.
 - A sixth CLI case, interactive prompts, config files, `init` or other verbs; versioned docs; translations; the skill inside the wheel.
+- A lazy package `__init__`: `rand-engine list` and `--help` start in about 1.8 s (the package import) and that is accepted (ruling 8).
+- Per-method anchors in validation errors (ruling 5): only the `_raise` footer points at the site.
+- Edits to `docs/5_RECIPES.md` (KEEP, ruling 6): its overlap with the cases is left for a later docs release.
+- A reusable-workflow REBUILD of the duplicated CI jobs (ruling 10): the PyPI Trusted Publisher is bound to the workflow file names.
 - Local benchmark runs and any new benchmark gate.
 
 ## 4. Requirements
 
 ### Terms and API proposals
 
-- **Public surface (invariant 1):** this candidate adds the console script `rand-engine` (stdlib `argparse`), the attribute `rand_engine.__version__` (a `str`) and the `py.typed` marker; `rand_engine.__all__` stays `DataGenerator`, `SparkGenerator`, `RandSpecs`. A new public surface makes this release a minor: `pyproject.toml` reads `0.8.0`.
+- **Public surface (invariant 1):** this candidate adds the console script `rand-engine` and `python -m rand_engine` (stdlib `argparse`), the attribute `rand_engine.__version__` (a `str`) and the `py.typed` marker; `rand_engine.__all__` stays `DataGenerator`, `SparkGenerator`, `RandSpecs`. A new public surface makes this release a minor: `pyproject.toml` reads `0.8.0`.
 - **Case:** one of exactly five scaffolds, by slug:
 
 | slug | teaches |
@@ -80,21 +85,23 @@ The audit history is empty, so the window is the whole history. The prior candid
 
 - AC1.1 (integration, Spark): `SparkGenerator` with `integers` `min=0`, `max=2**53`, `int_type='int64'` raises a collected `SpecValidationError` at construction naming the column and the width; `get_df` never raises a raw `ValueError` for a spec that validated.
 - AC1.2 (integration, Spark): `max - min + 1 == 2**53` validates and `get_df` yields values within `[min, max]`.
-- AC1.3 (unit): for `max - min + 1` in `2**53 - 1`, `2**53`, `2**53 + 1`, and for `int_zfilled` `length` 15 and 16, Spark validation refuses exactly the specs `SparkCore.gen_ints` refuses; one decider states the rule.
+- AC1.3 (unit): for `max - min + 1` in `2**53 - 1`, `2**53`, `2**53 + 1`, and for `int_zfilled` `length` 15 and 16, Spark validation refuses exactly the specs `SparkCore.gen_ints` refuses. One predicate states the width rule; the validator (integers, and `int_zfilled` by width `10**length`) and `float_lattice_bounds` call it, and `SparkCore.gen_ints` calls it only if Open question 1 is approved.
+- AC1.4 (unit): the existing assert at `tests/test_1_common_validator.py:551-552`, which accepts `max=2**53`, moves to refuse it. This is the main thread's ruling (ruling 2, 2026-10-14) under invariant 3, "a spec that validates generates"; the `test(...)` commit that moves it cites this ruling.
 
 ### FR2 — Dev-loop security
 
 - AC2.1 (no test — dependency pins; the CI matrix on the bumped lock is the check): `poetry.lock` pins `pyspark >= 3.5.8` and `setuptools >= 83.0.0`; the test-group constraints admit them; the matrix stays green on Python 3.10–3.12; Dependabot alerts #17 and #18 read `fixed` after the push.
-- AC2.2 (unit): every file in `.github/workflows/` declares top-level `permissions: contents: read`; a job widens only the scopes it uses, and `id-token: write` appears only on the publish jobs of `auto_tag_publish_master.yml` and `auto_tag_publish_development.yml` and on the Pages deploy job.
-- AC2.3 (unit): every `uses:` whose owner is not `actions` or `github` names a full 40-hex commit SHA, its release tag in a trailing comment — `pypa/gh-action-pypi-publish` in both `auto_tag_publish_master.yml` and `auto_tag_publish_development.yml`, `aquasecurity/trivy-action` in `pr_to_development.yml`, and `codecov/codecov-action` in every workflow using it.
+- AC2.2 (no test — the repo has no YAML seam and a parser dependency is refused, ruling 9): every file in `.github/workflows/` declares top-level `permissions: contents: read`; a job widens only the scopes it uses, and `id-token: write` appears only on the publish jobs of `auto_tag_publish_master.yml` and `auto_tag_publish_development.yml` and on the Pages deploy job. The commit body quotes the bug's repro at zero hits.
+- AC2.3 (no test — same reason as AC2.2): all 6 mutable third-party refs pin a full 40-hex commit SHA, the release tag in a trailing comment — `codecov/codecov-action@v4` ×3 (`pr_to_master.yml`, `pr_to_development.yml`, `auto_tag_publish_development.yml`), `pypa/gh-action-pypi-publish@release/v1` ×2 (`auto_tag_publish_master.yml`, `auto_tag_publish_development.yml`), `aquasecurity/trivy-action@master` ×1 (`pr_to_development.yml`). The commit body quotes this repro at zero hits: `git grep -nE 'uses: +[^ ]+@' .github/workflows | grep -vE 'uses: +(actions|github)/' | grep -vE '@[0-9a-f]{40}( |$)'`.
 
 ### FR3 — Public-surface docstrings and package metadata
 
-- AC3.1 (unit): `rand_engine.__version__ == importlib.metadata.version("rand-engine")`; `pyproject.toml` stays the one version literal.
-- AC3.2 (integration): the built wheel contains `rand_engine/py.typed` and no path outside `rand_engine/`.
-- AC3.3 (unit): every public class and method of `DataGenerator`, `SparkGenerator`, the writer objects `write` and `writeStream` return, and `RandSpecs` carries a numpydoc docstring — summary, `Parameters`, `Returns`, `Raises` where it raises, `Examples`; `ruff check --select D` with `convention = "numpy"` on those modules exits 0 in the CI test job.
-- AC3.4 (unit): `pytest --doctest-modules` on those modules passes; each example generates at most 10^4 rows and writes only under a temporary directory.
+- AC3.1 (unit): `rand_engine.__version__` comes from `importlib.metadata.version("rand-engine")`; where the distribution is not installed (`verify:` runs `poetry install --no-root`), `import rand_engine` still succeeds and `__version__` is the fixed placeholder `"0.0.0+unknown"`. `pyproject.toml` stays the one version literal.
+- AC3.2 (integration): the built wheel holds `rand_engine/py.typed`, declares the `rand-engine` console script, holds no `skills/` path and no module outside `rand_engine/`, and, imported from the extracted wheel, `rand_engine.__version__` equals the `pyproject.toml` version.
+- AC3.3 (unit): every public class and method of `DataGenerator`, `SparkGenerator`, the writer objects `write` and `writeStream` return, and `RandSpecs` carries a numpydoc docstring — summary, `Parameters`, `Returns`, `Raises` where it raises, `Examples`. `ruff` joins the test dependency group and the repo `AGENTS.md` `verify:` lines run `ruff check --select D` with `convention = "numpy"` on those modules (ruling 4); it exits 0.
+- AC3.4 (unit): `pytest --doctest-modules` on those modules passes; each example generates at most 10^4 rows and writes only under a temporary directory; Spark examples carry `# doctest: +SKIP` (ruling 11), Spark behaviour staying proven by the suite and the `databricks` case.
 - AC3.5 (no test — scope; reason: checked on the diff at review): no docstring task changes a `gen_*` body, `StreamHandler` or an internal module's behaviour.
+- AC3.6 (unit): a pytest check over `inspect` of the public callables of `DataGenerator`, `SparkGenerator`, `RandSpecs` and the writer objects `write` and `writeStream` return — `save`, `start` and `trigger` included — asserts each has a numpydoc docstring with a summary, a `Parameters` section when it takes an argument besides `self`, and a `Returns` section when it returns a value. Reason (ruling 12): ruff D skips the `_`-prefixed writer modules, so AC3.3 alone cannot see them.
 
 ### FR4 — The get-started CLI
 
@@ -102,49 +109,52 @@ The audit history is empty, so the window is the whole history. The prior candid
 - AC4.2 (unit): `rand-engine get-started <slug> [--out DIR]` writes exactly `DIR/<slug>.py` (default `DIR` is the current directory, created when missing), prints its path and exits 0; a slug always yields identical file bytes.
 - AC4.3 (unit): an unknown slug or a missing argument exits 2 with usage on stderr listing the five slugs; an existing target file is left unchanged and the command exits 1 naming it; the CLI never reads stdin.
 - AC4.4 (unit): `rand-engine --help` and `rand-engine get-started --help` describe every argument and list the five slugs.
-- AC4.5 (integration): every scaffold is in Databricks source format and `python <slug>.py` exits 0 in a temporary directory, writing only beneath it, at most 10^4 rows; `databricks` runs where the Spark tests run and skips where they skip.
+- AC4.5 (integration): every scaffold is in Databricks source format and each written file executes in-process in the suite in a temporary directory, writing only beneath it, at most 10^4 rows; `databricks` shares the suite's Spark session and skips where the Spark tests skip. One subprocess runs the written `test-data.py` under plain `python` and exits 0 (ruling 7).
 - AC4.6 (integration): `kafka` prints JSON lines to stdout with neither a broker nor a Kafka client installed; its producer block runs only when the user enables it. `lake` reads its Parquet tables back and every `fk` value joins a `pk`. `test-data` shows nulls and anomalies in the resulting DataFrame. `faker` runs with the `rand-engine[faker]` extra.
 - AC4.7 (unit): `[tool.poetry.dependencies]` is unchanged and the CLI module imports only the standard library and `rand_engine`.
+- AC4.8 (no test — repo law; reason: checked on the diff at review): `tests/AGENTS.md`'s layout line names `tests/test_9_cli.py` as the CLI's test file (ruling 4).
 
 ### FR5 — The docs site
 
-- AC5.1 (integration): the strict build and a link check (internal links and anchors) exit 0 in CI on every PR to `development` and `master`.
+- AC5.1 (integration): the docs workflow runs the strict build, which aborts on a broken internal link, and it exits 0 on every PR to `development` and `master`; the site is built only there, never in the working tree, and `site/` and `.cache/` are gitignored (ruling 15).
 - AC5.2 (integration): the site has Getting started, five Tutorials (one per case), How-to, an API reference generated from the FR3 docstrings, and Explanation.
 - AC5.3 (unit): each tutorial shows the exact file `rand-engine get-started <slug>` writes, from one source, so the page and the CLI cannot diverge.
 - AC5.4 (unit): every `python` block of every Markdown page under `docs/`, subfolders included, executes in order in a temporary directory; `python no-run` stays reserved to the Kafka producer.
 - AC5.5 (integration): the built site serves `/llms.txt` at its root, linking site pages, and each page's Markdown source beside its HTML.
-- AC5.6 (unit): a `SpecValidationError` issue about a known method names the URL of that method's anchor on the site, from one base-URL constant; the AC5.1 link check resolves every such anchor.
+- AC5.6 (unit): the `SpecValidationError` footer built by `_raise` (`common_validator.py:275`) names the docs-site URL, and it equals `pyproject.toml` `documentation` (ruling 5).
 - AC5.7 (no test — deployment; reason: verified by the first deploy run on `master`): a workflow deploys the site to GitHub Pages on push to `master`, under FR2's permission and pinning contract.
 - AC5.8 (unit): `pyproject.toml` `documentation` points to the site.
+- AC5.9 (integration, through AC5.1): `rand_engine/main/`, `file_handlers/`, `core/` and `utils/` each carry an `__init__.py`, so mkdocstrings and griffe resolve `rand_engine.DataGenerator` and its siblings and the API reference builds (ruling 13).
+- AC5.10 (no test — comment hygiene; reason: checked on the diff at review): the docstrings at `tests/test_docs.py:22,34,45` carry no AC id (ruling 16).
 
 ### FR6 — The Agent Skill
 
 - AC6.1 (unit): `skills/rand-engine/SKILL.md` carries Agent Skills front matter (`name: rand-engine`, `description`) and covers the RandSpec grammar, choosing a method, `pk`/`fk`, sinks and `rand-engine get-started`; its `python` blocks execute under the AC5.4 contract.
-- AC6.2 (integration): the wheel holds no `skills/` path (AC3.2); the README and the site link the skill and the AC5.1 link check resolves those links.
+- AC6.2 (integration): the wheel holds no `skills/` path (AC3.2); the README and the site link the skill and the AC5.1 build resolves those links.
 
 ### FR7 — README landing page and release notes
 
 - AC7.1 (unit): the README holds, in order, the pitch, live shields badges (PyPI version, Python versions, license, CI), install, a 30-second example, when to use it, the five `rand-engine get-started` cases and the docs-site link; every README `python` block executes (the existing README contract); method reference tables live on the site, not in the README.
-- AC7.2 (unit): the README and every docs page install Faker as `pip install "rand-engine[faker]"`; no page says `pip install faker`.
+- AC7.2 (unit): the README and every docs page install Faker as `pip install "rand-engine[faker]"`; every `pip install` names only a declared extra; no page says `pip install faker`.
 - AC7.3 (unit): every `## [x.y.z]` header of `CHANGELOG.md` carries an ISO date — `## [0.7.0] - 2026-10-14` among them — and a `## [0.8.0]` section lists this release's Added and Fixed entries.
 
 ### FR8 — Truthful CI summaries
 
-- AC8.1 (no test — prose; reason: a test pinning prose asserts text, not behaviour; evidence is the bug's repro returning no stale hit): publish summaries and `.github/*.md` name no `0.5.6` literal and no deleted path (`rand_engine/integrations/`), and hold no garbled block; the `rand_engine.__version__` hint runs on the installed wheel (AC3.1).
+- AC8.1 (no test — ruling 9; a prose test would assert text, not behaviour): the `0.5.6` literals at `auto_tag_publish_master.yml:277`, `:335`, `:336` are gone and `.github/workflow_info.md` (a prose mirror of the YAML with 0 readers) is deleted; the commit body quotes `git grep -n '0\.5\.6' .github; git ls-files .github/workflow_info.md` at zero lines. The `rand_engine.__version__` hints are true once AC3.1 lands.
 
 ## 5. Replaces
 
-- The Spark integer-width inequality restated in `CommonValidator._spark_width_errors` (`max - min > 2**53`) → one rule shared with `SparkCore.gen_ints` (FR1).
-- Mutable action refs `@master`, `@release/v1`, `@v4` on third-party actions → commit-SHA pins (AC2.3).
+- The Spark integer-width inequality restated in `CommonValidator._spark_width_errors` (`max - min > 2**53`, `length > 15`) and in `float_lattice_bounds` → one predicate (FR1).
+- The assert accepting `max=2**53` (`tests/test_1_common_validator.py:551-552`) → an assert refusing it (AC1.4).
+- Six mutable action refs (`@v4` ×3, `@release/v1` ×2, `@master` ×1) → commit-SHA pins (AC2.3).
 - The default `GITHUB_TOKEN` scope in `auto_tag_publish_master.yml`, `auto_tag_publish_development.yml`, `pr_to_master.yml`, `test_on_push.yml` → top-level `contents: read` (AC2.2).
 - `poetry.lock` pyspark 3.5.7 and setuptools 78.1.1 (`setuptools = "^78.1.1"`) → patched versions (AC2.1).
-- "The package exposes no `__version__`" → `__version__` from installed metadata (AC3.1).
-- The README as reference manual and its `pip install faker` line → landing page and the `rand-engine[faker]` extra (FR7).
-- GitHub-browsed `docs/*.md` and the `documentation` URL to the GitHub tree → the site built from the same Markdown (FR5).
-- The repo-root `llms.txt` linking GitHub blobs → `/llms.txt` at the site root linking site pages, one file (AC5.5).
-- `docs/5_RECIPES.md` recipes that overlap the five cases → the tutorials sharing the CLI source (AC5.3).
+- "The package exposes no `__version__`" → `__version__` from installed metadata (AC3.1); four namespace packages → regular packages (AC5.9).
+- The README as reference manual, its `derived-from` markers and its `pip install faker` line → landing page and the `rand-engine[faker]` extra (FR7).
+- GitHub-browsed `docs/*.md` and the `documentation` URL to the GitHub tree → the site built from the same Markdown (FR5); the repo-root URL in the `_raise` footer → the site URL (AC5.6).
+- The repo-root `llms.txt` linking GitHub blobs → one root file linking site pages, served at `/llms.txt` (AC5.5).
 - `## [0.7.0] - Unreleased` → a dated header (AC7.3).
-- Stale publish-summary prose (`0.5.6` bump hints) and the garbled `.github/workflow_info.md` block → deleted or corrected (AC8.1).
+- The `0.5.6` summary literals and `.github/workflow_info.md` → removed (AC8.1).
 
 ## 6. Constraints, risks and open questions
 
@@ -152,16 +162,18 @@ The audit history is empty, so the window is the whole history. The prior candid
 
 | wave | kind | FRs |
 |---|---|---|
-| 1 | law, skills and dev loop | FR1 (Job 1 executes the Bug window REBUILD), FR2 |
-| 2 | shared foundation | FR3 — the API reference, the CLI and the README consume the docstrings and `__version__` |
-| 3 | features and bugs | FR4, FR5, FR6 |
-| 4 | promote-facing | FR7, FR8, the `0.8.0` version |
+| 1 | law, skills and dev loop | FR2; the dependency groups and ruff (AC2.1, AC3.3) |
+| 2 | shared foundation | `__version__`, `py.typed`, the four `__init__.py` (AC3.1, AC3.2, AC5.9) — every later wave imports the skeleton or prints the version |
+| 3 | features and bugs | FR3 docstrings, FR1 (the Bug window REBUILD), FR4, FR8 |
+| 4 | promote-facing | FR5, FR6, then FR7 and the `0.8.0` version; the Reconciliation job last |
 
 ### Constraints
 
 - Zero new runtime dependencies (invariant 10); the CLI is stdlib `argparse`.
-- Invariant 11: Zensical, mkdocstrings (numpydoc), MkDocs-Material and ruff enter dev or docs dependency groups only; `ARCHITECTURE.md` `## Tech Stack` and `QUALITY.md` `## Gates` ("No lint or type checker is configured") change in the Reconciliation job's memory pass, inside this candidate.
-- Invariant 12: the core `gen_*` bodies and `StreamHandler` are out of scope.
+- Invariant 11: Zensical is pinned exactly (`==`) in a `docs` dependency group with mkdocstrings-python; ruff enters the `test` group; MkDocs-Material enters only if the fallback is taken, on the same `mkdocs.yml` (ruling 15).
+- Repo-law edits in scope (ruling 4): the three `verify:` lines of the repo `AGENTS.md` (AC3.3) and `tests/AGENTS.md` (AC4.8). `ARCHITECTURE.md` `## Tech Stack` and `QUALITY.md` `## Gates` ("No lint or type checker is configured") change in a `pe` task of the Reconciliation job, inside this candidate.
+- Invariant 12: the core `gen_*` bodies and `StreamHandler` are out of scope unless Open question 1 is approved.
+- Measured gate costs (as-is handoff, this machine): ruff D 0.03 s; docstring and doctest checks under 1 s inside the suite; the five cases in-process 0.85 s; the one subprocess 2.38 s — about 4.3 s on a 72.2 s `verify:` run. The Zensical build (2.2 s strict) runs in the docs workflow only.
 - Benchmarks run in CI only; any speed claim in the README, the site or a scaffold cites `docs/BENCHMARKS.md`.
 - Invariant 7: scaffolds and examples use synthetic data only. Invariant 9: CLI and docs tests write under pytest `tmp_path`.
 - Invariant 6: the Pages deploy uses the workflow token and OIDC; no new secret.
@@ -171,12 +183,12 @@ The audit history is empty, so the window is the whole history. The prior candid
 
 | risk | mitigation |
 |---|---|
-| Zensical cannot build a needed feature | MkDocs-Material builds the same `mkdocs.yml` (operator fallback) |
+| Zensical (pre-1.0) cannot build a needed feature | exact pin; MkDocs-Material builds the same `mkdocs.yml` (measured 0.91 s) |
 | tutorials and CLI scaffolds drift | one source per case (AC5.3) |
-| method-anchor URLs in error messages break | one base-URL constant; the strict link check resolves every anchor (AC5.6) |
+| the docs footer URL and `documentation` drift | one assert compares them (AC5.6) |
 | the `databricks` scaffold cannot run where Spark cannot | it skips exactly where the Spark tests skip (AC4.5) |
-| ruff D and doctest add CI time | the CI test job measures and reports the cost on its first run |
+| a green ruff D misses the `_`-prefixed writers | the `inspect` check (AC3.6) |
 
 ### Open questions
 
-1. FR1's one decider: does the operator approve `SparkCore.gen_ints` by name so its width refusal moves into one predicate that validation also calls (recommended: it removes the second copy), or keep the body and leave a validator copy pinned at the boundary by AC1.3? AC1.1–AC1.3 hold either way.
+1. FR1's one predicate (the operator's question; ruling 1): does the operator approve `SparkCore.gen_ints` by name in the Origin, so its width refusal (`_spark_core.py:38`) calls the predicate and the copy is deleted? Recommended: approve — it removes the last copy. Without it, `:38` stays as a backstop and the validator stays the decider `SparkGenerator` consults; AC1.1–AC1.4 hold either way.
