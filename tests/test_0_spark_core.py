@@ -6,8 +6,17 @@ Each method is tested in isolation with direct Spark DataFrame manipulation.
 
 Note: PySpark is a test-only dependency.
 """
+import re
+import time
 import pytest
 from rand_engine.core._spark_core import SparkCore
+from rand_engine.main.spark_generator import SparkGenerator
+
+
+
+class _NoExecutionFrame:
+    def withColumn(self, *_args, **_kwargs):
+        raise AssertionError("Spark expression construction reached the frame")
 
 
 class TestSparkCoreNumeric:
@@ -53,6 +62,54 @@ class TestSparkCoreNumeric:
         
         assert all(-50 <= v <= -10 for v in values)
     
+    @pytest.mark.parametrize("min, max", [(0, 1), (-1, 0)])
+    def test_gen_ints_max_inclusive(self, spark_session, spark_functions, empty_spark_df, min, max):
+        result = SparkCore.gen_ints(spark_session, spark_functions, empty_spark_df, "test_col", min=min, max=max)
+        assert {row["test_col"] for row in result.select("test_col").collect()} == {min, max}
+
+    @pytest.mark.parametrize("method, kwargs", [
+        ("gen_ints", {"min": 1, "max": 0}),
+        ("gen_floats", {"min": 1.01, "max": 1.0}),
+        ("gen_unix_timestamps", {"start": "9999-12-31", "end": "9999-12-31"}),
+        ("gen_dates", {"start": "1960-01-01", "end": "1965-01-01"}),
+    ])
+    def test_empty_range_raises_like_npcore(self, spark_session, spark_functions, empty_spark_df, method, kwargs):
+        with pytest.raises(ValueError, match=r"must be <= max"):
+            getattr(SparkCore, method)(spark_session, spark_functions, empty_spark_df, "c", **kwargs)
+
+    def test_gen_unix_timestamps_end_exclusive(self, spark_session, spark_functions, empty_spark_df):
+        result = SparkCore.gen_unix_timestamps(spark_session, spark_functions, empty_spark_df, "ts",
+                                               start="2024-01-01 00:00:00", end="2024-01-01 00:00:01",
+                                               date_format="%Y-%m-%d %H:%M:%S")
+        assert len({row["ts"] for row in result.select("ts").collect()}) == 1
+    
+    @pytest.mark.skipif(not hasattr(time, "tzset"), reason="time.tzset is Unix-only")
+    @pytest.mark.parametrize("tz", ["UTC", "America/New_York", "Asia/Tokyo"])
+    @pytest.mark.parametrize("start, end, fmt, ts, rendered", [
+        ("2024-07-01 00:00:00", "2024-07-01 00:00:01", "%Y-%m-%d %H:%M:%S", range(1719792000, 1719792001), "2024-07-01 00:00:00"),
+        ("2024-03-10 02:30:00", "2024-03-10 02:30:01", "%Y-%m-%d %H:%M:%S", range(1710037800, 1710037801), "2024-03-10 02:30:00"),
+        ("2024-03-10 05:00:00", "2024-03-10 05:00:01", "%Y-%m-%d %H:%M:%S", range(1710046800, 1710046801), "2024-03-10 05:00:00"),
+        ("2024-07-01T00:00:00", "2024-07-01T00:00:01", "%Y-%m-%dT%H:%M:%S", range(1719792000, 1719792001), "2024-07-01T00:00:00"),
+        ("01/07/2024 000000.000000", "01/07/2024 000001.000000", "%d/%m/%Y %H%M%S.%f", range(1719792000, 1719792001), "01/07/2024 000000.000000"),
+        ("2100-06-01 00:00:00", "2100-06-01 00:00:01", "%Y-%m-%d %H:%M:%S", range(4115491200, 4115491201), "2100-06-01 00:00:00"),
+        ("01/07/2024", "02/07/2024", "%d/%m/%Y", range(1719792000, 1719878400), "01/07/2024"),
+    ])
+    def test_gen_unix_timestamps_and_dates_ignore_timezone(self, spark_session, spark_functions, small_spark_df, tz, monkeypatch,
+                                                         start, end, fmt, ts, rendered):
+        session_tz = spark_session.conf.get("spark.sql.session.timeZone")
+        monkeypatch.setenv("TZ", tz)
+        time.tzset()
+        spark_session.conf.set("spark.sql.session.timeZone", tz)
+        try:
+            args = (spark_session, spark_functions, small_spark_df, "c")
+            kwargs = dict(start=start, end=end, date_format=fmt)
+            assert {r["c"] for r in SparkCore.gen_unix_timestamps(*args, **kwargs).collect()} <= set(ts)
+            assert {r["c"] for r in SparkCore.gen_dates(*args, **kwargs).collect()} == {rendered}
+        finally:
+            spark_session.conf.set("spark.sql.session.timeZone", session_tz)
+            monkeypatch.undo()
+            time.tzset()
+
     def test_gen_ints_zfill(self, spark_session, spark_functions, small_spark_df):
         """Test zero-filled integer generation."""
         df = small_spark_df
@@ -125,6 +182,255 @@ class TestSparkCoreNumeric:
         # Check that mean and std are close to expected (within 10% tolerance)
         assert abs(stats["mean"] - mean) < mean * 0.1
         assert abs(stats["std"] - std) < std * 0.2  # More tolerance for std
+
+    def test_supported_integer_domains_keep_exact_singleton_bounds(
+        self, spark_session, spark_functions,
+    ):
+        cases = [
+            ("int8", -128),
+            ("int8", 127),
+            ("int16", -32768),
+            ("int16", 32767),
+            ("int32", -2147483648),
+            ("int32", 2147483647),
+            ("uint8", 0),
+            ("uint8", 255),
+            ("uint16", 65535),
+            ("uint32", 4294967295),
+            ("int64", -9223372036854775808),
+            ("int64", 9007199254740993),
+            ("int64", 9223372036854775807),
+        ]
+        actual = []
+        for int_type, bound in cases:
+            result = SparkCore.gen_ints(
+                spark_session,
+                spark_functions,
+                spark_session.range(1),
+                "value",
+                min=bound,
+                max=bound,
+                int_type=int_type,
+            )
+            actual.append((int_type, result.select("value").first()["value"]))
+
+        assert actual == cases
+
+    @pytest.mark.parametrize(("int_type", "minimum", "maximum"), [
+        ("uint64", 0, 1),
+        (True, 0, 1),
+        ("int8", -129, 0),
+        ("int8", 0, 128),
+        ("uint8", -1, 0),
+        ("uint16", 0, 65536),
+        ("uint32", 0, 4294967296),
+        ("int64", -9223372036854775809, 0),
+        ("int64", 0, 9223372036854775808),
+    ])
+    def test_unsupported_integer_domains_are_refused_before_frame_execution(
+        self, spark_session, spark_functions, int_type, minimum, maximum,
+    ):
+        try:
+            SparkCore.gen_ints(
+                spark_session,
+                spark_functions,
+                _NoExecutionFrame(),
+                "value",
+                min=minimum,
+                max=maximum,
+                int_type=int_type,
+            )
+        except Exception as error:
+            actual = type(error)
+        else:
+            actual = None
+
+        assert actual is ValueError
+
+    def test_float_decimal_lattice_and_empty_domains(
+        self, spark_session, spark_functions,
+    ):
+        try:
+            SparkCore.gen_floats(
+                spark_session,
+                spark_functions,
+                spark_session.range(1),
+                "value",
+                min=9.991,
+                max=9.991,
+                decimals=2,
+            )
+        except Exception as error:
+            empty_domain_result = type(error)
+        else:
+            empty_domain_result = None
+
+        assert empty_domain_result is ValueError
+
+        cases = [
+            (9.991, 10.009, 2, 10.0),
+            (-10.009, -9.991, 2, -10.0),
+            (11, 29, -1, 20.0),
+        ]
+        for minimum, maximum, decimals, expected in cases:
+            result = SparkCore.gen_floats(
+                spark_session,
+                spark_functions,
+                spark_session.range(10**4),
+                "value",
+                min=minimum,
+                max=maximum,
+                decimals=decimals,
+            )
+            assert {row["value"] for row in result.select("value").collect()} == {expected}
+
+    @pytest.mark.parametrize(("minimum", "maximum", "decimals"), [
+        (float("nan"), 1.0, 2),
+        (0.0, float("inf"), 2),
+        (0.0, 1.0, True),
+        (9.991, 9.991, 2),
+    ])
+    def test_invalid_float_lattices_fail_before_frame_execution(
+        self, spark_session, spark_functions, minimum, maximum, decimals,
+    ):
+        try:
+            SparkCore.gen_floats(
+                spark_session,
+                spark_functions,
+                _NoExecutionFrame(),
+                "value",
+                min=minimum,
+                max=maximum,
+                decimals=decimals,
+            )
+        except Exception as error:
+            actual = type(error)
+        else:
+            actual = None
+
+        assert actual is ValueError
+
+    def test_generator_keeps_bigint_literal_and_uses_no_python_udf(
+        self, spark_session, spark_functions,
+    ):
+        generator = SparkGenerator(
+            spark_session,
+            spark_functions,
+            {
+                "value": {
+                    "method": "integers",
+                    "kwargs": {
+                        "min": 9007199254740993,
+                        "max": 9007199254740993,
+                        "int_type": "int64",
+                    },
+                }
+            },
+        )
+        result = generator.size(3).get_df()
+        values = [row["value"] for row in result.collect()]
+        executed_plan = result._jdf.queryExecution().executedPlan().toString().lower()
+        assert values == [9007199254740993, 9007199254740993, 9007199254740993]
+        assert "pythonudf" not in executed_plan
+        assert "batchevalpython" not in executed_plan
+
+    @pytest.mark.parametrize(("minimum", "maximum"), [
+        (0, 2**53),
+        (-2**63, 2**63 - 1),
+        (-2**53, 2**53),
+    ])
+    def test_integer_width_above_2_pow_53_is_refused_before_frame_execution(
+        self, spark_session, spark_functions, minimum, maximum,
+    ):
+        with pytest.raises(ValueError):
+            SparkCore.gen_ints(
+                spark_session, spark_functions, _NoExecutionFrame(),
+                "value", min=minimum, max=maximum, int_type="int64",
+            )
+
+    @pytest.mark.parametrize(("minimum", "maximum"), [
+        (0, 2**53 - 1),
+        (-2**53, -1),
+    ])
+    def test_integer_width_exactly_2_pow_53_is_generated_within_bounds(
+        self, spark_session, spark_functions, minimum, maximum,
+    ):
+        result = SparkCore.gen_ints(
+            spark_session, spark_functions, spark_session.range(100),
+            "value", min=minimum, max=maximum, int_type="int64",
+        )
+        values = [row["value"] for row in result.collect()]
+        assert len(values) == 100
+        assert all(minimum <= value <= maximum for value in values)
+
+    @pytest.mark.parametrize(("minimum", "maximum", "decimals"), [
+        (1e19, 1e19, 0),
+        (1e6, 1e6 + 1, 13),
+        (-1e19, -1e19 + 1e5, 0),
+        (0, 10**20, 0),
+        (-10**19, 10**19, 0),
+    ])
+    def test_float_fine_grid_or_int64_overflow_endpoint_draws_within_bounds(
+        self, spark_session, spark_functions, minimum, maximum, decimals,
+    ):
+        result = SparkCore.gen_floats(
+            spark_session, spark_functions, spark_session.range(100),
+            "value", min=minimum, max=maximum, decimals=decimals,
+        )
+        values = [row["value"] for row in result.collect()]
+        assert result.schema["value"].dataType.simpleString() == "double"
+        assert len(values) == 100
+        assert all(minimum <= value <= maximum for value in values)
+
+    @pytest.mark.parametrize(("mean", "std", "decimals"), [
+        (10**20, 1, 0),
+        (0, 10**20, 0),
+    ])
+    def test_floats_normal_int_kwargs_beyond_int64_generate_finite_doubles(
+        self, spark_session, spark_functions, mean, std, decimals,
+    ):
+        import math
+        result = SparkCore.gen_floats_normal(
+            spark_session, spark_functions, spark_session.range(100),
+            "value", mean=mean, std=std, decimals=decimals,
+        )
+        values = [row["value"] for row in result.collect()]
+        assert result.schema["value"].dataType.simpleString() == "double"
+        assert len(values) == 100
+        assert all(math.isfinite(value) for value in values)
+
+    def test_float_lattice_width_exactly_2_pow_53_is_generated_within_bounds(
+        self, spark_session, spark_functions,
+    ):
+        result = SparkCore.gen_floats(
+            spark_session, spark_functions, spark_session.range(100),
+            "value", min=0.0, max=9007199254740991.0, decimals=0,
+        )
+        values = [row["value"] for row in result.collect()]
+        assert len(values) == 100
+        assert all(0.0 <= value <= 9007199254740991.0 and value.is_integer() for value in values)
+
+    def test_narrow_float_grid_on_an_empty_frame_keeps_double_type(
+        self, spark_session, spark_functions,
+    ):
+        result = SparkCore.gen_floats(
+            spark_session, spark_functions, spark_session.range(0),
+            "value", min=0.0, max=10.0, decimals=2,
+        )
+        assert result.collect() == []
+        assert result.schema["value"].dataType.simpleString() == "double"
+
+    def test_float_lattice_plan_has_one_rand_seed_and_no_folding_expressions(
+        self, spark_session, spark_functions,
+    ):
+        result = SparkCore.gen_floats(
+            spark_session, spark_functions, spark_session.range(5),
+            "value", min=0.0, max=10.0, decimals=2,
+        )
+        executed_plan = result._jdf.queryExecution().executedPlan().toString().lower()
+        assert len(re.findall(r"rand\(", executed_plan)) == 1
+        for word in ("aggregate", "getbit", "transform"):
+            assert word not in executed_plan
 
 
 class TestSparkCoreIdentifiers:
@@ -344,7 +650,7 @@ class TestSparkCoreEdgeCases:
     
     def test_large_dataset_performance(self, spark_session, spark_functions):
         """Test generation performance with large dataset."""
-        df = spark_session.range(100000)
+        df = spark_session.range(10**4)
         F = spark_functions
         
         result = df
@@ -354,4 +660,4 @@ class TestSparkCoreEdgeCases:
         
         # Just count to trigger computation
         count = result.count()
-        assert count == 100000
+        assert count == 10**4

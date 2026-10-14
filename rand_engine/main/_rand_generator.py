@@ -1,47 +1,43 @@
+from functools import partial
+from numbers import Number
 from typing import Dict, List, Optional, Callable
+import numpy as np
 import pandas as pd
-from rand_engine.integrations._duckdb_handler import DuckDBHandler
-from rand_engine.validators.exceptions import ColumnGenerationError, TransformerError
-from rand_engine.core._np_core import NPCore
-from rand_engine.core._py_core import PyCore
-from rand_engine.core._spark_core import SparkCore
+from pandas.api.types import (
+  infer_dtype,
+  is_bool_dtype,
+  is_datetime64_any_dtype,
+  is_float_dtype,
+  is_integer_dtype,
+  is_object_dtype,
+  is_string_dtype,
+)
+from rand_engine.validators.exceptions import ColumnGenerationError, RandEngineError, TransformerError
+from rand_engine.core._keys import Keys
+from rand_engine.core._py_core import METHODS
 
 
 class RandGenerator:
 
 
-  def __init__(self, random_spec: Callable[[], Dict], validate: bool = True):
-    # Avalia a spec usando lazy evaluation
+  def __init__(self, random_spec: Dict):
     self.random_spec = random_spec
 
 
-  def map_methods(self):
+  def map_methods(self, rng: Optional[np.random.Generator] = None, offset: int = 0, key_seed: int = 0, column: str = ""):
     return {
-      "integers": NPCore.gen_ints,
-      "int_zfilled": NPCore.gen_ints_zfilled,
-      "floats": NPCore.gen_floats,
-      "floats_normal": NPCore.gen_floats_normal,
-      "distincts": NPCore.gen_distincts,
-      "distincts_prop": NPCore.gen_distincts_prop,
-      "unix_timestamps": NPCore.gen_unix_timestamps,
-      "uuid4": NPCore.gen_uuid4,
-      "booleans": NPCore.gen_booleans,
-      "dates": NPCore.gen_dates,
-      "distincts_map": PyCore.gen_distincts_map,
-      "distincts_multi_map": PyCore.gen_distincts_multi_map,
-      "distincts_map_prop": PyCore.gen_distincts_map_prop,
-      "complex_distincts": PyCore.gen_complex_distincts,
+      **{name: partial(method, rng=rng) for name, method in METHODS.items()},
+      "pk": partial(Keys.gen_pk, offset=offset),
+      "fk": partial(Keys.gen_fk, offset=offset, key_seed=key_seed, column=column),
     }
  
-  def generate_first_level(self, size: int):
+  def generate_first_level(self, size: int, rng: np.random.Generator, key_seed: int = 0, offset: int = 0):
     dict_data = {}
-    mapped_methods = self.map_methods()
     for k, v in self.random_spec.items():
       columns = v.get("cols", [k])
-      generator_method = mapped_methods[v["method"]]
+      generator_method = self.map_methods(rng, offset, key_seed, k)[v["method"]]
       try:
-        if "args" in v: values = generator_method(size , *v["args"])
-        else: values = generator_method(size , **v.get("kwargs", {}))
+        values = generator_method(size , **v.get("kwargs", {}))
         for i, col in enumerate(columns):
           dict_data[col] = values if len(columns) == 1 else [val[i] for val in values]
       except Exception as e:
@@ -65,10 +61,128 @@ class RandGenerator:
     return df
   
 
-  def apply_global_transformers(self, df, transformers: List[Optional[Callable]]):
-    if transformers:
-      if len(transformers) > 0: 
-        for transformer in transformers:
-          df = transformer(df)
+  def apply_global_transformers(self, df, transformers: List[Callable]):
+    for transformer in transformers:
+      df = transformer(df)
     return df
- 
+
+
+  @staticmethod
+  def _object_values_are_compatible(series: pd.Series, values: list) -> bool:
+    candidates = [value for value in values if not pd.isna(value)]
+    source_kind = infer_dtype(series, skipna=True)
+    if source_kind == "empty" or not candidates:
+      return True
+    candidate_kind = infer_dtype(candidates, skipna=True)
+    return source_kind in {"mixed", "mixed-integer"} or source_kind == candidate_kind
+
+
+  @staticmethod
+  def _scalar_preserves_dtype(value, dtype) -> bool:
+    if is_integer_dtype(dtype):
+      if isinstance(value, (bool, np.bool_)) or not isinstance(value, (int, np.integer)):
+        return False
+      bounds = np.iinfo(dtype.numpy_dtype if hasattr(dtype, "numpy_dtype") else dtype)
+      return bounds.min <= int(value) <= bounds.max
+    if is_bool_dtype(dtype):
+      return isinstance(value, (bool, np.bool_))
+    if is_float_dtype(dtype):
+      if isinstance(value, (bool, np.bool_)):
+        return False
+      numpy_dtype = dtype.numpy_dtype if hasattr(dtype, "numpy_dtype") else dtype
+      try:
+        converted = np.asarray([value], dtype=numpy_dtype)[0]
+      except (TypeError, ValueError, OverflowError):
+        return False
+      if not isinstance(value, Number) and not pd.isna(value):
+        return False
+      return (pd.isna(value) and pd.isna(converted)) or converted == value
+    if is_datetime64_any_dtype(dtype):
+      if isinstance(value, str):
+        return False
+      try:
+        converted = pd.array([value], dtype=dtype)[0]
+      except (TypeError, ValueError, OverflowError):
+        return False
+      return (pd.isna(value) and pd.isna(converted)) or pd.Timestamp(value) == converted
+    if is_string_dtype(dtype):
+      return pd.isna(value) or isinstance(value, str)
+    try:
+      converted = pd.array([value], dtype=dtype)[0]
+    except (TypeError, ValueError, OverflowError):
+      return False
+    return (pd.isna(value) and pd.isna(converted)) or converted == value
+
+
+  @classmethod
+  def _anomaly_values_are_compatible(cls, series: pd.Series, values: list) -> bool:
+    if is_object_dtype(series.dtype):
+      return cls._object_values_are_compatible(series, values)
+    return all(cls._scalar_preserves_dtype(value, series.dtype) for value in values)
+
+
+  def _modifier_targets(self) -> list[tuple[str, dict]]:
+    targets = []
+    for spec_key, config in self.random_spec.items():
+      anomaly_rate = config.get("anomaly_rate", 0)
+      null_rate = config.get("null_rate", 0)
+      if not anomaly_rate and not null_rate:
+        continue
+      aliases = config.get("cols")
+      targets.append((aliases[0] if aliases else spec_key, config))
+    return targets
+
+
+  def _validate_modifiers(self, df: pd.DataFrame, targets: list[tuple[str, dict]]):
+    for column, config in targets:
+      anomaly_rate = config.get("anomaly_rate", 0)
+      if column not in df:
+        raise RandEngineError(f"modifier column '{column}' is missing after transformers")
+      if anomaly_rate and not self._anomaly_values_are_compatible(df[column], config["anomaly_values"]):
+        raise RandEngineError(f"column '{column}' anomaly values cannot preserve dtype {df[column].dtype}")
+
+
+  @staticmethod
+  def _coerce_anomaly_values(series: pd.Series, values: np.ndarray):
+    if is_object_dtype(series.dtype):
+      return np.asarray(values, dtype=object)
+    return pd.array(values, dtype=series.dtype)
+
+
+  @staticmethod
+  def _assign_nulls(series: pd.Series, mask: np.ndarray) -> pd.Series:
+    dtype = series.dtype
+    if is_object_dtype(dtype) or is_string_dtype(dtype):
+      values = series.to_numpy(dtype=object, copy=True)
+      values[mask] = None
+    elif not isinstance(dtype, np.dtype):
+      values = series.array.copy()
+      values[mask] = pd.NA
+    elif dtype.kind in "iu":
+      values = pd.arrays.IntegerArray(series.to_numpy(), mask)
+    elif dtype.kind == "b":
+      values = pd.arrays.BooleanArray(series.to_numpy(), mask)
+    else:
+      values = series.to_numpy(copy=True)
+      values[mask] = np.array("NaT", dtype=dtype) if dtype.kind in "mM" else np.nan
+    return pd.Series(values, index=series.index, name=series.name)
+
+
+  def apply_modifiers(self, df: pd.DataFrame, rng: np.random.Generator) -> pd.DataFrame:
+    targets = self._modifier_targets()
+    self._validate_modifiers(df, targets)
+    for column, config in targets:
+      anomaly_rate = config.get("anomaly_rate", 0)
+      null_rate = config.get("null_rate", 0)
+      series = df[column]
+      if anomaly_rate:
+        hits = np.flatnonzero(rng.random(len(series)) < anomaly_rate)
+        pool = self._coerce_anomaly_values(series, np.asarray(config["anomaly_values"], dtype=object))
+        chosen = pool[rng.choice(len(pool), size=len(hits))]
+        df[column] = series  # pandas copies here: the iloc write below lands in this private copy
+        df.iloc[hits, df.columns.get_loc(column)] = chosen
+        series = df[column]
+      if null_rate:
+        null_mask = rng.random(len(series)) < null_rate
+        df[column] = self._assign_nulls(series, null_mask)
+    return df

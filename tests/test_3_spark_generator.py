@@ -8,6 +8,7 @@ Note: PySpark is a test-only dependency.
 """
 import pytest
 from rand_engine.main.spark_generator import SparkGenerator
+from rand_engine.validators.exceptions import RandEngineError
 
 
 class TestSparkGeneratorBasic:
@@ -46,6 +47,13 @@ class TestSparkGeneratorBasic:
         assert result == generator  # Should return self for chaining
         assert generator._size == 100
     
+    def test_get_df_without_size_names_size(self, spark_session, spark_functions, spark_metadata_simple):
+        """get_df() without .size(n) raises RandEngineError naming .size(n)."""
+        generator = SparkGenerator(spark_session, spark_functions, spark_metadata_simple)
+
+        with pytest.raises(RandEngineError, match=r"\.size\(n\)"):
+            generator.get_df()
+
     def test_get_df_simple(self, spark_session, spark_functions, spark_metadata_simple):
         """Test get_df() with simple metadata."""
         generator = SparkGenerator(spark_session, spark_functions, spark_metadata_simple)

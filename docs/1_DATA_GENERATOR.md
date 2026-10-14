@@ -1,460 +1,258 @@
-# DataGenerator - Pandas-Based Random Data Generation
+# DataGenerator — pandas DataFrames from a RandSpec
 
-## 📋 Overview
-`DataGenerator` is the core class for generating random test data as **pandas DataFrames**. It provides a fluent API for configuring and generating structured random data with validation, transformers, constraints (PK/FK), and built-in file writing capabilities.
+`DataGenerator` turns a RandSpec (a dict, or a callable returning one) into a pandas DataFrame,
+an infinite stream of dicts, or files. Every Python block in this guide runs in CI, in order.
 
 ```python
-from rand_engine.main.data_generator import DataGenerator
-
-# Generate 1 million rows with seed for reproducibility
-df = DataGenerator(spec, seed=42).size(1_000_000).get_df()
-```
-
----
-
-## 🎯 Key Features
-- ✅ **All generation methods** - Full support for common + advanced methods
-- ✅ **Validation** - Automatic spec validation with **actionable error messages**
-- ✅ **Transformers** - Apply custom functions to enrich generated data
-- ✅ **Constraints** - Primary Keys (PK) and Foreign Keys (FK) with automatic checkpoint management
-- ✅ **Streaming** - Generate continuous data streams for real-time scenarios
-- ✅ **File Writing** - Batch and streaming writers abstracted from pandas
-
----
-
-## 🏗️ Main Methods
-
-### `__init__(random_spec, seed=None)`
-Initializes the generator with a RandSpec (dict or callable) and optional seed.
-
-**Parameters:**
-- `random_spec`: `dict | Callable[[], dict]` - Data generation specification
-- `seed`: `int | None` - Random seed for reproducibility (default: None)
-
-**Validation:**
-- Spec is **automatically validated** on initialization
-- Raises `SpecValidationError` with clear correction examples if invalid
-
-**Example:**
-```python
-from rand_engine.main.data_generator import DataGenerator
+from rand_engine import DataGenerator
 
 spec = {
     "user_id": {"method": "int_zfilled", "kwargs": {"length": 8}},
-    "age": {"method": "integers", "kwargs": {"min": 18, "max": 80}}
+    "age": {"method": "integers", "kwargs": {"min": 18, "max": 80}},
 }
 
-# Validates spec immediately
-generator = DataGenerator(spec, seed=42)
+df = DataGenerator(spec, seed=42).size(1_000).get_df()
+assert list(df.columns) == ["user_id", "age"]
+assert df["age"].between(18, 80).all()
 ```
 
-### `size(size: int)`
-Sets the number of rows to generate. Returns `self` for method chaining.
+## API
 
-**Example:**
+<!-- derived-from: data-generator sha256:8af2e4c55309 -->
+
+| Call | Does |
+|---|---|
+| `DataGenerator(spec, seed=None)` | validates the spec at once (`SpecValidationError`); owns one `np.random.default_rng(seed)` |
+| `.size(n)` | rows per `get_df`, total rows in one batch `write`, or rows per stream microbatch; `n` may be a callable returning an int |
+| `.transformers([f, ...])` | functions `DataFrame -> DataFrame`, applied in order after generation |
+| `.get_df()` | one DataFrame of `size` rows |
+| `.stream_dict(min_throughput=1, max_throughput=10)` | an infinite generator of dicts, sleeping `1/uniform(min, max)` s after each |
+| `.write` / `.writeStream` | file writers, see [3_WRITING_FILES.md](3_WRITING_FILES.md) |
+
+Calling `get_df` without `.size` raises `RandEngineError`.
+
+## Seeds
+
+<!-- derived-from: data-generator sha256:8af2e4c55309 -->
+
+A seed fixes the output: the same spec, seed and size give the same frame. Each generator owns
+its own `numpy.random.Generator` (PCG64), so generators never share or reset NumPy's global state.
+Calls on one generator continue its sequence; they do not repeat it.
+
 ```python
-generator = DataGenerator(spec).size(50_000)
+a = DataGenerator(spec, seed=7).size(100).get_df()
+b = DataGenerator(spec, seed=7).size(100).get_df()
+assert a.equals(b)
+
+gen = DataGenerator(spec, seed=7).size(100)
+assert not gen.get_df().equals(gen.get_df())
 ```
 
-### `transformers(transformers: List[Callable])`
-Applies custom transformation functions to the generated DataFrame. Transformers receive the DataFrame as input and return the modified DataFrame.
+## Methods
 
-**Example:**
-```python
-def add_full_name(df):
-    df["full_name"] = df["first_name"] + " " + df["last_name"]
-    return df
+<!-- derived-from: generation-methods sha256:739e81e44532 -->
 
-df = (
-    DataGenerator(spec)
-    .size(1000)
-    .transformers([add_full_name])
-    .get_df()
-)
-```
+Each column is `{"method": <name>, "kwargs": {...}}`. Bounds of `integers` are inclusive.
 
-### `db_checkpoint(db_conn)`
-Overrides the default SQLite in-memory database for constraint checkpoints with a persistent database connection (DuckDB or SQLite).
+| Method | Required kwargs | Optional kwargs |
+|---|---|---|
+| `integers` | `min`, `max` | `int_type` (`int8`…`int64`, `uint8`…`uint64`; default `int32`) |
+| `int_zfilled` | `length` | — |
+| `floats` | `min`, `max` | `decimals` (default 2) |
+| `floats_normal` | `mean`, `std` | `decimals` (default 2) |
+| `exponential` | — | `scale` (> 0, default 1.0), `decimals` (default 2) |
+| `lognormal` | — | `mean` (default 0.0), `std` (≥ 0, default 1.0), `decimals` (default 2) |
+| `poisson` | — | `lam` (0 to 10^6, default 1.0); int64 column |
+| `zipf` | — | `a` (> 1, default 2.0); int64 column |
+| `constant` | `value` (a scalar) | — |
+| `booleans` | — | `true_prob` (default 0.5) |
+| `distincts` | `distincts` (list) | — |
+| `distincts_prop` | `distincts` (dict value → integer weight) | — |
+| `uuid4` | — | — |
+| `unix_timestamps` | `start`, `end` | `date_format` (default `%Y-%m-%d`) |
+| `dates` | `start`, `end` | `date_format` (default `%Y-%m-%d`) |
+| `pk`, `fk` | see [4_CONSTRAINTS.md](4_CONSTRAINTS.md) | |
 
-**Example:**
-```python
-from rand_engine.integrations.duckdb_handler import DuckDBHandler
+`dates` and `unix_timestamps` parse `start` and `end` with `date_format`. A `dates` value is a
+string drawn at whole-second resolution in UTC; its `date_format` may use only the directives
+`%Y %m %d %H %M %S %f` (`%f` renders `000000`). Any other directive fails validation on both
+engines, naming the supported set.
 
-# Use persistent DuckDB for checkpoints
-db_conn = DuckDBHandler(db_path="checkpoints.duckdb")
-
-df = (
-    DataGenerator(spec_with_constraints)
-    .db_checkpoint(db_conn)
-    .size(10_000)
-    .get_df()
-)
-```
-
-### `option(key: str, value: Any)`
-Sets configuration options. Currently supports:
-- `reset_checkpoint=True` - Deletes all checkpoint tables before generation
-
-**Example:**
-```python
-df = (
-    DataGenerator(spec_with_constraints)
-    .option("reset_checkpoint", True)
-    .size(5000)
-    .get_df()
-)
-```
-
-### `get_df() -> pd.DataFrame`
-Generates and returns a pandas DataFrame with the configured size and transformations.
-
-**Use Case:** Single batch generation - get all data at once.
-
-**Example:**
-```python
-df = DataGenerator(spec).size(100_000).get_df()
-print(df.shape)  # (100000, N_columns)
-```
-
-### `stream_dict(min_throughput: int, max_throughput: int) -> Generator`
-Generates an **infinite stream** of records as dictionaries. Each record includes a `timestamp_created` field with the current timestamp.
-
-**Parameters:**
-- `min_throughput`: Minimum records per second
-- `max_throughput`: Maximum records per second
-
-**Use Case:** Continuous data generation for streaming scenarios (Kafka, Kinesis, real-time APIs).
-
-**Example:**
-```python
-# Stream records with controlled throughput (1-5 records/second)
-for record in generator.stream_dict(min_throughput=1, max_throughput=5):
-    print(record)  # {"user_id": "00012345", "age": 42, "timestamp_created": 1699999999.123}
-    send_to_kafka(record)
-```
-
-**⚠️ Important:** `stream_dict()` runs **indefinitely** - use with timeout or break condition.
-
-### `write` (property)
-Returns a `FileBatchWriter` instance for batch file writing. See [3_WRITING_FILES.md](3_WRITING_FILES.md) for details.
-
-### `writeStream` (property)
-Returns a `FileStreamWriter` instance for streaming file writing. See [3_WRITING_FILES.md](3_WRITING_FILES.md) for details.
-
----
-
-## 📝 RandSpec Structure
-
-A **RandSpec** is a dictionary where:
-- **Keys** = column names
-- **Values** = generation configuration `{"method": "...", "kwargs": {...}}`
-
-### Basic Example
 ```python
 spec = {
-    "customer_id": {
-        "method": "int_zfilled",
-        "kwargs": {"length": 10}
-    },
-    "age": {
-        "method": "integers",
-        "kwargs": {"min": 18, "max": 80}
-    },
-    "score": {
-        "method": "floats",
-        "kwargs": {"min": 0.0, "max": 100.0, "decimals": 2}
-    },
-    "is_active": {
-        "method": "booleans",
-        "kwargs": {"true_prob": 0.7}
-    }
-}
-```
-
-### Available Methods (DataGenerator)
-
-#### 🔢 Numeric Methods
-| Method | Description | Example |
-|--------|-------------|---------|
-| `integers` | Random integers | `{"min": 0, "max": 100}` |
-| `int_zfilled` | Zero-filled integers | `{"length": 8}` → `"00012345"` |
-| `floats` | Random floats | `{"min": 0.0, "max": 10.0, "decimals": 2}` |
-| `floats_normal` | Normal distribution | `{"mean": 100, "std": 15, "decimals": 1}` |
-
-#### 🎲 Distinct Methods
-| Method | Description | Example |
-|--------|-------------|---------|
-| `distincts` | Random selection from list | `{"distincts": ["A", "B", "C"]}` |
-| `distincts_prop` | Weighted selection | `{"distincts": {"A": 70, "B": 30}}` |
-
-#### 🔗 Advanced Methods (DataGenerator ONLY)
-| Method | Description | Columns Generated | Example |
-|--------|-------------|-------------------|---------|
-| `distincts_map` | Correlated pairs | **2 columns** | `{"distincts": {"smartphone": ["android", "ios"]}}` |
-| `distincts_map_prop` | Weighted pairs | **2 columns** | `{"distincts": {"laptop": [("new", 80), ("used", 20)]}}` |
-| `distincts_multi_map` | Cartesian combinations | **N columns** | `{"distincts": {"tech": [["soft", "hard"], ["small", "large"]]}}` |
-| `complex_distincts` | Pattern-based strings | **1 column** | IP addresses, URLs, custom patterns |
-
-#### 📅 Date/Time Methods
-| Method | Description | Example |
-|--------|-------------|---------|
-| `dates` | Random dates | `{"start": "2020-01-01", "end": "2023-12-31"}` |
-| `unix_timestamps` | Unix timestamps | `{"start": "2020-01-01", "end": "2023-12-31"}` |
-
-#### 🆔 Other Methods
-| Method | Description | Example |
-|--------|-------------|---------|
-| `uuid4` | UUIDs | `{}` (no parameters) |
-| `booleans` | Boolean values | `{"true_prob": 0.5}` |
-
----
-
-## ✅ Validation & Error Messages
-
-`DataGenerator` **automatically validates** your RandSpec on initialization and provides **actionable error messages** to help you fix problems quickly.
-
-### Example: Missing Required Parameter
-```python
-spec = {
-    "age": {
-        "method": "integers",
-        "kwargs": {}  # Missing 'min' and 'max'
-    }
-}
-
-generator = DataGenerator(spec)
-```
-
-**Error Output:**
-```
-SpecValidationError: Specification has 1 error:
-
-❌ Column 'age': method 'integers' requires parameter 'min'
-   Expected type: int
-   Correct example:
-   {
-      "age": {
-         "method": "integers",
-         "kwargs": {
-            "min": 0,
-            "max": 100
-         }
-      }
-   }
-```
-
-### Example: Invalid Method Name
-```python
-spec = {
-    "user_id": {
-        "method": "int_zero_filled",  # Typo!
-        "kwargs": {"length": 8}
-    }
-}
-```
-
-**Error Output:**
-```
-❌ Column 'user_id': method 'int_zero_filled' does not exist
-   Available methods: 'integers', 'int_zfilled', 'floats', 'floats_normal', 'distincts', ...
-```
-
-### Example: Wrong Parameter Type
-```python
-spec = {
-    "score": {
-        "method": "floats",
-        "kwargs": {
-            "min": "0.0",  # String instead of float
-            "max": 100.0
-        }
-    }
-}
-```
-
-**Error Output:**
-```
-⚠️  Column 'score': parameter 'min' must be float
-   Got: str
-```
-
-### Example: Multi-column Method Without `cols`
-```python
-spec = {
-    "device_os": {
-        "method": "distincts_map",
-        # Missing 'cols' field!
-        "kwargs": {
-            "distincts": {
-                "smartphone": ["android", "ios"]
-            }
-        }
-    }
-}
-```
-
-**Error Output:**
-```
-❌ Column 'device_os': Method 'distincts_map' requires 'cols' field
-   Example:
-   {
-      "device_os": {
-         "method": "distincts_map",
-         "cols": ["device_type", "os_type"],
-         "kwargs": {
-            "distincts": {
-               "smartphone": ["android", "ios"],
-               "desktop": ["windows", "linux"]
-            }
-         }
-      }
-   }
-```
-
----
-
-## 🔄 get_df() vs stream_dict()
-
-### `get_df()` - Batch Generation
-**Use when:** You need a **complete DataFrame** all at once.
-
-```python
-# Generate 1 million rows in one batch
-df = DataGenerator(spec).size(1_000_000).get_df()
-
-# Typical use cases:
-# - Training ML models
-# - Batch processing
-# - One-time data exports
-# - Testing with fixed datasets
-```
-
-### `stream_dict()` - Continuous Streaming
-**Use when:** You need **continuous, infinite data generation**.
-
-```python
-# Stream records indefinitely with controlled throughput
-generator = DataGenerator(spec).size(100)  # Batch size per iteration
-
-for record in generator.stream_dict(min_throughput=10, max_throughput=50):
-    # Each record is a dict with timestamp_created
-    print(record)
-    
-    # Typical use cases:
-    # - Kafka/Kinesis producers
-    # - Real-time API testing
-    # - Event stream simulation
-    # - IoT sensor data simulation
-```
-
-**Key Difference:**
-- `get_df()` → **Returns once** with full DataFrame
-- `stream_dict()` → **Never returns**, yields records forever
-
----
-
-## 🧪 Real-World Examples
-
-### Example 1: E-commerce Transactions
-```python
-from rand_engine.main.data_generator import DataGenerator
-
-spec = {
-    "transaction_id": {"method": "int_zfilled", "kwargs": {"length": 12}},
-    "customer_id": {"method": "int_zfilled", "kwargs": {"length": 8}},
-    "amount": {"method": "floats_normal", "kwargs": {"mean": 150.0, "std": 50.0, "decimals": 2}},
-    "status": {"method": "distincts_prop", "kwargs": {"distincts": {
-        "completed": 85,
-        "pending": 10,
-        "cancelled": 5
-    }}},
+    "price": {"method": "floats", "kwargs": {"min": 1, "max": 100, "decimals": 2}},
+    "status": {"method": "distincts_prop", "kwargs": {"distincts": {"paid": 9, "refunded": 1}}},
     "created_at": {"method": "dates", "kwargs": {
-        "start": "2023-01-01",
-        "end": "2023-12-31",
-        "date_format": "%Y-%m-%d %H:%M:%S"
-    }}
+        "start": "2024-01-01 00:00:00", "end": "2024-12-31 23:59:59",
+        "date_format": "%Y-%m-%d %H:%M:%S"}},
+    "epoch": {"method": "unix_timestamps", "kwargs": {"start": "2024-01-01", "end": "2024-12-31"}},
 }
-
-# Generate 500k transactions
-df = DataGenerator(spec, seed=42).size(500_000).get_df()
+df = DataGenerator(spec, seed=1).size(1_000).get_df()
+assert df["created_at"].str.match(r"^2024-\d\d-\d\d \d\d:\d\d:\d\d$").all()
 ```
 
-### Example 2: Correlated Device/OS Data
+`exponential`, `lognormal`, `poisson`, `zipf` and `constant` run on the NumPy engine only.
+
+```python
+from rand_engine.validators.exceptions import SpecValidationError
+
+spec = {
+    "wait_s": {"method": "exponential", "kwargs": {"scale": 2.5}},
+    "amount": {"method": "lognormal", "kwargs": {"mean": 3.0, "std": 0.5}},
+    "visits": {"method": "poisson", "kwargs": {"lam": 4}},
+    "rank": {"method": "zipf", "kwargs": {"a": 1.5}},
+    "source": {"method": "constant", "kwargs": {"value": "web"}},
+}
+df = DataGenerator(spec, seed=1).size(1_000).get_df()
+assert (df["wait_s"] > 0).all() and (df["rank"] >= 1).all()
+assert (df["source"] == "web").all()
+```
+
+### Float rules
+
+- `decimals` is an integer with |decimals| ≤ 308 for every float method; beyond that the spec fails validation. `exponential` and `lognormal` take only `decimals ≥ 0`.
+- `floats` draws on the `decimals` grid between `min` and `max`. A grid of more than 2^53 steps, or a grid end (bound times 10^`decimals`) beyond int64, draws uniformly within [`min`, `max`] instead.
+- Bounds are compared in float64: an integer bound above 2^53 that a double cannot hold may round to the nearest double.
+- Rounding never turns a finite draw into `inf`. Parameters near the float64 limit can still draw `inf` from the distribution itself; that is accepted.
+- `poisson` `lam` is capped at 10^6.
+
+```python
+for bad in ({"method": "floats", "kwargs": {"min": 0, "max": 1, "decimals": 309}},
+            {"method": "poisson", "kwargs": {"lam": 2_000_000}}):
+    try:
+        DataGenerator({"x": bad})
+    except SpecValidationError:
+        pass
+    else:
+        raise AssertionError("expected SpecValidationError")
+```
+
+### Null and anomaly rates
+
+Any single-column NumPy-engine method may carry `null_rate` (share of rows set to null) and `anomaly_rate` (share
+replaced by a draw from `anomaly_values`, a non-empty list of scalars required when the rate is
+above 0). Both are in [0, 1]; anomalies apply first, then nulls. `pk`, `fk` and the multi-column methods
+(`distincts_map`, `distincts_map_prop`, `distincts_multi_map`, `complex_distincts`) refuse them, and so does SparkGenerator.
+
 ```python
 spec = {
-    "device_os": {
-        "method": "distincts_map",
-        "cols": ["device_type", "operating_system"],
-        "kwargs": {
-            "distincts": {
-                "smartphone": ["android", "ios"],
-                "desktop": ["windows", "macos", "linux"],
-                "tablet": ["android", "ios"]
-            }
-        }
-    },
-    "user_id": {"method": "int_zfilled", "kwargs": {"length": 8}}
+    "age": {"method": "integers", "kwargs": {"min": 18, "max": 80}, "null_rate": 0.1},
+    "price": {"method": "floats", "kwargs": {"min": 1, "max": 100},
+              "anomaly_rate": 0.05, "anomaly_values": [-1.0, 9999.0]},
 }
+df = DataGenerator(spec, seed=5).size(2_000).get_df()
+assert df["age"].isna().any() and df["price"].isin([-1.0, 9999.0]).any()
 
-# Generates 2 correlated columns: device_type + operating_system
-df = DataGenerator(spec).size(10_000).get_df()
+for bad in ({"id": {"method": "pk", "kwargs": {"start": 1}, "null_rate": 0.1}},
+            {"d": {"method": "distincts_map", "cols": ["device", "os"], "null_rate": 0.1,
+                   "kwargs": {"distincts": {"phone": ["android", "ios"]}}}},
+            {"x": {"method": "exponential", "kwargs": {"scale": 2, "decimals": -1}}}):
+    try:
+        DataGenerator(bad)
+    except SpecValidationError:
+        pass
+    else:
+        raise AssertionError("expected SpecValidationError")
 ```
 
-### Example 3: Complex IP Addresses
+### Multi-column methods (NumPy engine only)
+
+These take a `cols` list naming the columns they produce.
+
+| Method | `distincts` shape | Columns |
+|---|---|---|
+| `distincts_map` | `{key: [value, ...]}` | `cols[0]` = the key, `cols[1]` = a value |
+| `distincts_map_prop` | `{key: [(value, weight), ...]}` | `cols[0]` = the key, `cols[1]` = a value |
+| `distincts_multi_map` | `{key: [[a, ...], [b, ...]]}` | the key, then one column per inner list (cartesian product); `cols` must name levels + 1 columns, any other count fails validation |
+
+`complex_distincts` fills each `replacement` character of `pattern` with one template column.
+
 ```python
 spec = {
-    "ip_address": {
-        "method": "complex_distincts",
-        "kwargs": {
-            "pattern": "x.x.x.x",
-            "replacement": "x",
-            "templates": [
-                {"method": "distincts", "kwargs": {"distincts": ["192", "10", "172"]}},
-                {"method": "integers", "kwargs": {"min": 0, "max": 255}},
-                {"method": "integers", "kwargs": {"min": 0, "max": 255}},
-                {"method": "integers", "kwargs": {"min": 1, "max": 254}}
-            ]
-        }
-    }
+    "device_os": {"method": "distincts_map", "cols": ["device", "os"],
+                  "kwargs": {"distincts": {"phone": ["android", "ios"], "desktop": ["linux", "windows"]}}},
+    "company": {"method": "distincts_multi_map", "cols": ["sector", "sub_sector", "size"],
+                "kwargs": {"distincts": {"tech": [["software", "hardware"], ["small", "large"]]}}},
+    "ip": {"method": "complex_distincts", "kwargs": {
+        "pattern": "x.x.x.x", "replacement": "x",
+        "templates": [
+            {"method": "distincts", "kwargs": {"distincts": ["10", "192"]}},
+            {"method": "integers", "kwargs": {"min": 0, "max": 255}},
+            {"method": "integers", "kwargs": {"min": 0, "max": 255}},
+            {"method": "integers", "kwargs": {"min": 1, "max": 254}},
+        ]}},
 }
-
-# Generates: 192.168.1.45, 10.0.0.123, etc.
-df = DataGenerator(spec).size(1000).get_df()
+df = DataGenerator(spec, seed=1).size(500).get_df()
+assert list(df.columns) == ["device", "os", "sector", "sub_sector", "size", "ip"]
+assert set(zip(df["device"], df["os"])) <= {("phone", "android"), ("phone", "ios"), ("desktop", "linux"), ("desktop", "windows")}
 ```
 
----
+## Migration to `kwargs`
 
-## 🛠️ Transformers
-
-Transformers allow **post-generation enrichment** of your DataFrame.
+`kwargs` is the only parameter key. A column carrying `args`, `splitable`, `sep` or `pk` as a key
+raises `SpecValidationError` (`pk` stays a method, see [4_CONSTRAINTS.md](4_CONSTRAINTS.md)).
 
 ```python
-from datetime import datetime, timedelta
-import random
-
-def add_calculated_fields(df):
-    """Add derived columns based on existing data."""
-    df["created_at"] = datetime.now() - timedelta(days=random.randint(0, 365))
-    df["age_group"] = df["age"].apply(lambda x: "adult" if x >= 18 else "minor")
-    return df
-
-def uppercase_names(df):
-    """Convert name column to uppercase."""
-    df["name"] = df["name"].str.upper()
-    return df
-
-# Apply multiple transformers in order
-df = (
-    DataGenerator(spec)
-    .size(10_000)
-    .transformers([add_calculated_fields, uppercase_names])
-    .get_df()
-)
+for key in ("args", "splitable", "sep", "pk"):
+    try:
+        DataGenerator({"age": {"method": "integers", "kwargs": {"min": 0, "max": 9}, key: 1}})
+    except SpecValidationError:
+        pass
+    else:
+        raise AssertionError(key)
 ```
 
----
+## Transformers
 
-## 📚 Related Documentation
-- **[2_SPARK_GENERATOR.md](2_SPARK_GENERATOR.md)** - Spark DataFrame generation
-- **[3_WRITING_FILES.md](3_WRITING_FILES.md)** - File batch and streaming writers
-- **[4_CONSTRAINTS.md](4_CONSTRAINTS.md)** - Primary/Foreign key constraints with cleanup
+<!-- derived-from: data-generator sha256:8af2e4c55309 -->
+
+A column may carry `"transformers"`: functions applied value by value. `.transformers([...])` takes
+whole-frame functions, run after the column ones.
+
+```python
+spec = {
+    "name": {"method": "distincts", "kwargs": {"distincts": ["ana", "bia"]},
+             "transformers": [str.upper]},
+    "age": {"method": "integers", "kwargs": {"min": 10, "max": 30}},
+}
+
+def age_group(df):
+    df["adult"] = df["age"] >= 18
+    return df
+
+df = DataGenerator(spec, seed=3).size(100).transformers([age_group]).get_df()
+assert set(df["name"]) <= {"ANA", "BIA"}
+assert (df["adult"] == (df["age"] >= 18)).all()
+```
+
+## Validation
+
+<!-- derived-from: rand-spec-grammar sha256:77ed429317a3 -->
+
+An invalid spec raises `SpecValidationError` (a `RandEngineError`) on construction, listing every
+error with a corrected example.
+
+```python
+try:
+    DataGenerator({"age": {"method": "integers", "kwargs": {"min": 0}}})
+except SpecValidationError as error:
+    assert "max" in str(error)
+else:
+    raise AssertionError("expected SpecValidationError")
+```
+
+## Streaming dicts
+
+<!-- derived-from: data-generator sha256:8af2e4c55309 -->
+
+`stream_dict` never ends: it generates `size` rows per microbatch, converts datetime columns to
+strings and adds `timestamp_created` (epoch seconds) to each record. Stop it yourself.
+
+```python
+from itertools import islice
+
+spec = {"user_id": {"method": "int_zfilled", "kwargs": {"length": 8}}}
+stream = DataGenerator(spec, seed=1).size(10).stream_dict(min_throughput=500, max_throughput=1000)
+records = list(islice(stream, 25))
+assert len(records) == 25 and set(records[0]) == {"user_id", "timestamp_created"}
+```

@@ -1,188 +1,307 @@
-import pandas as pd
-import time
+import subprocess
+import sys
+
+import numpy as np
 import pytest
-import logging
+
+from rand_engine.core._keys import Keys
 from rand_engine.main.data_generator import DataGenerator
-from tests.fixtures.f3_data_generator_constraints import ProductCategory, ClientsProductsCategoriesTransactions
-from rand_engine.integrations._sqlite_handler import SQLiteHandler
-from rand_engine.integrations._duckdb_handler import DuckDBHandler
+from rand_engine.validators.exceptions import RandEngineError
 
-def configure_logger():
-  logger = logging.getLogger("rand_engine")
-  logger.setLevel(logging.INFO)
-  logger.handlers.clear()
-  console_handler = logging.StreamHandler()
-  console_handler.setLevel(logging.INFO)
-  formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
-  console_handler.setFormatter(formatter)
-  logger.addHandler(console_handler)
-
-  # Garantir que logs não sejam propagados para root logger
-  logger.propagate = False
+PK = {"method": "pk", "kwargs": {"style": "sequence", "start": 1, "step": 1}}
 
 
-@pytest.mark.parametrize("size_clients, size_products",[
-  (100, 1000),
-  #(100, 10000),
-  #(100, 100000)
-])
-def test_simple_two_relationship(size_clients, size_products):
-
-  prod_cat = ProductCategory()
-  df_category = (
-    DataGenerator(prod_cat.metadata_category())
-      .db_checkpoint(DuckDBHandler(db_path=":memory:"))
-      .option("reset_checkpoint", True)
-      .transformers(prod_cat.transformer_category())
-      .size(size_clients).get_df()
-  )
-
-  df_products = DataGenerator(prod_cat.metadata_products()).size(size_products).get_df()
-  df_category_pks = df_category[["category_id"]].drop_duplicates().values
-  df_products_pks = df_products[["category_id"]].values
-  is_valid = set(map(tuple, df_products_pks)).issubset(set(map(tuple, df_category_pks)))
-  assert is_valid
+@pytest.mark.parametrize("size, start, step", [
+  (10**4, 1, 1), (10**3, 10, 3), pytest.param(10**6, 1, 1, marks=pytest.mark.stress)])
+def test_pk_sequence_is_start_plus_row_index(size, start, step):
+  spec = {"id": {"method": "pk", "kwargs": {"style": "sequence", "start": start, "step": step}}}
+  df = DataGenerator(spec).size(size).get_df()
+  assert np.issubdtype(df["id"].dtype, np.integer)
+  assert np.array_equal(df["id"].to_numpy(), start + np.arange(size) * step)
 
 
-@pytest.mark.parametrize("size_clients, size_products",[
-  (100, 1000),
-  (100, 10000),
-  (100, 100000)
-])
-def test_simple_two_relationship_with_watermark(size_clients, size_products):
-
-  prod_cat = ProductCategory()
-  df_category_1 = (
-    DataGenerator(prod_cat.metadata_category())
-      .db_checkpoint(SQLiteHandler(db_path=":memory:"))
-      .option("reset_checkpoint", True)
-      .transformers(prod_cat.transformer_category())
-      .size(size_clients).get_df())
-
-  df_category_2 = (
-    DataGenerator(prod_cat.metadata_category())
-      .transformers(prod_cat.transformer_category())
-      .size(size_clients).get_df()
-  )
-
-  df_category = pd.concat([df_category_1, df_category_2], ignore_index=True)
-  df_products = DataGenerator(prod_cat.metadata_products()).size(size_products).get_df()
-  df_category_pks = df_category[["category_id"]].drop_duplicates().values
-  df_products_pks = df_products[["category_id"]].values
-  is_valid = set(map(tuple, df_products_pks)).issubset(set(map(tuple, df_category_pks)))
-  assert is_valid
+@pytest.mark.parametrize("parent_size, child_size", [(10**3, 10**4), pytest.param(10**4, 10**6, marks=pytest.mark.stress)])
+def test_fk_values_sit_in_the_parent_pk_set(parent_size, child_size):
+  parent = DataGenerator({"id": PK}, seed=1).size(parent_size).get_df()
+  child_spec = {"parent_id": {"method": "fk", "kwargs": {"parent": PK, "parent_size": parent_size}}}
+  child = DataGenerator(child_spec, seed=2).size(child_size).get_df()
+  assert child["parent_id"].isin(parent["id"]).all()
+  assert child["parent_id"].nunique() > 1
 
 
-@pytest.mark.parametrize("size_clients, size_products",[
-  (100, 1000),
-  (100, 10000),
-  (100, 100000)
-])
-def test_simple_two_relationship_with_watermark_expires(size_clients, size_products):
-
-  prod_cat = ProductCategory()
-  df_category_1 = (
-    DataGenerator(prod_cat.metadata_category())
-      .option("reset_checkpoint", True)
-      .transformers(prod_cat.transformer_category())
-      .size(size_clients).get_df())
-
-  time.sleep(3)
-  df_category_2 = (
-    DataGenerator(prod_cat.metadata_category())
-      .transformers(prod_cat.transformer_category())
-      .size(size_clients).get_df()
-  )
-
-  df_products = DataGenerator(prod_cat.metadata_products()).size(size_products).get_df()
-  df_category_pks = df_category_2[["category_id"]].drop_duplicates().values
-  df_products_pks = df_products[["category_id"]].values
-  is_valid = set(map(tuple, df_products_pks)).issubset(set(map(tuple, df_category_pks)))
-  assert is_valid
-
-# @pytest.mark.parametrize("size_clients, size_categories, size_products, size_transactions",[
-#   (10, 10, 10, 10),
-#   # (100, 100, 1000, 1000),
-#   # (100, 100, 10000, 10000),
-#   # (10000, 100, 100000, 1000000)
-# ])
-# def test_four_relationships_consistency(size_clients, size_categories, size_products, size_transactions):
-#   cpc_tx = ClientsProductsCategoriesTransactions()
-  
-#   df_category = (
-#     DataGenerator(cpc_tx.metadata_category())
-#       .transformers(cpc_tx.transformer_category())
-#       .checkpoint(":memory:")
-#       .option("reset_checkpoint", True)
-#       .size(size_categories).get_df()
-#   )
-  
-#   df_products = DataGenerator(cpc_tx.metadata_products()).checkpoint(":memory:").size(size_products).get_df()
-#   df_clients = DataGenerator(cpc_tx.metadata_clients()).size(size_clients).get_df()
-#   df_transactions = DataGenerator(cpc_tx.metadata_transactions()).size(size_transactions).get_df()
-
-#   prod_cat_pks = df_products[["category_id"]].drop_duplicates().values
-#   category_pks = df_category[["category_id"]].values
-#   clients_pks = df_clients[["client_id"]].values
-#   products_pks = df_products[["product_id"]].drop_duplicates().values
-#   tx_prod_pks = df_transactions[["product_id"]].drop_duplicates().values
-#   tx_client_pks = df_transactions[["client_id"]].drop_duplicates().values
-  
-#   assert set(map(tuple, prod_cat_pks)).issubset(set(map(tuple, category_pks)))
-#   assert set(map(tuple, tx_client_pks)).issubset(set(map(tuple, clients_pks)))
-#   assert set(map(tuple, tx_prod_pks)).issubset(set(map(tuple, products_pks)))
+def test_fk_depends_on_the_generator_seed():
+  spec = {"parent_id": {"method": "fk", "kwargs": {"parent": PK, "parent_size": 100}}}
+  one, two = (DataGenerator(spec, seed=s).size(1000).get_df()["parent_id"] for s in (1, 2))
+  assert not one.equals(two)
 
 
-# @pytest.mark.parametrize("size_clients, size_txs",[
-#   (10, 50),
-#   (20, 100),
-#   (50, 200)
-# ])
-# def test_simple_two_relationship_watermark(size_clients, size_txs): 
-#   tx_clients = TransactionsClients()
-#   df_clients= (
-#     DataGenerator(tx_clients.metadata_client())
-#       .checkpoint(":memory:")
-#       .option("reset_checkpoint", True)
-#       .transformers(tx_clients.transformer_client())
-#       .size(size_clients).get_df())
-#   df_txs = DataGenerator(tx_clients.metadata_transactions()).size(size_txs).get_df()
-#   df_txs_pks = df_txs[["client_id", "tp_pes"]].drop_duplicates().values
-#   df_clients_pks = df_clients[["client_id", "tp_pes"]].values
-#   assert set(map(tuple, df_txs_pks)).issubset(set(map(tuple, df_clients_pks)))
+def test_two_get_df_calls_return_identical_keys():
+  spec = {"id": PK, "parent_id": {"method": "fk", "kwargs": {"parent": PK, "parent_size": 100}}}
+  generator = DataGenerator(spec).size(1000)
+  first, second = generator.get_df(), generator.get_df()
+  assert first["id"].equals(second["id"])
+  assert first["parent_id"].equals(second["parent_id"])
 
 
-# def test_simple_two_relationship_watermark_2(): 
-#   tx_clients = TransactionsClients()
-#   df_clients= (
-#     DataGenerator(tx_clients.metadata_client())
-#       .transformers(tx_clients.transformer_client())
-#       .size(10**1).get_df())
-#   df_txs = DataGenerator(tx_clients.metadata_transactions()).size(10**1).get_df()
-  
-#   df_txs_pks = df_txs[["client_id", "tp_pes"]].drop_duplicates().values
-#   df_clients_pks = df_clients[["client_id", "tp_pes"]].values
-#   assert set(map(tuple, df_txs_pks)).issubset(set(map(tuple, df_clients_pks)))
-
-  # assert all(df_txs["client_id"].isin(df_clients["client_id"]))
-  # assert df_txs["client_id"].nunique() <= df_clients["client_id"].nunique()
-
-# def test_simple_three_relationship  ():
-  
-#   ecommerce = Ecommerce()
-#   df_category = DataGenerator(ecommerce.metadata_category()).transformers(ecommerce.transformer_category()).size(10**1).get_df()
-#   print(df_category)
-#   df_client = DataGenerator(ecommerce.metadata_client()).size(10**1).get_df()
-#   print(df_client)
-#   df_products = DataGenerator(ecommerce.metadata_products()).size(10**1).get_df()
-#   print(df_products)
-       
+PERMUTED = {"style": "permuted", "domain": 10**5, "start": 0}
 
 
+def _pk(kwargs, size, seed=None):
+  return DataGenerator({"id": {"method": "pk", "kwargs": kwargs}}, seed=seed).size(size).get_df()["id"]
 
 
+def test_pk_permuted_is_unique_inside_the_domain_and_not_monotone():
+  ids = _pk(PERMUTED, 10**4).to_numpy()
+  assert np.unique(ids).size == 10**4
+  assert ids.min() >= 0 and ids.max() < 10**5
+  assert not (np.all(np.diff(ids) > 0) or np.all(np.diff(ids) < 0))
 
 
+@pytest.mark.parametrize("domain, key, head", [
+  (10**5, 7, [82034, 95789, 91538, 47114, 29996, 52242]),
+  (2000, 3, [482, 1695, 1486, 1257, 722, 1526])])
+def test_pk_permuted_matches_the_prototype_feistel(domain, key, head):
+  assert _pk({"style": "permuted", "domain": domain, "key": key}, 6).tolist() == head
 
 
+def test_pk_permuted_over_its_whole_domain_is_a_permutation_of_it():
+  ids = _pk({"style": "permuted", "domain": 2000, "start": 5}, 2000).to_numpy()
+  assert np.array_equal(np.sort(ids), np.arange(5, 2005))
 
+
+@pytest.mark.stress
+def test_pk_permuted_at_stress_size():
+  ids = _pk({"style": "permuted", "domain": 10**7}, 10**6).to_numpy()
+  assert np.unique(ids).size == 10**6 and ids.min() >= 0 and ids.max() < 10**7
+
+
+def test_pk_permuted_near_int64_does_not_overflow():
+  start, domain = 7, 10**15
+  head = Keys.gen_pk(10**4, style="permuted", domain=domain, start=start)
+  last = Keys.gen_pk(1, offset=10**15 - 1, style="permuted", domain=domain, start=start)
+  ids = np.concatenate([head, last])
+  assert np.unique(ids).size == 10**4 + 1
+  assert ids.min() >= 7 and ids.max() < 7 + 10**15
+
+
+@pytest.mark.parametrize("kwargs", [
+  {"style": "sequence", "start": 1, "format": "C-{:08d}"},
+  {**PERMUTED, "format": "C-{:08d}"}])
+def test_pk_format_renders_unique_strings(kwargs):
+  ids = _pk(kwargs, 10**4)
+  assert ids.nunique() == 10**4
+  assert ids.str.fullmatch(r"C-\d{8}").all()
+
+
+@pytest.mark.stress
+@pytest.mark.parametrize("kwargs", [{"start": 1}, {"style": "permuted", "domain": 10**7}])
+def test_pk_format_at_stress_size(kwargs):
+  assert _pk({**kwargs, "format": "C-{:08d}"}, 10**6).nunique() == 10**6
+
+
+def test_pk_format_over_sequence_renders_the_literal_template():
+  assert _pk({"start": 1, "format": "C-{:08d}"}, 3).tolist() == ["C-00000001", "C-00000002", "C-00000003"]
+
+
+def test_pk_ignores_the_generator_seed_and_depends_on_the_key():
+  seeded, unseeded = _pk(PERMUTED, 1000, seed=1), _pk(PERMUTED, 1000, seed=None)
+  assert seeded.equals(unseeded)
+  assert not seeded.equals(_pk({**PERMUTED, "key": 1}, 1000))
+
+
+def test_pk_permuted_is_identical_across_processes():
+  code = ("from rand_engine.main.data_generator import DataGenerator;"
+          f"print(DataGenerator({{'id': {{'method': 'pk', 'kwargs': {PERMUTED!r}}}}}).size(1000).get_df()['id'].tolist())")
+  other = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True).stdout
+  assert other.strip() == str(_pk(PERMUTED, 1000, seed=3).tolist())
+
+
+def test_pk_permuted_past_its_domain_raises_naming_column_and_domain():
+  with pytest.raises(RandEngineError, match=r"(?s)'id'.*domain 10\b"):
+    _pk({"style": "permuted", "domain": 10}, 11)
+
+
+@pytest.mark.parametrize("offset, start, step", [(2, 2**62, 2**61), (0, 2**63 + 10, -100), (0, 2**63 - 2, 1), (0, -2**63 + 1, -1), (np.int64(2), 2**62, 2**61)])
+def test_pk_sequence_leaving_int64_raises(offset, start, step):
+  with pytest.raises(RandEngineError, match="int64"):
+    Keys.gen_pk(3, offset=offset, start=start, step=step)
+
+
+SEQ, PERM = {"start": 1}, {"style": "permuted", "domain": 10**5, "key": 9}
+FMT = {"start": 1, "format": "C-{:08d}"}
+
+
+def _fk(parent_kwargs, parent_size, size, seed=2, skew=None, col="parent_id"):
+  kw = {"parent": {"method": "pk", "kwargs": parent_kwargs}, "parent_size": parent_size}
+  if skew is not None:
+    kw["skew"] = skew
+  return DataGenerator({col: {"method": "fk", "kwargs": kw}}, seed=seed).size(size).get_df()[col]
+
+
+@pytest.mark.parametrize("parent_kwargs, parent_size, child_size", [
+  (PERM, 10**3, 10**4), ({"style": "permuted", "domain": 10**3}, 10**3, 10**4), ({**PERM, "format": "C-{:08d}"}, 10**3, 10**4), (FMT, 10**3, 10**4),
+  pytest.param(PERM, 10**4, 10**6, marks=pytest.mark.stress)])
+def test_fk_over_permuted_and_string_parents_sits_in_the_parent_pk_set(parent_kwargs, parent_size, child_size):
+  """AC2.1 (permuted), AC2.2 (format)."""
+  parent = _pk(parent_kwargs, parent_size, seed=1)
+  child = _fk(parent_kwargs, parent_size, child_size)
+  assert child.isin(parent).all() and child.nunique() > 1
+
+
+@pytest.mark.parametrize("parent_kwargs", [SEQ, PERM, FMT])
+@pytest.mark.parametrize("parent_seed, child_seed", [(1, 2), (None, 2), (1, None)])
+def test_fk_holds_across_generator_seeds(parent_kwargs, parent_seed, child_seed):
+  """AC2.7."""
+  assert _fk(parent_kwargs, 500, 10**4, seed=child_seed).isin(_pk(parent_kwargs, 500, seed=parent_seed)).all()
+
+
+@pytest.mark.parametrize("parent_size, child_size", [(10**2, 10**4), pytest.param(10**3, 10**6, marks=pytest.mark.stress)])
+def test_fk_uniform_references_every_parent(parent_size, child_size):
+  """AC2.4."""
+  assert set(_fk(SEQ, parent_size, child_size)) == set(range(1, parent_size + 1))
+
+
+@pytest.mark.parametrize("parent_size, child_size, uniform_max", [
+  (10**3, 10**4, 0.03), pytest.param(10**4, 10**6, 0.02, marks=pytest.mark.stress)])
+def test_fk_skew_sends_children_to_scattered_hot_parents(parent_size, child_size, uniform_max):
+  """AC2.5: the top 1% of parents by references; parent index = value - start."""
+  top = parent_size // 100
+  skewed = _fk(SEQ, parent_size, child_size, skew=1.2).value_counts()
+  uniform = _fk(SEQ, parent_size, child_size).value_counts()
+  assert skewed.iloc[:top].sum() >= 0.20 * child_size
+  assert uniform.iloc[:top].sum() <= uniform_max * child_size
+  hot_index = skewed.index[:top].to_numpy() - 1
+  assert (hot_index < top).sum() < top / 2
+  assert set(skewed.index) <= set(range(1, parent_size + 1))
+
+
+def test_two_fk_columns_with_identical_kwargs_differ():
+  """AC2.8: the column name enters the parent-index hash."""
+  kw = {"parent": PK, "parent_size": 1000}
+  df = DataGenerator({"a": {"method": "fk", "kwargs": kw}, "b": {"method": "fk", "kwargs": dict(kw)}}, seed=1).size(1000).get_df()
+  assert (df["a"] != df["b"]).mean() > 0.9
+
+
+@pytest.mark.parametrize("skew, head", [(0, [267, 786, 227, 987, 287, 297]), (1.2, [927, 6, 6, 46, 580, 6]), (1.0, [1, 427, 657, 992, 566, 392])])
+def test_fk_matches_the_prototype_parent_index(skew, head):
+  """Pins from proto/core.py (cell_hash, index, zipf_index) + proto/feistel.py, seed crc32(key_seed/column/canonical kwargs)."""
+  parent = {"method": "pk", "kwargs": {"start": 0}}
+  assert Keys.gen_fk(6, parent=parent, parent_size=1000, skew=skew, key_seed=5, column="c").tolist() == head
+
+
+@pytest.mark.parametrize("n, rank", [(1, 0), (2, 1), (10, 9)])
+def test_zipf_rank_at_the_top_uniform_stays_inside_the_domain(n, rank):
+  """u = 1 - 2**-53 lands on n unclamped and would hang the Feistel cycle-walk; literals from proto zipf_index."""
+  assert Keys._zipf_rank(np.array([2**53 - 1], dtype=np.int64), n, 1.2).tolist() == [rank]
+
+
+def test_fk_seed_mixes_the_fk_kwargs():
+  """Parents differing only in start: without the kwargs in the seed, every value would shift by exactly 1."""
+  zero, one = (Keys.gen_fk(1000, parent={"method": "pk", "kwargs": {"start": s}}, parent_size=1000, key_seed=5, column="c") for s in (0, 1))
+  assert ((one - zero) != 1).mean() > 0.9
+
+
+def test_fk_child_from_a_second_process_joins_the_parent_parquet(tmp_path):
+  """AC2.3: parent written to Parquet by one process, child generated by another."""
+  parent_kwargs = {**PERM, "format": "C-{:08d}"}
+  pk = {"method": "pk", "kwargs": parent_kwargs}
+  fk = {"method": "fk", "kwargs": {"parent": pk, "parent_size": 1000, "skew": 1.2}}
+  head = "from rand_engine.main.data_generator import DataGenerator as G;"
+  for spec, seed, name in [({"id": pk}, 1, "parent"), ({"pid": fk}, 2, "child")]:
+    code = head + f"G({spec!r}, seed={seed}).size({1000 if name == 'parent' else 10**4}).get_df().to_parquet({str(tmp_path / name)!r})"
+    subprocess.run([sys.executable, "-c", code], check=True)
+  import pandas as pd
+  parent, child = pd.read_parquet(tmp_path / "parent")["id"], pd.read_parquet(tmp_path / "child")["pid"]
+  assert len(child) == 10**4 and child.isin(parent).all()
+
+
+def test_pk_permuted_empty_batch_past_the_domain_is_empty():
+  assert Keys.gen_pk(0, offset=20, style="permuted", domain=10).tolist() == []
+
+
+def test_pk_sequence_empty_batch_at_the_int64_edge_is_empty():
+  assert Keys.gen_pk(0, start=-2**63).tolist() == []
+
+
+def test_pk_sequence_reaches_the_int64_minimum_exactly():
+  assert Keys.gen_pk(3, start=-2**63 + 2, step=-1).tolist() == [-2**63 + 2, -2**63 + 1, -2**63]
+
+
+def test_pk_sequence_numpy_int_size_leaving_int64_raises():
+  with pytest.raises(RandEngineError, match="int64"):
+    DataGenerator({"id": {"method": "pk", "kwargs": {"start": 2**63 - 2}}}).size(np.int64(3)).get_df()
+
+
+def test_fk_over_a_parent_leaving_int64_raises():
+  with pytest.raises(RandEngineError, match="int64"):
+    _fk({"start": 2**63 - 5}, 100, 10)
+
+
+FK100 = {"method": "fk", "kwargs": {"parent": PK, "parent_size": 100}}
+KEYS = {"id": PK, "parent_id": FK100}
+
+
+def _fake_clock(monkeypatch):
+  from types import SimpleNamespace
+  from rand_engine.file_handlers import _writer_stream
+  clock = {"now": 0.0}
+  def sleep(seconds): clock["now"] += seconds
+  monkeypatch.setattr(_writer_stream, "time", SimpleNamespace(time=lambda: clock["now"], sleep=sleep))
+
+
+def _read_dir(path):
+  import glob
+  import pandas as pd
+  files = glob.glob(f"{path}/*")
+  return len(files), pd.concat([pd.read_parquet(f) for f in files]).sort_values("id", ignore_index=True)
+
+
+def test_stream_dict_keys_continue_across_microbatches():
+  """AC3.1, AC3.2: 10 microbatches of 100 records carry the keys of one 1000-row get_df."""
+  generator = DataGenerator(KEYS, seed=7).size(100)
+  stream = generator.stream_dict(min_throughput=10**6, max_throughput=10**6)
+  records = [next(stream) for _ in range(1000)]
+  batch = DataGenerator(KEYS, seed=7).size(1000).get_df()
+  assert [r["id"] for r in records] == list(range(1, 1001))
+  assert [r["parent_id"] for r in records] == batch["parent_id"].tolist()
+
+
+def test_write_stream_keys_continue_across_microbatches(tmp_path, monkeypatch):
+  """AC3.1, AC3.2 on writeStream, read back: 10 files of 100 rows = one 1000-row get_df."""
+  _fake_clock(monkeypatch)
+  path = tmp_path / "stream"
+  DataGenerator(KEYS, seed=7).size(100).writeStream.format("parquet").option("timeout", 9.5).trigger(1).start(str(path))
+  num_files, written = _read_dir(f"{path}")
+  batch = DataGenerator(KEYS, seed=7).size(1000).get_df()
+  assert num_files == 10
+  assert written["id"].tolist() == list(range(1, 1001))
+  assert written["parent_id"].tolist() == batch["parent_id"].tolist()
+
+
+def test_streamed_child_fk_sits_in_the_parent_pk_set():
+  """AC3.4: a streamed child's FK values past its first microbatch stay in parent rows [0, 100)."""
+  child = DataGenerator({"parent_id": FK100}, seed=3).size(50).stream_dict(min_throughput=10**6, max_throughput=10**6)
+  values = {next(child)["parent_id"] for _ in range(500)}
+  assert values <= set(range(1, 101)) and len(values) > 50
+
+
+def test_save_over_num_files_continues_keys_across_files(tmp_path):
+  """AC3.5, read back: 4 uneven files of one save hold PKs 1..1003 once each; the child's FKs sit in the parent set."""
+  path = tmp_path / "keys"
+  DataGenerator(KEYS, seed=7).size(1003).write.format("parquet").option("numFiles", 4).save(str(path))
+  num_files, written = _read_dir(f"{path}")
+  assert num_files == 4
+  assert written["id"].tolist() == list(range(1, 1004))
+  assert written["parent_id"].isin(range(1, 101)).all()
+
+
+def test_spec_with_keys_is_unchanged_by_generation(tmp_path):
+  """AC5.2: get_df, a stream_dict microbatch and a batch write leave the dict spec deep-equal to its copy."""
+  import copy
+  spec = {"id": {"method": "pk", "kwargs": {"style": "permuted", "domain": 10**4, "format": "C-{:05d}"}}, "parent_id": FK100}
+  before = copy.deepcopy(spec)
+  generator = DataGenerator(spec, seed=1).size(10)
+  generator.get_df()
+  next(generator.stream_dict(min_throughput=10**6, max_throughput=10**6))
+  generator.write.format("parquet").option("numFiles", 2).save(str(tmp_path / "spec"))
+  assert spec == before

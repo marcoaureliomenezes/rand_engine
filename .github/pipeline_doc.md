@@ -461,7 +461,7 @@ pip index versions rand-engine
 
 **Issue:** PySpark tests crash on Windows  
 **Cause:** Known issue with Python 3.12 + Windows  
-**Fix:** Tests auto-skip this combination (see `f5_spark_fixtures.py`)
+**Fix:** Tests auto-skip this combination
 
 **Issue:** Coverage below 60%  
 **Cause:** New code not covered by tests  

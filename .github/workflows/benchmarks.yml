@@ -1,0 +1,64 @@
+name: Benchmarks
+
+on:
+  pull_request:
+    branches: [master, development]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: benchmarks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmarks:
+    name: Stress tests and speed benchmark
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Install dependencies
+        run: poetry install --with test --no-interaction
+      - name: Run stress tests
+        run: poetry run pytest -m stress --durations=20
+      # Same-runner A/B, interleaved per row: base = the commit of the committed docs/benchmarks.json.
+      # No base tree → every row absent; only exit 3 (the wrong rand_engine imported) fails on the base.
+      - name: Speed benchmark
+        if: ${{ !cancelled() }}
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          BASE=$(jq -r '.commit // empty' docs/benchmarks.json 2>/dev/null || true)
+          [ -n "$BASE" ] && git rev-parse --verify --quiet "$BASE^{commit}" >/dev/null && git worktree add --detach ../base "$BASE" || true
+          BASE_SHA="$BASE" poetry run python benchmarks/speed.py --base-tree ../base --out docs/
+      - name: Job summary
+        if: ${{ !cancelled() }}
+        run: cat docs/BENCHMARKS.md >> "$GITHUB_STEP_SUMMARY"
+      - name: PR comment
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        env:
+          PR: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr comment "$PR" --edit-last --create-if-none --body-file docs/BENCHMARKS.md
+      - name: Upload benchmark artifact
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmarks
+          path: |
+            docs/benchmarks.json
+            docs/BENCHMARKS.md

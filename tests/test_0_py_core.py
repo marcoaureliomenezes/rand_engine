@@ -9,6 +9,8 @@ import numpy as np
 from rand_engine.core._py_core import PyCore
 from rand_engine.core._np_core import NPCore
 
+RNG = np.random.default_rng(0)
+
 
 class TestPyCoreComplexDistincts:
     """Test complex distinct pattern generation."""
@@ -25,7 +27,7 @@ class TestPyCoreComplexDistincts:
             {"method": NPCore.gen_ints, "kwargs": {"min": 1, "max": 254, "int_type": "int32"}}
         ]
         
-        result = PyCore.gen_complex_distincts(
+        result = PyCore.gen_complex_distincts(rng=RNG, 
             size=size,
             pattern=pattern,
             replacement=replacement,
@@ -52,7 +54,7 @@ class TestPyCoreComplexDistincts:
             {"method": NPCore.gen_distincts, "kwargs": {"distincts": ["A", "B", "C"]}}
         ]
         
-        result = PyCore.gen_complex_distincts(
+        result = PyCore.gen_complex_distincts(rng=RNG, 
             size=size,
             pattern=pattern,
             replacement=replacement,
@@ -81,7 +83,7 @@ class TestPyCoreComplexDistincts:
             {"method": "int_zfilled", "kwargs": {"length": 6}}
         ]
         
-        result = PyCore.gen_complex_distincts(
+        result = PyCore.gen_complex_distincts(rng=RNG, 
             size=size,
             pattern=pattern,
             replacement=replacement,
@@ -108,7 +110,7 @@ class TestPyCoreComplexDistincts:
             {"method": NPCore.gen_distincts, "kwargs": {"distincts": hex_values}} for _ in range(6)
         ]
         
-        result = PyCore.gen_complex_distincts(
+        result = PyCore.gen_complex_distincts(rng=RNG, 
             size=size,
             pattern=pattern,
             replacement=replacement,
@@ -130,7 +132,7 @@ class TestPyCoreDistinctsUntyped:
         """Test untyped distinct generation with strings."""
         size = 50
         distinct = ["apple", "banana", "cherry", "date"]
-        result = PyCore.gen_distincts_untyped(size=size, distinct=distinct)
+        result = PyCore.gen_distincts_untyped(rng=RNG, size=size, distinct=distinct)
         
         assert len(result) == size
         assert isinstance(result, list)
@@ -140,7 +142,7 @@ class TestPyCoreDistinctsUntyped:
         """Test untyped distinct generation with mixed types."""
         size = 30
         distinct = [1, "two", 3.0, True, None]
-        result = PyCore.gen_distincts_untyped(size=size, distinct=distinct)
+        result = PyCore.gen_distincts_untyped(rng=RNG, size=size, distinct=distinct)
         
         assert len(result) == size
         assert all(item in distinct for item in result)
@@ -149,7 +151,7 @@ class TestPyCoreDistinctsUntyped:
         """Test untyped distinct generation with tuples."""
         size = 40
         distinct = [("A", 1), ("B", 2), ("C", 3)]
-        result = PyCore.gen_distincts_untyped(size=size, distinct=distinct)
+        result = PyCore.gen_distincts_untyped(rng=RNG, size=size, distinct=distinct)
         
         assert len(result) == size
         assert all(item in distinct for item in result)
@@ -165,15 +167,15 @@ class TestPyCoreDistinctsMap:
             "Fruit": ["apple", "banana", "orange"],
             "Vegetable": ["carrot", "lettuce", "tomato"]
         }
-        result = PyCore.gen_distincts_map(size=size, distincts=distincts)
+        result = PyCore.gen_distincts_map(rng=RNG, size=size, distincts=distincts)
         
         assert len(result) == size
         assert isinstance(result, list)
         
         # Check all results are valid category-value pairs
         expected_pairs = [
-            ("apple", "Fruit"), ("banana", "Fruit"), ("orange", "Fruit"),
-            ("carrot", "Vegetable"), ("lettuce", "Vegetable"), ("tomato", "Vegetable")
+            ("Fruit", "apple"), ("Fruit", "banana"), ("Fruit", "orange"),
+            ("Vegetable", "carrot"), ("Vegetable", "lettuce"), ("Vegetable", "tomato")
         ]
         assert all(item in expected_pairs for item in result)
     
@@ -183,11 +185,11 @@ class TestPyCoreDistinctsMap:
         distincts = {
             "Color": ["red", "green", "blue"]
         }
-        result = PyCore.gen_distincts_map(size=size, distincts=distincts)
+        result = PyCore.gen_distincts_map(rng=RNG, size=size, distincts=distincts)
         
         assert len(result) == size
         # All should be from Color category
-        expected_pairs = [("red", "Color"), ("green", "Color"), ("blue", "Color")]
+        expected_pairs = [("Color", "red"), ("Color", "green"), ("Color", "blue")]
         assert all(item in expected_pairs for item in result)
 
 
@@ -201,7 +203,7 @@ class TestPyCoreDistinctsMultiMap:
             "PF": [["premium", "standard"], ["gold", "silver"]],
             "PJ": [["premium", "standard"], ["platinum", "basic"]]
         }
-        result = PyCore.gen_distincts_multi_map(size=size, distincts=distincts)
+        result = PyCore.gen_distincts_multi_map(rng=RNG, size=size, distincts=distincts)
         
         assert len(result) == size
         assert isinstance(result, list)
@@ -219,7 +221,7 @@ class TestPyCoreDistinctsMultiMap:
             "Type1": [["A"], ["X"]],
             "Type2": [["B"], ["Y"]]
         }
-        result = PyCore.gen_distincts_multi_map(size=size, distincts=distincts)
+        result = PyCore.gen_distincts_multi_map(rng=RNG, size=size, distincts=distincts)
         
         assert len(result) == size
         
@@ -239,7 +241,7 @@ class TestPyCoreDistinctsMapProp:
             "Junior": [("basic", 70), ("intermediate", 30)],
             "Senior": [("advanced", 60), ("expert", 40)]
         }
-        result = PyCore.gen_distincts_map_prop(size=size, distincts=distincts)
+        result = PyCore.gen_distincts_map_prop(rng=RNG, size=size, distincts=distincts)
         
         assert len(result) == size
         assert isinstance(result, list)
@@ -260,7 +262,7 @@ class TestPyCoreDistinctsMapProp:
             "A": [("A1", 80), ("A2", 20)],
             "B": [("B1", 50), ("B2", 50)]
         }
-        result = PyCore.gen_distincts_map_prop(size=size, distincts=distincts)
+        result = PyCore.gen_distincts_map_prop(rng=RNG, size=size, distincts=distincts)
         
         # Count occurrences
         from collections import Counter
@@ -278,7 +280,7 @@ class TestPyCoreDistinctsMapProp:
         distincts = {
             "Status": [("active", 70), ("inactive", 20), ("suspended", 10)]
         }
-        result = PyCore.gen_distincts_map_prop(size=size, distincts=distincts)
+        result = PyCore.gen_distincts_map_prop(rng=RNG, size=size, distincts=distincts)
         
         assert len(result) == size
         
@@ -303,7 +305,7 @@ class TestPyCoreEdgeCases:
         ]
         
         with pytest.raises(AssertionError):
-            PyCore.gen_complex_distincts(
+            PyCore.gen_complex_distincts(rng=RNG, 
                 size=size,
                 pattern=pattern,
                 replacement=replacement,
@@ -316,13 +318,13 @@ class TestPyCoreEdgeCases:
         distinct = []
         
         with pytest.raises((ValueError, IndexError)):
-            PyCore.gen_distincts_untyped(size=size, distinct=distinct)
+            PyCore.gen_distincts_untyped(rng=RNG, size=size, distinct=distinct)
     
     def test_gen_distincts_untyped_single_element(self):
         """Test untyped generation with single element."""
         size = 20
         distinct = ["only_one"]
-        result = PyCore.gen_distincts_untyped(size=size, distinct=distinct)
+        result = PyCore.gen_distincts_untyped(rng=RNG, size=size, distinct=distinct)
         
         assert len(result) == size
         assert all(item == "only_one" for item in result)
@@ -342,7 +344,7 @@ class TestPyCoreIntegration:
             {"method": NPCore.gen_ints, "kwargs": {"min": 1, "max": 999, "int_type": "int32"}}
         ]
         
-        result = PyCore.gen_complex_distincts(
+        result = PyCore.gen_complex_distincts(rng=RNG, 
             size=size,
             pattern=pattern,
             replacement=replacement,
@@ -359,3 +361,9 @@ class TestPyCoreIntegration:
             assert len(parts) == 4
             assert len(parts[1]) == 8  # Zero-filled
             assert parts[2] in ["ACTIVE", "INACTIVE", "PENDING"]
+
+
+def test_gen_distincts_map_puts_category_first():
+    """Operator ruling G9: (category, value), like distincts_map_prop."""
+    result = PyCore.gen_distincts_map(rng=RNG, size=50, distincts={"smartphone": ["android", "ios"]})
+    assert set(result) == {("smartphone", "android"), ("smartphone", "ios")}
