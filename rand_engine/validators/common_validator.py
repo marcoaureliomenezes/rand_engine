@@ -239,15 +239,12 @@ class CommonValidator:
     @staticmethod
     def _spark_width_errors(col_name: str, method: str, kwargs: dict[str, Any]) -> list[str]:
         """Spark carries exact domains in doubles: integer widths beyond 2**53 are refused."""
-        if method == "integers":
-            width, label = kwargs["max"] - kwargs["min"] + 1, "width (max - min + 1)"
-        elif method == "int_zfilled":
-            width, label = 10 ** kwargs["length"], "'length' width (10**length)"
+        if method == "integers" and width_beyond_double(kwargs["max"] - kwargs["min"] + 1):
+            problem = "width (max - min + 1) must be <= 2**53"
+        elif method == "int_zfilled" and width_beyond_double(10 ** min(kwargs["length"], 16)):
+            problem = "'length' must be <= 15 (exact digits in a double)"
         else:
             return []
-        if not width_beyond_double(width):
-            return []
-        problem = f"{label} ({width}) must be <= 2**53"
         return [f"❌ Column '{col_name}': method '{method}' {problem} in SparkGenerator"]
 
     @classmethod
