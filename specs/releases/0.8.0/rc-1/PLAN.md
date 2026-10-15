@@ -1,6 +1,6 @@
 # PLAN — Release: 0.8.0, candidate 1 (adoption: docs, CLI, agent surface, 0.7.0 leftovers)
 
-**Status:** Draft
+**Status:** Approved
 **Release ID:** 0.8.0
 **Owner:** dd-sw-engineer-sr
 **SPEC:** `specs/releases/0.8.0/rc-1/SPEC.md`
