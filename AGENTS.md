@@ -51,6 +51,7 @@ Production edits need the live release in `IMPLEMENTATION` and its trio at
 verify: env POETRY_VIRTUALENVS_IN_PROJECT=false PYTHONDONTWRITEBYTECODE=1 sh -c 'export POETRY_CACHE_DIR="$(git rev-parse --path-format=absolute --git-common-dir)/../../../.dadaia/tmp/poetry-cache"; poetry install --with test --no-root --no-interaction -q && poetry run python -m pytest -q -p no:cacheprovider tests/' --
 verify-stage: env POETRY_VIRTUALENVS_IN_PROJECT=false PYTHONDONTWRITEBYTECODE=1 sh -c 'export POETRY_CACHE_DIR="$(git rev-parse --path-format=absolute --git-common-dir)/../../../.dadaia/tmp/poetry-cache"; poetry install --with test --no-root --no-interaction -q && poetry run python -m pytest -q -p no:cacheprovider tests/' --
 verify-task: env POETRY_VIRTUALENVS_IN_PROJECT=false PYTHONDONTWRITEBYTECODE=1 sh -c 'export POETRY_CACHE_DIR="$(git rev-parse --path-format=absolute --git-common-dir)/../../../.dadaia/tmp/poetry-cache"; poetry install --with test --no-root --no-interaction -q && poetry run python -m pytest -q -p no:cacheprovider tests/' --
+tests: tests/*
 
 ```bash
 # Install dependencies
