@@ -548,7 +548,6 @@ class TestSparkExactDomainRefusals:
         assert len(errors) == 1
         assert "2^53" in errors[0] or "2**53" in errors[0]
 
-    @pytest.mark.xfail(strict=True, reason="J1.T2")
     def test_integer_max_2_53_is_refused(self):
         errors = self._validate("integers", min=0, max=2**53)
         assert len(errors) == 1

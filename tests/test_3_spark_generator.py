@@ -415,7 +415,6 @@ class TestSparkGeneratorDataQuality:
 
 
 class TestSparkIntegerWidthRefusedAtConstruction:
-    @pytest.mark.xfail(strict=True, reason="J1.T2")
     def test_max_2_53_raises_collected_spec_error(self, spark_session, spark_functions):
         from rand_engine.validators.exceptions import SpecValidationError
 
