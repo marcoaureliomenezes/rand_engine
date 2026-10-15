@@ -1,8 +1,11 @@
 {
   "schema": "release-state-v1",
   "release": "0.8.0",
-  "phase": "DEFINITION",
-  "defined": null,
+  "phase": "IMPLEMENTATION",
+  "defined": {
+    "sha": "8bd8e3f941eaab7b46ed0bf8847a08437bd630c2",
+    "ts": "2026-10-15T00:40:31Z"
+  },
   "implemented": null,
   "shipped": null,
   "log": [
@@ -11,6 +14,15 @@
       "agent": "release.py new",
       "kind": "note",
       "text": "Release 0.8.0 born"
+    },
+    {
+      "ts": "2026-10-15T00:40:31Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-1",
+      "milestone": "defined",
+      "sha": "8bd8e3f941eaab7b46ed0bf8847a08437bd630c2",
+      "text": "Candidate defined at 8bd8e3f941eaab7b46ed0bf8847a08437bd630c2; phase IMPLEMENTATION."
     }
   ]
 }
