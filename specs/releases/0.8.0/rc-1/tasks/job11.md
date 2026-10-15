@@ -10,6 +10,6 @@
 | task | who | AC | `W:` | outcome |
 |---|---|---|---|---|
 | J11.T1 | sr | AC7.1, AC7.2, AC7.3, AC6.2, AC5.5 | `tests/test_docs.py` | RED: README section order and live badges, five slugs listed, site and skill links; no `pip install faker` and every `pip install` names a declared extra in README/docs; every `## [x.y.z]` carries an ISO date and `## [0.8.0]` exists; `llms.txt` links site pages. Owner: tests/test_docs.py |
-| J11.T2 | sr | AC7.1, AC7.2, AC6.2 | `README.md` | REBUILD the README as the landing page; every python block still executes. Owner: tests/test_docs.py |
-| J11.T3 | jr | AC7.3 | `CHANGELOG.md` | dated `0.7.0` header and the `0.8.0` section (Added, Fixed). Owner: tests/test_docs.py |
-| J11.T4 | jr | AC5.5, AC6.2 | `llms.txt` | links to the site pages, the skill and the Markdown sources. Owner: tests/test_docs.py |
+| J11.T2 | sr | AC7.1, AC7.2, AC6.2 | `README.md`, `tests/test_docs.py` | REBUILD the README as the landing page; every python block still executes. Owner: tests/test_docs.py |
+| J11.T3 | jr | AC7.3 | `CHANGELOG.md`, `tests/test_docs.py` | dated `0.7.0` header and the `0.8.0` section (Added, Fixed). Owner: tests/test_docs.py |
+| J11.T4 | jr | AC5.5, AC6.2 | `llms.txt`, `tests/test_docs.py` | links to the site pages, the skill and the Markdown sources. Owner: tests/test_docs.py |

@@ -12,7 +12,7 @@ Paths are relative to the repo root. Ledger = `specs/bugs/BUGS.jsonl` + `_archiv
 | unit | today | bugs | verdict | why |
 |---|---|---|---|---|
 | `rand_engine/validators/common_validator.py` `_spark_width_errors` :239-247 (+ `_np_core.py:34`, `_spark_core.py:38`) | THREE copies of the 2**53 width rule: validator :241 `max - min > 2**53` (off by one), `SparkCore.gen_ints` :38 `max - min + 1 > 2 ** 53`, `float_lattice_bounds` `_np_core.py:34` `high - low + 1 > 2 ** 53`; plus the derived magic `length > 15` :243. Diverge: `{'min':0,'max':2**53}` -> validator `[]`, core `ValueError: width (9007199254740993) must be <= 2**53` | `spark-integers-width-2pow53-validates-then-raises` (open) + the same class fixed 4 times: `spark-bigint-precision-lost`, `spark-floats-lattice-quadratic-slowdown`, `spark-floats-int64-endpoint-crashes`, `spark-floats-int-bounds-beyond-int64-crash`, `spark-floats-normal-int-kwargs-beyond-int64-crash`; the file carries 6 records | REBUILD | >= 2 bugs. Structural cause: the validator re-derives an engine limit instead of calling it, and every earlier fix patched one more copy. ONE predicate beside `float_lattice_bounds`; the validator and `int_zfilled` (width `10**length`, deleting the `15` literal) call it; net lines <= 0 (Job 1) |
-| `rand_engine/core/_spark_core.py` `SparkCore.gen_ints` :32-39 | operator-written body (invariant 12); :38 is copy #2 of the rule | 9 on the file (`spark-integers-max-exclusive`, `spark-bigint-precision-lost`, `spark-floats-*` x4, timezone, empty-date-range, inverted-range) | UPDATE (:38 only, on the operator's approval) else KEEP | approved: :38 calls the predicate and the copy is deleted. Refused: :38 stays a backstop and only the validator calls the predicate (`spark_generator.py:22` validates before any core call); task rows are identical |
+| `rand_engine/core/_spark_core.py` `SparkCore.gen_ints` :32-39 | operator-written body (invariant 12); :38 is copy #2 of the rule | 9 on the file (`spark-integers-max-exclusive`, `spark-bigint-precision-lost`, `spark-floats-*` x4, timezone, empty-date-range, inverted-range) | UPDATE (:38 only; operator-approved by name) | :38 calls the predicate and the copy is deleted |
 | `tests/test_1_common_validator.py:551-552` `test_integer_width_2_53_is_accepted` | asserts `max=2**53` validates `[]`: it encodes the bug; `tests/test_0_spark_core.py:337-341` asserts the core refuses the same pair | same bug | UPDATE (assert moves to refused) | main-thread ruling under invariant 3, cited in the J1.T1 `test(...)` commit |
 | `rand_engine/validators/common_validator.py` `_raise` :267-278, footer :275 | the one formatter of every `SpecValidationError`; footer is the repo-root URL | 0 | UPDATE (one string) | only the footer points at the site, from one constant; 0 tests assert it today (Job 9) |
 | `rand_engine/main/data_generator.py` `DataGenerator` | 128 lines; ruff D (numpy) 9 hits; `wrapped_df_generator` :57 is public by name but internal wiring (callers :102 :111 :123 :128) | 3 resolved (`writer-size-not-from-generator`, `writer-state-shared-across-chains`, `unbatched-save-refuses-transformed-null-column`) | UPDATE (docstrings only) | the >= 2 trigger is met by count but no behaviour changes and the fixes are KEEP-clean; a REBUILD would widen scope. No rename (consumers below) |
@@ -74,12 +74,12 @@ Associated repos of the context: 0. The counts are the as-is review's greps; no 
 
 ## 2. Rulings carried
 
-- Invariant 12 (operator's call, asked now): approved shape in Job 1; if refused, `_spark_core.py:38` stays as a backstop and only the validator calls the predicate; task rows identical.
+- Invariant 12: the operator approved `SparkCore.gen_ints` by name ("Aprovo", 2026-10-14); `_spark_core.py:38` calls the one predicate (Job 1).
 - `__version__` from `importlib.metadata` with a short fallback; a wheel test proves the value (Job 4).
 - Repo-law edits are in scope: `verify:` lines (J5.T6), `tests/AGENTS.md` (J6.T3), Tech Stack and Gates (Reconciliation, `pe`).
 - Workflow bugs (Jobs 3, 7): no test, no YAML-parser dependency; every commit body quotes the bug's repro grep at zero hits.
 - Spark docstring examples carry `+SKIP` (Job 5). The 1.8 s CLI start-up is accepted. A reusable workflow is out of scope.
-- RED tests land per `worktrees/AGENTS.md` §2: a RED task and its implementation task are separate dispatches in separate task trees.
+- A RED task lands its test marked `@pytest.mark.xfail(strict=True, reason=...)`; the implementation task (a separate dispatch and tree) lists that test file in its `W:` and removes only the marker line. Tasks of one job that share a test file run in sequence.
 
 ## 3. Gate costs (measured on this machine, 2026-10-14)
 

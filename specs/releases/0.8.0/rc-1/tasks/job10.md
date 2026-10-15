@@ -8,4 +8,4 @@
 | task | who | AC | `W:` | outcome |
 |---|---|---|---|---|
 | J10.T1 | sr | AC6.1 | `tests/test_docs.py` | RED: SKILL.md front matter has `name: rand-engine` and `description`; its python blocks execute in order under the AC5.4 contract. Owner: tests/test_docs.py |
-| J10.T2 | sr | AC6.1 | `skills/rand-engine/SKILL.md` | skill: RandSpec grammar, choosing a method, `pk`/`fk`, sinks, `rand-engine get-started`; blocks synthetic and <= 10^4 rows. Owner: tests/test_docs.py |
+| J10.T2 | sr | AC6.1 | `skills/rand-engine/SKILL.md`, `tests/test_docs.py` | skill: RandSpec grammar, choosing a method, `pk`/`fk`, sinks, `rand-engine get-started`; blocks synthetic and <= 10^4 rows. Owner: tests/test_docs.py |

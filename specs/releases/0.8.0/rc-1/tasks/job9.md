@@ -8,4 +8,4 @@
 | task | who | AC | `W:` | outcome |
 |---|---|---|---|---|
 | J9.T1 | sr | AC5.6, AC5.8 | `tests/test_1_common_validator.py`, `tests/integrations/test_public_api.py` | RED: a `SpecValidationError` message ends with the site URL; the built wheel's `Project-URL: Documentation` equals the same base URL. Owner: tests/test_1_common_validator.py |
-| J9.T2 | sr | AC5.6, AC5.8 | `rand_engine/validators/common_validator.py`, `pyproject.toml` | one base-URL constant used by the `_raise` footer (replaces the repo-root URL); `documentation` = the site. Owner: tests/test_1_common_validator.py |
+| J9.T2 | sr | AC5.6, AC5.8 | `rand_engine/validators/common_validator.py`, `pyproject.toml`, `tests/test_1_common_validator.py`, `tests/integrations/test_public_api.py` | one base-URL constant used by the `_raise` footer (replaces the repo-root URL); `documentation` = the site. Owner: tests/test_1_common_validator.py |
