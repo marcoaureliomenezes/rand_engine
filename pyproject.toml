@@ -37,7 +37,7 @@ pytest = "^9.0.3"
 pytest-cov = "^6.0.0"
 faker = "^28.4.1"
 pyspark = "^3.5.0"
-setuptools = "^78.1.1"  # Required for PySpark on Python 3.12+ (distutils replacement) - Fixed CVE path traversal
+setuptools = "^83.0.0"
 
 [tool.pytest.ini_options]
 addopts = "-m 'not stress'"
