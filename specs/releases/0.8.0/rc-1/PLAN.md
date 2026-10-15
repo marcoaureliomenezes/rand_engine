@@ -20,7 +20,7 @@ Paths are relative to the repo root. Ledger = `specs/bugs/BUGS.jsonl` + `_archiv
 | `rand_engine/file_handlers/writer.py` `FileWriter` | 51 lines; 3 D hits | 0 direct | UPDATE (docstrings only) | documents `mode/format/option/options` once; both writers inherit |
 | `rand_engine/file_handlers/_writer_batch.py` `save`, `_writer_stream.py` `trigger`/`start` | the objects `write`/`writeStream` return; undocumented; ruff D reports 0 on both files (ruff skips `_`-prefixed modules) | 2 resolved on `_writer_batch.py`; `writer-options-consumed-by-use` also on `_writer_stream.py` | UPDATE (docstrings only) | a green ruff D that never looks at the writers diverges from the demand (dd-code-review 4a); one pytest over `inspect` of the public callables closes it (J5.T1) |
 | `rand_engine/examples/common_rand_specs.py` `RandSpecs` | 375 lines; 12 D hits (D400 x10, D401, D100); `faker_pool`, `from_schema` documented | 0 on the file | UPDATE (docstrings only) | `advanced_rand_specs.py` and `templates/` are not public surface and stay untouched |
-| `rand_engine/__init__.py` | 6 lines, `__all__` = 3 names, no `__version__`, no `py.typed` | 0 | UPDATE (+ `__version__`, `py.typed`, docstring) | `__version__` via `importlib.metadata` with a short fallback, out of `__all__` (invariant 1; `test_public_api.py:47` `len == 3` stays); no unit carries the version |
+| `rand_engine/__init__.py` | 6 lines, `__all__` = 3 names, no `__version__`, no `py.typed` | 0 | UPDATE (+ `__version__`, `py.typed`, docstring) | `__version__` via `importlib.metadata` with the fallback `"0.0.0+unknown"` on `PackageNotFoundError`, out of `__all__` (invariant 1; `test_public_api.py:47` `len == 3` stays); no unit carries the version |
 | `rand_engine/{main,file_handlers,core,utils}/` | 4 of 8 package dirs lack `__init__.py` | 0 | ADD 4 empty files | repro: mkdocstrings `::: rand_engine.DataGenerator` -> `AliasResolutionError`; with the files the strict build passes (2.2 s). No unit can carry it |
 | `tests/test_docs.py` | executes `docs/*.md` python blocks (non-recursive), README blocks, README/`llms.txt` link rules, CHANGELOG tokens; docstrings cite AC ids | 1 (`docs-overstate-modifier-and-decimals-scope`, resolved) | UPDATE | owner of the docs contract; gains the docstring check (J5), recursive glob and tutorial rules (J8), skill (J10), README/CHANGELOG/`llms.txt` rules (J11); asserts tighten or add, none loosens; AC ids leave its docstrings (J8.T1) |
 | `README.md` | 127 lines; `pip install faker` :62 contradicts the extra `faker >=28.4.1,<29`; 10 `derived-from` markers | `faker-extra-undocumented-unpinned-install` (open); `docs` surface 1 resolved | REBUILD | the purpose changes (reference -> landing); patching :62 inside the old structure is a layer. The faker bug closes inside the rebuild with its RED test (J11) |
@@ -54,7 +54,7 @@ Paths are relative to the repo root. Ledger = `specs/bugs/BUGS.jsonl` + `_archiv
 
 ### 1.2 Consumers of every changed name, format or fix line
 
-Associated repos of the context: 0. The counts are the as-is review's greps; no `dd-researcher` pre-mortem ran (the review was read-only), so each hit is answered here.
+Associated repos of the context: 0. The counts are the as-is review's greps; the pre-mortem's six risks are answered as follows: (1) the off-by-one and the moved assert: Job 1 (AC1.3, AC1.4); (2) `__version__` under `--no-root`: Job 4 (AC3.1, the `"0.0.0+unknown"` fallback tested); (3) the `_raise` footer equal to `documentation`: Job 9 (AC5.6, AC5.8); (4) `cli.py` and `__main__.py` against `test_every_shipped_module_imports`: Job 6 (`main()` behind `if __name__`, cases as `.py.txt`); (5) the Zensical exact pin and mkdocstrings-python: Job 2; (6) the Trusted Publisher file names under the SHA pins: Job 3 (file names unchanged). Each consumer hit below is answered in the same way.
 
 | changed | consumers | answered by |
 |---|---|---|
@@ -74,12 +74,26 @@ Associated repos of the context: 0. The counts are the as-is review's greps; no 
 
 ## 2. Rulings carried
 
-- Invariant 12: the operator approved `SparkCore.gen_ints` by name ("Aprovo", 2026-10-14); `_spark_core.py:38` calls the one predicate (Job 1).
-- `__version__` from `importlib.metadata` with a short fallback; a wheel test proves the value (Job 4).
-- Repo-law edits are in scope: `verify:` lines (J5.T6), `tests/AGENTS.md` (J6.T3), Tech Stack and Gates (Reconciliation, `pe`).
-- Workflow bugs (Jobs 3, 7): no test, no YAML-parser dependency; every commit body quotes the bug's repro grep at zero hits.
-- Spark docstring examples carry `+SKIP` (Job 5). The 1.8 s CLI start-up is accepted. A reusable workflow is out of scope.
-- A RED task lands its test marked `@pytest.mark.xfail(strict=True, reason=...)`; the implementation task (a separate dispatch and tree) lists that test file in its `W:` and removes only the marker line. Tasks of one job that share a test file run in sequence.
+The main thread's 16 rulings on the as-is review (2026-10-14); SPEC and job files cite them as "ruling n".
+
+1. Invariant 12: the operator approved `SparkCore.gen_ints` by name ("Aprovo", 2026-10-14); `_spark_core.py:38` calls the one predicate (Job 1).
+2. The assert at `tests/test_1_common_validator.py:551-552` moves to refuse `max=2**53`, under invariant 3 (Job 1).
+3. `__version__` from `importlib.metadata` with the fallback `"0.0.0+unknown"` on `PackageNotFoundError`; a wheel test proves the real value and a unit case proves the fallback (Job 4).
+4. Repo-law edits are in scope: `verify:` lines (J5.T6), `tests/AGENTS.md` (J6.T3), Tech Stack and Gates (Reconciliation, `pe`).
+5. Only the `_raise` footer points at the site, from one base-URL constant (Job 9).
+6. `docs/5_RECIPES.md` is KEEP (Job 8).
+7. CLI tests run in-process plus one plain-python subprocess (Job 6).
+8. The 1.8 s CLI start-up is accepted; no lazy import (Job 6).
+9. Workflow bugs (Jobs 3, 7): no test, no YAML-parser dependency; every commit body quotes the bug's repro grep at zero hits.
+10. A reusable workflow is out of scope: the PyPI Trusted Publisher is bound to the workflow file names (Job 3).
+11. Spark docstring examples carry `# doctest: +SKIP` (Job 5).
+12. An `inspect` check covers the `_`-prefixed writer modules that ruff D skips (Job 5).
+13. The four namespace packages gain an empty `__init__.py` (Job 4).
+14. Bug records are append-only, so the SPEC's ACs carry the corrected scope (Jobs 3, 7).
+15. `site/`, `.cache/` and `docs/index.md` are gitignored; the strict build runs in `docs.yml` only; Zensical is pinned exactly in a `docs` group (Jobs 2, 8).
+16. No AC id in `tests/test_docs.py` docstrings (Job 8).
+
+Planning rules: a RED task lands its test marked `@pytest.mark.xfail(strict=True, reason=...)`, one marker per case when several implementation tasks share the test (J5.T1, J6.T3, J11.T1); each implementation task (a separate dispatch and tree) lists the test file in its `W:` and removes only its own marker. Tasks of one job that share a test file run in sequence; J5.T6 waits on J5.T2 to J5.T5. The `docs` group pins `zensical` and `mkdocstrings-python` exactly, and `docs.yml` installs it with `poetry install --only docs`.
 
 ## 3. Gate costs (measured on this machine, 2026-10-14)
 
@@ -121,6 +135,7 @@ Overlaps across waves are ordered by an edge: `pyproject.toml` (Job 2 -> Job 6 -
 | task | who | W: |
 |---|---|---|
 | memory pass | pe | `specs/memory/**` |
+| `ARCHITECTURE.md:54` names the `common_validator` -> `_np_core` edge | pe | `specs/memory/**` |
 | closure entries (`release.py` verbs only) | pe | `specs/releases/0.8.0/_RELEASE.json` |
 
 - Constitution invariant 11 (ruling 4): `ARCHITECTURE.md` `## Tech Stack` gains Zensical, mkdocstrings (numpydoc), MkDocs-Material fallback and ruff; `QUALITY.md` `## Gates` drops "No lint or type checker is configured" and states the ruff D and docstring gates with the PLAN §3 costs.

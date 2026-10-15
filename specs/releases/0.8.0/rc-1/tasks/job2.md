@@ -11,4 +11,4 @@ Dev-loop dependencies only: no runtime dependency changes (invariant 10). One wr
 | task | who | AC | `W:` | outcome |
 |---|---|---|---|---|
 | J2.T1 | jr | AC2.1 | `pyproject.toml`, `poetry.lock` | pyspark lock bump to >= 3.5.8; setuptools constraint `^83.0.0` and lock >= 83.0.0; no test (dependency pins; evidence = lock diff and Dependabot alerts #17/#18 reading fixed after push). Owner test: none, the CI matrix on the bumped lock |
-| J2.T2 | jr | AC3.3, AC5.1 | `pyproject.toml`, `poetry.lock` | ruff in the test group; docs group with zensical (exact pin) and mkdocstrings-python; `[tool.ruff]` numpy `D` config; `version = "0.8.0"`. No test (dependency and config lines; the verify: lines of J5.T6 and the docs workflow exercise them). Owner test: none |
+| J2.T2 | jr | AC3.3, AC5.1 | `pyproject.toml`, `poetry.lock` | ruff in the test group; docs group with zensical and mkdocstrings-python, both pinned exactly (`==`); `[tool.ruff]` numpy `D` config; `version = "0.8.0"`. No test (dependency and config lines; the verify: lines of J5.T6 and the docs workflow exercise them). Owner test: none |
