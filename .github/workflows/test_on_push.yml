@@ -6,11 +6,16 @@ on:
       - master
       - development
 
+permissions:
+  contents: read
+
 jobs:
   # Skip if PR exists (will run in pr_to_development.yml instead)
   check_pr:
     name: Check if PR exists
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
     outputs:
       has_pr: ${{ steps.check.outputs.has_pr }}
     steps:

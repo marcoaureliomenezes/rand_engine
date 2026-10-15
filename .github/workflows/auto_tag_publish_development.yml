@@ -10,6 +10,9 @@ env:
   PYTHON_VERSION: "3.12"
   PACKAGE_NAME: "rand-engine"
 
+permissions:
+  contents: read
+
 jobs:
   # Job 1: Extract version and determine RC tag
   prepare:
