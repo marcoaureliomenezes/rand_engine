@@ -4,6 +4,7 @@ import json
 from typing import Any
 import warnings
 
+from rand_engine.core._np_core import width_beyond_double
 from rand_engine.validators.exceptions import SpecValidationError
 from rand_engine.validators.method_specs import (
     COMMON_METHOD_SPECS,
@@ -238,12 +239,15 @@ class CommonValidator:
     @staticmethod
     def _spark_width_errors(col_name: str, method: str, kwargs: dict[str, Any]) -> list[str]:
         """Spark carries exact domains in doubles: integer widths beyond 2**53 are refused."""
-        if method == "integers" and kwargs["max"] - kwargs["min"] > 2**53:
-            problem = "width (max - min) must be <= 2**53"
-        elif method == "int_zfilled" and kwargs["length"] > 15:
-            problem = "'length' must be <= 15 (exact digits in a double)"
+        if method == "integers":
+            width, label = kwargs["max"] - kwargs["min"] + 1, "width (max - min + 1)"
+        elif method == "int_zfilled":
+            width, label = 10 ** kwargs["length"], "'length' width (10**length)"
         else:
             return []
+        if not width_beyond_double(width):
+            return []
+        problem = f"{label} ({width}) must be <= 2**53"
         return [f"❌ Column '{col_name}': method '{method}' {problem} in SparkGenerator"]
 
     @classmethod
