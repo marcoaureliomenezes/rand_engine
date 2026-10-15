@@ -52,7 +52,7 @@ The audit history is empty, so the window is the whole history. The prior candid
 
 ## 3. Non-goals
 
-- The core `gen_*` bodies and `StreamHandler` (constitution invariant 12), unless the operator approves `SparkCore.gen_ints` by name (§6 Open question 1).
+- The core `gen_*` bodies and `StreamHandler` (constitution invariant 12), except `SparkCore.gen_ints`'s width refusal, approved by name (§6 Open question 1).
 - Spark pk/fk parity, a DB key sink, event-time fk, stream-dict via Arrow (other backlog entries).
 - Outreach (awesome lists, comparison page, posts, Discussions, conda-forge): backlog after 0.8.0.
 - The Context7 submission, enabling GitHub Pages and pointing the GitHub homepage at the site: operator or main-thread acts outside every AC.
@@ -85,7 +85,7 @@ The audit history is empty, so the window is the whole history. The prior candid
 
 - AC1.1 (integration, Spark): `SparkGenerator` with `integers` `min=0`, `max=2**53`, `int_type='int64'` raises a collected `SpecValidationError` at construction naming the column and the width; `get_df` never raises a raw `ValueError` for a spec that validated.
 - AC1.2 (integration, Spark): `max - min + 1 == 2**53` validates and `get_df` yields values within `[min, max]`.
-- AC1.3 (unit): for `max - min + 1` in `2**53 - 1`, `2**53`, `2**53 + 1`, and for `int_zfilled` `length` 15 and 16, Spark validation refuses exactly the specs `SparkCore.gen_ints` refuses. One predicate states the width rule; the validator (integers, and `int_zfilled` by width `10**length`) and `float_lattice_bounds` call it, and `SparkCore.gen_ints` calls it only if Open question 1 is approved.
+- AC1.3 (unit): for `max - min + 1` in `2**53 - 1`, `2**53`, `2**53 + 1`, and for `int_zfilled` `length` 15 and 16, Spark validation refuses exactly the specs `SparkCore.gen_ints` refuses. One predicate states the width rule; the validator (integers, and `int_zfilled` by width `10**length`), `float_lattice_bounds` and `SparkCore.gen_ints` call it; no other width literal remains.
 - AC1.4 (unit): the existing assert at `tests/test_1_common_validator.py:551-552`, which accepts `max=2**53`, moves to refuse it. This is the main thread's ruling (ruling 2, 2026-10-14) under invariant 3, "a spec that validates generates"; the `test(...)` commit that moves it cites this ruling.
 
 ### FR2 — Dev-loop security
@@ -144,7 +144,7 @@ The audit history is empty, so the window is the whole history. The prior candid
 
 ## 5. Replaces
 
-- The Spark integer-width inequality restated in `CommonValidator._spark_width_errors` (`max - min > 2**53`, `length > 15`) and in `float_lattice_bounds` → one predicate (FR1).
+- The Spark integer-width inequality restated in `CommonValidator._spark_width_errors` (`max - min > 2**53`, `length > 15`) and in `float_lattice_bounds` and `SparkCore.gen_ints` (`_spark_core.py:38`, `max - min + 1 > 2**53`) → one predicate (FR1).
 - The assert accepting `max=2**53` (`tests/test_1_common_validator.py:551-552`) → an assert refusing it (AC1.4).
 - Six mutable action refs (`@v4` ×3, `@release/v1` ×2, `@master` ×1) → commit-SHA pins (AC2.3).
 - The default `GITHUB_TOKEN` scope in `auto_tag_publish_master.yml`, `auto_tag_publish_development.yml`, `pr_to_master.yml`, `test_on_push.yml` → top-level `contents: read` (AC2.2).
@@ -172,7 +172,7 @@ The audit history is empty, so the window is the whole history. The prior candid
 - Zero new runtime dependencies (invariant 10); the CLI is stdlib `argparse`.
 - Invariant 11: Zensical is pinned exactly (`==`) in a `docs` dependency group with mkdocstrings-python; ruff enters the `test` group; MkDocs-Material enters only if the fallback is taken, on the same `mkdocs.yml` (ruling 15).
 - Repo-law edits in scope (ruling 4): the three `verify:` lines of the repo `AGENTS.md` (AC3.3) and `tests/AGENTS.md` (AC4.8). `ARCHITECTURE.md` `## Tech Stack` and `QUALITY.md` `## Gates` ("No lint or type checker is configured") change in a `pe` task of the Reconciliation job, inside this candidate.
-- Invariant 12: the core `gen_*` bodies and `StreamHandler` are out of scope unless Open question 1 is approved.
+- Invariant 12: the core `gen_*` bodies and `StreamHandler` are out of scope, except `SparkCore.gen_ints`'s width refusal (`_spark_core.py:38`), approved by name (Open question 1).
 - Measured gate costs (as-is handoff, this machine): ruff D 0.03 s; docstring and doctest checks under 1 s inside the suite; the five cases in-process 0.85 s; the one subprocess 2.38 s — about 4.3 s on a 72.2 s `verify:` run. The Zensical build (2.2 s strict) runs in the docs workflow only.
 - Benchmarks run in CI only; any speed claim in the README, the site or a scaffold cites `docs/BENCHMARKS.md`.
 - Invariant 7: scaffolds and examples use synthetic data only. Invariant 9: CLI and docs tests write under pytest `tmp_path`.
@@ -191,4 +191,4 @@ The audit history is empty, so the window is the whole history. The prior candid
 
 ### Open questions
 
-1. FR1's one predicate (the operator's question; ruling 1): does the operator approve `SparkCore.gen_ints` by name in the Origin, so its width refusal (`_spark_core.py:38`) calls the predicate and the copy is deleted? Recommended: approve — it removes the last copy. Without it, `:38` stays as a backstop and the validator stays the decider `SparkGenerator` consults; AC1.1–AC1.4 hold either way.
+1. Closed 2026-10-14. The operator approved by name, under invariant 12, that `SparkCore.gen_ints` (`_spark_core.py:38`) calls the single width predicate in `_np_core.py` ("Aprovo"); its literal copy is deleted (AC1.3).
