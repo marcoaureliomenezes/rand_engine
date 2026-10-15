@@ -138,7 +138,7 @@ The audit history is empty, so the window is the whole history. The prior candid
 
 - AC7.1 (unit): the README holds, in order, the pitch, live shields badges (PyPI version, Python versions, license, CI), install, a 30-second example, when to use it, the five `rand-engine get-started` cases and the docs-site link; every README `python` block executes (the existing README contract); method reference tables live on the site, not in the README.
 - AC7.2 (unit): the README and every docs page install Faker as `pip install "rand-engine[faker]"`; every `pip install` names only a declared extra; no page says `pip install faker`.
-- AC7.3 (unit): every released `## [x.y.z]` header of `CHANGELOG.md` carries an ISO date, `## [0.7.0] - 2026-10-14` among them; `## [0.8.0] - Unreleased` lists this release's Added and Fixed entries, Added including `pip install "rand-engine[faker]"` (bug `faker-extra-undocumented-unpinned-install`), and gets its date, the closure date, only at Reconciliation.
+- AC7.3 (unit): every `## [x.y.z]` header of `CHANGELOG.md` carries an ISO date, `## [0.7.0] - 2026-10-14` among them; Job 11 writes `## [0.8.0] - <YYYY-MM-DD>`, the date of its own task commit, listing this release's Added and Fixed entries, Added including `pip install "rand-engine[faker]"` (bug `faker-extra-undocumented-unpinned-install`). Reconciliation never writes `CHANGELOG.md`.
 
 ### FR8 — Truthful CI summaries
 
@@ -170,7 +170,7 @@ The audit history is empty, so the window is the whole history. The prior candid
 | 4 | Job 8 docs site; Job 9 footer and `documentation` | AC5.1–AC5.5, AC5.7, AC5.10; AC5.6, AC5.8 |
 | 5 | Job 10 Agent Skill | FR6 |
 | 6 | Job 11 README, CHANGELOG, `llms.txt` | FR7 |
-| 7 | Reconciliation | memory; the AC7.3 date |
+| 7 | Reconciliation | memory |
 
 ### Constraints
 
