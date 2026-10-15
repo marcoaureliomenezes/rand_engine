@@ -43,7 +43,7 @@ Paths are relative to the repo root. Ledger = `specs/bugs/BUGS.jsonl` + `_archiv
 
 | question | authority | consults | deleted |
 |---|---|---|---|
-| is an integer width exactly representable on Spark | one predicate beside `float_lattice_bounds` in `rand_engine/core/_np_core.py` | `common_validator.py` `_spark_width_errors` (integers; `int_zfilled` via width `10**length`), `float_lattice_bounds`, `SparkCore.gen_ints` :38 (only with the invariant-12 approval) | validator literal `2**53` :241 and `length > 15` :243; `_spark_core.py:38` literal (if approved); `_np_core.py:34` literal |
+| is an integer width exactly representable on Spark | one predicate beside `float_lattice_bounds` in `rand_engine/core/_np_core.py` | `common_validator.py` `_spark_width_errors` (integers; `int_zfilled` via width `10**length`), `float_lattice_bounds`, `SparkCore.gen_ints` :38 | validator literal `2**53` :241 and `length > 15` :243; `_spark_core.py:38` literal; `_np_core.py:34` literal |
 | which version is installed | `pyproject.toml` `version`, read by `importlib.metadata` as `rand_engine.__version__` | workflow summaries (master :267, pr_to_development :286, development :188), the wheel test | the `0.5.6` literals (master :277 :335 :336) |
 | the code of get-started case N | `rand_engine/cases/<slug>.py.txt` | `rand_engine/cli.py` (copies it), the tutorial page (snippet include, not a restated fence), the case test (executes the written file) | none (`docs/5_RECIPES.md` kept) |
 | what a public call accepts and returns | the docstring in source | mkdocstrings reference page, ruff D, doctest, `inspect` check | none |
