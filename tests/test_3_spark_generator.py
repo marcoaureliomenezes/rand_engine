@@ -412,3 +412,15 @@ class TestSparkGeneratorDataQuality:
             assert len(row["code"]) == 6
             # All should be numeric strings
             assert row["code"].isdigit()
+
+
+class TestSparkIntegerWidthRefusedAtConstruction:
+    @pytest.mark.xfail(strict=True, reason="J1.T2")
+    def test_max_2_53_raises_collected_spec_error(self, spark_session, spark_functions):
+        from rand_engine.validators.exceptions import SpecValidationError
+
+        metadata = {"value": {"method": "integers", "kwargs": {"min": 0, "max": 2**53}}}
+        with pytest.raises(SpecValidationError) as exc_info:
+            SparkGenerator(spark_session, spark_functions, metadata)
+        assert "'value'" in str(exc_info.value)
+        assert "2**53" in str(exc_info.value)

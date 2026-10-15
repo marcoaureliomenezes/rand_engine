@@ -548,8 +548,16 @@ class TestSparkExactDomainRefusals:
         assert len(errors) == 1
         assert "2^53" in errors[0] or "2**53" in errors[0]
 
-    def test_integer_width_2_53_is_accepted(self):
-        assert self._validate("integers", min=0, max=2**53) == []
+    @pytest.mark.xfail(strict=True, reason="J1.T2")
+    def test_integer_max_2_53_is_refused(self):
+        errors = self._validate("integers", min=0, max=2**53)
+        assert len(errors) == 1
+        assert "'c'" in errors[0]
+        assert "2**53" in errors[0]
+
+    def test_integer_width_exactly_2_53_is_accepted(self):
+        assert self._validate("integers", min=0, max=2**53 - 1) == []
+        assert self._validate("integers", min=-2**53, max=-1) == []
 
     def test_int_zfilled_length_16_is_refused(self):
         errors = self._validate("int_zfilled", length=16)
