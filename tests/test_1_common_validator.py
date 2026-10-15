@@ -557,11 +557,15 @@ class TestSparkExactDomainRefusals:
     def test_integer_width_exactly_2_53_is_accepted(self):
         assert self._validate("integers", min=0, max=2**53 - 1) == []
         assert self._validate("integers", min=-2**53, max=-1) == []
+        assert self._validate("integers", min=0, max=2**53 - 2) == []
 
-    def test_int_zfilled_length_16_is_refused(self):
-        errors = self._validate("int_zfilled", length=16)
+    @pytest.mark.parametrize("length", [16, 5000, 10**7])
+    def test_int_zfilled_length_above_15_is_one_collected_error(self, length):
+        errors = self._validate("int_zfilled", length=length)
         assert len(errors) == 1
-        assert "length" in errors[0]
+        assert "Column 'c'" in errors[0]
+        assert "'length'" in errors[0]
+        assert "15" in errors[0]
 
     def test_int_zfilled_length_15_is_accepted(self):
         assert self._validate("int_zfilled", length=15) == []

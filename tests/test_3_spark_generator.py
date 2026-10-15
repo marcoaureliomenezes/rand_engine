@@ -423,3 +423,11 @@ class TestSparkIntegerWidthRefusedAtConstruction:
             SparkGenerator(spark_session, spark_functions, metadata)
         assert "'value'" in str(exc_info.value)
         assert "2**53" in str(exc_info.value)
+
+
+class TestSparkIntegerWidthExactly2Pow53:
+    def test_values_stay_within_bounds(self, spark_session, spark_functions):
+        metadata = {"value": {"method": "integers", "kwargs": {"min": 0, "max": 2**53 - 1}}}
+        df = SparkGenerator(spark_session, spark_functions, metadata).size(200).get_df()
+        values = [row["value"] for row in df.collect()]
+        assert (len(values), min(values) >= 0, max(values) <= 2**53 - 1) == (200, True, True)
