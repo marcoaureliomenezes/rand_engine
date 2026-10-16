@@ -404,7 +404,7 @@ def _llms():
   pytest.param(_readme_landing, id="README.md"),
   pytest.param(_pip_installs, id="pip-install"),
   pytest.param(_changelog, id="CHANGELOG.md"),
-  pytest.param(_llms, id="llms.txt", marks=pytest.mark.xfail(strict=True, reason="J11.T4 llms.txt links site pages, the skill and the case files")),
+  pytest.param(_llms, id="llms.txt"),
 ])
 def test_landing_contract(check):
   """Each landing file (README, install lines, CHANGELOG, llms.txt) meets its release contract."""
