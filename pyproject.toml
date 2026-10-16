@@ -7,7 +7,7 @@ license = "MIT"
 readme = "README.md"
 homepage = "https://github.com/marcoaureliomenezes/rand_engine"
 repository = "https://github.com/marcoaureliomenezes/rand_engine"
-documentation = "https://github.com/marcoaureliomenezes/rand_engine/tree/master/docs"
+documentation = "https://marcoaureliomenezes.github.io/rand_engine/"
 keywords = ["synthetic-data", "random-data", "mock-data", "test-data", "numpy", "data-engineering"]
 classifiers = [
     "Development Status :: 4 - Beta",

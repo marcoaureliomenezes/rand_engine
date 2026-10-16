@@ -19,6 +19,8 @@ from rand_engine.validators.method_specs import (
 )
 
 
+DOCS_URL = "https://marcoaureliomenezes.github.io/rand_engine/"
+
 COLUMN_KEYS = (
     "method", "kwargs", "cols", "transformers", "null_rate", "anomaly_rate", "anomaly_values"
 )
@@ -273,7 +275,7 @@ class CommonValidator:
             f"Found {len(errors)} error(s) in specification:\n\n"
             + separator.join(errors)
             + f"\n\n{'=' * 80}\n"
-            "📚 Documentation: https://github.com/marcoaureliomenezes/rand_engine\n"
+            f"📚 Documentation: {DOCS_URL}\n"
             f"{'=' * 80}\n"
         )
         raise SpecValidationError(message)
