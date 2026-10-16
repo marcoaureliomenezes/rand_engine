@@ -1,29 +1,32 @@
 {
-  "generated_at": "2026-10-11T22:01:06Z",
+  "generated_at": "2026-10-16T13:55:14Z",
   "features": [
     {
       "rank": 1,
       "slug": "public-api",
       "title": "Public API",
       "area": "api",
-      "tldr": "rand_engine exports DataGenerator, SparkGenerator and RandSpecs; every other module is internal.",
-      "summary": "The supported import surface is the three names in rand_engine.__all__, plus the RandEngineError exception family a caller catches; the wheel ships only the rand_engine package.",
+      "tldr": "rand_engine exports DataGenerator, SparkGenerator, RandSpecs and __version__, is typed and ships the rand-engine CLI; every other module is internal.",
+      "summary": "The supported import surface is the three names in rand_engine.__all__, the RandEngineError exception family a caller catches, the __version__ string read from installed metadata and the rand-engine console script; the wheel ships only the rand_engine package, typed, with its get-started scaffolds.",
       "path": "specs/memory/product/api/public-api.md",
       "tags": [
         "api",
         "package",
         "exceptions"
       ],
-      "token_estimate": 302,
+      "token_estimate": 477,
       "depends_on": [
         "data-generator",
         "spark-generator",
         "templates-and-examples",
+        "documentation",
+        "get-started-cli",
         "rand-spec-grammar",
         "writers-and-streaming"
       ],
       "sources": [
         "rand_engine/__init__.py",
+        "rand_engine/py.typed",
         "rand_engine/validators/exceptions.py",
         "pyproject.toml"
       ]
@@ -124,7 +127,7 @@
         "pyspark",
         "generator"
       ],
-      "token_estimate": 321,
+      "token_estimate": 340,
       "depends_on": [
         "rand-spec-grammar",
         "generation-methods"
@@ -136,6 +139,68 @@
     },
     {
       "rank": 6,
+      "slug": "documentation",
+      "title": "Documentation site, llms.txt and agent skill",
+      "area": "onboarding",
+      "tldr": "A strict-built GitHub Pages site, a landing README, a root llms.txt and an Agent Skill document rand-engine, and the suite executes their code.",
+      "summary": "The docs site at https://marcoaureliomenezes.github.io/rand_engine/ is built by Zensical from the repo Markdown and the public docstrings; README is a landing page that becomes the site home; llms.txt indexes site pages, the skill and the case files for agents; skills/rand-engine/SKILL.md teaches agents the RandSpec grammar. Every python block of the README, the docs pages and the skill runs in the suite.",
+      "path": "specs/memory/product/onboarding/documentation.md",
+      "tags": [
+        "docs",
+        "site",
+        "llms-txt",
+        "agent-skill",
+        "readme"
+      ],
+      "token_estimate": 454,
+      "depends_on": [
+        "public-api",
+        "benchmarks",
+        "get-started-cli",
+        "rand-spec-grammar"
+      ],
+      "sources": [
+        "docs/**",
+        "mkdocs.yml",
+        "llms.txt",
+        "README.md",
+        "skills/**",
+        ".github/workflows/docs.yml"
+      ]
+    },
+    {
+      "rank": 7,
+      "slug": "get-started-cli",
+      "title": "Get-started CLI",
+      "area": "onboarding",
+      "tldr": "The rand-engine console script lists five adoption cases and writes any of them as a runnable example file.",
+      "summary": "rand-engine list prints the five case slugs with what each teaches; rand-engine get-started <slug> [--out DIR] copies the packaged scaffold to DIR/<slug>-example.py without overwriting. Each scaffold is a Databricks-format source file that also runs under plain python.",
+      "path": "specs/memory/product/onboarding/get-started-cli.md",
+      "tags": [
+        "cli",
+        "onboarding",
+        "scaffolds",
+        "examples"
+      ],
+      "token_estimate": 427,
+      "depends_on": [
+        "public-api",
+        "generation-methods",
+        "pk-fk-constraints",
+        "writers-and-streaming",
+        "data-generator",
+        "spark-generator",
+        "templates-and-examples",
+        "documentation"
+      ],
+      "sources": [
+        "rand_engine/cli.py",
+        "rand_engine/__main__.py",
+        "rand_engine/cases/**"
+      ]
+    },
+    {
+      "rank": 8,
       "slug": "writers-and-streaming",
       "title": "Writers and streaming",
       "area": "output",
@@ -159,7 +224,7 @@
       ]
     },
     {
-      "rank": 7,
+      "rank": 9,
       "slug": "benchmarks",
       "title": "Performance benchmarks",
       "area": "quality",
@@ -180,7 +245,7 @@
       ]
     },
     {
-      "rank": 8,
+      "rank": 10,
       "slug": "pk-fk-constraints",
       "title": "PK/FK key columns",
       "area": "relations",
@@ -206,7 +271,7 @@
       ]
     },
     {
-      "rank": 9,
+      "rank": 11,
       "slug": "rand-spec-grammar",
       "title": "RandSpec grammar",
       "area": "spec",
@@ -218,7 +283,7 @@
         "grammar",
         "validation"
       ],
-      "token_estimate": 620,
+      "token_estimate": 670,
       "depends_on": [
         "pk-fk-constraints",
         "generation-methods",
