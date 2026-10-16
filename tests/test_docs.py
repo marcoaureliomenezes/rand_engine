@@ -7,6 +7,7 @@ import json
 import re
 import tempfile
 import textwrap
+import warnings
 from pathlib import Path
 
 import pytest
@@ -49,6 +50,45 @@ def test_no_run_is_only_the_kafka_producer():
   no_run = {(doc.name, body) for doc in DOCS.glob("*.md") for info, body in python_blocks(doc) if info == "python no-run"}
   assert {name for name, _ in no_run} == {"5_RECIPES.md"}
   assert all("from kafka import" in body for _, body in no_run)
+  skill = python_blocks(SKILL)
+  assert {info for info, _ in skill} <= {"python", "python no-run"}
+  assert all("from pyspark" in body for info, body in skill if info == "python no-run")
+
+
+def skill_method_table() -> dict[str, str]:
+  """Method name -> the Spark column's text, for every row of SKILL.md's method table."""
+  rows = re.findall(r"^\| Method \|.*\n\|[-| ]+\n((?:\|.*\n)+)", SKILL.read_text(encoding="utf-8"), re.M)[0].splitlines()
+  cells = [[c.strip() for c in row.strip("|").split("|")] for row in rows]
+  return {name: cell[-1] for cell in cells for name in re.findall(r"`(\w+)`", cell[0])}
+
+
+def spark_outcome(spec) -> str:
+  """How Spark validation treats a spec, in the table's vocabulary."""
+  from rand_engine.validators.common_validator import CommonValidator
+  from rand_engine.validators.exceptions import SpecValidationError
+  with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    try:
+      CommonValidator.validate_spark_and_raise({"c": dict(spec)})
+    except SpecValidationError:
+      return "refused"
+  return "NULL + warning" if caught else "yes"
+
+
+def test_skill_method_table_lists_every_method():
+  """SKILL.md's method table names exactly the methods of METHOD_CATALOG."""
+  from rand_engine.validators.method_specs import METHOD_CATALOG
+  assert set(skill_method_table()) == set(METHOD_CATALOG)
+
+
+@pytest.mark.xfail(strict=True, reason="J10.T4 SKILL.md marks the four correlated methods refused; Spark accepts them with a warning")
+def test_skill_method_table_spark_column_is_what_validation_does():
+  """Each row's Spark cell (yes / refused / NULL + warning) is the outcome of Spark validation of that method's catalog example."""
+  from rand_engine.validators.method_specs import METHOD_CATALOG
+  claimed = skill_method_table()
+  assert set(claimed.values()) <= {"yes", "refused", "NULL + warning"}
+  actual = {name: spark_outcome(spec.example) for name, spec in METHOD_CATALOG.items()}
+  assert {m: (claimed[m], actual[m]) for m in actual if claimed[m] != actual[m]} == {}
 
 INCLUDE = re.compile(r'--8<-- "(rand_engine/cases/[a-z-]+\.py\.txt)"')
 
