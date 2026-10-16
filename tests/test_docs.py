@@ -195,8 +195,8 @@ def _owned(task):
   "DataGenerator",
   "SparkGenerator",
   "FileWriter",
-  pytest.param("FileBatchWriter", marks=_owned("J5.T4")),
-  pytest.param("FileStreamWriter", marks=_owned("J5.T4")),
+  "FileBatchWriter",
+  "FileStreamWriter",
   pytest.param("RandSpecs", marks=_owned("J5.T5")),
 ])
 def test_public_callables_carry_numpydoc(name):
@@ -209,8 +209,8 @@ def test_public_callables_carry_numpydoc(name):
   "rand_engine.main.data_generator",
   "rand_engine.main.spark_generator",
   "rand_engine.file_handlers.writer",
-  pytest.param("rand_engine.file_handlers._writer_batch", marks=_owned("J5.T4")),
-  pytest.param("rand_engine.file_handlers._writer_stream", marks=_owned("J5.T4")),
+  "rand_engine.file_handlers._writer_batch",
+  "rand_engine.file_handlers._writer_stream",
   pytest.param("rand_engine.examples.common_rand_specs", marks=_owned("J5.T5")),
 ])
 def test_module_docstring_examples_run(module, tmp_path, monkeypatch):
