@@ -60,6 +60,18 @@
         "docs-site",
         "readme-landing"
       ]
+    },
+    {
+      "id": "documentation-excellence",
+      "title": "Documentation excellence \u2014 humans and agents discover, onboard and test every feature: APIs and use cases fully documented",
+      "opened": "2026-10-16",
+      "status": "idea",
+      "description": "Target: release 0.8.0, candidate rc-3. Operator demand: document rand-engine as well as possible so its users, agents or humans, discover it easily, onboard easily and test its features, with APIs and use cases fully documented, so users get the best out of rand-engine. Demand only: the operator grills and defines rc-3's scope later; nothing beyond the quoted demand is scoped here. Context: 0.8.0 rc-1 delivered docstrings, readme-landing, docs-site, get-started-cli and agent-skill (backlog_histo.jsonl); the same words were first recorded 2026-10-04 as rc3-documentation-first, rejected 2026-10-14 as absorbed by those entries.",
+      "provenance": "operator demand 2026-10-16 (main thread, release 0.8.0, rc-3 target), verbatim: \"ao final serei capaz de definir a rc3 que visar\u00e1, ja registre isso, o objetivo de documentarmos o rand-engine da melhor forma possivel para que nossos usu\u00e1rios sejam eles agents ou humanos, possam descobrir a rand-engine facilmente, fazer onboarding facilmente e testar features. E tudo muito bem documentado, APIs, casos de uso. Para que nossos usu\u00e1rios possam usar a rand-engine da melhor forma\"",
+      "relates": [
+        "outreach",
+        "pypi-metadata"
+      ]
     }
   ]
 }
