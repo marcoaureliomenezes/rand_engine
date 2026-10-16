@@ -7,9 +7,18 @@
 **Origin:** backlog:pypi-metadata; bugs:int-zfilled-nonpositive-length-validates-then-raises,int-zfilled-length-above-18-validates-then-raises,package-docstring-contradicts-pitch,stream-trigger-frequency-annotated-int,reference-test-self-referential
 
 - Backlog `pypi-metadata`: 14 keywords, `Typing :: Typed`, CI matrices gain Python 3.13 and Spark tests skip where pyspark 3.5 cannot run. `python` reads `>=3.10` with no cap, and the explicit classifiers 3.10–3.13 make the wheel advertise only the tested set. The fallback `>=3.10,<3.14` applies only if poetry-core cannot keep those classifiers. Sources: the entry's provenance, which holds the operator rulings of 2026-10-15 ("Widen CI to 3.13", then "No cap, honest classifiers", which supersedes the cap), and handoff `2026-10-16T013009Z-main-thread-adoption-resume-grill`.
-- Folded in, same file and same table: `poetry check` warns that `[tool.poetry.scripts]` is deprecated. The script moves to `[project.scripts]`, in the PEP 621 `[project]` table that the static classifiers need.
+- Folded in, same file and same table: `poetry check` warns that `[tool.poetry.scripts]` is deprecated. The script moves to `[project.scripts]`, in the PEP 621 `[project]` table that the static classifiers need. Beside `[project]`, `poetry check` also warns on `[tool.poetry.extras]`, the License classifier and `[tool.poetry.urls]` (PLAN §3.1, measured). Operator ruling (grill): the urls and the faker extra move to `[project.urls]` and `[project.optional-dependencies]`, and `License: MIT` becomes `License-Expression: MIT`.
 - The five bugs open on `feature/0.8.0` (`specs/bugs/BUGS.jsonl`), each fixed RED → GREEN per `specs/bugs/AGENTS.md` §2; `int-zfilled-length-above-18-validates-then-raises` was confirmed in the grill with "Confirm, same fix".
-- Grill: handoff `2026-10-16T150500Z-main-thread-grill-080-rc2` (5 operator decisions). Rulings: the benchmark Job summary and PR comment stay as they are; one docs line states that Spark needs Python <= 3.12 until pyspark 4; the `kafka-python` exemption is kept; the upper `length` bound joins AC3.1.
+- Grill: handoff `2026-10-16T150500Z-main-thread-grill-080-rc2`. Operator rulings:
+  - The benchmark Job summary and PR comment stay as they are.
+  - The Spark page states the combinations CI validates, written after the 3.13 CI run. This supersedes the earlier "<= 3.12" line, since pyspark 3.5.8 was measured green on Linux 3.13.
+  - The `kafka-python` exemption is kept, and the upper `length` bound joins AC3.1.
+  - Everything moves into `[project]`.
+  - The main thread dispatches one `benchmarks.yml` run on `feature/0.8.0` after Jobs 1–6, which feeds Job 7.
+- Main-thread rulings (same handoff):
+  - R2: `test_int_zfilled_length_above_15` keeps `16`, and `5000` and `10**7` move to the new AC3.1 partition test.
+  - Q3: J2.T1 replaces the stale result grid at `test_on_push.yml:143-158` with one result line.
+  - rc-2 adds its lines to the CHANGELOG 0.8.0 section (FR6).
 - Operator demand, 2026-10-16, verbatim: «eu ver testes de benchmark de CI funcionando e publicando um summary no actions que me é mandado que posso ver + merge de benchmarks na documentação». State of play: `benchmarks.yml:48-56` already publishes the Job summary and a PR comment (PR #44 run 38914408354, 46/46 rows). `docs/BENCHMARKS.md` and `docs/benchmarks.json`, served as the site's Benchmarks page (`mkdocs.yml:23`), were last recorded at a911fd2 (2026-10-11, head 5920630).
 - Operator ruling, 2026-10-16 (grill): the landing test keeps its `kafka-python` exemption (`tests/test_docs.py:382`). It is recorded below as a Term.
 - Closure-memory claims that the rc-1 reconcile review (handoff `2026-10-16T141302Z-dd-code-reviewer-reconcile-rc1`) found untrue are carried as FR5.
@@ -28,7 +37,7 @@ This table judges rc-1's 12 resolved records (10 fix commits), each read with `g
 | `faker-extra-undocumented-unpinned-install` | `3410c4d` | none (net −74) | KEEP | README rebuilt |
 | `dependabot-pyspark-357-ghsa-9437`, `dependabot-setuptools-781-ghsa-h35f` | `1518c4f` | none | KEEP | lock bumps |
 | `get-started-scaffold-shadows-package` | `16e8fc1` | none (net 0; `caused_by` J6.T2) | KEEP | one naming rule for every slug; no child bug |
-| `landing-test-regex-unmatchable-dollar`, `landing-test-reads-first-extra-only` | `c78d90a` | a special case on a test value (`kafka-python`, `tests/test_docs.py:382`) | KEEP | the special case is the operator's 2026-10-16 ruling (Terms). The tomllib shim it added copies `tests/test_9_cli.py:11-14`; FR1 leaves both readers' keys in place |
+| `landing-test-regex-unmatchable-dollar`, `landing-test-reads-first-extra-only` | `c78d90a` | a special case on a test value (`kafka-python`, `tests/test_docs.py:382`) | KEEP | the special case is the operator's 2026-10-16 ruling (Terms). The tomllib shim it added copies `tests/test_9_cli.py:11-14`; FR1 moves the extras reader's key (§5) |
 | `wheel-test-subprocess-dilutes-coverage` | `77f5c4c` | none (+3/−1; `caused_by` J4.T1) | KEEP | one env filter on the wheel child |
 
 - No REBUILD verdict, so Job 1 carries no Bug-window work.
@@ -58,7 +67,7 @@ This table judges rc-1's 12 resolved records (10 fix commits), each read with `g
 - A pyspark 4 upgrade, or any other runtime or test dependency version beyond the lock moves FR2 needs; any new dependency.
 - A new workflow, workflow permission, secret or bot commit; any automation of the benchmark record; a change to `benchmarks.yml` or `benchmarks/speed.py`.
 - The `documentation-excellence` backlog entry, which is the rc-3 demand.
-- Moving `[tool.poetry.dependencies]` or `[tool.poetry.extras]` into `[project]`. FR1 moves only what the classifiers and the script deprecation need.
+- Moving the runtime constraints of `[tool.poetry.dependencies]` into `[project]`; they stay dynamic.
 - Rewriting the rc-1 `summary` log entry: the log is append-only (`RELEASE-EVENTS.md`), so AC5.5 handles it.
 
 ## 4. Requirements
@@ -78,9 +87,10 @@ This table judges rc-1's 12 resolved records (10 fix commits), each read with `g
 
 - AC1.1 (integration, a wheel test on the shared `built_wheel` fixture, `tests/integrations/test_public_api.py:392`): the METADATA `Keywords` are exactly the 6 of today plus `faker`, `fake-data`, `pyspark`, `spark`, `pandas`, `kafka`, `parquet`, `data-generator` (14 in all). It is RED on today's wheel.
 - AC1.2 (integration, same fixture): the `Classifier` lines include `Typing :: Typed`. The set of `Programming Language :: Python :: 3.<n>` classifiers is exactly {3.10, 3.11, 3.12, 3.13}, and `Requires-Python` reads `>=3.10`. It is RED on today's wheel.
-- AC1.3 (integration, existing tests): `[tool.poetry.scripts]` is gone and `[project.scripts]` declares `rand-engine = "rand_engine.cli:main"`. The wheel asserts at `tests/integrations/test_public_api.py:418-539` stay unchanged and pass, so the console script, the faker extra line, the documentation URL, `py.typed` and the version are the same.
+- AC1.3 (integration, existing tests): `[tool.poetry.scripts]`, `[tool.poetry.extras]` and `[tool.poetry.urls]` are gone, along with the `homepage`, `repository` and `documentation` keys. `[project.scripts]` declares `rand-engine = "rand_engine.cli:main"`, `[project.optional-dependencies]` declares `faker`, and `[project.urls]` holds the five labels. The wheel asserts at `tests/integrations/test_public_api.py:418-539` stay unchanged and pass. The METADATA is identical to today except for AC1.1, AC1.2 and `License: MIT` → `License-Expression: MIT` (the License classifier leaves), which the operator accepted.
 - AC1.4 (no test, build-tool output; reason: the verify line runs no `poetry check`, and no gate is added): `poetry check` exits 0 and prints no warning. The commit body quotes its output.
-- AC1.5 (unit): the `"python": "^3.10"` entry of the dependency assert at `tests/test_9_cli.py:223-229` moves to the one Python constraint `>=3.10`. The operator ruled this on 2026-10-15 ("No cap, honest classifiers"), and the `test(...)` commit cites that ruling. The other four entries stay as written.
+- AC1.5 (unit): the `"python": "^3.10"` entry leaves the dependency assert at `tests/test_9_cli.py:223-229`, and `project.requires-python == ">=3.10"` is asserted instead. The operator ruled this on 2026-10-15 ("No cap, honest classifiers"), and the `test(...)` commit cites that ruling. The other four entries stay as written.
+- AC1.7 (unit, existing landing test): `_pip_installs` (`tests/test_docs.py:379`) reads the extras from `project.optional-dependencies`, and its allowed set is still `{"faker"}`.
 - AC1.6 (no test, a measurement in PLAN §1): the as-is review builds the wheel with static `[project]` classifiers and shows the Python classifiers are exactly 3.10–3.13. If poetry-core adds any 3.14+ classifier, the operator's fallback applies: the constraint reads `>=3.10,<3.14`, and AC1.2 asserts `Requires-Python` `<3.14,>=3.10`.
 
 ### FR2 — CI tests Python 3.13
@@ -88,7 +98,7 @@ This table judges rc-1's 12 resolved records (10 fix commits), each read with `g
 - AC2.1 (no test; reason: workflow YAML has no seam in the suite, as rc-1 ruling 9 held, and CI is the check): the five matrices (`auto_tag_publish_master.yml:77`, `auto_tag_publish_development.yml:86`, `test_on_push.yml:45`, `pr_to_master.yml:34`, `pr_to_development.yml:158`) list `3.10`, `3.11`, `3.12`, `3.13`. The publish summary line at `auto_tag_publish_master.yml:237` names 3.13. Every leg of the candidate's push CI is green, and the run id is cited at review.
 - AC2.2 (integration, the Spark fixture): on Python 3.13, Spark tests skip only where pyspark 3.5.8 cannot run, through the one skip predicate (`tests/fixtures/f2_spark_generator_specs_right.py:31`), with a skip reason naming pyspark 3.5 and Python 3.13. The commit that widens it cites the CI run where pyspark 3.5.8 failed on that platform. Where it runs, Spark tests run.
 - AC2.3 (no test, lock): `poetry.lock` installs on Python 3.13 from wheels. pandas moves to a release inside `^2.2.2` that ships `cp313` wheels; no `[tool.poetry.dependencies]` constraint changes except `python` (FR1). The lock diff is named in the commit body.
-- AC2.4 (no test; reason: prose, a text assert tests no behaviour): the Spark page's requirement line (`docs/2_SPARK_GENERATOR.md:3-4`) states that Spark needs Python <= 3.12 until pyspark 4, so 3.13 skips the Spark tests (grill ruling, 2026-10-16). No other page changes.
+- AC2.4 (no test; reason: prose, a text assert tests no behaviour): the Spark page's requirement line (`docs/2_SPARK_GENERATOR.md:3-4`) states the Python × OS combinations on which CI runs the Spark tests. It is written after the 3.13 CI run, cites that run in the commit body and makes no claim CI does not back (grill ruling, 2026-10-16). No other page changes.
 
 ### FR3 — The five open bugs
 
@@ -99,7 +109,7 @@ This table judges rc-1's 12 resolved records (10 fix commits), each read with `g
 
 ### FR4 — The release's benchmark table in the docs
 
-- AC4.1 (no test; reason: CI evidence): a `Benchmarks` run on this candidate's last measured head concludes `success`, and its Job summary holds the table (`benchmarks.yml:48-50`). The run comes either from `pull_request` or from `workflow_dispatch` on `feature/0.8.0`. The record commit names the run id.
+- AC4.1 (no test; reason: CI evidence): once Jobs 1–6 are merged, the main thread dispatches one `Benchmarks` run (`workflow_dispatch`) on `feature/0.8.0` at the last measured head. It concludes `success`, and its Job summary holds the table (`benchmarks.yml:48-50`). Job 7's record commit names the run id.
 - AC4.2 (unit, `tests/test_benchmarks.py`): `docs/benchmarks.json` and `docs/BENCHMARKS.md` are that run's artifact byte for byte, recorded as the Benchmark record Term states.
   - `TERMINAL_HEAD` and `TERMINAL_BASE` (`tests/test_benchmarks.py:306-307`) move to that run's head and base. The authority is the operator demand of 2026-10-16, named in their `test(...)` commit.
   - The existing artifact tests (`:315-333`) pass on the new file: every inventory row at 10^6 and 10^7, and every repo decider.
@@ -116,10 +126,18 @@ All of FR5 is no test: it is memory text, checked at review against the cited `p
 - AC5.5: the rc-2 closure `summary` states that the rc-1 summary's item "llms.txt:7 public-api derived-from marker stale" was fixed by 1505737. The rc-1 entry stays as written: `release.py` has no verb that corrects a log entry, and `RELEASE-EVENTS.md` keeps history unrewritten.
 - AC5.6: the `benchmarks` atom (`product/quality/benchmarks.md`) states the Benchmark record: a candidate that touches a measured path records its CI artifact into `docs/`, and the site serves it.
 
+### FR6 — Release notes
+
+- AC6.1 (unit, existing `_changelog` landing check `tests/test_docs.py:387-395`, which stays green; the lines themselves are prose): the `## [0.8.0]` section of `CHANGELOG.md` gains rc-2's user-visible changes.
+  - Added: Python 3.13 tested and advertised in the classifiers; the PyPI keywords and `Typing :: Typed`.
+  - Fixed: `int_zfilled` `length` refused outside 1..18 at validation; the `rand_engine` docstring; the `trigger(frequency)` annotation.
+  - Reconciliation never writes `CHANGELOG.md`.
+
 ## 5. Replaces
 
 - `[tool.poetry.scripts]` → `[project.scripts]`. The derived Python classifiers 3.10–3.15 → explicit 3.10–3.13. `python = "^3.10"` (a caret range, capped below 4.0) → `>=3.10`, uncapped. The 6 keywords → 14 (FR1).
-- The `"python": "^3.10"` entry of the assert at `tests/test_9_cli.py:224` → `>=3.10` (AC1.5).
+- `[tool.poetry.extras]`, `[tool.poetry.urls]` and the URL keys → `[project.optional-dependencies]` and `[project.urls]`; `License: MIT` and its classifier → `License-Expression: MIT` (AC1.3).
+- The `"python": "^3.10"` entry of the assert at `tests/test_9_cli.py:224` → a `project.requires-python == ">=3.10"` assert (AC1.5).
 - The CI matrices 3.10–3.12 and the summary literal `3.10, 3.11, 3.12` → with 3.13. pandas 2.2.2 in the lock → a release with `cp313` wheels (FR2).
 - The unchecked `int_zfilled` `length` → refused outside 1..18 at validation (AC3.1).
 - The package docstring "for Pandas and Spark dataframes" → the package description (AC3.2).
@@ -128,7 +146,7 @@ All of FR5 is no test: it is memory text, checked at review against the cited `p
 - The benchmark record of 0.7.0 (head 5920630, base 959f890) and its `TERMINAL_*` literals → this candidate's record (FR4).
 - Untrue memory claims: the MkDocs-Material fallback, the unsourced gate costs, the no-run reservation, the CLI usage (FR5).
 - Consumers of the changed `pyproject.toml` shape, for the PLAN to answer:
-  - `tests/test_docs.py:379` reads `tool.poetry.extras` (kept), and `tests/test_9_cli.py:222` reads `tool.poetry.dependencies` (kept).
+  - `tests/test_docs.py:379` reads `project.optional-dependencies` instead of `tool.poetry.extras` (AC1.7), and `tests/test_9_cli.py:222` reads `tool.poetry.dependencies` (kept, without `python`).
   - `auto_tag_publish_master.yml:36` and `auto_tag_publish_development.yml:36` grep one `^version = "M.m.p"` line, so the version stays a single line of that shape.
   - `auto_tag_publish_development.yml:152` runs `poetry version`.
 
@@ -140,7 +158,7 @@ All of FR5 is no test: it is memory text, checked at review against the cited `p
 |---|---|---|
 | 1 dev loop and foundation | packaging metadata, lock, CI matrices, Spark skip predicate (one write set: `pyproject.toml`, `poetry.lock`) | FR1, FR2 |
 | 2 bugs | the five bugs (four fixes), each a RED task then its fix | FR3 |
-| 3 promote-facing | the benchmark record, after every measured-path job | FR4 |
+| 3 promote-facing | the benchmark record, after every measured-path job; the CHANGELOG lines | FR4, FR6 |
 | 4 Reconciliation | memory, Tech Stack, summary | FR5 |
 
 ### Constraints
@@ -155,7 +173,7 @@ All of FR5 is no test: it is memory text, checked at review against the cited `p
 | risk | mitigation |
 |---|---|
 | poetry-core adds 3.14+ classifiers from a static `[project]` | AC1.6 measures first; the operator's fallback cap |
-| `license = "MIT"` plus a License classifier under `[project]` makes `poetry check` warn | AC1.4 requires zero warnings; the PLAN measures the shape that passes |
+| PyPI shows `License-Expression: MIT` instead of the License classifier | operator-accepted; the README `pypi/l` badge reads PyPI's license field |
 | skipping Spark on 3.13 drops a leg under `--cov-fail-under=60` (`pr_to_development.yml`) | AC2.1 needs every leg green; the Windows 3.12 legs already run with Spark skipped |
 | a later candidate touches a measured path after FR4 | AC4.3; that candidate records again |
 
