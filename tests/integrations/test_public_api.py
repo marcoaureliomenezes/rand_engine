@@ -501,5 +501,27 @@ def test_extracted_wheel_reports_the_pyproject_version(built_wheel, tmp_path):
     assert result.stdout.strip() == "0.8.0"
 
 
+@pytest.mark.xfail(strict=True, reason="J6.T10 adds [tool.poetry.scripts] rand-engine = rand_engine.cli:main")
+def test_wheel_declares_the_rand_engine_console_script(built_wheel):
+    from configparser import ConfigParser
+
+    with ZipFile(built_wheel) as wheel:
+        path = next((n for n in wheel.namelist() if n.endswith(".dist-info/entry_points.txt")), None)
+        assert path, "wheel has no entry_points.txt: the console script is not declared"
+        parser = ConfigParser()
+        parser.read_string(wheel.read(path).decode())
+    assert dict(parser["console_scripts"]) == {"rand-engine": "rand_engine.cli:main"}
+
+
+def test_wheel_ships_the_five_case_files_byte_for_byte(built_wheel):
+    from rand_engine.cli import CASES
+
+    assert set(CASES) == {"test-data", "lake", "kafka", "databricks", "faker"}
+    cases_dir = Path(__file__).parents[2] / "rand_engine" / "cases"
+    with ZipFile(built_wheel) as wheel:
+        for slug in CASES:
+            assert wheel.read(f"rand_engine/cases/{slug}.py.txt") == (cases_dir / f"{slug}.py.txt").read_bytes()
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])
