@@ -501,7 +501,6 @@ def test_extracted_wheel_reports_the_pyproject_version(built_wheel, tmp_path):
     assert result.stdout.strip() == "0.8.0"
 
 
-@pytest.mark.xfail(strict=True, reason="J6.T10 adds [tool.poetry.scripts] rand-engine = rand_engine.cli:main")
 def test_wheel_declares_the_rand_engine_console_script(built_wheel):
     from configparser import ConfigParser
 
