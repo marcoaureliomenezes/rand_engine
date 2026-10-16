@@ -450,6 +450,13 @@ def _wheel_metadata(wheel_path):
         return BytesParser().parsebytes(wheel.read(metadata_path))
 
 
+@pytest.mark.xfail(strict=True, reason="J5.T2: package docstring first line must equal the pyproject description")
+def test_package_docstring_first_line_is_the_wheel_summary(built_wheel):
+    import rand_engine
+
+    assert rand_engine.__doc__.splitlines()[0] == _wheel_metadata(built_wheel)["Summary"]
+
+
 def test_wheel_keywords_are_the_fourteen_search_terms(built_wheel):
     keywords = _wheel_metadata(built_wheel)["Keywords"].split(",")
 
