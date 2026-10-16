@@ -6,21 +6,41 @@
 
 <!-- derived-from: public-api sha256:889c68fd0f20 -->
 
-- [README](https://github.com/marcoaureliomenezes/rand_engine/blob/master/README.md): install, quickstart, seeds, related tables, streams and files
-- [DataGenerator](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/1_DATA_GENERATOR.md): every method and its kwargs, float rules, `null_rate` / `anomaly_rate`, seeds, `stream_dict`
-- [SparkGenerator](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/2_SPARK_GENERATOR.md): the same spec on Spark
-- [Writing files](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/3_WRITING_FILES.md): `write`, `writeStream`, formats and accepted options
-- [Keys](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/4_CONSTRAINTS.md): `pk` and `fk` columns
+- [README](https://github.com/marcoaureliomenezes/rand_engine/blob/master/README.md): landing page with install, a 30-second example, when to use it, the five get-started cases and the docs links
+- [Getting started](https://marcoaureliomenezes.github.io/rand_engine/getting-started/): install and the first spec
+- [DataGenerator](https://marcoaureliomenezes.github.io/rand_engine/1_DATA_GENERATOR/): every method and its kwargs, float rules, `null_rate` / `anomaly_rate`, seeds, `stream_dict`
+- [SparkGenerator](https://marcoaureliomenezes.github.io/rand_engine/2_SPARK_GENERATOR/): the same spec on Spark
+- [Writing files](https://marcoaureliomenezes.github.io/rand_engine/3_WRITING_FILES/): `write`, `writeStream`, formats and accepted options
+- [Keys](https://marcoaureliomenezes.github.io/rand_engine/4_CONSTRAINTS/): `pk` and `fk` columns
+- [Reference](https://marcoaureliomenezes.github.io/rand_engine/reference/): the public API, one canonical entry per object
+- [Explanation](https://marcoaureliomenezes.github.io/rand_engine/explanation/): the RandSpec model and the NumPy core
+
+## Tutorials
+
+- [Test data](https://marcoaureliomenezes.github.io/rand_engine/tutorials/test-data/): a DataFrame for pipeline tests with nulls and anomalies
+- [Lake](https://marcoaureliomenezes.github.io/rand_engine/tutorials/lake/): pk/fk related tables written to a Parquet lake
+- [Kafka](https://marcoaureliomenezes.github.io/rand_engine/tutorials/kafka/): an event stream for Kafka
+- [Databricks](https://marcoaureliomenezes.github.io/rand_engine/tutorials/databricks/): a Spark/Databricks notebook on SparkGenerator
+- [Faker](https://marcoaureliomenezes.github.io/rand_engine/tutorials/faker/): Faker pools sampled at NumPy speed
 
 ## Recipes
 
 <!-- derived-from: templates-and-examples sha256:85481f658af5 -->
 
-- [Recipes](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/5_RECIPES.md): Faker pools, Kafka or any queue, parquet lake, related tables
+- [Recipes](https://marcoaureliomenezes.github.io/rand_engine/5_RECIPES/): Faker pools, Kafka or any queue, parquet lake, related tables
+
+## Agent skill and case files
+
+- [rand-engine skill](https://github.com/marcoaureliomenezes/rand_engine/blob/master/skills/rand-engine/SKILL.md): when to use RandSpec and how to write one
+- [test-data case](https://github.com/marcoaureliomenezes/rand_engine/blob/master/rand_engine/cases/test-data.py.txt): the test-data example, runnable as-is
+- [lake case](https://github.com/marcoaureliomenezes/rand_engine/blob/master/rand_engine/cases/lake.py.txt): pk/fk tables written to a Parquet lake
+- [kafka case](https://github.com/marcoaureliomenezes/rand_engine/blob/master/rand_engine/cases/kafka.py.txt): the Kafka event-stream example
+- [databricks case](https://github.com/marcoaureliomenezes/rand_engine/blob/master/rand_engine/cases/databricks.py.txt): the Spark/Databricks notebook example
+- [faker case](https://github.com/marcoaureliomenezes/rand_engine/blob/master/rand_engine/cases/faker.py.txt): Faker pools through RandSpecs.faker_pool
 
 ## Optional
 
 <!-- derived-from: benchmarks sha256:005825e85875 -->
 
-- [Benchmarks](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/BENCHMARKS.md): rows/µs per method and sink, measured in CI
+- [Benchmarks](https://marcoaureliomenezes.github.io/rand_engine/BENCHMARKS/): rows/µs per method and sink, measured in CI
 - [Changelog](https://github.com/marcoaureliomenezes/rand_engine/blob/master/CHANGELOG.md): release notes and breaking changes
