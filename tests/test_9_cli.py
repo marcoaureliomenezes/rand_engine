@@ -69,7 +69,7 @@ def test_list_is_byte_identical_across_runs(capsys):
   assert capsys.readouterr().out == first != ""
 
 
-@pytest.mark.parametrize("slug", [s if s in ("test-data", "lake", "kafka") else owned(s, "file bytes") for s in SLUGS])
+@pytest.mark.parametrize("slug", [s if s in ("test-data", "lake", "kafka", "databricks") else owned(s, "file bytes") for s in SLUGS])
 def test_get_started_writes_exact_file_and_creates_dir(slug, tmp_path, capsys):
   out = tmp_path / "new" / "deeper"
   assert run(["get-started", slug, "--out", str(out)]) == 0
@@ -131,7 +131,7 @@ def check_faker(ns, out, tmp_path):
 CHECKS = {"test-data": check_test_data, "lake": check_lake, "kafka": check_kafka, "databricks": check_databricks, "faker": check_faker}
 
 
-@pytest.mark.parametrize("slug", [s if s in ("test-data", "lake", "kafka") else owned(s, "the written file runs and leaves: " + SEAM[s]) for s in SLUGS])
+@pytest.mark.parametrize("slug", [s if s in ("test-data", "lake", "kafka", "databricks") else owned(s, "the written file runs and leaves: " + SEAM[s]) for s in SLUGS])
 def test_scaffold_is_databricks_source_and_runs_producing_its_promise(slug, tmp_path, monkeypatch, capsys, request):
   if slug == "databricks":
     request.getfixturevalue("spark_session")
