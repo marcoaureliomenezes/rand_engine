@@ -429,6 +429,22 @@ def test_wheel_exposes_faker_only_as_the_approved_optional_extra(built_wheel):
     assert faker_requirements == ['faker (>=28.4.1,<29.0.0) ; extra == "faker"']
 
 
+@pytest.mark.xfail(strict=True, reason="J9.T2 documentation URL is the docs site")
+def test_wheel_documentation_url_is_the_docs_site_named_by_the_error_footer(built_wheel):
+    from rand_engine.validators.common_validator import CommonValidator
+    from rand_engine.validators.exceptions import SpecValidationError
+
+    with ZipFile(built_wheel) as wheel:
+        metadata_path = next(name for name in wheel.namelist() if name.endswith(".dist-info/METADATA"))
+        metadata = BytesParser().parsebytes(wheel.read(metadata_path))
+    with pytest.raises(SpecValidationError) as exc_info:
+        CommonValidator.validate_spark_and_raise({"age": {"method": "invalid_method", "kwargs": {}}})
+
+    docs = "https://marcoaureliomenezes.github.io/rand_engine/"
+    assert "Documentation, " + docs in metadata.get_all("Project-URL", [])
+    assert "Documentation: " + docs in str(exc_info.value)
+
+
 @pytest.mark.parametrize("legacy", [{"args": [0, 3]}, {"splitable": True}, {"sep": ","}, {"pk": 1}])
 def test_legacy_column_keys_are_refused_at_validation(legacy):
     from rand_engine import DataGenerator
