@@ -26,7 +26,12 @@ def python_blocks(path: Path) -> list[tuple[str, str]]:
   return [(info.strip(), body) for info, body in FENCE.findall(path.read_text(encoding="utf-8"))]
 
 
-@pytest.mark.parametrize("doc", sorted(DOCS.glob("**/*.md")), ids=lambda p: p.relative_to(DOCS).as_posix())
+SKILL = ROOT / "skills" / "rand-engine" / "SKILL.md"
+NO_SKILL = pytest.mark.xfail(strict=True, reason="J10.T2 writes skills/rand-engine/SKILL.md")
+
+
+@pytest.mark.parametrize("doc", [*(pytest.param(p, id=p.relative_to(DOCS).as_posix()) for p in sorted(DOCS.glob("**/*.md"))),
+                                 pytest.param(SKILL, id="SKILL.md", marks=NO_SKILL)])
 def test_doc_python_blocks_execute_in_order(doc, tmp_path, monkeypatch, request):
   """Every `python` block runs, in file order, in one namespace."""
   blocks = [body for info, body in python_blocks(doc) if info == "python"]
@@ -121,6 +126,24 @@ def documented_specs(name, tmp_path, monkeypatch):
   for i, body in enumerate(b for info, b in python_blocks(DOCS / name) if info == "python"):
     exec(compile(body, f"{name}[{i}]", "exec"), namespace)
   return seen
+
+
+@NO_SKILL
+def test_skill_front_matter_names_the_skill_and_says_when_to_use_it():
+  """SKILL.md opens with `---` front matter holding `name: rand-engine` and a description naming its triggers."""
+  head = re.match(r"---\n(.*?)\n---\n", SKILL.read_text(encoding="utf-8"), re.S)
+  fields = dict(re.findall(r"^(\w+):\s*(.+)$", head.group(1), re.M))
+  assert fields["name"] == "rand-engine"
+  assert "synthetic data" in fields["description"] and "RandSpec" in fields["description"]
+
+
+@NO_SKILL
+def test_skill_blocks_build_relations_and_write_through_a_sink(tmp_path, monkeypatch):
+  """The skill's executed blocks construct accepted specs, one with pk and one with fk, and leave a file written by a sink."""
+  seen = documented_specs(SKILL, tmp_path, monkeypatch)
+  methods = {c["method"] for spec, raised in seen if not raised for c in spec.values()}
+  assert {"pk", "fk"} <= methods
+  assert [p for p in tmp_path.rglob("*") if p.is_file()] != []
 
 
 def test_data_generator_doc_runs_every_new_method_and_modifier(tmp_path, monkeypatch):
