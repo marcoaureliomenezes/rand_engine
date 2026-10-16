@@ -196,18 +196,7 @@ def _surface():
   }
 
 
-def _owned(what):
-  return pytest.mark.xfail(strict=True, reason=f"J5.T9 {what}")
-
-
-@pytest.mark.parametrize("name", [
-  pytest.param("DataGenerator", marks=_owned("adds Examples to wrapped_df_generator")),
-  "SparkGenerator",
-  "FileWriter",
-  "FileBatchWriter",
-  "FileStreamWriter",
-  pytest.param("RandSpecs", marks=_owned("adds Examples to the RandSpecs callables")),
-])
+@pytest.mark.parametrize("name", ["DataGenerator", "SparkGenerator", "FileWriter", "FileBatchWriter", "FileStreamWriter", "RandSpecs"])
 def test_public_callables_carry_numpydoc(name):
   """Every public class, callable and property has a summary; callables and classes an Examples section; Parameters/Returns as they apply."""
   cls, names = _surface()[name]
@@ -215,11 +204,11 @@ def test_public_callables_carry_numpydoc(name):
 
 
 @pytest.mark.parametrize("module", [
-  pytest.param("rand_engine.main.data_generator", marks=_owned("makes the examples write only under a directory they create")),
+  "rand_engine.main.data_generator",
   "rand_engine.main.spark_generator",
-  pytest.param("rand_engine.file_handlers.writer", marks=_owned("makes the examples write only under a directory they create")),
-  pytest.param("rand_engine.file_handlers._writer_batch", marks=_owned("makes the examples write only under a directory they create")),
-  pytest.param("rand_engine.file_handlers._writer_stream", marks=_owned("makes the examples write only under a directory they create")),
+  "rand_engine.file_handlers.writer",
+  "rand_engine.file_handlers._writer_batch",
+  "rand_engine.file_handlers._writer_stream",
   "rand_engine.examples.common_rand_specs",
 ])
 def test_module_docstring_examples_run(module, tmp_path, monkeypatch):
