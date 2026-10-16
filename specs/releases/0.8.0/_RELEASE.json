@@ -35,6 +35,27 @@
       "milestone": "implemented",
       "sha": "de0c4efc3740aa214508f37976fa5a009b1af4e8",
       "text": "Candidate implemented at de0c4efc3740aa214508f37976fa5a009b1af4e8; phase CLOSURE."
+    },
+    {
+      "ts": "2026-10-16T13:56:33Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 8bd8e3f941eaab7b46ed0bf8847a08437bd630c2..a064f982fbf6: 4 reviewed, 5 changed.",
+      "since": "8bd8e3f941eaab7b46ed0bf8847a08437bd630c2",
+      "until": "a064f982fbf601dc0c92d68ac6a5d486fc9fc10e",
+      "reviewed": [
+        "templates-and-examples",
+        "data-generator",
+        "generation-methods",
+        "writers-and-streaming"
+      ],
+      "changed": [
+        "public-api",
+        "spark-generator",
+        "rand-spec-grammar",
+        "documentation",
+        "get-started-cli"
+      ]
     }
   ]
 }
