@@ -1,6 +1,7 @@
 import ast
 import doctest
 import importlib
+import io
 import inspect
 import json
 import re
@@ -142,10 +143,12 @@ def test_changelog_0_7_0_lists_the_new_surface_and_migration(token):
 
 
 def _public(cls, names):
-  return [(n, m) for n, m in inspect.getmembers(cls) if (n in names if names else not n.startswith("_")) and callable(m)]
+  return [(n, m) for n, m in inspect.getmembers(cls)
+          if (n in names if names else not n.startswith("_")) and (callable(m) or isinstance(m, property))]
 
 
 def _returns_value(func) -> bool:
+  func = func.fget if isinstance(func, property) else func
   tree = ast.parse(textwrap.dedent(inspect.getsource(func))).body[0]
   stack = list(tree.body)
   while stack:
@@ -159,13 +162,19 @@ def _returns_value(func) -> bool:
 
 
 def _gaps(cls, names=None) -> list[str]:
-  gaps = [] if (inspect.getdoc(cls) or "").strip() else [f"{cls.__name__}: no summary"]
+  cls_doc = inspect.getdoc(cls) or ""
+  gaps = [] if cls_doc.strip() else [f"{cls.__name__}: no summary"]
+  if not re.search(r"^Examples\n-{3,}$", cls_doc, re.M):
+    gaps.append(f"{cls.__name__}: no Examples section")
   for name, func in _public(cls, names):
     who, doc = f"{cls.__name__}.{name}", inspect.getdoc(func) or ""
     has = lambda section: re.search(rf"^{section}\n-{{3,}}$", doc, re.M)
+    prop = isinstance(func, property)
     if not doc.strip():
       gaps.append(f"{who}: no summary")
-    if [p for p in inspect.signature(func).parameters if p not in ("self", "cls")] and not has("Parameters"):
+    if not prop and not has("Examples"):
+      gaps.append(f"{who}: no Examples section")
+    if not prop and [p for p in inspect.signature(func).parameters if p not in ("self", "cls")] and not has("Parameters"):
       gaps.append(f"{who}: no Parameters section")
     if _returns_value(func) and not (has("Returns") or has("Yields")):
       gaps.append(f"{who}: no Returns section")
@@ -187,30 +196,30 @@ def _surface():
   }
 
 
-def _owned(task):
-  return pytest.mark.xfail(strict=True, reason=f"{task} documents it")
+def _owned(what):
+  return pytest.mark.xfail(strict=True, reason=f"J5.T9 {what}")
 
 
 @pytest.mark.parametrize("name", [
-  "DataGenerator",
+  pytest.param("DataGenerator", marks=_owned("adds Examples to wrapped_df_generator")),
   "SparkGenerator",
   "FileWriter",
   "FileBatchWriter",
   "FileStreamWriter",
-  "RandSpecs",
+  pytest.param("RandSpecs", marks=_owned("adds Examples to the RandSpecs callables")),
 ])
 def test_public_callables_carry_numpydoc(name):
-  """Every public callable has a summary, Parameters when it takes an argument, Returns when it returns a value."""
+  """Every public class, callable and property has a summary; callables and classes an Examples section; Parameters/Returns as they apply."""
   cls, names = _surface()[name]
   assert _gaps(cls, names) == []
 
 
 @pytest.mark.parametrize("module", [
-  "rand_engine.main.data_generator",
+  pytest.param("rand_engine.main.data_generator", marks=_owned("makes the examples write only under a directory they create")),
   "rand_engine.main.spark_generator",
-  "rand_engine.file_handlers.writer",
-  "rand_engine.file_handlers._writer_batch",
-  "rand_engine.file_handlers._writer_stream",
+  pytest.param("rand_engine.file_handlers.writer", marks=_owned("makes the examples write only under a directory they create")),
+  pytest.param("rand_engine.file_handlers._writer_batch", marks=_owned("makes the examples write only under a directory they create")),
+  pytest.param("rand_engine.file_handlers._writer_stream", marks=_owned("makes the examples write only under a directory they create")),
   "rand_engine.examples.common_rand_specs",
 ])
 def test_module_docstring_examples_run(module, tmp_path, monkeypatch):
@@ -222,6 +231,8 @@ def test_module_docstring_examples_run(module, tmp_path, monkeypatch):
   assert [n for e in examples for n in re.findall(r"\.size\((\d[\d_]*)\)", e.source) if int(n.replace("_", "")) > 10_000] == []
   monkeypatch.chdir(tmp_path)
   runner = doctest.DocTestRunner(optionflags=doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE)
+  report = io.StringIO()
   for t in tests:
-    runner.run(t, out=lambda _: None)
-  assert runner.failures == 0
+    runner.run(t, out=report.write)
+  assert runner.failures == 0, report.getvalue()
+  assert sorted(p.name for p in tmp_path.iterdir()) == []  # examples write only inside a directory they create themselves
