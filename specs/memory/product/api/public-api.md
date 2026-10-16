@@ -15,7 +15,7 @@ sources:
 
 - `from rand_engine import DataGenerator, SparkGenerator, RandSpecs` is the public surface (`__all__`) — [[data-generator]], [[spark-generator]], [[templates-and-examples]].
 - `rand_engine.examples` also exposes `CommonRandSpecs` and `AdvancedRandSpecs`; `RandSpecs` is `CommonRandSpecs`, whose helpers `faker_pool` and `from_schema` build specs ([[templates-and-examples]]).
-- Every public class and method of that surface, and of the writer objects `write` and `writeStream` return, carries a numpy-style docstring whose examples run as doctests, Spark ones skipped; the docs site's API reference renders them ([[documentation]]).
+- Every public class and method of that surface, and of the writer objects `write` and `writeStream` return, carries a numpy-style docstring whose examples run as doctests, Spark ones skipped; the docs site's API reference renders one entry per name in `__all__` — `DataGenerator`, `SparkGenerator` and `CommonRandSpecs` as `RandSpecs` ([[documentation]]).
 - Cores, validators and writers are internal modules, importable but not part of the contract.
 - The surface hands back DataFrames, record dicts and files — never a sink client; the caller forwards them to any platform.
 - `rand_engine.__version__` is a string read from the installed distribution's metadata, outside `__all__`; where the distribution is not installed, `import rand_engine` still succeeds with a fixed placeholder. `pyproject.toml` holds the one version literal.
@@ -38,5 +38,6 @@ rand_engine.__version__  # the installed rand-engine version, else "0.0.0+unknow
 ## Distribution
 
 - PyPI distribution `rand-engine`, import package `rand_engine`; the wheel holds only `rand_engine/` — the `py.typed` marker and the `cases/*.py.txt` scaffolds included, the agent skill excluded — and declares the `rand-engine` console script.
-- The package metadata's `documentation` URL is the docs site, the same URL the validators' error footer names ([[documentation]]).
+- The metadata is a static PEP 621 `[project]` table; only the runtime dependencies stay dynamic, from Poetry. It declares `Requires-Python: >=3.10`, the Python classifiers 3.10 to 3.13 that CI tests, `Typing :: Typed`, 14 keywords and `License-Expression: MIT`. The Summary is `project.description`, and the package docstring's first line repeats it.
+- The metadata's `Documentation` project URL is the docs site, the same URL the validators' error footer names ([[documentation]]).
 - Mandatory dependencies are NumPy, pandas and PyArrow. Faker is the optional extra `rand-engine[faker]`; without it only `RandSpecs.faker_pool` fails, with a `RandEngineError` naming the extra.

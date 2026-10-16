@@ -4,8 +4,8 @@ Short, runnable patterns. Every `python` block runs in CI, in order, in one name
 
 ## Faker pools
 
-<!-- derived-from: generation-methods sha256:739e81e44532 -->
-<!-- derived-from: templates-and-examples sha256:85481f658af5 -->
+<!-- derived-from: generation-methods sha256:d07a707fc569 -->
+<!-- derived-from: templates-and-examples sha256:fa66c7f7252b -->
 
 Faker is slow per value; `RandSpecs.faker_pool` draws a pool once and returns a `distincts` spec
 (needs the optional `rand-engine[faker]`). `seed` fixes the pool.
@@ -23,7 +23,7 @@ assert people["name"].isin(name_spec["kwargs"]["distincts"]).all()
 
 ## Spec from an Arrow schema
 
-<!-- derived-from: templates-and-examples sha256:85481f658af5 -->
+<!-- derived-from: templates-and-examples sha256:fa66c7f7252b -->
 
 `RandSpecs.from_schema` maps each field's Arrow type to a method and validates the result;
 `overrides` replaces or tunes a field (a `method` key replaces it, other keys merge into it).
@@ -68,7 +68,7 @@ for record in events.stream_dict(min_throughput=10, max_throughput=50):
 
 ## Parquet lake
 
-<!-- derived-from: writers-and-streaming sha256:21b53d28967c -->
+<!-- derived-from: writers-and-streaming sha256:554e6476d19d -->
 
 One folder per partition value, several files each.
 
@@ -88,7 +88,7 @@ assert len(lake) == 2_000 and lake["sale_id"].is_unique
 
 ## Related tables
 
-<!-- derived-from: pk-fk-constraints sha256:87a6776da0b0 -->
+<!-- derived-from: pk-fk-constraints sha256:afdf58f551d1 -->
 
 Share the parent's `pk` spec with the child's `fk`; see [4_CONSTRAINTS.md](4_CONSTRAINTS.md).
 
