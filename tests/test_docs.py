@@ -254,6 +254,28 @@ def test_module_docstring_examples_run(module, tmp_path, monkeypatch):
   assert sorted(p.name for p in cwd.iterdir()) == []  # examples write only inside a directory they create themselves
 
 
+def _directives(path: Path) -> list[str]:
+  return re.findall(r"^::: (\S+)\s*$", path.read_text(encoding="utf-8"), re.M)
+
+
+def _resolve(dotted: str):
+  parts = dotted.split(".")
+  obj = importlib.import_module(parts[0])
+  for part in parts[1:]:
+    obj = getattr(obj, part)
+  return obj
+
+
+@pytest.mark.parametrize("path", [
+  pytest.param(p, id=p, marks=pytest.mark.xfail(strict=True, reason="J8.T6 point the directive at the canonical path"))
+  for p in _directives(DOCS / "reference.md")])
+def test_reference_directive_names_the_canonical_documented_object(path):
+  """A `:::` directive names the object's defining path, not a re-export or alias, and the object carries a docstring."""
+  obj = _resolve(path)
+  assert path == f"{obj.__module__}.{obj.__qualname__}"
+  assert inspect.getdoc(obj)
+
+
 def test_docstrings_of_this_file_carry_no_ac_id():
   """No docstring in this file names an acceptance-criterion id."""
   tree = ast.parse(Path(__file__).read_text(encoding="utf-8"))
