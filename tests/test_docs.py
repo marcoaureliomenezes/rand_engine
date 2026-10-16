@@ -11,6 +11,8 @@ from pathlib import Path
 
 import pytest
 
+from rand_engine.cli import CASES
+
 ROOT = Path(__file__).parents[1]
 DOCS = ROOT / "docs"
 REPO_BLOB = "https://github.com/marcoaureliomenezes/rand_engine/blob/"
@@ -24,9 +26,9 @@ def python_blocks(path: Path) -> list[tuple[str, str]]:
   return [(info.strip(), body) for info, body in FENCE.findall(path.read_text(encoding="utf-8"))]
 
 
-@pytest.mark.parametrize("doc", sorted(DOCS.glob("*.md")), ids=lambda p: p.name)
+@pytest.mark.parametrize("doc", sorted(DOCS.glob("**/*.md")), ids=lambda p: p.relative_to(DOCS).as_posix())
 def test_doc_python_blocks_execute_in_order(doc, tmp_path, monkeypatch, request):
-  """AC8.3: every `python` block runs, in file order, in one namespace."""
+  """Every `python` block runs, in file order, in one namespace."""
   blocks = [body for info, body in python_blocks(doc) if info == "python"]
   if any("pyspark" in body for body in blocks):
     request.getfixturevalue("spark_session")  # the doc's getOrCreate() reuses it; skips where Spark cannot run
@@ -37,17 +39,42 @@ def test_doc_python_blocks_execute_in_order(doc, tmp_path, monkeypatch, request)
 
 
 def test_no_run_is_only_the_kafka_producer():
-  """AC8.3: `python no-run` only for a client outside the test dependencies (a Kafka producer)."""
+  """`python no-run` only for a client outside the test dependencies (a Kafka producer)."""
   infos = {info for doc in DOCS.glob("*.md") for info, _ in python_blocks(doc)}
   assert infos <= {"python", "python no-run"}
   no_run = {(doc.name, body) for doc in DOCS.glob("*.md") for info, body in python_blocks(doc) if info == "python no-run"}
   assert {name for name, _ in no_run} == {"5_RECIPES.md"}
   assert all("from kafka import" in body for _, body in no_run)
 
+INCLUDE = re.compile(r'--8<-- "(rand_engine/cases/[a-z-]+\.py\.txt)"')
+
+
+def _include_of(body: str):
+  match = INCLUDE.fullmatch(body.strip())
+  return match.group(1) if match else None
+
+
+def _tutorial_xfail(slug):
+  return pytest.param(slug, marks=pytest.mark.xfail(strict=True, reason=f"J8.T3 writes docs/tutorials/{slug}.md"))
+
+
+@pytest.mark.parametrize("slug", [_tutorial_xfail(s) for s in CASES])
+def test_tutorial_includes_its_case_file(slug):
+  """Each tutorial holds one `python no-run` fence whose body is the snippet include of its own case file, which exists."""
+  blocks = python_blocks(DOCS / "tutorials" / f"{slug}.md")
+  assert [(info, _include_of(body)) for info, body in blocks if info == "python no-run"] == [
+    ("python no-run", f"rand_engine/cases/{slug}.py.txt")]
+  assert (ROOT / f"rand_engine/cases/{slug}.py.txt").is_file()
+
+
+def test_tutorial_no_run_fences_are_only_case_includes():
+  """A `no-run` fence under docs/tutorials/ is exactly one snippet-include line of an existing case file."""
+  bodies = [body for doc in DOCS.glob("tutorials/*.md") for info, body in python_blocks(doc) if info == "python no-run"]
+  assert [b for b in bodies if _include_of(b) is None or not (ROOT / _include_of(b)).is_file()] == []
 
 
 def test_readme_python_blocks_execute_in_order(tmp_path, monkeypatch):
-  """AC7.2: every README `python` block runs, in order, in one namespace; only {python, python no-run} fences."""
+  """Every README `python` block runs, in order, in one namespace; only {python, python no-run} fences."""
   blocks = python_blocks(ROOT / "README.md")
   assert {info for info, _ in blocks} <= {"python", "python no-run"}
   monkeypatch.chdir(tmp_path)
@@ -59,7 +86,7 @@ def test_readme_python_blocks_execute_in_order(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize("name", ["README.md", "llms.txt"])
 def test_links_resolve(name):
-  """AC7.4, AC8.4: no relative link (PyPI breaks them); a link into this repo targets the principal branch and a file that exists."""
+  """No relative link (PyPI breaks them); a link into this repo targets the principal branch and a file that exists."""
   links = LINK.findall((ROOT / name).read_text(encoding="utf-8"))
   assert links
   assert [u for u in links if not u.startswith("https://")] == []
@@ -101,7 +128,7 @@ def documented_specs(name, tmp_path, monkeypatch):
 
 
 def test_data_generator_doc_runs_every_new_method_and_modifier(tmp_path, monkeypatch):
-  """AC9.2: 1_DATA_GENERATOR.md builds a generator with each 0.7.0 method and modifier (blocks run at light sizes)."""
+  """1_DATA_GENERATOR.md builds a generator with each 0.7.0 method and modifier (blocks run at light sizes)."""
   columns = [c for spec, _ in documented_specs("1_DATA_GENERATOR.md", tmp_path, monkeypatch) for c in spec.values()]
   assert NEW_METHODS - {c["method"] for c in columns} == set()
   assert MODIFIERS - {key for c in columns for key in c} == set()
@@ -116,20 +143,20 @@ def test_data_generator_doc_shows_modifier_and_negative_decimals_refusals(tmp_pa
 
 
 def test_spark_doc_runs_the_refusal_of_new_methods():
-  """AC9.2: 2_SPARK_GENERATOR.md shows (in an executed block) SparkGenerator refusing a 0.7.0 method and pointing at DataGenerator."""
+  """2_SPARK_GENERATOR.md shows (in an executed block) SparkGenerator refusing a 0.7.0 method and pointing at DataGenerator."""
   code = block_text("2_SPARK_GENERATOR.md")
   assert "SpecValidationError" in code and "DataGenerator" in code
   assert any(method in code for method in NEW_METHODS - {"constant"})
 
 
 def test_writing_doc_runs_row_batches_and_append():
-  """AC9.2: 3_WRITING_FILES.md executes maxRowsPerBatch and mode("append") (new parts beside the old ones)."""
+  """3_WRITING_FILES.md executes maxRowsPerBatch and mode("append") (new parts beside the old ones)."""
   code = block_text("3_WRITING_FILES.md")
   assert "maxRowsPerBatch" in code and 'mode("append")' in code
 
 
 def test_recipes_run_the_helpers():
-  """AC9.2: 5_RECIPES.md builds specs with RandSpecs.faker_pool and RandSpecs.from_schema."""
+  """5_RECIPES.md builds specs with RandSpecs.faker_pool and RandSpecs.from_schema."""
   code = block_text("5_RECIPES.md")
   assert "faker_pool(" in code and "from_schema(" in code
 
@@ -137,7 +164,7 @@ def test_recipes_run_the_helpers():
 @pytest.mark.parametrize("token", ["exponential", "lognormal", "poisson", "zipf", "constant", "null_rate", "anomaly_rate",
                                    "maxRowsPerBatch", "splitable", "faker_pool", "from_schema"])
 def test_changelog_0_7_0_lists_the_new_surface_and_migration(token):
-  """AC9.2: the 0.7.0 section names each addition and the legacy key migration."""
+  """the 0.7.0 section names each addition and the legacy key migration."""
   text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
   section = text.split("## [0.7.0]", 1)[1].split("\n## [", 1)[0]
   assert token in section
@@ -229,3 +256,10 @@ def test_module_docstring_examples_run(module, tmp_path, monkeypatch):
     runner.run(t, out=report.write)
   assert runner.failures == 0, report.getvalue()
   assert sorted(p.name for p in cwd.iterdir()) == []  # examples write only inside a directory they create themselves
+
+
+def test_docstrings_of_this_file_carry_no_ac_id():
+  """No docstring in this file names an acceptance-criterion id."""
+  tree = ast.parse(Path(__file__).read_text(encoding="utf-8"))
+  docs = [ast.get_docstring(n) for n in ast.walk(tree) if isinstance(n, (ast.Module, ast.FunctionDef, ast.ClassDef))]
+  assert [d for d in docs if d and re.search(r"AC[0-9]", d)] == []
