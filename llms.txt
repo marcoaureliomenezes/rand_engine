@@ -4,7 +4,7 @@
 
 ## Docs
 
-<!-- derived-from: public-api sha256:889c68fd0f20 -->
+<!-- derived-from: public-api sha256:89376c1754d6 -->
 
 - [README](https://github.com/marcoaureliomenezes/rand_engine/blob/master/README.md): landing page with install, a 30-second example, when to use it, the five get-started cases and the docs links
 - [Getting started](https://marcoaureliomenezes.github.io/rand_engine/getting-started/): install and the first spec
