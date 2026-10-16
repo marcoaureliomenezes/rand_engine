@@ -10,6 +10,11 @@ import textwrap
 import warnings
 from pathlib import Path
 
+try:
+  import tomllib
+except ModuleNotFoundError:
+  import tomli as tomllib
+
 import pytest
 
 from rand_engine.cli import CASES
@@ -371,9 +376,9 @@ def _readme_landing():
 
 def _pip_installs():
   """Every `pip install` target in README, docs pages and SKILL.md that is not the third-party Kafka client."""
-  extras = set(re.search(r"\[tool\.poetry\.extras\]\n((?:\w+ = .*\n)+)", _text(ROOT / "pyproject.toml")).group(1).split("=")[0].split())
+  extras = set(tomllib.loads(_text(ROOT / "pyproject.toml"))["tool"]["poetry"]["extras"])
   docs = [README, SKILL, *DOCS.glob("**/*.md")]
-  found = [(p.name, m) for p in docs for m in re.findall(r"pip install (.+?)(?:`|\s{2,}#|\n|$)", _text(p))]
+  found = [(p.name, m) for p in docs for m in re.findall(r"pip install (.+?)(?:`|\s{2,}#|$)", _text(p), re.M)]
   bad = [(n, m) for n, m in found if m.strip() != "kafka-python"
          and not re.fullmatch(rf'"?rand-engine(\[({"|".join(extras)})\])?"?', m.strip())]
   assert bad == []
