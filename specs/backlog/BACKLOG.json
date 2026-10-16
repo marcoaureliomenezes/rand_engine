@@ -105,6 +105,18 @@
         "docs-site",
         "readme-landing"
       ]
+    },
+    {
+      "id": "pypi-metadata",
+      "title": "PyPI metadata \u2014 wider keywords, Python-version and Typing :: Typed classifiers",
+      "opened": "2026-10-16",
+      "status": "idea",
+      "description": "Release 0.8.0, candidate rc-2 (defined after rc-1 implements, before the promote; a candidate is never amended, specs/releases/AGENTS.md:26). Demand: PyPI search discoverability. Today pyproject.toml:11 has 6 keywords and the classifiers (:12-19) carry no Python-version or Typing :: Typed entry. Outcome: keywords keep the existing 6 and add faker, fake-data, pyspark, spark, pandas, kafka, parquet, data-generator; classifiers add Programming Language :: Python :: 3.10, 3.11, 3.12 and Typing :: Typed (the py.typed marker lands in rc-1 AC3.2). Asserted by the existing wheel test in tests/integrations/test_public_api.py reading the wheel's METADATA (Keywords and Classifier fields).",
+      "provenance": "operator resume grill 2026-10-15 (main thread, release 0.8.0), handoff 2026-10-16T013009Z-main-thread-adoption-resume-grill.handoff.json: operator chose \"Amend rc-1, Job 11 (Recommended)\"; routed to 0.8.0 rc-2 since specs/releases/AGENTS.md:26 forbids amending a candidate (\"a new AC goes to the next rc\")",
+      "relates": [
+        "docstrings",
+        "docs-site"
+      ]
     }
   ]
 }
