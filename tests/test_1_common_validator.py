@@ -214,7 +214,6 @@ class TestValidateAndRaise:
         assert "SPARKGENERATOR SPEC VALIDATION ERROR" in str(exc_info.value)
         assert "does not exist" in str(exc_info.value)
 
-    @pytest.mark.xfail(strict=True, reason="J9.T2 footer points at the docs site")
     def test_error_footer_names_the_docs_site(self):
         with pytest.raises(SpecValidationError) as exc_info:
             CommonValidator.validate_spark_and_raise({"age": {"method": "invalid_method", "kwargs": {}}})

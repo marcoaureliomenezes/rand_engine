@@ -429,7 +429,6 @@ def test_wheel_exposes_faker_only_as_the_approved_optional_extra(built_wheel):
     assert faker_requirements == ['faker (>=28.4.1,<29.0.0) ; extra == "faker"']
 
 
-@pytest.mark.xfail(strict=True, reason="J9.T2 documentation URL is the docs site")
 def test_wheel_documentation_url_is_the_docs_site_named_by_the_error_footer(built_wheel):
     from rand_engine.validators.common_validator import CommonValidator
     from rand_engine.validators.exceptions import SpecValidationError
