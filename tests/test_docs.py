@@ -340,3 +340,72 @@ def test_docstrings_of_this_file_carry_no_ac_id():
   tree = ast.parse(Path(__file__).read_text(encoding="utf-8"))
   docs = [ast.get_docstring(n) for n in ast.walk(tree) if isinstance(n, (ast.Module, ast.FunctionDef, ast.ClassDef))]
   assert [d for d in docs if d and re.search(r"AC[0-9]", d)] == []
+
+
+SITE = "https://marcoaureliomenezes.github.io/rand_engine/"
+README = ROOT / "README.md"
+ISO = r"\d{4}-\d{2}-\d{2}"
+
+
+def _text(path: Path) -> str:
+  return path.read_text(encoding="utf-8")
+
+
+def _readme_landing():
+  text = _text(README)
+  title = re.search(r"^# .*$", text, re.M).end()
+  pitch = re.search(r"^(?!\s*$)(?!#)(?!\[?!\[).+$", text[title:], re.M).start() + title
+  at = lambda pattern: (m.start() if (m := re.search(pattern, text, re.M | re.I)) else -1)
+  order = [("pitch", pitch), ("badges", at(r"img\.shields\.io")), ("install", at(r"^## .*install")),
+           ("30-second example", at(r"^## .*30")), ("when to use it", at(r"^## .*when to use")),
+           ("cases", at(r"^## .*get-started")), ("docs link", text.rfind(SITE))]
+  assert min(pos for _, pos in order) >= 0
+  assert [name for name, pos in sorted(order, key=lambda o: o[1])] == [name for name, _ in order]
+  badges = set(re.findall(r"https://img\.shields\.io/(pypi/v|pypi/pyversions|pypi/l|github/actions)/", text))
+  assert badges == {"pypi/v", "pypi/pyversions", "pypi/l", "github/actions"}
+  assert [slug for slug in CASES if f"`{slug}`" not in text[order[-2][1]:]] == []
+  assert SITE in text and "skills/rand-engine/SKILL.md" in text
+  assert "derived-from" not in text
+  assert re.findall(r"^\|\s*Method\s*\|", text, re.M) == []
+
+
+def _pip_installs():
+  """Every `pip install` target in README, docs pages and SKILL.md that is not the third-party Kafka client."""
+  extras = set(re.search(r"\[tool\.poetry\.extras\]\n((?:\w+ = .*\n)+)", _text(ROOT / "pyproject.toml")).group(1).split("=")[0].split())
+  docs = [README, SKILL, *DOCS.glob("**/*.md")]
+  found = [(p.name, m) for p in docs for m in re.findall(r"pip install (.+?)(?:`|\s{2,}#|\n|$)", _text(p))]
+  bad = [(n, m) for n, m in found if m.strip() != "kafka-python"
+         and not re.fullmatch(rf'"?rand-engine(\[({"|".join(extras)})\])?"?', m.strip())]
+  assert bad == []
+
+
+def _changelog():
+  text = _text(ROOT / "CHANGELOG.md")
+  headers = re.findall(r"^## \[(\d+\.\d+\.\d+)\](.*)$", text, re.M)
+  assert [v for v, rest in headers if not re.fullmatch(rf" - {ISO}", rest)] == []
+  assert "## [0.7.0] - 2026-10-14" in text
+  section = re.search(rf"^## \[0\.8\.0\] - {ISO}\n(.*?)(?=^## \[)", text, re.M | re.S).group(1)
+  added, fixed = (re.search(rf"^### {h}\n(.*?)(?=^###|\Z)", section, re.M | re.S) for h in ("Added", "Fixed"))
+  assert fixed is not None
+  assert 'pip install "rand-engine[faker]"' in added.group(1)
+
+
+def _llms():
+  text = _text(ROOT / "llms.txt")
+  links = LINK.findall(text)
+  pages = [u[len(SITE):] for u in links if u.startswith(SITE)]
+  assert pages and [u for u in links if u.startswith(REPO_BLOB) and "/docs/" in u] == []
+  assert [p for p in pages if not (DOCS / (p.removesuffix("/").removesuffix(".md") or "index")).with_suffix(".md").is_file()] == []
+  assert f"{REPO_BLOB}{PRINCIPAL}/skills/rand-engine/SKILL.md" in links
+  assert [s for s in CASES if f"{REPO_BLOB}{PRINCIPAL}/rand_engine/cases/{s}.py.txt" not in links] == []
+
+
+@pytest.mark.parametrize("check", [
+  pytest.param(_readme_landing, id="README.md", marks=pytest.mark.xfail(strict=True, reason="J11.T2 README landing page")),
+  pytest.param(_pip_installs, id="pip-install", marks=pytest.mark.xfail(strict=True, reason="J11.T2 README installs the faker extra")),
+  pytest.param(_changelog, id="CHANGELOG.md", marks=pytest.mark.xfail(strict=True, reason="J11.T3 dated headers and the 0.8.0 section")),
+  pytest.param(_llms, id="llms.txt", marks=pytest.mark.xfail(strict=True, reason="J11.T4 llms.txt links site pages, the skill and the case files")),
+])
+def test_landing_contract(check):
+  """Each landing file (README, install lines, CHANGELOG, llms.txt) meets its release contract."""
+  check()
