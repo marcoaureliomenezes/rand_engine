@@ -158,6 +158,5 @@ def test_undocumented_option_fails_before_overwrite_deletes(rand_spec_with_kwarg
   assert os.listdir(path) == ["keep.csv"]
 
 
-@pytest.mark.xfail(strict=True, reason="J5.T3: trigger frequency is annotated float")
 def test_trigger_frequency_is_annotated_float():
   assert typing.get_type_hints(FileStreamWriter.trigger)["frequency"] is float
