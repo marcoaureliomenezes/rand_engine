@@ -108,14 +108,15 @@
     },
     {
       "id": "pypi-metadata",
-      "title": "PyPI metadata \u2014 wider keywords, Python-version and Typing :: Typed classifiers",
+      "title": "PyPI metadata \u2014 wider keywords, Typing :: Typed, advertised Python versions equal the tested 3.10\u20133.13",
       "opened": "2026-10-16",
       "status": "idea",
-      "description": "Release 0.8.0, candidate rc-2 (defined after rc-1 implements, before the promote; a candidate is never amended, specs/releases/AGENTS.md:26). Demand: PyPI search discoverability. Today pyproject.toml:11 has 6 keywords and the classifiers (:12-19) carry no Python-version or Typing :: Typed entry. Outcome: keywords keep the existing 6 and add faker, fake-data, pyspark, spark, pandas, kafka, parquet, data-generator; classifiers add Programming Language :: Python :: 3.10, 3.11, 3.12 and Typing :: Typed (the py.typed marker lands in rc-1 AC3.2). Asserted by the existing wheel test in tests/integrations/test_public_api.py reading the wheel's METADATA (Keywords and Classifier fields).",
-      "provenance": "operator resume grill 2026-10-15 (main thread, release 0.8.0), handoff 2026-10-16T013009Z-main-thread-adoption-resume-grill.handoff.json: operator chose \"Amend rc-1, Job 11 (Recommended)\"; routed to 0.8.0 rc-2 since specs/releases/AGENTS.md:26 forbids amending a candidate (\"a new AC goes to the next rc\")",
+      "description": "Release 0.8.0, candidate rc-2: drafted in a define tree while rc-1 implements, it enters at rc-1's CLOSURE; a candidate is never amended, a new AC goes to the next rc (specs/releases/AGENTS.md:26-27). Demand: PyPI search discoverability, and advertised Python versions equal to the tested ones. Measured baseline (poetry build --format wheel on 7e12958): the wheel METADATA has 6 keywords (pyproject.toml:11), no Typing :: Typed, and Classifier Programming Language :: Python :: 3 plus 3.10 through 3.15, which poetry-core derives from python = \"^3.10\" (pyproject.toml:27); the CI test matrices run only 3.10, 3.11, 3.12 (.github/workflows/auto_tag_publish_master.yml:74, auto_tag_publish_development.yml:83, test_on_push.yml:40, pr_to_master.yml:31, pr_to_development.yml:158). Outcome: (1) keywords keep the existing 6 and add faker, fake-data, pyspark, spark, pandas, kafka, parquet, data-generator; (2) classifier Typing :: Typed (the py.typed marker lands in rc-1 AC3.2); (3) every CI test matrix gains Python 3.13, Spark tests skip where pyspark 3.5 cannot run, and pyproject caps python = \">=3.10,<3.14\", so the derived classifiers are exactly 3.10, 3.11, 3.12, 3.13, the tested set. Asserted by the existing wheel test in tests/integrations/test_public_api.py reading the wheel's METADATA: the 14 keywords, Typing :: Typed, and no Programming Language :: Python :: 3.x classifier beyond 3.10-3.13; each assert is RED on today's wheel.",
+      "provenance": "operator resume grill 2026-10-15 (main thread, release 0.8.0), handoff 2026-10-16T013009Z-main-thread-adoption-resume-grill.handoff.json (4 operator decisions): operator chose \"Amend rc-1, Job 11 (Recommended)\"; routed to 0.8.0 rc-2 since specs/releases/AGENTS.md:26 forbids amending a candidate (\"a new AC goes to the next rc\"). Operator ruling 2026-10-15, AskUserQuestion, after dd-code-reviewer 2026-10-16T013741Z measured the wheel: operator chose \"Widen CI to 3.13 (Recommended)\" \u2014 CI matrices gain Python 3.13 and pyproject caps python = '>=3.10,<3.14' in 0.8.0 rc-2; Spark tests skip where pyspark 3.5 cannot run on 3.13",
       "relates": [
         "docstrings",
-        "docs-site"
+        "docs-site",
+        "readme-landing"
       ]
     }
   ]
