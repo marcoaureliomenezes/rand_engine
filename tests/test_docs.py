@@ -54,11 +54,7 @@ def _include_of(body: str):
   return match.group(1) if match else None
 
 
-def _tutorial_xfail(slug):
-  return pytest.param(slug, marks=pytest.mark.xfail(strict=True, reason=f"J8.T3 writes docs/tutorials/{slug}.md"))
-
-
-@pytest.mark.parametrize("slug", [_tutorial_xfail(s) for s in CASES])
+@pytest.mark.parametrize("slug", CASES)
 def test_tutorial_includes_its_case_file(slug):
   """Each tutorial holds one `python no-run` fence whose body is the snippet include of its own case file, which exists."""
   blocks = python_blocks(DOCS / "tutorials" / f"{slug}.md")
