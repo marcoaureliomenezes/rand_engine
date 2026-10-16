@@ -389,7 +389,9 @@ assert not any(name == "faker" or name.startswith("faker.") for name in sys.modu
     assert result.returncode == 0, result.stderr
 
 
-def test_wheel_exposes_faker_only_as_the_approved_optional_extra(tmp_path):
+@pytest.fixture(scope="module")
+def built_wheel(tmp_path_factory):
+    tmp_path = tmp_path_factory.mktemp("wheel")
     project_root = Path(__file__).parents[2]
     output = tmp_path / "dist"
     env = os.environ.copy()
@@ -408,10 +410,13 @@ def test_wheel_exposes_faker_only_as_the_approved_optional_extra(tmp_path):
         text=True,
     )
     assert result.returncode == 0, result.stderr
-
     wheels = list(output.glob("*.whl"))
     assert len(wheels) == 1
-    with ZipFile(wheels[0]) as wheel:
+    return wheels[0]
+
+
+def test_wheel_exposes_faker_only_as_the_approved_optional_extra(built_wheel):
+    with ZipFile(built_wheel) as wheel:
         metadata_path = next(name for name in wheel.namelist() if name.endswith(".dist-info/METADATA"))
         metadata = BytesParser().parsebytes(wheel.read(metadata_path))
 
@@ -444,6 +449,60 @@ def test_spark_refuses_new_methods_and_modifiers_naming_datagenerator(column, re
     with pytest.raises(SpecValidationError) as error:
         SparkGenerator(None, None, {"x": column})
     assert remedy in str(error.value) and "Use DataGenerator" in str(error.value)
+
+
+@pytest.mark.xfail(strict=True, reason="J4.T2 adds __version__")
+def test_version_falls_back_when_distribution_is_not_installed(monkeypatch):
+    import importlib
+    import importlib.metadata
+
+    import rand_engine
+
+    def missing(name):
+        raise importlib.metadata.PackageNotFoundError(name)
+
+    monkeypatch.setattr(importlib.metadata, "version", missing)
+    try:
+        reloaded = importlib.reload(rand_engine)
+        assert reloaded.__version__ == "0.0.0+unknown"
+    finally:
+        monkeypatch.undo()
+        importlib.reload(rand_engine)
+
+
+@pytest.mark.xfail(strict=True, reason="J4.T2 adds py.typed")
+def test_wheel_ships_py_typed(built_wheel):
+    with ZipFile(built_wheel) as wheel:
+        assert "rand_engine/py.typed" in wheel.namelist()
+
+
+def test_wheel_holds_only_the_rand_engine_package(built_wheel):
+    with ZipFile(built_wheel) as wheel:
+        names = [n for n in wheel.namelist() if ".dist-info/" not in n]
+    assert [n for n in names if not n.startswith("rand_engine/")] == []
+    assert [n for n in names if "skills/" in n] == []
+
+
+@pytest.mark.xfail(strict=True, reason="J4.T2 adds the subpackage __init__ files")
+@pytest.mark.parametrize("sub", ["main", "file_handlers", "core", "utils"])
+def test_wheel_holds_subpackage_init(built_wheel, sub):
+    with ZipFile(built_wheel) as wheel:
+        assert f"rand_engine/{sub}/__init__.py" in wheel.namelist()
+
+
+@pytest.mark.xfail(strict=True, reason="J4.T2 adds __version__")
+def test_extracted_wheel_reports_the_pyproject_version(built_wheel, tmp_path):
+    with ZipFile(built_wheel) as wheel:
+        wheel.extractall(tmp_path)
+    result = subprocess.run(
+        [sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import rand_engine; print(rand_engine.__version__)", str(tmp_path)],
+        cwd=tmp_path,
+        env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "0.8.0"
 
 
 if __name__ == "__main__":
