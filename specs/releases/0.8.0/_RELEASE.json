@@ -1,14 +1,14 @@
 {
   "schema": "release-state-v1",
   "release": "0.8.0",
-  "phase": "IMPLEMENTATION",
+  "phase": "CLOSURE",
   "defined": {
     "sha": "454c46e3fbd96fa37254731ed367c2b5ca222f55",
     "ts": "2026-10-16T17:31:28Z"
   },
   "implemented": {
-    "sha": "de0c4efc3740aa214508f37976fa5a009b1af4e8",
-    "ts": "2026-10-16T13:50:50Z"
+    "sha": "d482e716b04d11bcb93e6260f6fee3f4f6c57bff",
+    "ts": "2026-10-16T22:53:02Z"
   },
   "shipped": null,
   "log": [
@@ -89,6 +89,15 @@
       "milestone": "defined",
       "sha": "454c46e3fbd96fa37254731ed367c2b5ca222f55",
       "text": "Candidate defined at 454c46e3fbd96fa37254731ed367c2b5ca222f55; phase IMPLEMENTATION."
+    },
+    {
+      "ts": "2026-10-16T22:53:02Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-2",
+      "milestone": "implemented",
+      "sha": "d482e716b04d11bcb93e6260f6fee3f4f6c57bff",
+      "text": "Candidate implemented at d482e716b04d11bcb93e6260f6fee3f4f6c57bff; phase CLOSURE."
     }
   ]
 }
