@@ -193,8 +193,8 @@ def _owned(task):
 
 @pytest.mark.parametrize("name", [
   "DataGenerator",
-  pytest.param("SparkGenerator", marks=_owned("J5.T3")),
-  pytest.param("FileWriter", marks=_owned("J5.T3")),
+  "SparkGenerator",
+  "FileWriter",
   pytest.param("FileBatchWriter", marks=_owned("J5.T4")),
   pytest.param("FileStreamWriter", marks=_owned("J5.T4")),
   pytest.param("RandSpecs", marks=_owned("J5.T5")),
@@ -207,8 +207,8 @@ def test_public_callables_carry_numpydoc(name):
 
 @pytest.mark.parametrize("module", [
   "rand_engine.main.data_generator",
-  pytest.param("rand_engine.main.spark_generator", marks=_owned("J5.T3")),
-  pytest.param("rand_engine.file_handlers.writer", marks=_owned("J5.T3")),
+  "rand_engine.main.spark_generator",
+  "rand_engine.file_handlers.writer",
   pytest.param("rand_engine.file_handlers._writer_batch", marks=_owned("J5.T4")),
   pytest.param("rand_engine.file_handlers._writer_stream", marks=_owned("J5.T4")),
   pytest.param("rand_engine.examples.common_rand_specs", marks=_owned("J5.T5")),
