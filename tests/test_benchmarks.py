@@ -312,7 +312,6 @@ def committed_report():
   return json.loads((Path(__file__).parents[1] / "docs" / "benchmarks.json").read_text(encoding="utf-8"))
 
 
-@pytest.mark.xfail(strict=True, reason="J7.T2 records the 0.8.0 rc-2 CI artifact")
 def test_committed_benchmark_artifact_names_the_final_feature_and_base_commits(committed_report):
   assert (committed_report["commit"], committed_report["base_commit"]) == (TERMINAL_HEAD, TERMINAL_BASE)
 
