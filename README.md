@@ -40,7 +40,7 @@ assert df.shape == (1_000, 4) and df["age"].between(18, 80).all()
 
 ## Get-started cases
 
-Each case is a runnable example. `rand-engine list` prints them; `rand-engine get-started <slug>` writes `<slug>.py` (also `python -m rand_engine get-started <slug>`, with `--out DIR` to choose the folder).
+Each case is a runnable example. `rand-engine list` prints them; `rand-engine get-started <slug>` writes `<slug>-example.py` (also `python -m rand_engine get-started <slug>`, with `--out DIR` to choose the folder).
 
 - `test-data`: a DataFrame for pipeline tests with `null_rate` and `anomaly_rate`.
 - `lake`: `pk`/`fk` related tables written to a Parquet lake.

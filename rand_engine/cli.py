@@ -18,7 +18,7 @@ def _parser():
   commands.add_parser("list", help="print the available slugs and what each teaches")
   get = commands.add_parser("get-started", help="write the example for a slug to a file")
   get.add_argument("slug", choices=list(CASES), help="slug of the example to write: " + ", ".join(CASES))
-  get.add_argument("--out", default=".", help="directory to write <slug>.py into, created if missing (default: current directory)")
+  get.add_argument("--out", default=".", help="directory to write <slug>-example.py into, created if missing (default: current directory)")
   return parser
 
 
@@ -28,7 +28,7 @@ def main(argv=None) -> int:
     for slug, description in CASES.items():
       print(f"{slug}  {description}")
     return 0
-  target = Path(args.out) / f"{args.slug}.py"
+  target = Path(args.out) / f"{args.slug}-example.py"
   if target.exists():
     print(f"error: {target} already exists, not overwriting", file=sys.stderr)
     return 1
