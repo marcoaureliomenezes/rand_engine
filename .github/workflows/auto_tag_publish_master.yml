@@ -74,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.10', '3.11', '3.12']
+        python-version: ['3.10', '3.11', '3.12', '3.13']
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
@@ -234,7 +234,7 @@ jobs:
           echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| 1️⃣ Prepare | ${{ needs.prepare.result == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 2️⃣ Tests (3.10, 3.11, 3.12) | ${{ needs.test.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 2️⃣ Tests | ${{ needs.test.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 3️⃣ Build Package | ${{ needs.build.result == 'success' && '✅ Built' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 4️⃣ Create Tag | ${{ needs.create_tag.result == 'success' && '✅ Created' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 5️⃣ Publish PyPI | ${{ needs.publish_pypi.result == 'success' && '✅ Published' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
