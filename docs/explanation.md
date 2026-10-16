@@ -14,7 +14,7 @@ The generator produces frames and record streams; where they go is yours: Kafka 
 
 ## Faker on top, through pools
 
-Faker is slow per value. Draw a small pool once, then let rand-engine sample it at NumPy speed. Faker complements the core and is never required.
+Faker is slow per value. Draw a small pool once, then let rand-engine sample it at [NumPy speed](BENCHMARKS.md). Faker complements the core and is never required.
 
 ```python
 from rand_engine import DataGenerator
@@ -30,4 +30,4 @@ Each generator owns its NumPy `Generator`, so the same spec, seed and size give 
 
 ## Keys without state
 
-`pk` and `fk` are stateless key columns computed from the seed and the row index (ADR 0002). A child `fk` rebuilds its parent's `pk` value, so related tables stay consistent across batches, streams and processes with no checkpoint store.
+`pk` and `fk` are stateless key columns computed from the seed and the row index. A child `fk` rebuilds its parent's `pk` value, so related tables stay consistent across batches, streams and processes with no checkpoint store.

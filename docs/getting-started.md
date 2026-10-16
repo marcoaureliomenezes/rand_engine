@@ -32,7 +32,7 @@ rand-engine list
 rand-engine get-started lake
 ```
 
-`list` prints the slugs; `get-started <slug>` writes a runnable `<slug>.py` into the current directory. Each slug has a tutorial:
+`list` prints the slugs; `get-started <slug>` writes a runnable script into the current directory. Each slug has a tutorial:
 
 - [Test data](tutorials/test-data.md)
 - [Lake](tutorials/lake.md)
