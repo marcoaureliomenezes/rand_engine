@@ -22,6 +22,9 @@ classifiers = [
 Issues = "https://github.com/marcoaureliomenezes/rand_engine/issues"
 Changelog = "https://github.com/marcoaureliomenezes/rand_engine/blob/master/CHANGELOG.md"
 
+[tool.poetry.scripts]
+rand-engine = "rand_engine.cli:main"
+
 [tool.poetry.dependencies]
 python = "^3.10"
 numpy = "^2.1.1"
