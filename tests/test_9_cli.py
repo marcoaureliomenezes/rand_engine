@@ -69,7 +69,7 @@ def test_list_is_byte_identical_across_runs(capsys):
   assert capsys.readouterr().out == first != ""
 
 
-@pytest.mark.parametrize("slug", [owned(s, "file bytes") for s in SLUGS])
+@pytest.mark.parametrize("slug", [s if s == "test-data" else owned(s, "file bytes") for s in SLUGS])
 def test_get_started_writes_exact_file_and_creates_dir(slug, tmp_path, capsys):
   out = tmp_path / "new" / "deeper"
   assert run(["get-started", slug, "--out", str(out)]) == 0
@@ -133,7 +133,7 @@ def check_faker(ns, out, tmp_path):
 CHECKS = {"test-data": check_test_data, "lake": check_lake, "kafka": check_kafka, "databricks": check_databricks, "faker": check_faker}
 
 
-@pytest.mark.parametrize("slug", [owned(s, "the written file runs and leaves: " + SEAM[s]) for s in SLUGS])
+@pytest.mark.parametrize("slug", [s if s == "test-data" else owned(s, "the written file runs and leaves: " + SEAM[s]) for s in SLUGS])
 def test_scaffold_is_databricks_source_and_runs_producing_its_promise(slug, tmp_path, monkeypatch, capsys, request):
   if slug == "databricks":
     request.getfixturevalue("spark_session")
@@ -149,7 +149,6 @@ def test_scaffold_is_databricks_source_and_runs_producing_its_promise(slug, tmp_
   CHECKS[slug](ns, capsys.readouterr().out, tmp_path)
 
 
-@pytest.mark.xfail(strict=True, reason="J6.T4 adds rand_engine/cases/test-data.py.txt; plain python exits 0")
 def test_test_data_scaffold_runs_under_plain_python(tmp_path):
   assert run(["get-started", "test-data", "--out", str(tmp_path)]) == 0
   env = {**os.environ, "PYTHONPATH": os.pathsep.join([str(ROOT), os.environ.get("PYTHONPATH", "")]).rstrip(os.pathsep)}
