@@ -1,3 +1,4 @@
+"""Stream file writer: ``start`` writes one microbatch file per pass until its timeout."""
 import os
 import time
 from typing import Generator
@@ -7,6 +8,20 @@ from rand_engine.file_handlers.writer import FileWriter
 
 
 class FileStreamWriter(FileWriter):
+  """
+  Write a DataGenerator stream to a directory, one microbatch file per pass.
+
+  Built by ``DataGenerator.writeStream``; chain ``format``, ``trigger`` and
+  ``option("timeout", seconds)`` first, then call ``start(path)``.
+
+  Examples
+  --------
+  >>> from rand_engine import DataGenerator
+  >>> spec = {"age": {"method": "integers", "kwargs": {"min": 18, "max": 80}}}
+  >>> stream = DataGenerator(spec, seed=42).size(10).writeStream
+  >>> stream.format("csv").trigger(frequency=0.1).option("timeout", 0.3) is stream
+  True
+  """
 
 
   def __init__(self, size_def, microbatch_def):
@@ -15,6 +30,27 @@ class FileStreamWriter(FileWriter):
   
 
   def trigger(self, frequency: int):
+    """
+    Set the pause between two microbatch writes of the next ``start``.
+
+    Parameters
+    ----------
+    frequency : int
+        Seconds to sleep after each write; a fraction of a second also works.
+
+    Returns
+    -------
+    FileStreamWriter
+        This writer, for chaining.
+
+    Examples
+    --------
+    >>> from rand_engine import DataGenerator
+    >>> spec = {"age": {"method": "integers", "kwargs": {"min": 18, "max": 80}}}
+    >>> stream = DataGenerator(spec, seed=42).size(10).writeStream
+    >>> stream.trigger(frequency=0.5) is stream
+    True
+    """
     self.freq = frequency
     return self
 
@@ -28,6 +64,30 @@ class FileStreamWriter(FileWriter):
 
 
   def start(self, path):
+    """
+    Write one microbatch file per pass under ``path`` until the ``timeout`` option elapses.
+
+    Each pass writes ``size`` rows to ``path/part-<uuid>.<ext>`` and sleeps ``trigger``
+    seconds. The ``timeout`` option (default 20 seconds) ends the loop after the pass that
+    crosses it. Blocks for that duration; in ``overwrite`` mode it clears ``path`` first.
+
+    Parameters
+    ----------
+    path : str
+        Directory to write the part files into, created if missing.
+
+    Examples
+    --------
+    >>> import os
+    >>> import pandas as pd
+    >>> from rand_engine import DataGenerator
+    >>> spec = {"age": {"method": "integers", "kwargs": {"min": 18, "max": 80}}}
+    >>> stream = DataGenerator(spec, seed=42).size(10).writeStream
+    >>> stream.format("csv").trigger(frequency=0.1).option("timeout", 0.3).start("stream/ages")
+    >>> files = os.listdir("stream/ages")
+    >>> bool(files) and all(len(pd.read_csv(f"stream/ages/{name}")) == 10 for name in files)
+    True
+    """
     base_path, file_name_cleaned, ext = FileHandler.handle_path(path, self.write_format, self.write_options)
     path = f"{base_path}/{file_name_cleaned}"
     size = self.size_def()
