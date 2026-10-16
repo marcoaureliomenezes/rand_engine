@@ -1,16 +1,17 @@
-# SPEC — Release: 0.8.0, candidate 2 (honest PyPI metadata, Python 3.13 in CI, four bugs, benchmarks in the docs)
+# SPEC — Release: 0.8.0, candidate 2 (honest PyPI metadata, Python 3.13 in CI, five bugs, benchmarks in the docs)
 
 **Status:** Draft
 **Release ID:** 0.8.0
 **Owner:** dd-product-engineer
 **Opened:** 2026-10-16
-**Origin:** backlog:pypi-metadata; bugs:int-zfilled-nonpositive-length-validates-then-raises,package-docstring-contradicts-pitch,stream-trigger-frequency-annotated-int,reference-test-self-referential
+**Origin:** backlog:pypi-metadata; bugs:int-zfilled-nonpositive-length-validates-then-raises,int-zfilled-length-above-18-validates-then-raises,package-docstring-contradicts-pitch,stream-trigger-frequency-annotated-int,reference-test-self-referential
 
 - Backlog `pypi-metadata`: 14 keywords, `Typing :: Typed`, CI matrices gain Python 3.13 and Spark tests skip where pyspark 3.5 cannot run. `python` reads `>=3.10` with no cap, and the explicit classifiers 3.10–3.13 make the wheel advertise only the tested set. The fallback `>=3.10,<3.14` applies only if poetry-core cannot keep those classifiers. Sources: the entry's provenance, which holds the operator rulings of 2026-10-15 ("Widen CI to 3.13", then "No cap, honest classifiers", which supersedes the cap), and handoff `2026-10-16T013009Z-main-thread-adoption-resume-grill`.
 - Folded in, same file and same table: `poetry check` warns that `[tool.poetry.scripts]` is deprecated. The script moves to `[project.scripts]`, in the PEP 621 `[project]` table that the static classifiers need.
-- The four bugs open on `feature/0.8.0` (`specs/bugs/BUGS.jsonl`), each fixed RED → GREEN per `specs/bugs/AGENTS.md` §2.
+- The five bugs open on `feature/0.8.0` (`specs/bugs/BUGS.jsonl`), each fixed RED → GREEN per `specs/bugs/AGENTS.md` §2; `int-zfilled-length-above-18-validates-then-raises` was confirmed in the grill with "Confirm, same fix".
+- Grill: handoff `2026-10-16T150500Z-main-thread-grill-080-rc2` (5 operator decisions). Rulings: the benchmark Job summary and PR comment stay as they are; one docs line states that Spark needs Python <= 3.12 until pyspark 4; the `kafka-python` exemption is kept; the upper `length` bound joins AC3.1.
 - Operator demand, 2026-10-16, verbatim: «eu ver testes de benchmark de CI funcionando e publicando um summary no actions que me é mandado que posso ver + merge de benchmarks na documentação». State of play: `benchmarks.yml:48-56` already publishes the Job summary and a PR comment (PR #44 run 38914408354, 46/46 rows). `docs/BENCHMARKS.md` and `docs/benchmarks.json`, served as the site's Benchmarks page (`mkdocs.yml:23`), were last recorded at a911fd2 (2026-10-11, head 5920630).
-- Operator ruling, 2026-10-16: the landing test keeps its `kafka-python` exemption (`tests/test_docs.py:382`). It is recorded below as a Term.
+- Operator ruling, 2026-10-16 (grill): the landing test keeps its `kafka-python` exemption (`tests/test_docs.py:382`). It is recorded below as a Term.
 - Closure-memory claims that the rc-1 reconcile review (handoff `2026-10-16T141302Z-dd-code-reviewer-reconcile-rc1`) found untrue are carried as FR5.
 
 ## Bug window review
@@ -37,8 +38,8 @@ This table judges rc-1's 12 resolved records (10 fix commits), each read with `g
 - PyPI advertises versions CI never tests. `python = "^3.10"` (`pyproject.toml:29`) makes poetry-core derive Python classifiers 3.10 through 3.15 (wheel built on 7e12958, backlog entry), while every test matrix runs only 3.10–3.12 (`auto_tag_publish_master.yml:77`, `auto_tag_publish_development.yml:86`, `test_on_push.yml:45`, `pr_to_master.yml:34`, `pr_to_development.yml:158`). The 6 keywords (`pyproject.toml:11`) miss the terms users search for, and the wheel ships `py.typed` but does not say `Typing :: Typed`.
 - `poetry check` warns on `[tool.poetry.scripts]` (`pyproject.toml:25-26`).
 - `poetry.lock` pins pandas 2.2.2, which has no `cp313` wheel, so installing on Python 3.13 builds pandas from source.
-- Four open bugs:
-  - `int_zfilled` with `length` < 1 validates and then fails or emits one-character strings, which breaks invariant 3.
+- Five open bugs:
+  - `int_zfilled` with `length` < 1 or > 18 validates and then fails or emits one-character strings, which breaks invariant 3.
   - `rand_engine.__doc__` (`rand_engine/__init__.py:1`) contradicts the constitution's Purpose.
   - `FileStreamWriter.trigger(frequency: int)` (`_writer_stream.py:31`) takes a float.
   - The reference-page test draws its cases from the page it checks (`tests/test_docs.py:333-335`).
@@ -48,7 +49,7 @@ This table judges rc-1's 12 resolved records (10 fix commits), each read with `g
 
 - The wheel METADATA carries the 14 keywords and `Typing :: Typed`; its Python classifiers are exactly 3.10–3.13, the set CI tests; `Requires-Python` is `>=3.10`.
 - Every CI test matrix includes 3.13 and is green; `poetry check` prints no warning.
-- The four bugs are resolved, each with a RED test that the fix turns green.
+- The five bugs are resolved, each with a RED test that the fix turns green.
 - `docs/BENCHMARKS.md` and `docs/benchmarks.json` are the CI artifact of this candidate's last measured head.
 
 ## 3. Non-goals
@@ -87,10 +88,11 @@ This table judges rc-1's 12 resolved records (10 fix commits), each read with `g
 - AC2.1 (no test; reason: workflow YAML has no seam in the suite, as rc-1 ruling 9 held, and CI is the check): the five matrices (`auto_tag_publish_master.yml:77`, `auto_tag_publish_development.yml:86`, `test_on_push.yml:45`, `pr_to_master.yml:34`, `pr_to_development.yml:158`) list `3.10`, `3.11`, `3.12`, `3.13`. The publish summary line at `auto_tag_publish_master.yml:237` names 3.13. Every leg of the candidate's push CI is green, and the run id is cited at review.
 - AC2.2 (integration, the Spark fixture): on Python 3.13, Spark tests skip only where pyspark 3.5.8 cannot run, through the one skip predicate (`tests/fixtures/f2_spark_generator_specs_right.py:31`), with a skip reason naming pyspark 3.5 and Python 3.13. The commit that widens it cites the CI run where pyspark 3.5.8 failed on that platform. Where it runs, Spark tests run.
 - AC2.3 (no test, lock): `poetry.lock` installs on Python 3.13 from wheels. pandas moves to a release inside `^2.2.2` that ships `cp313` wheels; no `[tool.poetry.dependencies]` constraint changes except `python` (FR1). The lock diff is named in the commit body.
+- AC2.4 (no test; reason: prose, a text assert tests no behaviour): the Spark page's requirement line (`docs/2_SPARK_GENERATOR.md:3-4`) states that Spark needs Python <= 3.12 until pyspark 4, so 3.13 skips the Spark tests (grill ruling, 2026-10-16). No other page changes.
 
-### FR3 — The four open bugs
+### FR3 — The five open bugs
 
-- AC3.1 (unit, `tests/test_1_common_validator.py`): `int_zfilled` with `length` 0 or −1 yields one collected issue naming `length` from `CommonValidator.validate_column` and from Spark validation. `DataGenerator` with that spec raises `SpecValidationError` at construction, and `length` 1 and 8 still validate. The rule lives in the method catalog's `int_zfilled` entry (`rand_engine/validators/method_specs.py:323-327`), the one decider both engines consult. Bug `int-zfilled-nonpositive-length-validates-then-raises`.
+- AC3.1 (unit, `tests/test_1_common_validator.py`): `int_zfilled` with `length` outside 1..18 (0, −1, 19) yields one collected issue naming `length` from `CommonValidator.validate_column` and from Spark validation. `DataGenerator` with that spec raises `SpecValidationError` at construction, and `length` 1, 8 and 18 still validate. One bound, `1 <= length <= 18`, lives in the method catalog's `int_zfilled` rule (`rand_engine/validators/method_specs.py:323`), the one decider both engines consult; Spark's `<= 15` width check is unchanged. Bugs `int-zfilled-nonpositive-length-validates-then-raises` and `int-zfilled-length-above-18-validates-then-raises`.
 - AC3.2 (unit): the first line of `rand_engine.__doc__` equals the package `description` that `pyproject.toml` declares, which is the PyPI Summary. It is RED on today's `"Synthetic data generation for Pandas and Spark dataframes."` Bug `package-docstring-contradicts-pitch`.
 - AC3.3 (unit): `typing.get_type_hints(FileStreamWriter.trigger)["frequency"] is float`. It is RED on `_writer_stream.py:31`. Bug `stream-trigger-frequency-annotated-int`.
 - AC3.4 (unit, `tests/test_docs.py`): the reference test takes its cases from `rand_engine.__all__`. The set of `:::` directives in `docs/reference.md` equals the set of `f"{obj.__module__}.{obj.__qualname__}"` over those names, and each object carries a docstring. Deleting the `SparkGenerator` `:::` line turns it red, which is the reviewer's revert check. Bug `reference-test-self-referential`.
@@ -119,7 +121,7 @@ All of FR5 is no test: it is memory text, checked at review against the cited `p
 - `[tool.poetry.scripts]` → `[project.scripts]`. The derived Python classifiers 3.10–3.15 → explicit 3.10–3.13. `python = "^3.10"` (a caret range, capped below 4.0) → `>=3.10`, uncapped. The 6 keywords → 14 (FR1).
 - The `"python": "^3.10"` entry of the assert at `tests/test_9_cli.py:224` → `>=3.10` (AC1.5).
 - The CI matrices 3.10–3.12 and the summary literal `3.10, 3.11, 3.12` → with 3.13. pandas 2.2.2 in the lock → a release with `cp313` wheels (FR2).
-- The unchecked `int_zfilled` `length` → refused below 1 at validation (AC3.1).
+- The unchecked `int_zfilled` `length` → refused outside 1..18 at validation (AC3.1).
 - The package docstring "for Pandas and Spark dataframes" → the package description (AC3.2).
 - `trigger(frequency: int)` → `float` (AC3.3).
 - The reference test parametrized from `docs/reference.md` itself → parametrized from `rand_engine.__all__` (AC3.4).
@@ -137,7 +139,7 @@ All of FR5 is no test: it is memory text, checked at review against the cited `p
 | wave | scope | ACs |
 |---|---|---|
 | 1 dev loop and foundation | packaging metadata, lock, CI matrices, Spark skip predicate (one write set: `pyproject.toml`, `poetry.lock`) | FR1, FR2 |
-| 2 bugs | the four fixes, each a RED task then its fix | FR3 |
+| 2 bugs | the five bugs (four fixes), each a RED task then its fix | FR3 |
 | 3 promote-facing | the benchmark record, after every measured-path job | FR4 |
 | 4 Reconciliation | memory, Tech Stack, summary | FR5 |
 
@@ -157,7 +159,6 @@ All of FR5 is no test: it is memory text, checked at review against the cited `p
 | skipping Spark on 3.13 drops a leg under `--cov-fail-under=60` (`pr_to_development.yml`) | AC2.1 needs every leg green; the Windows 3.12 legs already run with Spark skipped |
 | a later candidate touches a measured path after FR4 | AC4.3; that candidate records again |
 
-### Open questions (for the main thread; only the operator answers)
+### Open questions
 
-1. Does "um summary no actions que me é mandado" mean the PR comment that `benchmarks.yml:51-56` already posts, which notifies the PR participants? A `workflow_dispatch` run writes only the Job summary. The default is the existing summary and comment, with no change.
-2. Python 3.13 is advertised although Spark is skipped on any 3.13 leg where pyspark 3.5 fails. Should the README or docs state "Spark tests skip on 3.13" there? The default is no docs change, because Spark is never required (constitution Purpose).
+None; the grill (`2026-10-16T150500Z-main-thread-grill-080-rc2`) answered both.
