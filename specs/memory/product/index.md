@@ -16,7 +16,9 @@ RandSpec: the NumPy core ([[data-generator]]) yields pandas DataFrames, record s
 ([[writers-and-streaming]]) the user forwards to any queue, lake, database or file; Spark is
 supported through the same spec ([[spark-generator]]). Correlated columns and pattern strings
 ([[generation-methods]]), stateless PK/FK relations ([[pk-fk-constraints]]) and
-ready-made specs ([[templates-and-examples]]) sit on a vectorized NumPy core.
+ready-made specs ([[templates-and-examples]]) sit on a vectorized NumPy core. A new user starts from
+a scaffolded example ([[get-started-cli]]) and the docs site, `llms.txt` and agent skill
+([[documentation]]).
 
 ## Users
 
@@ -32,7 +34,7 @@ ready-made specs ([[templates-and-examples]]) sit on a vectorized NumPy core.
 
 | slug | title | tldr |
 |------|-------|------|
-| `public-api` | Public API | rand_engine exports DataGenerator, SparkGenerator and RandSpecs; every other module is internal. |
+| `public-api` | Public API | rand_engine exports DataGenerator, SparkGenerator, RandSpecs and __version__, is typed and ships the rand-engine CLI; every other module is internal. |
 
 ### content
 
@@ -47,6 +49,13 @@ ready-made specs ([[templates-and-examples]]) sit on a vectorized NumPy core.
 | `data-generator` | DataGenerator | The pandas generator validates a RandSpec, owns its random generator, and returns DataFrames, files, file streams or an endless record stream. |
 | `generation-methods` | Generation methods | Ten common methods run on pandas and Spark; distributions, constant, correlated methods, pk, fk and null/anomaly modifiers run on pandas. |
 | `spark-generator` | SparkGenerator | The Spark generator builds a Spark DataFrame from the ten common RandSpec methods with native expressions, no Python UDF, and refuses NumPy-only features. |
+
+### onboarding
+
+| slug | title | tldr |
+|------|-------|------|
+| `documentation` | Documentation site, llms.txt and agent skill | A strict-built GitHub Pages site, a landing README, a root llms.txt and an Agent Skill document rand-engine, and the suite executes their code. |
+| `get-started-cli` | Get-started CLI | The rand-engine console script lists five adoption cases and writes any of them as a runnable example file. |
 
 ### output
 

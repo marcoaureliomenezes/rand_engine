@@ -1,3 +1,4 @@
+"""Batch file writer: one ``save`` generates the rows and writes one file or several parts."""
 import os
 from pathlib import Path
 import shutil
@@ -13,6 +14,22 @@ from rand_engine.validators.exceptions import RandEngineError
 
 
 class FileBatchWriter(FileWriter):
+  """
+  Write the rows of a DataGenerator to files, once per ``save``.
+
+  Built by ``DataGenerator.write``; chain ``format``, ``mode`` and ``option`` first.
+
+  Examples
+  --------
+  >>> import os, tempfile
+  >>> import pandas as pd
+  >>> from rand_engine import DataGenerator
+  >>> spec = {"age": {"method": "integers", "kwargs": {"min": 18, "max": 80}}}
+  >>> path = os.path.join(tempfile.mkdtemp(), "batch_ages.csv")
+  >>> DataGenerator(spec, seed=42).size(10).write.format("csv").save(path)
+  >>> len(pd.read_csv(path))
+  10
+  """
 
   def __init__(self, size_def, microbatch_def, file_def=None):
     super().__init__(size_def, microbatch_def)
@@ -155,6 +172,35 @@ class FileBatchWriter(FileWriter):
 
 
   def save(self, path: str) -> None:
+    """
+    Generate ``size`` rows and write them to ``path``.
+
+    Writes one file at ``path`` by default; with the ``numFiles`` option, a directory of
+    that many part files. ``mode("append")`` adds the rows to what is already there.
+
+    Parameters
+    ----------
+    path : str
+        Relative or absolute path; a single file gets the format's extension.
+
+    Raises
+    ------
+    RandEngineError
+        If ``size`` was not set, or ``numFiles`` or ``maxRowsPerBatch`` is not a positive integer.
+
+    Examples
+    --------
+    >>> import os, tempfile
+    >>> import pandas as pd
+    >>> from rand_engine import DataGenerator
+    >>> spec = {"age": {"method": "integers", "kwargs": {"min": 18, "max": 80}}}
+    >>> path = os.path.join(tempfile.mkdtemp(), "save_parts")
+    >>> DataGenerator(spec, seed=42).size(10).write.option("numFiles", 2).format("csv").save(path)
+    >>> len(os.listdir(path))
+    2
+    >>> sum(len(pd.read_csv(os.path.join(path, name))) for name in os.listdir(path))
+    10
+    """
     write_options = dict(self.write_options)
     num_files = self._positive_integer("numFiles", write_options.pop("numFiles", 1))
     batch_limit = write_options.pop("maxRowsPerBatch", None)

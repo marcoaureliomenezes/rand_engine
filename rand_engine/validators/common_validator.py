@@ -4,6 +4,7 @@ import json
 from typing import Any
 import warnings
 
+from rand_engine.core._np_core import width_beyond_double
 from rand_engine.validators.exceptions import SpecValidationError
 from rand_engine.validators.method_specs import (
     COMMON_METHOD_SPECS,
@@ -17,6 +18,8 @@ from rand_engine.validators.method_specs import (
     type_name,
 )
 
+
+DOCS_URL = "https://marcoaureliomenezes.github.io/rand_engine/"
 
 COLUMN_KEYS = (
     "method", "kwargs", "cols", "transformers", "null_rate", "anomaly_rate", "anomaly_values"
@@ -238,9 +241,9 @@ class CommonValidator:
     @staticmethod
     def _spark_width_errors(col_name: str, method: str, kwargs: dict[str, Any]) -> list[str]:
         """Spark carries exact domains in doubles: integer widths beyond 2**53 are refused."""
-        if method == "integers" and kwargs["max"] - kwargs["min"] > 2**53:
-            problem = "width (max - min) must be <= 2**53"
-        elif method == "int_zfilled" and kwargs["length"] > 15:
+        if method == "integers" and width_beyond_double(kwargs["max"] - kwargs["min"] + 1):
+            problem = "width (max - min + 1) must be <= 2**53"
+        elif method == "int_zfilled" and width_beyond_double(10 ** min(kwargs["length"], 16)):
             problem = "'length' must be <= 15 (exact digits in a double)"
         else:
             return []
@@ -272,7 +275,7 @@ class CommonValidator:
             f"Found {len(errors)} error(s) in specification:\n\n"
             + separator.join(errors)
             + f"\n\n{'=' * 80}\n"
-            "📚 Documentation: https://github.com/marcoaureliomenezes/rand_engine\n"
+            f"📚 Documentation: {DOCS_URL}\n"
             f"{'=' * 80}\n"
         )
         raise SpecValidationError(message)

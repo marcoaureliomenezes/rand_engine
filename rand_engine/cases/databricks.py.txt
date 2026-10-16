@@ -1,0 +1,43 @@
+# Databricks notebook source
+# Spark: a users table generated natively with SparkGenerator. Runs in Databricks, or under plain python with PySpark installed.
+
+# COMMAND ----------
+# Get the session. In Databricks it returns the notebook's session; anywhere else it returns the one already running.
+
+from pyspark.sql import SparkSession, functions as F
+
+from rand_engine import SparkGenerator
+
+spark = SparkSession.builder.getOrCreate()
+
+# COMMAND ----------
+# Describe the users with supported methods only.
+
+spec = {
+  "user_id": {"method": "int_zfilled", "kwargs": {"length": 8}},
+  "age": {"method": "integers", "kwargs": {"min": 18, "max": 80}},
+  "score": {"method": "floats", "kwargs": {"min": 0, "max": 100, "decimals": 2}},
+  "is_active": {"method": "booleans", "kwargs": {"true_prob": 0.7}},
+  "plan": {"method": "distincts", "kwargs": {"distincts": ["free", "pro", "team"]}},
+  "signup": {"method": "dates", "kwargs": {"start": "2020-01-01", "end": "2023-12-31", "date_format": "%Y-%m-%d"}},
+  "last_seen": {"method": "unix_timestamps", "kwargs": {"start": "2024-01-01", "end": "2024-12-31"}},
+}
+
+# COMMAND ----------
+# Generate 1 000 rows natively into df, then look at them.
+
+df = SparkGenerator(spark, F, spec).size(1_000).get_df()
+df.show(5)
+df.printSchema()
+
+# COMMAND ----------
+# Note: pk, fk, the distributions (exponential, lognormal, poisson, zipf), constant, null_rate and
+# anomaly_rate are DataGenerator-only; SparkGenerator refuses them. For a small volume, generate with
+# DataGenerator(...).get_df() and wrap the pandas frame in spark.createDataFrame(pdf).
+# The cell below does that for 100 rows; df above stays the native one.
+
+from rand_engine import DataGenerator
+
+pdf = DataGenerator(spec, seed=7).size(100).get_df()
+small = spark.createDataFrame(pdf)
+small.show(5)

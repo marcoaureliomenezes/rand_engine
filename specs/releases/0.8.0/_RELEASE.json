@@ -1,0 +1,79 @@
+{
+  "schema": "release-state-v1",
+  "release": "0.8.0",
+  "phase": "CLOSURE",
+  "defined": {
+    "sha": "8bd8e3f941eaab7b46ed0bf8847a08437bd630c2",
+    "ts": "2026-10-15T00:40:31Z"
+  },
+  "implemented": {
+    "sha": "de0c4efc3740aa214508f37976fa5a009b1af4e8",
+    "ts": "2026-10-16T13:50:50Z"
+  },
+  "shipped": null,
+  "log": [
+    {
+      "ts": "2026-10-14T18:51:30Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Release 0.8.0 born"
+    },
+    {
+      "ts": "2026-10-15T00:40:31Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-1",
+      "milestone": "defined",
+      "sha": "8bd8e3f941eaab7b46ed0bf8847a08437bd630c2",
+      "text": "Candidate defined at 8bd8e3f941eaab7b46ed0bf8847a08437bd630c2; phase IMPLEMENTATION."
+    },
+    {
+      "ts": "2026-10-16T13:50:50Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-1",
+      "milestone": "implemented",
+      "sha": "de0c4efc3740aa214508f37976fa5a009b1af4e8",
+      "text": "Candidate implemented at de0c4efc3740aa214508f37976fa5a009b1af4e8; phase CLOSURE."
+    },
+    {
+      "ts": "2026-10-16T13:56:33Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 8bd8e3f941eaab7b46ed0bf8847a08437bd630c2..a064f982fbf6: 4 reviewed, 5 changed.",
+      "since": "8bd8e3f941eaab7b46ed0bf8847a08437bd630c2",
+      "until": "a064f982fbf601dc0c92d68ac6a5d486fc9fc10e",
+      "reviewed": [
+        "templates-and-examples",
+        "data-generator",
+        "generation-methods",
+        "writers-and-streaming"
+      ],
+      "changed": [
+        "public-api",
+        "spark-generator",
+        "rand-spec-grammar",
+        "documentation",
+        "get-started-cli"
+      ]
+    },
+    {
+      "ts": "2026-10-16T14:01:07Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-1 implemented at de0c4ef (Jobs 1-11 plus hotfix get-started-scaffold-shadows-package): one Spark integer-width predicate width_beyond_double shared by CommonValidator, SparkCore.gen_ints and float_lattice_bounds (max - min + 1 == 2**53 validates and generates, 2**53 + 1 refused at validation); numpydoc docstrings on DataGenerator, SparkGenerator, RandSpecs and the writer objects with ruff D in verify: and an inspect check plus doctests in the suite; rand_engine.__version__ (installed metadata, placeholder 0.0.0+unknown), py.typed, four regular-package __init__.py; console script rand-engine list / get-started <slug> [--out DIR] and python -m rand_engine writing DIR/<slug>-example.py from five packaged cases (test-data, lake, kafka, databricks, faker); Zensical strict-built docs site with API reference, five tutorials, /llms.txt, docs.yml build on PRs and Pages deploy on master; landing README; skills/rand-engine/SKILL.md outside the wheel; validator error footer and pyproject documentation on https://marcoaureliomenezes.github.io/rand_engine/; workflows with top-level contents: read and six third-party actions pinned to SHAs; pyspark 3.5.8 and setuptools 83 in the lock; dated CHANGELOG headers; 9 bugs resolved, 0 open (13 live records, 36 archived by bug-window maturity): spark-integers-width-2pow53-validates-then-raises, workflow-actions-mutable-refs, workflow-missing-top-level-permissions, workflow-summary-text-stale, changelog-070-header-says-unreleased, faker-extra-undocumented-unpinned-install, dependabot-pyspark-357-ghsa-9437, dependabot-setuptools-781-ghsa-h35f, get-started-scaffold-shadows-package; independent measurement on the reconcile tree: verify: exit 0, 1129 passed and 8 deselected in 81.4 s, ruff D 0 findings, 56 CLI/docstring/landing/skill/tutorial tests passed, python -m rand_engine list prints the five slugs, [tool.poetry.dependencies] unchanged; CI on de0c4ef green (Tests on Push 38910934954, Docs 38910934774); size 8bd8e3f..de0c4ef: rand_engine +985/-39, tests +651/-19, docs +241, .github +95/-1527, skills +177, README/llms.txt/CHANGELOG/mkdocs.yml +119/-103; verdict.py stats 0.8.0-rc1: 14 sequences, 20 verdicts, 6 rejected, first-pass rejected 5/14; memory: 5 atoms changed (public-api, spark-generator, rand-spec-grammar, new get-started-cli and documentation), 4 reviewed, ARCHITECTURE Tech Stack and Structure, QUALITY test layers and Gates; carried: no open bug; non-blocking for the next candidate: llms.txt:7 public-api derived-from marker stale (outside the reconcile write set, prose true), tests/test_9_cli.py test_python_dash_m_runs_main emits a runpy RuntimeWarning, TREE-5 template refresh warnings on seven specs AGENTS.md files, empty unregistered worktree dir worktrees/rand-engine/0.7.0-rc1 left for the operator; backlog exits: docstrings, readme-landing, docs-site, get-started-cli, agent-skill delivered by 0.8.0."
+    },
+    {
+      "ts": "2026-10-16T14:06:12Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over a064f982fbf601dc0c92d68ac6a5d486fc9fc10e..150573773658: 1 reviewed, 0 changed.",
+      "since": "a064f982fbf601dc0c92d68ac6a5d486fc9fc10e",
+      "until": "150573773658225b6b25f8c89ac3f236ba2f456a",
+      "reviewed": [
+        "documentation"
+      ],
+      "changed": []
+    }
+  ]
+}

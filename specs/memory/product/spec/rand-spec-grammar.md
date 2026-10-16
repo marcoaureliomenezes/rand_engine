@@ -23,8 +23,8 @@ sources:
 - `CommonValidator` validates the ten common methods for `SparkGenerator`; it refuses keys, positional args, NumPy-only ordinary methods and modifiers with guidance to use `DataGenerator`, and warns for correlated methods that Spark represents as null columns ([[spark-generator]]).
 - A wrong type (a bool in a numeric slot included), a missing required kwarg or an unknown kwarg suppresses that column's semantic rules, so a bad type is reported as a validation issue and never as a raw `TypeError`.
 - Semantic rules include: integer bounds inside `int_type`; a non-empty float grid with a finite span and `decimals` within the float limit; `true_prob` in `[0, 1]`; non-empty `distincts` pools and integer weights; supported date directives; positive `scale` and `a` greater than 1; `lam` within `[0, 10^6]`; immutable scalar `constant` values; non-empty map pools and levels, and `cols` equal to levels plus one for `distincts_multi_map`.
-- On Spark, an `integers` width above 2^53, `uint64` and an `int_zfilled` length above 15 are refused.
-- Every issue is collected into one `SpecValidationError`; warning-style helpers print the same issues and return a boolean.
+- On Spark, `uint64`, an `integers` width `max - min + 1` above 2^53 and an `int_zfilled` length above 15 are refused; the width test is the same predicate the Spark engine applies, so a Spark spec that validates never fails generation on width.
+- Every issue is collected into one `SpecValidationError` whose message ends with a footer linking the docs site; warning-style helpers print the same issues and return a boolean.
 
 ## Key grammar
 

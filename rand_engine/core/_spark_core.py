@@ -1,6 +1,6 @@
 from datetime import datetime as dt, timezone
 import pandas as pd
-from rand_engine.core._np_core import DATE_DIRECTIVES, DATE_SPLIT, float_lattice_bounds
+from rand_engine.core._np_core import DATE_DIRECTIVES, DATE_SPLIT, float_lattice_bounds, width_beyond_double
 
 
 class SparkCore:
@@ -35,7 +35,7 @@ class SparkCore:
     type_min, type_max, spark_type = SparkCore._INTEGER_DOMAINS[int_type]
     if min > max: raise ValueError(f"min ({min}) must be <= max ({max})")
     if min < type_min or max > type_max: raise ValueError(f"bounds must fit the logical {int_type} domain")
-    if max - min + 1 > 2 ** 53: raise ValueError(f"width ({max - min + 1}) must be <= 2**53")
+    if width_beyond_double(max - min + 1): raise ValueError(f"width ({max - min + 1}) must be <= 2**53")
     return df.withColumn(col_name, (F.lit(min) + F.floor(F.rand() * (max - min + 1))).cast(spark_type))
 
   @staticmethod

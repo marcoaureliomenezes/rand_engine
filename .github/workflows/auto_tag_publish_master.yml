@@ -10,6 +10,9 @@ env:
   PYTHON_VERSION: "3.12"
   PACKAGE_NAME: "rand-engine"
 
+permissions:
+  contents: read
+
 jobs:
   # Job 1: Prepare production release
   prepare:
@@ -153,7 +156,7 @@ jobs:
         with:
           name: dist-production-${{ needs.prepare.outputs.version }}
           path: dist/
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
           packages-dir: dist/
           verbose: true
@@ -274,7 +277,7 @@ jobs:
           echo "- ✅ Version **$VERSION** is now live in production" >> $GITHUB_STEP_SUMMARY
           echo "- 📢 Announce release to users" >> $GITHUB_STEP_SUMMARY
           echo "- 📚 Update documentation if needed" >> $GITHUB_STEP_SUMMARY
-          echo "- 🔄 Start working on next version (e.g., bump to 0.5.6)" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔄 Start working on next version (e.g., bump to the next version)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
           # Success Message
@@ -332,8 +335,8 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "If you want to release a new version:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "1. Update \`pyproject.toml\` with new version (e.g., \`0.5.6\`)" >> $GITHUB_STEP_SUMMARY
-          echo "2. Commit: \`git commit -m \"chore: bump version to 0.5.6\"\`" >> $GITHUB_STEP_SUMMARY
+          echo "1. Bump \`pyproject.toml\` to the next version" >> $GITHUB_STEP_SUMMARY
+          echo "2. Commit: \`git commit -m \"chore: bump version to <next>\"\`" >> $GITHUB_STEP_SUMMARY
           echo "3. Create PR to \`development\` branch" >> $GITHUB_STEP_SUMMARY
           echo "4. After testing, create PR from \`development\` to \`master\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

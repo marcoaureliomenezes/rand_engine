@@ -214,6 +214,13 @@ class TestValidateAndRaise:
         assert "SPARKGENERATOR SPEC VALIDATION ERROR" in str(exc_info.value)
         assert "does not exist" in str(exc_info.value)
 
+    def test_error_footer_names_the_docs_site(self):
+        with pytest.raises(SpecValidationError) as exc_info:
+            CommonValidator.validate_spark_and_raise({"age": {"method": "invalid_method", "kwargs": {}}})
+
+        footer = str(exc_info.value).splitlines()[-2]
+        assert footer == "📚 Documentation: https://marcoaureliomenezes.github.io/rand_engine/"
+
     def test_validate_and_raise_advanced_method_only_warns(self):
         """Advanced methods are allowed in SparkGenerator with a warning (docs/2_SPARK_GENERATOR.md)."""
         spec = {"device_os": {"method": "distincts_map", "cols": ["device", "os"],
@@ -548,13 +555,24 @@ class TestSparkExactDomainRefusals:
         assert len(errors) == 1
         assert "2^53" in errors[0] or "2**53" in errors[0]
 
-    def test_integer_width_2_53_is_accepted(self):
-        assert self._validate("integers", min=0, max=2**53) == []
-
-    def test_int_zfilled_length_16_is_refused(self):
-        errors = self._validate("int_zfilled", length=16)
+    def test_integer_max_2_53_is_refused(self):
+        errors = self._validate("integers", min=0, max=2**53)
         assert len(errors) == 1
-        assert "length" in errors[0]
+        assert "'c'" in errors[0]
+        assert "2**53" in errors[0]
+
+    def test_integer_width_exactly_2_53_is_accepted(self):
+        assert self._validate("integers", min=0, max=2**53 - 1) == []
+        assert self._validate("integers", min=-2**53, max=-1) == []
+        assert self._validate("integers", min=0, max=2**53 - 2) == []
+
+    @pytest.mark.parametrize("length", [16, 5000, 10**7])
+    def test_int_zfilled_length_above_15_is_one_collected_error(self, length):
+        errors = self._validate("int_zfilled", length=length)
+        assert len(errors) == 1
+        assert "Column 'c'" in errors[0]
+        assert "'length'" in errors[0]
+        assert "15" in errors[0]
 
     def test_int_zfilled_length_15_is_accepted(self):
         assert self._validate("int_zfilled", length=15) == []

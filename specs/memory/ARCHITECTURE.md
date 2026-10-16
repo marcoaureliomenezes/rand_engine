@@ -2,7 +2,7 @@
 slug: ARCHITECTURE
 title: Architecture
 tldr: The system's principles, technology stack and structure.
-summary: Principles change only with an accepted ADR; Tech Stack and Structure state what rand-engine's code is — a NumPy-first synthetic-data library with pandas and Spark generators, validators, Arrow-backed writers and stateless PK/FK key columns.
+summary: Principles change only with an accepted ADR; Tech Stack and Structure state what rand-engine's code is — a NumPy-first synthetic-data library with pandas and Spark generators, validators, Arrow-backed writers, stateless PK/FK key columns, a get-started CLI and a docs site built from its Markdown and docstrings.
 tags:
   - architecture
   - layers
@@ -24,13 +24,20 @@ commit that carries its accepted ADR.
 - PySpark `^3.5` (test group only) — `SparkGenerator` runs on the caller's `SparkSession` and `pyspark.sql.functions`; the package never imports PySpark.
 - Faker `>=28.4.1,<29` (optional extra `faker`, also in the test group) — backs `RandSpecs.faker_pool` only; generation never calls it.
 - pytest `^9.0`, pytest-cov (test group) — the suite and its fixture data.
-- GitHub Actions — test matrix, advisory security scans, same-runner A/B benchmarks, and RC and stable publishing through PyPI Trusted Publishing.
+- ruff `>=0.17.1` (test group) — pydocstyle `D` rules with the numpy convention on the public-surface modules.
+- Zensical `==0.0.70` and mkdocstrings-python `==2.0.9` (optional `docs` group, Python `>=3.11`) — the strict docs-site build and its API reference from numpy-style docstrings, over `mkdocs.yml`.
+- MkDocs-Material — the fallback builder of the same `mkdocs.yml`; not installed by any group.
+- GitHub Actions — test matrix, advisory security scans, same-runner A/B benchmarks, RC and stable publishing through PyPI Trusted Publishing, and the docs build with its GitHub Pages deploy.
 
 ## Structure
 
 ```text
 rand_engine/
-  __init__.py        public surface: DataGenerator, SparkGenerator, RandSpecs
+  __init__.py        public surface: DataGenerator, SparkGenerator, RandSpecs; __version__ from installed metadata
+  __main__.py        python -m rand_engine -> cli.main
+  cli.py             the rand-engine console script: list, get-started
+  cases/             <slug>.py.txt — the five get-started scaffolds, shipped as package data
+  py.typed           typing marker
   main/              composition roots
     data_generator.py      DataGenerator — pandas pipeline, writers, stream_dict
     _rand_generator.py     RandGenerator — method dispatch, column assembly, transformers, null/anomaly modifiers
@@ -51,7 +58,7 @@ rand_engine/
   utils/             StreamHandler
 ```
 
-- Dependency direction: `main` -> `core`, `validators`, `file_handlers`, `utils`; `validators.method_specs` -> `core._np_core` for date directives and float-domain predicates, so grammar and engine decide each numeric rule once; `core._keys` and `file_handlers` import only `validators.exceptions`; `examples.common_rand_specs` runs `AdvancedValidator` on `from_schema` output; `core` imports no generator and `examples` import no engine.
+- Dependency direction: `main` -> `core`, `validators`, `file_handlers`, `utils`; `validators.method_specs` -> `core._np_core` for date directives and float-domain predicates, and `validators.common_validator` -> `core._np_core` for `width_beyond_double`, the one Spark width predicate `SparkCore.gen_ints` and `float_lattice_bounds` also call, so grammar and engine decide each numeric rule once; `cli` imports only the standard library and reads `cases/` as package resources; `core._keys` and `file_handlers` import only `validators.exceptions`; `examples.common_rand_specs` runs `AdvancedValidator` on `from_schema` output; `core` imports no generator and `examples` import no engine.
 - A RandSpec is a dict keyed by column name; the NumPy path has one method-name -> function map shared by columns and nested templates, while `METHOD_CATALOG` owns the accepted grammar: names, parameters, engines and Arrow output types.
 - Generation is NumPy-first: every column is one array call, assembled into one DataFrame, then transformed.
 - The Spark path builds columns as native expressions plus one broadcast join per `distincts` column; it runs no Python UDF.
@@ -60,8 +67,7 @@ rand_engine/
 
 <!-- dadaia:fixed slop-code -->
 ### Slop — code (fixed)
-- A comment explains a non-obvious why; the what, the history and any spec, task, ADR or version id live in git and the ledgers.
-- A docstring states the contract in at most 3 lines; bug history lives in `BUGS.jsonl`.
+- A docstring or comment follows the root `AGENTS.md` map §1 docstring sentence; a comment explains a non-obvious why.
 - Code is born with a real caller in the same change; without a caller it does not exist.
 - A fix replaces the old path; it never wraps it and never opens a second path.
 - A port exists only with two production adapters; a parameter exists only when it is read.

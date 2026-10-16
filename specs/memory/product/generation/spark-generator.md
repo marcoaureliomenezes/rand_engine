@@ -20,7 +20,7 @@ sources:
 - The common validator accepts the ten common methods and named `kwargs` ([[rand-spec-grammar]], [[generation-methods]]).
 - `pk`, `fk`, `exponential`, `lognormal`, `poisson`, `zipf` and `constant` are refused with guidance to use `DataGenerator`; so are `null_rate` and `anomaly_rate`; `anomaly_values` alone is accepted and has no effect.
 - `args` and unknown column keys are refused; correlated pandas methods warn and produce a null string column.
-- `integers` refuses `uint64` and any width above 2^53; `int_zfilled` refuses `length` above 15. Every other accepted integer domain is exact and inclusive.
+- `integers` refuses `uint64` and any width `max - min + 1` above 2^53, at validation and in `SparkCore` alike; `int_zfilled` refuses `length` above 15. Every other accepted integer domain, width 2^53 included, is exact and inclusive.
 
 ## Behaviour
 

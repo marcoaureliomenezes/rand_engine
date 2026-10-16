@@ -7,7 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.7.0] - Unreleased
+## [0.8.0] - 2026-10-16
+
+### Added
+
+- Docs site built by Zensical (strict) from the repo Markdown: Getting started, five tutorials, the API reference generated from the numpydoc docstrings, and Explanation.
+- `rand-engine` CLI: `rand-engine list` and `rand-engine get-started <slug>` scaffold five runnable cases (`test-data`, `lake`, `kafka`, `databricks`, `faker`); `python -m rand_engine` runs the same CLI.
+- `rand_engine.__version__` and a `py.typed` marker.
+- numpydoc docstrings with runnable examples on `DataGenerator`, `SparkGenerator`, `RandSpecs` and the writers.
+- Agent Skill `skills/rand-engine/SKILL.md` in the repository (not in the wheel).
+- `llms.txt` at the docs-site root, linking the site pages and the skill.
+- README rebuilt as a landing page: pitch, badges, install, a 30-second example, the five cases and the docs-site link. Install Faker through the declared extra: `pip install "rand-engine[faker]"`.
+- The validation error footer links the docs site.
+
+### Fixed
+
+- Spark `integers` with `max - min == 2**53` passed validation and then raised a raw `ValueError` in `get_df`; validation now refuses it with the same width rule as generation.
+- Workflows declare least-privilege top-level `permissions`, and third-party actions are pinned to commit SHAs.
+- Publish summaries no longer state `0.5.6`; the stale `.github/workflow_info.md` is removed.
+- Test-group `pyspark` 3.5.8 and `setuptools` 83.0.0 are locked to patched versions (GHSA-9437-39hj-3c93, GHSA-h35f-9h28-mq5c).
+- The `0.7.0` header is dated `2026-10-14` (it read `Unreleased`).
+- README no longer installs Faker unpinned with `pip install faker`.
+
+## [0.7.0] - 2026-10-14
 
 ### Breaking changes
 
