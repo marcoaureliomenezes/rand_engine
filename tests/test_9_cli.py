@@ -220,7 +220,6 @@ def test_cli_imports_only_stdlib_and_rand_engine():
   assert roots - set(sys.stdlib_module_names) <= {"rand_engine"}
 
 
-@pytest.mark.xfail(strict=True, reason="J1.T3 moves the python bound to project.requires-python")
 def test_pyproject_declares_open_python_and_the_four_dependencies():
   pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
   data = tomllib.loads(pyproject.read_text(encoding="utf-8"))

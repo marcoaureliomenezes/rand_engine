@@ -407,8 +407,7 @@ def _llms():
 
 @pytest.mark.parametrize("check", [
   pytest.param(_readme_landing, id="README.md"),
-  pytest.param(_pip_installs, id="pip-install",
-               marks=pytest.mark.xfail(strict=True, reason="J1.T3 moves extras to project.optional-dependencies")),
+  pytest.param(_pip_installs, id="pip-install"),
   pytest.param(_changelog, id="CHANGELOG.md"),
   pytest.param(_llms, id="llms.txt"),
 ])
