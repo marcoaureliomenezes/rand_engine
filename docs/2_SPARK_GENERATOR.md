@@ -37,7 +37,7 @@ There is no seed, no `.transformers`, no `.write`: use Spark's own `withColumn` 
 ## Methods
 
 <!-- derived-from: spark-generator sha256:2d770e2b3d08 -->
-<!-- derived-from: generation-methods sha256:4ee6c20c444a -->
+<!-- derived-from: generation-methods sha256:d07a707fc569 -->
 
 Supported, with the same kwargs as [1_DATA_GENERATOR.md](1_DATA_GENERATOR.md): `integers`,
 `int_zfilled`, `floats`, `floats_normal`, `booleans`, `distincts`, `distincts_prop`, `uuid4`,
