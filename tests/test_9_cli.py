@@ -32,7 +32,6 @@ class NoStdin:
   def __iter__(self): raise AssertionError("stdin read")
 
 
-@pytest.mark.xfail(strict=True)
 def test_list_prints_five_slugs_in_order_with_descriptions(capsys):
   assert run(["list"]) == 0
   lines = capsys.readouterr().out.splitlines()
@@ -42,7 +41,6 @@ def test_list_prints_five_slugs_in_order_with_descriptions(capsys):
     assert line[len(slug):].strip() != ""
 
 
-@pytest.mark.xfail(strict=True)
 def test_list_is_byte_identical_across_runs(capsys):
   run(["list"])
   first = capsys.readouterr().out
@@ -75,7 +73,6 @@ def test_get_started_twice_yields_identical_bytes(tmp_path):
   assert (tmp_path / "a" / "kafka.py").read_bytes() == (tmp_path / "b" / "kafka.py").read_bytes()
 
 
-@pytest.mark.xfail(strict=True)
 @pytest.mark.parametrize("tail", [["nope", "--out", "OUT"], []])
 def test_bad_slug_or_missing_argument_exits_2_with_slugs_on_stderr(tail, tmp_path, capsys):
   argv = ["get-started"] + [str(tmp_path / "x") if a == "OUT" else a for a in tail]
@@ -87,7 +84,6 @@ def test_bad_slug_or_missing_argument_exits_2_with_slugs_on_stderr(tail, tmp_pat
   assert not (tmp_path / "x").exists()
 
 
-@pytest.mark.xfail(strict=True)
 def test_existing_target_is_left_unchanged_and_exit_1_names_it(tmp_path, capsys):
   target = tmp_path / "faker.py"
   target.write_bytes(b"mine\r\n")
@@ -106,7 +102,6 @@ def test_cli_never_reads_stdin(tmp_path, monkeypatch):
   assert run(["get-started", "nope"]) == 2
 
 
-@pytest.mark.xfail(strict=True)
 def test_top_level_help_describes_commands_and_lists_slugs(capsys):
   assert run(["--help"]) == 0
   out = capsys.readouterr().out
@@ -115,7 +110,6 @@ def test_top_level_help_describes_commands_and_lists_slugs(capsys):
     assert slug in out
 
 
-@pytest.mark.xfail(strict=True)
 def test_get_started_help_describes_every_argument_and_lists_slugs(capsys):
   assert run(["get-started", "--help"]) == 0
   out = capsys.readouterr().out
@@ -124,7 +118,6 @@ def test_get_started_help_describes_every_argument_and_lists_slugs(capsys):
     assert slug in out
 
 
-@pytest.mark.xfail(strict=True)
 def test_python_dash_m_runs_main(monkeypatch, capsys):
   run(["list"])
   expected = capsys.readouterr().out
@@ -135,7 +128,6 @@ def test_python_dash_m_runs_main(monkeypatch, capsys):
   assert capsys.readouterr().out == expected != ""
 
 
-@pytest.mark.xfail(strict=True)
 def test_cli_imports_only_stdlib_and_rand_engine():
   module = importlib.import_module("rand_engine.cli")
   tree = ast.parse(Path(module.__file__).read_text(encoding="utf-8"))
