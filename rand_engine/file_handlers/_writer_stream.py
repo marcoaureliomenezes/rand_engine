@@ -28,7 +28,7 @@ class FileStreamWriter(FileWriter):
     self.freq = 1
   
 
-  def trigger(self, frequency: int):
+  def trigger(self, frequency: float):
     """
     Set the pause between two microbatch writes of the next ``start``.
 
