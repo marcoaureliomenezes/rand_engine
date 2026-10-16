@@ -1,5 +1,10 @@
+import ast
+import doctest
+import importlib
+import inspect
 import json
 import re
+import textwrap
 from pathlib import Path
 
 import pytest
@@ -134,3 +139,89 @@ def test_changelog_0_7_0_lists_the_new_surface_and_migration(token):
   text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
   section = text.split("## [0.7.0]", 1)[1].split("\n## [", 1)[0]
   assert token in section
+
+
+def _public(cls, names):
+  return [(n, m) for n, m in inspect.getmembers(cls) if (n in names if names else not n.startswith("_")) and callable(m)]
+
+
+def _returns_value(func) -> bool:
+  tree = ast.parse(textwrap.dedent(inspect.getsource(func))).body[0]
+  stack = list(tree.body)
+  while stack:
+    node = stack.pop()
+    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)):
+      continue
+    if isinstance(node, (ast.Yield, ast.YieldFrom)) or (isinstance(node, ast.Return) and node.value is not None):
+      return True
+    stack.extend(ast.iter_child_nodes(node))
+  return False
+
+
+def _gaps(cls, names=None) -> list[str]:
+  gaps = [] if (inspect.getdoc(cls) or "").strip() else [f"{cls.__name__}: no summary"]
+  for name, func in _public(cls, names):
+    who, doc = f"{cls.__name__}.{name}", inspect.getdoc(func) or ""
+    has = lambda section: re.search(rf"^{section}\n-{{3,}}$", doc, re.M)
+    if not doc.strip():
+      gaps.append(f"{who}: no summary")
+    if [p for p in inspect.signature(func).parameters if p not in ("self", "cls")] and not has("Parameters"):
+      gaps.append(f"{who}: no Parameters section")
+    if _returns_value(func) and not (has("Returns") or has("Yields")):
+      gaps.append(f"{who}: no Returns section")
+  return gaps
+
+
+def _surface():
+  from rand_engine import DataGenerator, RandSpecs, SparkGenerator
+  from rand_engine.file_handlers._writer_batch import FileBatchWriter
+  from rand_engine.file_handlers._writer_stream import FileStreamWriter
+  from rand_engine.file_handlers.writer import FileWriter
+  return {
+    "DataGenerator": (DataGenerator, None),
+    "SparkGenerator": (SparkGenerator, None),
+    "FileWriter": (FileWriter, {"mode", "format", "option", "options"}),
+    "FileBatchWriter": (FileBatchWriter, {"save"}),
+    "FileStreamWriter": (FileStreamWriter, {"trigger", "start"}),
+    "RandSpecs": (RandSpecs, None),
+  }
+
+
+def _owned(task):
+  return pytest.mark.xfail(strict=True, reason=f"{task} documents it")
+
+
+@pytest.mark.parametrize("name", [
+  pytest.param("DataGenerator", marks=_owned("J5.T2")),
+  pytest.param("SparkGenerator", marks=_owned("J5.T3")),
+  pytest.param("FileWriter", marks=_owned("J5.T3")),
+  pytest.param("FileBatchWriter", marks=_owned("J5.T4")),
+  pytest.param("FileStreamWriter", marks=_owned("J5.T4")),
+  pytest.param("RandSpecs", marks=_owned("J5.T5")),
+])
+def test_public_callables_carry_numpydoc(name):
+  """Every public callable has a summary, Parameters when it takes an argument, Returns when it returns a value."""
+  cls, names = _surface()[name]
+  assert _gaps(cls, names) == []
+
+
+@pytest.mark.parametrize("module", [
+  pytest.param("rand_engine.main.data_generator", marks=_owned("J5.T2")),
+  pytest.param("rand_engine.main.spark_generator", marks=_owned("J5.T3")),
+  pytest.param("rand_engine.file_handlers.writer", marks=_owned("J5.T3")),
+  pytest.param("rand_engine.file_handlers._writer_batch", marks=_owned("J5.T4")),
+  pytest.param("rand_engine.file_handlers._writer_stream", marks=_owned("J5.T4")),
+  pytest.param("rand_engine.examples.common_rand_specs", marks=_owned("J5.T5")),
+])
+def test_module_docstring_examples_run(module, tmp_path, monkeypatch):
+  """The module has examples; they run under a temporary directory, size at most 10^4 rows, and Spark ones are +SKIP."""
+  tests = [t for t in doctest.DocTestFinder().find(importlib.import_module(module)) if t.examples]
+  examples = [e for t in tests for e in t.examples]
+  assert examples
+  assert [e.source for e in examples if "spark" in e.source.lower() and doctest.SKIP not in e.options] == []
+  assert [n for e in examples for n in re.findall(r"\.size\((\d[\d_]*)\)", e.source) if int(n.replace("_", "")) > 10_000] == []
+  monkeypatch.chdir(tmp_path)
+  runner = doctest.DocTestRunner(optionflags=doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE)
+  for t in tests:
+    runner.run(t, out=lambda _: None)
+  assert runner.failures == 0
