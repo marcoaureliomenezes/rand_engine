@@ -606,7 +606,6 @@ def test_spark_float_span_finite_is_accepted():
     assert CommonValidator.validate_spark_spec(spec) == []
 
 
-_ZFILLED_MESSAGE = "must be an integer within 1..18"
 _ZFILLED_REFUSED = [0, -1, 19, 5000, 10**7]
 
 
@@ -617,13 +616,9 @@ def _zfilled(length):
 @pytest.mark.parametrize("length", _ZFILLED_REFUSED)
 def test_int_zfilled_length_outside_1_18_is_one_issue_from_both_validators(length):
     spec = _zfilled(length)
-    for errors in (
-        CommonValidator.validate_column("z", spec["z"]),
-        CommonValidator.validate_spark_spec(spec),
-    ):
-        assert len(errors) == 1
-        assert "'length'" in errors[0]
-        assert _ZFILLED_MESSAGE in errors[0]
+    expected = ["❌ Column 'z': method 'int_zfilled' parameter 'length' must be an integer within 1..18"]
+    assert CommonValidator.validate_column("z", spec["z"]) == expected
+    assert CommonValidator.validate_spark_spec(spec) == expected
 
 
 @pytest.mark.parametrize("length", [0, -1, 19])
