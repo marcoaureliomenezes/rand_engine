@@ -267,7 +267,7 @@ def _resolve(dotted: str):
 
 
 @pytest.mark.parametrize("path", [
-  pytest.param(p, id=p, marks=pytest.mark.xfail(strict=True, reason="J8.T6 point the directive at the canonical path"))
+  pytest.param(p, id=p)
   for p in _directives(DOCS / "reference.md")])
 def test_reference_directive_names_the_canonical_documented_object(path):
   """A `:::` directive names the object's defining path, not a re-export or alias, and the object carries a docstring."""
