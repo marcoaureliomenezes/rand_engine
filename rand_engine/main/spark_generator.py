@@ -1,3 +1,4 @@
+"""Spark generation facade: one RandSpec, one SparkSession, one DataFrame."""
 from rand_engine.core._spark_core import SparkCore
 from rand_engine.validators.common_validator import CommonValidator
 from rand_engine.validators.exceptions import RandEngineError
@@ -5,19 +6,34 @@ from rand_engine.validators.exceptions import RandEngineError
 
 
 class SparkGenerator:
+  """
+  Generate a PySpark DataFrame from a RandSpec.
+
+  Parameters
+  ----------
+  spark : pyspark.sql.SparkSession
+      Session that builds the DataFrame.
+  F : module
+      The ``pyspark.sql.functions`` module.
+  metadata : dict
+      RandSpec mapping each column to ``{"method": ..., "kwargs": ...}``. Validated at construction.
+
+  Raises
+  ------
+  SpecValidationError
+      If ``metadata`` is invalid.
+
+  Examples
+  --------
+  >>> from pyspark.sql import SparkSession, functions as F  # doctest: +SKIP
+  >>> from rand_engine import SparkGenerator  # doctest: +SKIP
+  >>> spark = SparkSession.builder.getOrCreate()  # doctest: +SKIP
+  >>> spec = {"age": {"method": "integers", "kwargs": {"min": 18, "max": 80}}}
+  >>> SparkGenerator(spark, F, spec).size(100).get_df().count()  # doctest: +SKIP
+  100
+  """
 
   def __init__(self, spark, F, metadata):
-    """
-    Initialize SparkGenerator with PySpark session, functions, and metadata.
-    
-    Args:
-        spark: SparkSession instance
-        F: pyspark.sql.functions module
-        metadata: Dictionary mapping column names to generation specs
-    
-    Raises:
-        SpecValidationError: If metadata is invalid (validation is always performed)
-    """
     # Validação obrigatória - sempre executada
     CommonValidator.validate_spark_and_raise(metadata)
     
@@ -27,6 +43,23 @@ class SparkGenerator:
     self._size = None
 
   def map_methods(self):
+    """
+    Return the RandSpec method names mapped to their Spark generator functions.
+
+    Returns
+    -------
+    dict
+        Method name to ``SparkCore`` generator function.
+
+    Examples
+    --------
+    >>> from pyspark.sql import SparkSession, functions as F  # doctest: +SKIP
+    >>> from rand_engine import SparkGenerator  # doctest: +SKIP
+    >>> spark = SparkSession.builder.getOrCreate()  # doctest: +SKIP
+    >>> spec = {"age": {"method": "integers", "kwargs": {"min": 18, "max": 80}}}  # doctest: +SKIP
+    >>> "integers" in SparkGenerator(spark, F, spec).map_methods()  # doctest: +SKIP
+    True
+    """
     return {
       "integers": SparkCore.gen_ints,
       "int_zfilled": SparkCore.gen_ints_zfilled,
@@ -45,11 +78,54 @@ class SparkGenerator:
     }
  
   def size(self, size):
+    """
+    Set the number of rows of the DataFrame and return this generator.
+
+    Parameters
+    ----------
+    size : int
+        Rows built by ``get_df``.
+
+    Returns
+    -------
+    SparkGenerator
+        This generator, for chaining.
+
+    Examples
+    --------
+    >>> from pyspark.sql import SparkSession, functions as F  # doctest: +SKIP
+    >>> from rand_engine import SparkGenerator  # doctest: +SKIP
+    >>> spark = SparkSession.builder.getOrCreate()  # doctest: +SKIP
+    >>> spec = {"age": {"method": "integers", "kwargs": {"min": 18, "max": 80}}}  # doctest: +SKIP
+    >>> gen = SparkGenerator(spark, F, spec).size(100)  # doctest: +SKIP
+    """
     self._size = size
     return self
 
 
   def get_df(self):
+    """
+    Build the Spark DataFrame of ``size`` rows generated from the metadata.
+
+    Returns
+    -------
+    pyspark.sql.DataFrame
+        One column per metadata key; the technical ``id`` column is dropped unless the metadata declares ``id``.
+
+    Raises
+    ------
+    RandEngineError
+        If ``size`` was not set.
+
+    Examples
+    --------
+    >>> from pyspark.sql import SparkSession, functions as F  # doctest: +SKIP
+    >>> from rand_engine import SparkGenerator  # doctest: +SKIP
+    >>> spark = SparkSession.builder.getOrCreate()  # doctest: +SKIP
+    >>> spec = {"age": {"method": "integers", "kwargs": {"min": 18, "max": 80}}}
+    >>> SparkGenerator(spark, F, spec).size(100).get_df().count()  # doctest: +SKIP
+    100
+    """
     if self._size is None:
       raise RandEngineError("size not set: call .size(n) before get_df()")
     mapped_methods = self.map_methods()
