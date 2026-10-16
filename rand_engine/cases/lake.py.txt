@@ -1,0 +1,39 @@
+# Databricks notebook source
+# Lake: two related tables written to a Parquet lake and read back. Runs as-is with plain python.
+
+# COMMAND ----------
+# Describe the keys: customers own a pk, orders point at it through an fk.
+
+from pathlib import Path
+
+from rand_engine import DataGenerator
+
+customer_pk = {"method": "pk", "kwargs": {"start": 1, "format": "C{:05d}"}}
+customers_spec = {
+  "customer_id": customer_pk,
+  "city": {"method": "distincts", "kwargs": {"distincts": ["Rio", "Recife", "Porto Alegre"]}},
+}
+orders_spec = {
+  "order_id": {"method": "pk", "kwargs": {"start": 1}},
+  "customer_id": {"method": "fk", "kwargs": {"parent": customer_pk, "parent_size": 500, "skew": 1.0}},
+  "amount": {"method": "floats", "kwargs": {"min": 5, "max": 500, "decimals": 2}},
+}
+
+# COMMAND ----------
+# Write each table to the lake as one Parquet file under lake/, and record the relation.
+
+tables = {"customers": Path("lake/customers.parquet"), "orders": Path("lake/orders.parquet")}
+DataGenerator(customers_spec, seed=1).size(500).write.format("parquet").save(str(tables["customers"]))
+DataGenerator(orders_spec, seed=2).size(2_000).write.format("parquet").save(str(tables["orders"]))
+relations = [("orders", "customer_id", "customers", "customer_id")]
+
+# COMMAND ----------
+# Read the lake back, then join: every order must find its customer.
+
+import pandas as pd
+
+frames = {name: pd.read_parquet(path) for name, path in tables.items()}
+child, fk, parent, pk = relations[0]
+joined = frames[child].merge(frames[parent], left_on=fk, right_on=pk)
+print("customers:", len(frames["customers"]), "orders:", len(frames["orders"]))
+print("orders joined to a customer:", len(joined))
