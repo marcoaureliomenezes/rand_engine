@@ -1,20 +1,20 @@
-"""File writer state shared by the batch and stream writers: format, mode and options."""
+"""Settings shared by the batch and stream file writers: format, mode and options."""
 from typing import Any, Callable
 from rand_engine.file_handlers.file_handler import FileHandler
 
 class FileWriter:
   """
-  Base class for file writers.
-
-  Contains common attributes and methods shared by FileBatchWriter and FileStreamWriter.
+  Configure the file format, write mode and options of ``write`` and ``writeStream``.
 
   Examples
   --------
+  >>> import os, tempfile
   >>> import pandas as pd
   >>> from rand_engine import DataGenerator
   >>> spec = {"age": {"method": "integers", "kwargs": {"min": 18, "max": 80}}}
-  >>> DataGenerator(spec, seed=42).size(10).write.format("csv").save("out/class.csv")
-  >>> len(pd.read_csv("out/class.csv"))
+  >>> path = os.path.join(tempfile.mkdtemp(), "class.csv")
+  >>> DataGenerator(spec, seed=42).size(10).write.format("csv").save(path)
+  >>> len(pd.read_csv(path))
   10
   """
 
@@ -39,12 +39,12 @@ class FileWriter:
 
   def mode(self, write_mode: str) -> Callable:
     """
-    Set the write mode of the next ``save``.
+    Set the write mode of the next ``save`` or ``start``.
 
     Parameters
     ----------
     write_mode : str
-        ``"overwrite"`` (default) replaces the file; ``"append"`` adds rows to it.
+        ``"overwrite"`` (default) replaces the output (file or folder); ``"append"`` adds to it.
 
     Returns
     -------
@@ -53,13 +53,15 @@ class FileWriter:
 
     Examples
     --------
+    >>> import os, tempfile
     >>> import pandas as pd
     >>> from rand_engine import DataGenerator
     >>> spec = {"age": {"method": "integers", "kwargs": {"min": 18, "max": 80}}}
     >>> gen = DataGenerator(spec, seed=42).size(10)
-    >>> gen.write.format("csv").save("out/mode.csv")
-    >>> gen.write.mode("append").format("csv").save("out/mode.csv")
-    >>> len(pd.read_csv("out/mode.csv"))
+    >>> path = os.path.join(tempfile.mkdtemp(), "mode.csv")
+    >>> gen.write.format("csv").save(path)
+    >>> gen.write.mode("append").format("csv").save(path)
+    >>> len(pd.read_csv(path))
     20
     """
     self.write_mode = write_mode
@@ -68,7 +70,7 @@ class FileWriter:
 
   def format(self, format: str) :
     """
-    Set the output file format of the next ``save``.
+    Set the output file format of the next ``save`` or ``start``.
 
     Parameters
     ----------
@@ -82,11 +84,13 @@ class FileWriter:
 
     Examples
     --------
+    >>> import os, tempfile
     >>> import pandas as pd
     >>> from rand_engine import DataGenerator
     >>> spec = {"age": {"method": "integers", "kwargs": {"min": 18, "max": 80}}}
-    >>> DataGenerator(spec, seed=42).size(10).write.format("parquet").save("out/format.parquet")
-    >>> len(pd.read_parquet("out/format.parquet"))
+    >>> path = os.path.join(tempfile.mkdtemp(), "format.parquet")
+    >>> DataGenerator(spec, seed=42).size(10).write.format("parquet").save(path)
+    >>> len(pd.read_parquet(path))
     10
     """
     self.write_format = format
@@ -95,12 +99,14 @@ class FileWriter:
 
   def option(self, key: str, value: Any):
     """
-    Set one write option of the next ``save``.
+    Set one write option of the next ``save`` or ``start``.
 
     Parameters
     ----------
     key : str
-        Option name, such as ``"numFiles"`` (parts per ``save``) or ``"maxRowsPerBatch"``.
+        Option name: ``"compression"`` (file codec), ``"numFiles"`` (parts per ``save``),
+        ``"maxRowsPerBatch"`` (rows per write batch) or ``"timeout"`` (seconds a
+        ``start`` runs, default 20).
     value : Any
         Option value.
 
@@ -111,11 +117,12 @@ class FileWriter:
 
     Examples
     --------
-    >>> import os
+    >>> import os, tempfile
     >>> from rand_engine import DataGenerator
     >>> spec = {"age": {"method": "integers", "kwargs": {"min": 18, "max": 80}}}
-    >>> DataGenerator(spec, seed=42).size(10).write.option("numFiles", 2).format("csv").save("out/parts")
-    >>> len(os.listdir("out/parts"))
+    >>> path = os.path.join(tempfile.mkdtemp(), "parts")
+    >>> DataGenerator(spec, seed=42).size(10).write.option("numFiles", 2).format("csv").save(path)
+    >>> len(os.listdir(path))
     2
     """
     self.write_options[key] = value
@@ -124,12 +131,12 @@ class FileWriter:
 
   def options(self, **kwargs):
     """
-    Set several write options of the next ``save`` at once.
+    Set several write options of the next ``save`` or ``start`` at once.
 
     Parameters
     ----------
     **kwargs : Any
-        Option names and values, such as ``numFiles=2``.
+        Option names and values, such as ``numFiles=2``; the keys are those of ``option``.
 
     Returns
     -------
@@ -138,13 +145,14 @@ class FileWriter:
 
     Examples
     --------
-    >>> import os
+    >>> import os, tempfile
     >>> import pandas as pd
     >>> from rand_engine import DataGenerator
     >>> spec = {"age": {"method": "integers", "kwargs": {"min": 18, "max": 80}}}
+    >>> path = os.path.join(tempfile.mkdtemp(), "options")
     >>> gen = DataGenerator(spec, seed=42).size(10).write.options(numFiles=2, maxRowsPerBatch=3)
-    >>> gen.format("csv").save("out/options")
-    >>> sum(len(pd.read_csv(f"out/options/{name}")) for name in os.listdir("out/options"))
+    >>> gen.format("csv").save(path)
+    >>> sum(len(pd.read_csv(os.path.join(path, name))) for name in os.listdir(path))
     10
     """
     for key, value in kwargs.items():

@@ -21,11 +21,13 @@ class FileBatchWriter(FileWriter):
 
   Examples
   --------
+  >>> import os, tempfile
   >>> import pandas as pd
   >>> from rand_engine import DataGenerator
   >>> spec = {"age": {"method": "integers", "kwargs": {"min": 18, "max": 80}}}
-  >>> DataGenerator(spec, seed=42).size(10).write.format("csv").save("out/batch_ages.csv")
-  >>> len(pd.read_csv("out/batch_ages.csv"))
+  >>> path = os.path.join(tempfile.mkdtemp(), "batch_ages.csv")
+  >>> DataGenerator(spec, seed=42).size(10).write.format("csv").save(path)
+  >>> len(pd.read_csv(path))
   10
   """
 
@@ -184,18 +186,19 @@ class FileBatchWriter(FileWriter):
     Raises
     ------
     RandEngineError
-        If ``numFiles`` or ``maxRowsPerBatch`` is not a positive integer.
+        If ``size`` was not set, or ``numFiles`` or ``maxRowsPerBatch`` is not a positive integer.
 
     Examples
     --------
-    >>> import os
+    >>> import os, tempfile
     >>> import pandas as pd
     >>> from rand_engine import DataGenerator
     >>> spec = {"age": {"method": "integers", "kwargs": {"min": 18, "max": 80}}}
-    >>> DataGenerator(spec, seed=42).size(10).write.option("numFiles", 2).format("csv").save("out/save_parts")
-    >>> len(os.listdir("out/save_parts"))
+    >>> path = os.path.join(tempfile.mkdtemp(), "save_parts")
+    >>> DataGenerator(spec, seed=42).size(10).write.option("numFiles", 2).format("csv").save(path)
+    >>> len(os.listdir(path))
     2
-    >>> sum(len(pd.read_csv(f"out/save_parts/{name}")) for name in os.listdir("out/save_parts"))
+    >>> sum(len(pd.read_csv(os.path.join(path, name))) for name in os.listdir(path))
     10
     """
     write_options = dict(self.write_options)

@@ -34,8 +34,8 @@ class FileStreamWriter(FileWriter):
 
     Parameters
     ----------
-    frequency : int
-        Seconds to sleep after each write; a fraction of a second also works.
+    frequency : float
+        Seconds to sleep after each write, fractions allowed; default 1.
 
     Returns
     -------
@@ -75,16 +75,22 @@ class FileStreamWriter(FileWriter):
     path : str
         Directory to write the part files into, created if missing.
 
+    Raises
+    ------
+    RandEngineError
+        If ``size`` was not set.
+
     Examples
     --------
-    >>> import os
+    >>> import os, tempfile
     >>> import pandas as pd
     >>> from rand_engine import DataGenerator
     >>> spec = {"age": {"method": "integers", "kwargs": {"min": 18, "max": 80}}}
+    >>> target = os.path.join(tempfile.mkdtemp(), "ages")
     >>> stream = DataGenerator(spec, seed=42).size(10).writeStream
-    >>> stream.format("csv").trigger(frequency=0.1).option("timeout", 0.3).start("stream/ages")
-    >>> files = os.listdir("stream/ages")
-    >>> bool(files) and all(len(pd.read_csv(f"stream/ages/{name}")) == 10 for name in files)
+    >>> stream.format("csv").trigger(frequency=0.1).option("timeout", 0.3).start(target)
+    >>> files = os.listdir(target)
+    >>> bool(files) and all(len(pd.read_csv(os.path.join(target, name))) == 10 for name in files)
     True
     """
     base_path, file_name_cleaned, ext = FileHandler.handle_path(path, self.write_format, self.write_options)

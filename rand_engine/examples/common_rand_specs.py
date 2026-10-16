@@ -55,7 +55,18 @@ class CommonRandSpecs:
         Raises
         ------
         RandEngineError
-            If Faker is not installed, the locale or provider is unsupported, or a value is not scalar.
+            If ``pool_size`` is not a positive integer, Faker is not installed, the locale
+            or provider is unsupported or not callable, the provider fails, or a value is
+            not scalar.
+
+        Examples
+        --------
+        >>> from rand_engine import RandSpecs
+        >>> spec = RandSpecs.faker_pool("city", pool_size=5, seed=1)
+        >>> spec["method"]
+        'distincts'
+        >>> len(spec["kwargs"]["distincts"])
+        5
         """
         if isinstance(pool_size, bool) or not isinstance(pool_size, int) or pool_size < 1:
             raise RandEngineError("pool_size must be a positive integer")
@@ -113,7 +124,21 @@ class CommonRandSpecs:
         Raises
         ------
         SpecValidationError
-            If the schema has duplicate fields, an override names a missing field, or a field type has no default recipe and no complete override with ``method``.
+            If ``schema`` is not a ``pyarrow.Schema``; ``overrides`` or one of its values is not
+            a dict, or an override's ``kwargs`` is not a dict; the schema has duplicate fields;
+            an override names a missing field; a field type has no default recipe and no
+            override with ``method``; or the resulting spec fails validation.
+
+        Examples
+        --------
+        >>> import pyarrow as pa
+        >>> from rand_engine import DataGenerator, RandSpecs
+        >>> schema = pa.schema([("id", pa.int32()), ("active", pa.bool_())])
+        >>> spec = RandSpecs.from_schema(schema, {"id": {"kwargs": {"max": 9}}})
+        >>> {name: column["method"] for name, column in spec.items()}
+        {'id': 'integers', 'active': 'booleans'}
+        >>> DataGenerator(spec, seed=1).size(5).get_df().shape
+        (5, 2)
         """
         if not isinstance(schema, pa.Schema):
             raise SpecValidationError("from_schema requires a pyarrow.Schema")
@@ -219,6 +244,12 @@ class CommonRandSpecs:
         -------
         dict
             RandSpec mapping each of the 6 fields to its method and kwargs.
+
+        Examples
+        --------
+        >>> from rand_engine import DataGenerator, RandSpecs
+        >>> list(DataGenerator(RandSpecs.customers(), seed=1).size(5).get_df().columns)
+        ['customer_id', 'age', 'city', 'total_spent', 'is_premium', 'registration_date']
         """
         return {
             "customer_id": {"method": "uuid4", "kwargs": {}},
@@ -247,6 +278,12 @@ class CommonRandSpecs:
         -------
         dict
             RandSpec mapping each of the 7 fields to its method and kwargs.
+
+        Examples
+        --------
+        >>> from rand_engine import DataGenerator, RandSpecs
+        >>> list(DataGenerator(RandSpecs.products(), seed=1).size(5).get_df().columns)
+        ['product_id', 'sku', 'name', 'price', 'stock_quantity', 'category', 'is_active']
         """
         return {
             "product_id": {"method": "uuid4", "kwargs": {}},
@@ -279,6 +316,12 @@ class CommonRandSpecs:
         -------
         dict
             RandSpec mapping each of the 6 fields to its method and kwargs.
+
+        Examples
+        --------
+        >>> from rand_engine import DataGenerator, RandSpecs
+        >>> list(DataGenerator(RandSpecs.orders(), seed=1).size(5).get_df().columns)
+        ['order_id', 'customer_id', 'amount', 'order_timestamp', 'status', 'payment_method']
         """
         return {
             "order_id": {"method": "uuid4", "kwargs": {}},
@@ -307,6 +350,12 @@ class CommonRandSpecs:
         -------
         dict
             RandSpec mapping each of the 7 fields to its method and kwargs.
+
+        Examples
+        --------
+        >>> from rand_engine import DataGenerator, RandSpecs
+        >>> list(DataGenerator(RandSpecs.transactions(), seed=1).size(5).get_df().columns)
+        ['transaction_id', 'account_id', 'amount', 'transaction_type', 'timestamp', 'is_approved', 'fee']
         """
         return {
             "transaction_id": {"method": "uuid4", "kwargs": {}},
@@ -333,6 +382,12 @@ class CommonRandSpecs:
         -------
         dict
             RandSpec mapping each of the 8 fields to its method and kwargs.
+
+        Examples
+        --------
+        >>> from rand_engine import DataGenerator, RandSpecs
+        >>> list(DataGenerator(RandSpecs.employees(), seed=1).size(5).get_df().columns)
+        ['employee_id', 'department', 'position', 'salary', 'hire_date', 'age', 'is_remote', 'performance_score']
         """
         return {
             "employee_id": {"method": "uuid4", "kwargs": {}},
@@ -366,6 +421,12 @@ class CommonRandSpecs:
         -------
         dict
             RandSpec mapping each of the 7 fields to its method and kwargs.
+
+        Examples
+        --------
+        >>> from rand_engine import DataGenerator, RandSpecs
+        >>> list(DataGenerator(RandSpecs.sensors(), seed=1).size(5).get_df().columns)
+        ['sensor_id', 'device_name', 'temperature', 'humidity', 'battery_level', 'timestamp', 'is_online']
         """
         return {
             "sensor_id": {"method": "uuid4", "kwargs": {}},
@@ -389,6 +450,12 @@ class CommonRandSpecs:
         -------
         dict
             RandSpec mapping each of the 7 fields to its method and kwargs.
+
+        Examples
+        --------
+        >>> from rand_engine import DataGenerator, RandSpecs
+        >>> list(DataGenerator(RandSpecs.users(), seed=1).size(5).get_df().columns)
+        ['user_id', 'username', 'signup_date', 'login_count', 'subscription_plan', 'is_active', 'engagement_score']
         """
         return {
             "user_id": {"method": "uuid4", "kwargs": {}},
@@ -415,6 +482,12 @@ class CommonRandSpecs:
         -------
         dict
             RandSpec mapping each of the 6 fields to its method and kwargs.
+
+        Examples
+        --------
+        >>> from rand_engine import DataGenerator, RandSpecs
+        >>> list(DataGenerator(RandSpecs.events(), seed=1).size(5).get_df().columns)
+        ['event_id', 'event_type', 'timestamp', 'duration_ms', 'is_error', 'severity']
         """
         return {
             "event_id": {"method": "uuid4", "kwargs": {}},
@@ -446,6 +519,12 @@ class CommonRandSpecs:
         -------
         dict
             RandSpec mapping each of the 8 fields to its method and kwargs.
+
+        Examples
+        --------
+        >>> from rand_engine import DataGenerator, RandSpecs
+        >>> list(DataGenerator(RandSpecs.sales(), seed=1).size(5).get_df().columns)
+        ['transaction_id', 'sale_id', 'product_id', 'amount', 'quantity', 'sales_rep', 'sale_date', 'is_wholesale']
         """
         return {
             "transaction_id": {"method": "uuid4", "kwargs": {}},
@@ -476,6 +555,12 @@ class CommonRandSpecs:
         -------
         dict
             RandSpec mapping each of the 7 fields to its method and kwargs.
+
+        Examples
+        --------
+        >>> from rand_engine import DataGenerator, RandSpecs
+        >>> list(DataGenerator(RandSpecs.devices(), seed=1).size(5).get_df().columns)
+        ['device_id', 'serial_number', 'firmware_version', 'uptime_hours', 'status', 'is_critical', 'last_seen']
         """
         return {
             "device_id": {"method": "uuid4", "kwargs": {}},

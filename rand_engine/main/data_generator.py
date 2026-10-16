@@ -1,4 +1,4 @@
-"""Pandas generation composition root: one RandSpec, one seeded generator, three outputs."""
+"""Generate pandas DataFrames, dict streams and files from one RandSpec and one seed."""
 from functools import cache, partial
 import time
 import pandas as pd
@@ -111,6 +111,14 @@ class DataGenerator:
     ------
     RandEngineError
         When called, if a global transformer changes the row count.
+
+    Examples
+    --------
+    >>> from rand_engine import DataGenerator
+    >>> spec = {"age": {"method": "integers", "kwargs": {"min": 18, "max": 80}}}
+    >>> batch = DataGenerator(spec, seed=42).wrapped_df_generator(size=4)
+    >>> batch().shape
+    (4, 1)
     """
     return lambda: self._file_seam()[1](size, offset)
   
@@ -154,7 +162,8 @@ class DataGenerator:
     ----------
     size : int or callable
         Rows per ``get_df`` call, total rows of a ``write``, or rows per stream
-        microbatch. A callable is evaluated at each use and returns an int.
+        microbatch. A callable returns an int and is called once per ``get_df``,
+        ``write.save`` or ``stream_dict`` call, and once per pass of ``writeStream``.
 
     Returns
     -------
@@ -179,7 +188,7 @@ class DataGenerator:
 
 
   def _catalog_schema(self, evaluated_spec: dict, exact: bool = False) -> pa.Schema:
-    """Return the spec's declared columns as a schema;`exact` (an empty file) refuses when transformers can change it."""
+    """Return the spec's declared columns as a schema; `exact` (an empty file) refuses when transformers can change it."""
     if exact and (self._transformers or any(config.get("transformers") for config in evaluated_spec.values())):
       raise RandEngineError("empty output schema is indeterminate when transformers are configured")
     fields = []
@@ -288,11 +297,12 @@ class DataGenerator:
 
     Examples
     --------
-    >>> import os
+    >>> import os, tempfile
     >>> from rand_engine import DataGenerator
     >>> spec = {"age": {"method": "integers", "kwargs": {"min": 18, "max": 80}}}
-    >>> DataGenerator(spec, seed=42).size(10).write.format("csv").save("out/ages.csv")
-    >>> os.path.isfile("out/ages.csv")
+    >>> out = tempfile.mkdtemp()
+    >>> DataGenerator(spec, seed=42).size(10).write.format("csv").save(os.path.join(out, "ages.csv"))
+    >>> os.path.isfile(os.path.join(out, "ages.csv"))
     True
     """
     return FileBatchWriter(self._resolve_size, self.wrapped_df_generator, self._file_seam)
@@ -315,12 +325,14 @@ class DataGenerator:
 
     Examples
     --------
-    >>> import os
+    >>> import os, tempfile
     >>> from rand_engine import DataGenerator
     >>> spec = {"age": {"method": "integers", "kwargs": {"min": 18, "max": 80}}}
+    >>> out = tempfile.mkdtemp()
+    >>> target = os.path.join(out, "ages")
     >>> stream = DataGenerator(spec, seed=42).size(10).writeStream
-    >>> stream.format("json").trigger(frequency=0.1).option("timeout", 0.3).start("stream/ages")
-    >>> bool(os.listdir("stream/ages"))
+    >>> stream.format("json").trigger(frequency=0.1).option("timeout", 0.3).start(target)
+    >>> bool(os.listdir(target))
     True
     """
     return FileStreamWriter(self._resolve_size, self.wrapped_df_generator)
