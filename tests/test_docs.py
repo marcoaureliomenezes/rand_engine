@@ -81,7 +81,6 @@ def test_skill_method_table_lists_every_method():
   assert set(skill_method_table()) == set(METHOD_CATALOG)
 
 
-@pytest.mark.xfail(strict=True, reason="J10.T4 SKILL.md marks the four correlated methods refused; Spark accepts them with a warning")
 def test_skill_method_table_spark_column_is_what_validation_does():
   """Each row's Spark cell (yes / refused / NULL + warning) is the outcome of Spark validation of that method's catalog example."""
   from rand_engine.validators.method_specs import METHOD_CATALOG
