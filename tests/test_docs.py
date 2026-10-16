@@ -376,7 +376,7 @@ def _readme_landing():
 
 def _pip_installs():
   """Every `pip install` target in README, docs pages and SKILL.md that is not the third-party Kafka client."""
-  extras = set(tomllib.loads(_text(ROOT / "pyproject.toml"))["tool"]["poetry"]["extras"])
+  extras = set(tomllib.loads(_text(ROOT / "pyproject.toml")).get("project", {}).get("optional-dependencies", {}))
   docs = [README, SKILL, *DOCS.glob("**/*.md")]
   found = [(p.name, m) for p in docs for m in re.findall(r"pip install (.+?)(?:`|\s{2,}#|$)", _text(p), re.M)]
   bad = [(n, m) for n, m in found if m.strip() != "kafka-python"
@@ -407,7 +407,8 @@ def _llms():
 
 @pytest.mark.parametrize("check", [
   pytest.param(_readme_landing, id="README.md"),
-  pytest.param(_pip_installs, id="pip-install"),
+  pytest.param(_pip_installs, id="pip-install",
+               marks=pytest.mark.xfail(strict=True, reason="J1.T3 moves extras to project.optional-dependencies")),
   pytest.param(_changelog, id="CHANGELOG.md"),
   pytest.param(_llms, id="llms.txt"),
 ])
