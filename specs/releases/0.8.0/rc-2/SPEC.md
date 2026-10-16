@@ -1,6 +1,6 @@
 # SPEC — Release: 0.8.0, candidate 2 (honest PyPI metadata, Python 3.13 in CI, five bugs, benchmarks in the docs)
 
-**Status:** Draft
+**Status:** Approved
 **Release ID:** 0.8.0
 **Owner:** dd-product-engineer
 **Opened:** 2026-10-16

@@ -1,6 +1,6 @@
 # PLAN — Release: 0.8.0, candidate 2 (honest PyPI metadata, Python 3.13 in CI, five bugs, benchmarks in the docs)
 
-**Status:** Draft
+**Status:** Approved
 **Release ID:** 0.8.0
 **Owner:** dd-sw-engineer-sr
 **SPEC:** `specs/releases/0.8.0/rc-2/SPEC.md`
