@@ -2,7 +2,7 @@
 slug: generation-methods
 title: Generation methods
 tldr: "Ten common methods (floats_normal too) run on pandas and Spark; exponential, lognormal, poisson, zipf, constant, correlated, keys and modifiers are pandas-only."
-summary: "NPCore and PyCore provide the NumPy generator's single method map, including bounded floats, exponential and lognormal, alias-sampled poisson and zipf, constants and deterministic keys; SparkCore supplies native Spark expressions for the ten common methods and refuses everything else."
+summary: "NPCore and PyCore provide the NumPy generator's single method map, including bounded floats, exponential and lognormal, alias-sampled poisson and zipf, constants and deterministic keys; SparkCore supplies native Spark expressions for the ten common methods, a NULL string column with a warning for the four correlated methods, and refuses everything else."
 tags: [methods, numpy, spark, correlation, distributions, modifiers]
 sources:
   - rand_engine/core/**

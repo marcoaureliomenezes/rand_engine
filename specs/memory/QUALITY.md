@@ -33,7 +33,7 @@ tags:
 - PR to `master` or `development`: the benchmark workflow runs stress tests and a same-runner A/B speed comparison, publishes its summary/comment/artifact and fails a comparable row above the base ratio, a distribution method above its sibling or a modifier above its overhead limit.
 - Merge to `development`: tests (Ubuntu, Python 3.10–3.13), build with the next `rcN` version, `twine check`, a wheel install smoke, the RC tag, PyPI publish.
 - Merge to `master`: tests (Ubuntu, Python 3.10–3.13), build of the `pyproject.toml` version (no RC suffix), the tag, PyPI publish, a GitHub release.
-- The repo `verify:` line (the local job gate) runs `ruff check --select D` (numpy convention) on the six public-surface modules before the suite; the ruff process takes under 0.1 s. No type checker is configured, and CI runs no lint.
+- The repo `verify:` line (the local job gate) runs `ruff check --select D` (numpy convention) on the six public-surface modules before the suite. No type checker is configured, and CI runs no lint.
 - Inside every pytest run: an `inspect` check that each public callable of `DataGenerator`, `SparkGenerator`, `RandSpecs` and the writer objects carries a numpydoc docstring (it covers the `_`-prefixed writer modules ruff skips), and the doctest examples of those modules. A full suite run takes 45–93 s on each Ubuntu and macOS leg of Tests on Push run 38973485937.
 - Docs workflow, on PRs to `development` and `master` and pushes to `feature/**` and `master`: the strict Zensical build, aborting on a broken internal link (1.13 s in Docs run 38973485919); on `master` it deploys the site to GitHub Pages.
 

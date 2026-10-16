@@ -104,7 +104,7 @@ graph TD
 
 ## Known limits
 
-- The `exponential`, `lognormal`, `poisson` and `zipf` distributions, constants, null and anomaly modifiers, correlated methods, transformers and pk/fk run on pandas only; Spark runs the ten common methods, `floats_normal` included, and refuses the rest.
+- The `exponential`, `lognormal`, `poisson` and `zipf` distributions, constants, null and anomaly modifiers, correlated methods, transformers and pk/fk run on pandas only; Spark runs the ten common methods, `floats_normal` included, warns and produces a NULL string column for `distincts_map`, `distincts_map_prop`, `distincts_multi_map` and `complex_distincts`, and refuses the rest.
 - Seeds reach the pandas path only; Spark output is unseeded.
 - PK/FK relations are stateless: parent and child link through definitions, seeds and row indexes, with no stored keys.
 - Built-in sinks are files only; queues, object storage and databases are reached by forwarding DataFrames or `stream_dict` records.
