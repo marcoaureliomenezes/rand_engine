@@ -451,7 +451,6 @@ def test_spark_refuses_new_methods_and_modifiers_naming_datagenerator(column, re
     assert remedy in str(error.value) and "Use DataGenerator" in str(error.value)
 
 
-@pytest.mark.xfail(strict=True, reason="J4.T2 adds __version__")
 def test_version_falls_back_when_distribution_is_not_installed(monkeypatch):
     import importlib
     import importlib.metadata
@@ -470,7 +469,6 @@ def test_version_falls_back_when_distribution_is_not_installed(monkeypatch):
         importlib.reload(rand_engine)
 
 
-@pytest.mark.xfail(strict=True, reason="J4.T2 adds py.typed")
 def test_wheel_ships_py_typed(built_wheel):
     with ZipFile(built_wheel) as wheel:
         assert "rand_engine/py.typed" in wheel.namelist()
@@ -483,14 +481,12 @@ def test_wheel_holds_only_the_rand_engine_package(built_wheel):
     assert [n for n in names if "skills/" in n] == []
 
 
-@pytest.mark.xfail(strict=True, reason="J4.T2 adds the subpackage __init__ files")
 @pytest.mark.parametrize("sub", ["main", "file_handlers", "core", "utils"])
 def test_wheel_holds_subpackage_init(built_wheel, sub):
     with ZipFile(built_wheel) as wheel:
         assert f"rand_engine/{sub}/__init__.py" in wheel.namelist()
 
 
-@pytest.mark.xfail(strict=True, reason="J4.T2 adds __version__")
 def test_extracted_wheel_reports_the_pyproject_version(built_wheel, tmp_path):
     with ZipFile(built_wheel) as wheel:
         wheel.extractall(tmp_path)
