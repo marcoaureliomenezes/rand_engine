@@ -607,10 +607,7 @@ def test_spark_float_span_finite_is_accepted():
 
 
 _ZFILLED_MESSAGE = "must be an integer within 1..18"
-_ZFILLED_REFUSED = [
-    pytest.param(n, marks=pytest.mark.xfail(strict=True, reason="J4.T2 adds the int_zfilled length rule"))
-    for n in (0, -1, 19, 5000, 10**7)
-]
+_ZFILLED_REFUSED = [0, -1, 19, 5000, 10**7]
 
 
 def _zfilled(length):
@@ -630,7 +627,6 @@ def test_int_zfilled_length_outside_1_18_is_one_issue_from_both_validators(lengt
 
 
 @pytest.mark.parametrize("length", [0, -1, 19])
-@pytest.mark.xfail(strict=True, reason="J4.T2 adds the int_zfilled length rule")
 def test_int_zfilled_length_outside_1_18_is_refused_at_construction(length):
     with pytest.raises(SpecValidationError):
         DataGenerator(_zfilled(length))
