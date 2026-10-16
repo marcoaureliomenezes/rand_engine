@@ -1,7 +1,8 @@
 # SparkGenerator — Spark DataFrames from a RandSpec
 
 `SparkGenerator` builds the columns with native Spark expressions over `spark.range(size)`; no
-pandas step. PySpark is not a dependency of `rand-engine`: bring your own session.
+pandas step. PySpark is not a dependency of `rand-engine`: bring your own session. CI runs the
+Spark tests on Linux and macOS with Python 3.10–3.13, and on Windows with Python 3.10–3.11.
 
 ```python
 from pyspark.sql import SparkSession, functions as F
