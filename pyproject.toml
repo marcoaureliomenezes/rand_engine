@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "rand-engine"
-version = "0.7.0"
+version = "0.8.0"
 description = "Sink-agnostic synthetic data at NumPy speed from declarative specs, with related tables through pk/fk key columns; Faker composes on top."
 authors = ["marcoaureliomenezes <marcoaurelioreislima@gmail.com>"]
 license = "MIT"
@@ -38,6 +38,20 @@ pytest-cov = "^6.0.0"
 faker = "^28.4.1"
 pyspark = "^3.5.0"
 setuptools = "^83.0.0"
+ruff = ">=0.17.1"
+
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
+zensical = {version = "==0.0.70", python = ">=3.11"}
+mkdocstrings-python = {version = "==2.0.9", python = ">=3.11"}
+
+[tool.ruff.lint]
+select = ["D"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
 
 [tool.pytest.ini_options]
 addopts = "-m 'not stress'"
