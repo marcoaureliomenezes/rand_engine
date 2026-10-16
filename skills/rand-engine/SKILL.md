@@ -27,9 +27,9 @@ Optional column keys:
 | `null_rate` | share of rows set to null (0 to 1) |
 | `anomaly_rate` + `anomaly_values` | share of rows replaced by a draw from the non-empty list `anomaly_values` |
 | `transformers` | list of functions applied value by value |
-| `cols` | names of the columns a correlated method produces (`distincts_map*`) |
+| `cols` | names of the columns a correlated method produces (`distincts_map`, `distincts_map_prop`, `distincts_multi_map`) |
 
-`null_rate` and `anomaly_rate` work on single-column NumPy-engine methods only: not on `pk`, `fk` or the multi-column maps. `.transformers([f, ...])` takes whole-frame functions (DataFrame -> DataFrame), run after the column ones. The same spec, seed and size always give the same frame.
+`null_rate` and `anomaly_rate` work on single-column NumPy-engine methods only: `pk`, `fk`, `distincts_map`, `distincts_map_prop`, `distincts_multi_map` and `complex_distincts` refuse them. `.transformers([f, ...])` takes whole-frame functions (DataFrame -> DataFrame), run after the column ones. The same spec, seed and size always give the same frame.
 
 ```python
 from rand_engine import DataGenerator
@@ -60,7 +60,7 @@ Every method below runs on `DataGenerator` (NumPy). The last column says whether
 
 | Method | kwargs (required first) | Produces | Spark |
 |---|---|---|---|
-| `integers` | `min`, `max`, `int_type` | ints in range | yes |
+| `integers` | `min`, `max`, `int_type` ("int32") | ints in range | yes |
 | `int_zfilled` | `length` | zero-padded digit string | yes |
 | `floats` | `min`, `max`, `decimals` (2) | uniform floats | yes |
 | `floats_normal` | `mean`, `std`, `decimals` (2) | normal floats | yes |
@@ -72,13 +72,13 @@ Every method below runs on `DataGenerator` (NumPy). The last column says whether
 | `distincts` | `distincts` (list) | uniform pick from the list | yes |
 | `distincts_prop` | `distincts` ({value: int weight}) | weighted pick | yes |
 | `constant` | `value` (a scalar) | the same value in every row | refused |
-| `dates` | `start`, `end`, `date_format` | date strings | yes |
-| `unix_timestamps` | `start`, `end`, `date_format` | epoch seconds | yes |
+| `dates` | `start`, `end`, `date_format` ("%Y-%m-%d") | date strings | yes |
+| `unix_timestamps` | `start`, `end`, `date_format` ("%Y-%m-%d") | epoch seconds | yes |
 | `uuid4` | none | uuid strings | yes |
-| `distincts_map` | `distincts` ({key: [values]}) + `cols` (2) | correlated key/value columns | refused |
-| `distincts_map_prop` | `distincts` ({key: [[value, weight]]}) + `cols` (2) | weighted correlated pair | refused |
-| `distincts_multi_map` | `distincts` ({key: [[level1...], [level2...]]}) + `cols` (levels + 1) | correlated columns, one per level | refused |
-| `complex_distincts` | `pattern`, `replacement`, `templates` | strings built from templates | refused |
+| `distincts_map` | `distincts` ({key: [values]}) + `cols` (2) | correlated key/value columns | NULL + warning |
+| `distincts_map_prop` | `distincts` ({key: [[value, weight]]}) + `cols` (2) | weighted correlated pair | NULL + warning |
+| `distincts_multi_map` | `distincts` ({key: [[level1...], [level2...]]}) + `cols` (levels + 1) | correlated columns, one per level | NULL + warning |
+| `complex_distincts` | `pattern`, `replacement`, `templates` | strings built from templates | NULL + warning |
 | `pk`, `fk` | see below | unique keys and references to them | refused |
 
 `dates` `date_format` accepts `%Y %m %d %H %M %S %f` only. On Spark the correlated methods and `complex_distincts` validate with a warning and give a NULL column. `null_rate` and `anomaly_rate` are NumPy only too. Faker values: `RandSpecs.faker_pool("name", locale="pt_BR", pool_size=500, seed=0)` returns a `distincts` spec (needs `rand-engine[faker]`). `RandSpecs.from_schema(arrow_schema, overrides={...})` builds a spec from a pyarrow schema. If unsure of a kwarg, check the Reference page rather than guessing.
@@ -157,7 +157,7 @@ Slugs: `test-data`, `lake`, `kafka`, `databricks`, `faker`. It refuses to overwr
 
 ## Errors
 
-`DataGenerator` and `SparkGenerator` validate the spec on construction. `SpecValidationError` (a `RandEngineError`) collects every problem at once, with a corrected example, and its footer points to the docs site. Read the whole message and fix all items before retrying.
+`DataGenerator` and `SparkGenerator` validate the spec on construction. `SpecValidationError` (a `RandEngineError`) collects every problem at once (with a corrected example for a missing parameter), and its footer points to the docs site. Read the whole message and fix all items before retrying.
 
 ```python
 from rand_engine.validators.exceptions import SpecValidationError
