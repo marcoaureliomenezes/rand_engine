@@ -5,6 +5,7 @@ import io
 import inspect
 import json
 import re
+import tempfile
 import textwrap
 from pathlib import Path
 
@@ -218,10 +219,13 @@ def test_module_docstring_examples_run(module, tmp_path, monkeypatch):
   assert examples
   assert [e.source for e in examples if "spark" in e.source.lower() and doctest.SKIP not in e.options] == []
   assert [n for e in examples for n in re.findall(r"\.size\((\d[\d_]*)\)", e.source) if int(n.replace("_", "")) > 10_000] == []
-  monkeypatch.chdir(tmp_path)
+  monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))  # examples' mkdtemp dirs land under tmp_path, which pytest cleans
+  cwd = tmp_path / "cwd"
+  cwd.mkdir()
+  monkeypatch.chdir(cwd)
   runner = doctest.DocTestRunner(optionflags=doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE)
   report = io.StringIO()
   for t in tests:
     runner.run(t, out=report.write)
   assert runner.failures == 0, report.getvalue()
-  assert sorted(p.name for p in tmp_path.iterdir()) == []  # examples write only inside a directory they create themselves
+  assert sorted(p.name for p in cwd.iterdir()) == []  # examples write only inside a directory they create themselves
