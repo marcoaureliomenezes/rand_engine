@@ -23,7 +23,6 @@ class FileStreamWriter(FileWriter):
   True
   """
 
-
   def __init__(self, size_def, microbatch_def):
     super().__init__(size_def, microbatch_def)
     self.freq = 1
