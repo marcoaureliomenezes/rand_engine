@@ -1,3 +1,4 @@
+"""Ready-made RandSpec factories for DataGenerator and SparkGenerator."""
 import copy
 from typing import Dict, Any
 
@@ -13,6 +14,15 @@ class CommonRandSpecs:
     Cross-compatible specification examples for DataGenerator and SparkGenerator.
     
     All specs use the unified API with date_format parameter.
+
+    Examples
+    --------
+    >>> from rand_engine import DataGenerator, RandSpecs
+    >>> df = DataGenerator(RandSpecs.customers(), seed=42).size(100).get_df()
+    >>> list(df.columns)
+    ['customer_id', 'age', 'city', 'total_spent', 'is_premium', 'registration_date']
+    >>> len(df)
+    100
     """
 
     @classmethod
@@ -23,7 +33,30 @@ class CommonRandSpecs:
         pool_size: int = 100,
         seed: int | None = None,
     ) -> Dict[str, Any]:
-        """Build one materialized distincts spec with a local Faker instance."""
+        """
+        Build one materialized distincts spec with a local Faker instance.
+
+        Parameters
+        ----------
+        provider : str
+            Faker provider method, such as ``"name"`` or ``"city"``.
+        locale : str, default "en_US"
+            Faker locale; an unsupported locale raises RandEngineError.
+        pool_size : int, default 100
+            Number of values to materialize; a positive integer.
+        seed : int, optional
+            Seed of the Faker instance; the same seed gives the same pool.
+
+        Returns
+        -------
+        dict
+            A ``distincts`` RandSpec whose ``distincts`` list holds the pool.
+
+        Raises
+        ------
+        RandEngineError
+            If Faker is not installed, the locale or provider is unsupported, or a value is not scalar.
+        """
         if isinstance(pool_size, bool) or not isinstance(pool_size, int) or pool_size < 1:
             raise RandEngineError("pool_size must be a positive integer")
 
@@ -62,7 +95,26 @@ class CommonRandSpecs:
         schema: pa.Schema,
         overrides: dict[str, dict[str, Any]] | None = None,
     ) -> Dict[str, Any]:
-        """Build a validated RandSpec from Arrow field metadata only."""
+        """
+        Build a validated RandSpec from Arrow field metadata only.
+
+        Parameters
+        ----------
+        schema : pyarrow.Schema
+            Arrow schema; each field's type picks a default generation recipe.
+        overrides : dict, optional
+            Per-field overrides keyed by field name. A ``method`` key replaces the recipe; ``kwargs`` merge into it.
+
+        Returns
+        -------
+        dict
+            RandSpec with one entry per schema field, validated before return.
+
+        Raises
+        ------
+        SpecValidationError
+            If the schema has duplicate fields, an override names a missing field, or a field type has no default recipe and no complete override with ``method``.
+        """
         if not isinstance(schema, pa.Schema):
             raise SpecValidationError("from_schema requires a pyarrow.Schema")
         if overrides is None:
@@ -160,7 +212,14 @@ class CommonRandSpecs:
 
     @classmethod
     def customers(cls) -> Dict[str, Any]:
-        """Customer profiles (6 Fields)"""
+        """
+        Return the customer profiles RandSpec (6 Fields).
+
+        Returns
+        -------
+        dict
+            RandSpec mapping each of the 6 fields to its method and kwargs.
+        """
         return {
             "customer_id": {"method": "uuid4", "kwargs": {}},
             "age": {"method": "integers", "kwargs": {"min": 18, "max": 80, "int_type": "int32"}},
@@ -181,7 +240,14 @@ class CommonRandSpecs:
 
     @classmethod
     def products(cls) -> Dict[str, Any]:
-        """Product catalog (7 Fields)"""
+        """
+        Return the product catalog RandSpec (7 Fields).
+
+        Returns
+        -------
+        dict
+            RandSpec mapping each of the 7 fields to its method and kwargs.
+        """
         return {
             "product_id": {"method": "uuid4", "kwargs": {}},
             "sku": {"method": "int_zfilled", "kwargs": {"length": 8}},
@@ -206,7 +272,14 @@ class CommonRandSpecs:
 
     @classmethod
     def orders(cls) -> Dict[str, Any]:
-        """E-commerce orders (6 Fields)"""
+        """
+        Return the e-commerce orders RandSpec (6 Fields).
+
+        Returns
+        -------
+        dict
+            RandSpec mapping each of the 6 fields to its method and kwargs.
+        """
         return {
             "order_id": {"method": "uuid4", "kwargs": {}},
             "customer_id": {"method": "uuid4", "kwargs": {}},
@@ -227,7 +300,14 @@ class CommonRandSpecs:
 
     @classmethod
     def transactions(cls) -> Dict[str, Any]:
-        """Financial transactions (7 Fields)"""
+        """
+        Return the financial transactions RandSpec (7 Fields).
+
+        Returns
+        -------
+        dict
+            RandSpec mapping each of the 7 fields to its method and kwargs.
+        """
         return {
             "transaction_id": {"method": "uuid4", "kwargs": {}},
             "account_id": {"method": "uuid4", "kwargs": {}},
@@ -246,7 +326,14 @@ class CommonRandSpecs:
 
     @classmethod
     def employees(cls) -> Dict[str, Any]:
-        """Employee records (8 Fields)"""
+        """
+        Return the employee records RandSpec (8 Fields).
+
+        Returns
+        -------
+        dict
+            RandSpec mapping each of the 8 fields to its method and kwargs.
+        """
         return {
             "employee_id": {"method": "uuid4", "kwargs": {}},
             "department": {
@@ -272,7 +359,14 @@ class CommonRandSpecs:
 
     @classmethod
     def sensors(cls) -> Dict[str, Any]:
-        """IoT sensor readings (7 Fields)"""
+        """
+        Return the IoT sensor readings RandSpec (7 Fields).
+
+        Returns
+        -------
+        dict
+            RandSpec mapping each of the 7 fields to its method and kwargs.
+        """
         return {
             "sensor_id": {"method": "uuid4", "kwargs": {}},
             "device_name": {"method": "int_zfilled", "kwargs": {"length": 6}},
@@ -288,7 +382,14 @@ class CommonRandSpecs:
 
     @classmethod
     def users(cls) -> Dict[str, Any]:
-        """Application users (7 Fields)"""
+        """
+        Return the application users RandSpec (7 Fields).
+
+        Returns
+        -------
+        dict
+            RandSpec mapping each of the 7 fields to its method and kwargs.
+        """
         return {
             "user_id": {"method": "uuid4", "kwargs": {}},
             "username": {"method": "int_zfilled", "kwargs": {"length": 10}},
@@ -307,7 +408,14 @@ class CommonRandSpecs:
 
     @classmethod
     def events(cls) -> Dict[str, Any]:
-        """System event logs (6 Fields)"""
+        """
+        Return the system event logs RandSpec (6 Fields).
+
+        Returns
+        -------
+        dict
+            RandSpec mapping each of the 6 fields to its method and kwargs.
+        """
         return {
             "event_id": {"method": "uuid4", "kwargs": {}},
             "event_type": {
@@ -331,7 +439,14 @@ class CommonRandSpecs:
 
     @classmethod
     def sales(cls) -> Dict[str, Any]:
-        """Sales records (8 Fields)"""
+        """
+        Return the sales records RandSpec (8 Fields).
+
+        Returns
+        -------
+        dict
+            RandSpec mapping each of the 8 fields to its method and kwargs.
+        """
         return {
             "transaction_id": {"method": "uuid4", "kwargs": {}},
             "sale_id": {"method": "int_zfilled", "kwargs": {"length": 10}},
@@ -354,7 +469,14 @@ class CommonRandSpecs:
 
     @classmethod
     def devices(cls) -> Dict[str, Any]:
-        """Device inventory (7 Fields)"""
+        """
+        Return the device inventory RandSpec (7 Fields).
+
+        Returns
+        -------
+        dict
+            RandSpec mapping each of the 7 fields to its method and kwargs.
+        """
         return {
             "device_id": {"method": "uuid4", "kwargs": {}},
             "serial_number": {"method": "int_zfilled", "kwargs": {"length": 12}},
