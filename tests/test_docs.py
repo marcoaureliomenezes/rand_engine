@@ -197,7 +197,7 @@ def _owned(task):
   "FileWriter",
   "FileBatchWriter",
   "FileStreamWriter",
-  pytest.param("RandSpecs", marks=_owned("J5.T5")),
+  "RandSpecs",
 ])
 def test_public_callables_carry_numpydoc(name):
   """Every public callable has a summary, Parameters when it takes an argument, Returns when it returns a value."""
@@ -211,7 +211,7 @@ def test_public_callables_carry_numpydoc(name):
   "rand_engine.file_handlers.writer",
   "rand_engine.file_handlers._writer_batch",
   "rand_engine.file_handlers._writer_stream",
-  pytest.param("rand_engine.examples.common_rand_specs", marks=_owned("J5.T5")),
+  "rand_engine.examples.common_rand_specs",
 ])
 def test_module_docstring_examples_run(module, tmp_path, monkeypatch):
   """The module has examples; they run under a temporary directory, size at most 10^4 rows, and Spark ones are +SKIP."""
