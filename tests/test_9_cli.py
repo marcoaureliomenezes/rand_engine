@@ -73,22 +73,22 @@ def test_list_is_byte_identical_across_runs(capsys):
 def test_get_started_writes_exact_file_and_creates_dir(slug, tmp_path, capsys):
   out = tmp_path / "new" / "deeper"
   assert run(["get-started", slug, "--out", str(out)]) == 0
-  assert [p.name for p in out.iterdir()] == [f"{slug}.py"]
-  assert (out / f"{slug}.py").read_bytes() == case_bytes(slug)
-  assert str(out / f"{slug}.py") in capsys.readouterr().out
+  assert [p.name for p in out.iterdir()] == [f"{slug}-example.py"]
+  assert (out / f"{slug}-example.py").read_bytes() == case_bytes(slug)
+  assert str(out / f"{slug}-example.py") in capsys.readouterr().out
 
 
 def test_get_started_default_out_is_current_directory(tmp_path, monkeypatch):
   monkeypatch.chdir(tmp_path)
   assert run(["get-started", "lake"]) == 0
-  assert [p.name for p in tmp_path.iterdir()] == ["lake.py"]
-  assert (tmp_path / "lake.py").read_bytes() == case_bytes("lake")
+  assert [p.name for p in tmp_path.iterdir()] == ["lake-example.py"]
+  assert (tmp_path / "lake-example.py").read_bytes() == case_bytes("lake")
 
 
 def test_get_started_twice_yields_identical_bytes(tmp_path):
   run(["get-started", "kafka", "--out", str(tmp_path / "a")])
   run(["get-started", "kafka", "--out", str(tmp_path / "b")])
-  assert (tmp_path / "a" / "kafka.py").read_bytes() == (tmp_path / "b" / "kafka.py").read_bytes()
+  assert (tmp_path / "a" / "kafka-example.py").read_bytes() == (tmp_path / "b" / "kafka-example.py").read_bytes()
 
 
 def check_test_data(ns, out, tmp_path):
@@ -137,20 +137,20 @@ def test_scaffold_is_databricks_source_and_runs_producing_its_promise(slug, tmp_
     request.getfixturevalue("spark_session")
   assert run(["get-started", slug, "--out", str(tmp_path)]) == 0
   capsys.readouterr()
-  text = (tmp_path / f"{slug}.py").read_text(encoding="utf-8")
+  text = (tmp_path / f"{slug}-example.py").read_text(encoding="utf-8")
   assert text.splitlines()[0] == "# Databricks notebook source"
   assert "# COMMAND ----------" in text.splitlines()
   monkeypatch.chdir(tmp_path)
   monkeypatch.setitem(sys.modules, "kafka", None)
   monkeypatch.setitem(sys.modules, "confluent_kafka", None)
-  ns = runpy.run_path(str(tmp_path / f"{slug}.py"), run_name="__main__")
+  ns = runpy.run_path(str(tmp_path / f"{slug}-example.py"), run_name="__main__")
   CHECKS[slug](ns, capsys.readouterr().out, tmp_path)
 
 
 def test_test_data_scaffold_runs_under_plain_python(tmp_path):
   assert run(["get-started", "test-data", "--out", str(tmp_path)]) == 0
   env = {**os.environ, "PYTHONPATH": os.pathsep.join([str(ROOT), os.environ.get("PYTHONPATH", "")]).rstrip(os.pathsep)}
-  done = subprocess.run([sys.executable, str(tmp_path / "test-data.py")], cwd=tmp_path, env=env, capture_output=True, text=True, timeout=120)
+  done = subprocess.run([sys.executable, str(tmp_path / "test-data-example.py")], cwd=tmp_path, env=env, capture_output=True, text=True, timeout=120)
   assert done.returncode == 0, done.stderr
 
 
@@ -166,7 +166,7 @@ def test_bad_slug_or_missing_argument_exits_2_with_slugs_on_stderr(tail, tmp_pat
 
 
 def test_existing_target_is_left_unchanged_and_exit_1_names_it(tmp_path, capsys):
-  target = tmp_path / "faker.py"
+  target = tmp_path / "faker-example.py"
   target.write_bytes(b"mine\r\n")
   assert run(["get-started", "faker", "--out", str(tmp_path)]) == 1
   assert target.read_bytes() == b"mine\r\n"
