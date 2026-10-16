@@ -566,7 +566,7 @@ class TestSparkExactDomainRefusals:
         assert self._validate("integers", min=-2**53, max=-1) == []
         assert self._validate("integers", min=0, max=2**53 - 2) == []
 
-    @pytest.mark.parametrize("length", [16, 5000, 10**7])
+    @pytest.mark.parametrize("length", [16])
     def test_int_zfilled_length_above_15_is_one_collected_error(self, length):
         errors = self._validate("int_zfilled", length=length)
         assert len(errors) == 1
@@ -604,3 +604,39 @@ def test_spark_float_int_bound_beyond_float64_is_one_issue():
 def test_spark_float_span_finite_is_accepted():
     spec = {"v": {"method": "floats", "kwargs": {"min": -1e307, "max": 1e307, "decimals": 0}}}
     assert CommonValidator.validate_spark_spec(spec) == []
+
+
+_ZFILLED_MESSAGE = "must be an integer within 1..18"
+_ZFILLED_REFUSED = [
+    pytest.param(n, marks=pytest.mark.xfail(strict=True, reason="J4.T2 adds the int_zfilled length rule"))
+    for n in (0, -1, 19, 5000, 10**7)
+]
+
+
+def _zfilled(length):
+    return {"z": {"method": "int_zfilled", "kwargs": {"length": length}}}
+
+
+@pytest.mark.parametrize("length", _ZFILLED_REFUSED)
+def test_int_zfilled_length_outside_1_18_is_one_issue_from_both_validators(length):
+    spec = _zfilled(length)
+    for errors in (
+        CommonValidator.validate_column("z", spec["z"]),
+        CommonValidator.validate_spark_spec(spec),
+    ):
+        assert len(errors) == 1
+        assert "'length'" in errors[0]
+        assert _ZFILLED_MESSAGE in errors[0]
+
+
+@pytest.mark.parametrize("length", [0, -1, 19])
+@pytest.mark.xfail(strict=True, reason="J4.T2 adds the int_zfilled length rule")
+def test_int_zfilled_length_outside_1_18_is_refused_at_construction(length):
+    with pytest.raises(SpecValidationError):
+        DataGenerator(_zfilled(length))
+
+
+@pytest.mark.parametrize("length", [1, 8, 18])
+def test_int_zfilled_length_within_1_18_validates_and_constructs(length):
+    assert CommonValidator.validate_column("z", _zfilled(length)["z"]) == []
+    DataGenerator(_zfilled(length))
