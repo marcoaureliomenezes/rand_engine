@@ -505,10 +505,12 @@ def test_wheel_holds_subpackage_init(built_wheel, sub):
 def test_extracted_wheel_reports_the_pyproject_version(built_wheel, tmp_path):
     with ZipFile(built_wheel) as wheel:
         wheel.extractall(tmp_path)
+    env = {k: v for k, v in os.environ.items() if not k.startswith("COV_CORE_")}
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
     result = subprocess.run(
         [sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import rand_engine; print(rand_engine.__version__)", str(tmp_path)],
         cwd=tmp_path,
-        env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+        env=env,
         capture_output=True,
         text=True,
     )
