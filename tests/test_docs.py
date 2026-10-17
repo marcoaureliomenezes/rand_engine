@@ -367,15 +367,15 @@ def test_spark_doc_executes_correlated_methods_as_null_strings(tmp_path, monkeyp
   frames, caught = documented_correlated_spark_frames(tmp_path, monkeypatch)
   expected = {name for name, entry in METHOD_CATALOG.items() if entry.kind == CORRELATED}
   observed = {
-      name
+      column["method"]
       for metadata, _ in frames
-      for name, column in metadata.items()
+      for column in metadata.values()
       if column["method"] in expected
   }
   assert observed == expected
   assert {method for method in expected if any(method in str(item.message) for item in caught)} == expected
   for metadata, dataframe in frames:
-    assert dataframe.count() <= 10_000
+    assert 0 < dataframe.count() <= 10_000
     for name, column in metadata.items():
       if column["method"] in expected:
         field = dataframe.schema[name]
