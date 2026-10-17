@@ -140,13 +140,6 @@ def _fk(parent_kwargs, parent_size, size, seed=2, skew=None, col="parent_id", bo
   return DataGenerator({col: {"method": "fk", "kwargs": kw}}, seed=seed).size(size).get_df()[col]
 
 
-def _fk_at(parent_kwargs, parent_size, offset, seed=2, skew=None, col="parent_id"):
-  kw = {"parent": {"method": "pk", "kwargs": parent_kwargs}, "parent_size": parent_size}
-  if skew is not None:
-    kw["skew"] = skew
-  return DataGenerator({col: {"method": "fk", "kwargs": kw}}, seed=seed).wrapped_df_generator(1, offset)()[col].iloc[0]
-
-
 EVENT_TIME = {
   "parent_start": 0,
   "parent_rate": 2,
@@ -155,18 +148,19 @@ EVENT_TIME = {
 }
 
 
-@pytest.mark.parametrize("parent_kwargs", [
-  {"start": 10},
-  {"style": "permuted", "domain": 10, "key": 7},
-  {"start": 10, "format": "P-{:03d}"},
+@pytest.mark.parametrize("parent_kwargs, skew, expected", [
+  ({"start": 10}, None, [10, 10, 11]),
+  ({"style": "permuted", "domain": 10, "key": 7}, None, [3, 6, 1]),
+  ({"start": 10, "format": "P-{:03d}"}, None, ["P-010", "P-012", "P-013"]),
+  ({"start": 10}, 1.2, [11, 12, 10]),
+  ({"style": "permuted", "domain": 10, "key": 7}, 1.2, [3, 6, 6]),
+  ({"start": 10, "format": "P-{:03d}"}, 1.2, ["P-011", "P-013", "P-015"]),
 ])
-@pytest.mark.parametrize("skew", [None, 1.2])
-def test_event_time_fk_only_selects_parents_born_by_each_child(parent_kwargs, skew):
+def test_event_time_fk_only_selects_parents_born_by_each_child(parent_kwargs, skew, expected):
   """An exactly coincident parent is eligible; later parent keys are not."""
   parent = _pk(parent_kwargs, 10)
   child = _fk(parent_kwargs, 10, 3, skew=skew, born_before=EVENT_TIME)
   assert all(value in parent.iloc[:limit].tolist() for value, limit in zip(child, [2, 4, 6]))
-  expected = [_fk_at(parent_kwargs, limit, offset, skew=skew) for offset, limit in enumerate([2, 4, 6])]
   assert child.tolist() == expected
 
 
