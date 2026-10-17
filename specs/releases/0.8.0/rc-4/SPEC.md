@@ -17,6 +17,12 @@
   later documentation-only release; it performs no external outreach act and does
   not deliver or exit the separate `outreach` entry, whose external work remains
   scheduled after stable publication.
+- Approval also authorizes one narrow governance correction required by the
+  output-only SQLite sink: constitution invariant 8 stops prohibiting SQL in the
+  entire library and instead prohibits database state, reads and lookup SQL in
+  generation. It permits an explicitly requested output sink to execute only
+  quoted, parameter-bound output SQL. The constitution changes at reconciliation,
+  after the approved behavior exists; no generation or key contract is relaxed.
 - The concrete compatibility choices below are proposed defaults from repository
   inspection. They take effect only when the operator approves this SPEC and its
   PLAN.
@@ -234,7 +240,12 @@ and types remain compatible.
   that artifact and cite its run/head. If the final run exists only after closure,
   its Actions/PR result is the evidence and no source artifact is fabricated.
 - AC5.4 (no new test; existing memory catalog, drift and release checks): closure
-  reconciles `pk-fk-constraints`, `spark-generator`, `data-generator`,
+  updates `specs/constitution.md`, replacing invariant 8 with: "Generation holds no database state and
+  never reads a database or runs lookup SQL. An explicitly approved output-only
+  database sink may execute SQL only to persist generated rows; it quotes every
+  spec-supplied identifier and parameter-binds every value before either reaches
+  the database." Closure then reconciles `pk-fk-constraints`,
+  `spark-generator`, `data-generator`,
   `writers-and-streaming`, `rand-spec-grammar`, `generation-methods`, `public-api`,
   `documentation` and `benchmarks` as changed or reviewed from the final diff;
   refreshes every affected docs/skill consumer marker; updates ARCHITECTURE and
@@ -263,6 +274,10 @@ and types remain compatible.
   output contract.
 - No database writer is replaced. SQLite is added as one batch format on the
   existing builder, bounded to one output table and the standard library.
+- Constitution invariant 8's library-wide "runs no SQL" wording is replaced by
+  the narrower generation/key-state prohibition and the explicitly bounded
+  output-SQL permission in AC5.4; every no-read, no-lookup and SQL-safety guarantee
+  remains.
 
 ## 6. Constraints, risks and approval choices
 
@@ -281,6 +296,7 @@ and types remain compatible.
 | executor conversion introduces a second key implementation | `mapInPandas` calls the shared key semantics; no Spark hash approximation |
 | SQLite identifiers or values become SQL | quote every identifier, bind every value, and test hostile-looking round trips |
 | a failed SQLite write damages an existing database | adjacent staged overwrite and single-transaction append, each with failure mutation tests |
+| SQLite delivery leaves constitution invariant 8 false | approval includes the exact AC5.4 replacement; reconciliation updates `specs/constitution.md` with the delivered sink |
 | Arrow changes a Python record or masks a real error | existing normalization first, representative exact equality, narrow Arrow-only fallback |
 | rc-4 races the rc-3 integration PR | definition may be reviewed now; rc-4 is neither merged nor pushed ahead of the completed rc-3 PR |
 
@@ -288,4 +304,6 @@ Approval of this Draft confirms these concrete choices: compatibility fallback f
 Arrow instead of either previously suspected break; SQLite only through the
 existing batch builder; the explicit four-field `born_before` mapping and
 zero-eligible refusal; and vectorized `mapInPandas` over authoritative key
-semantics for Spark. No other product question remains.
+semantics for Spark. It also confirms the exact invariant 8 replacement in AC5.4,
+which permits bounded output SQL without permitting database state, reads or
+lookups in generation. No other product question remains.
