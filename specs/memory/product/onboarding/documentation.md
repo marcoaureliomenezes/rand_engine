@@ -19,7 +19,7 @@ sources:
 - Navigation: Home (the README, copied at build), Getting started, five Tutorials, How-to guides, a Reference group for the main API, returned writers and errors, Explanation and Benchmarks ([[benchmarks]]).
 - Getting started maps all five packaged scaffolds to their command, filename, run command, prerequisite, observable outcome and tutorial. Each tutorial includes its case file verbatim, the same bytes `rand-engine get-started <slug>` writes ([[get-started-cli]]).
 - The workflow copies `llms.txt` to the site root and the source Markdown tree beside rendered HTML in the Pages artifact.
-- The docs workflow runs the strict build, which fails on a broken internal link, on pull requests to `development` and `master` and on pushes to `feature/**` and `master`; only a push to `master` uploads and deploys the Pages artifact. The working tree never holds a build: `site/`, `.cache/` and the generated `docs/index.md` are ignored.
+- The docs workflow runs the strict build, which fails on a broken internal link, on pull requests to `development` and `master` and on pushes to `feature/**` and `master`; only a push to `master` uploads and deploys the Pages artifact. `site/`, `.cache/` and the generated `docs/index.md` are ignored build products.
 
 ## Landing README
 

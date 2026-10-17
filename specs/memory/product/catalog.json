@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-17T18:38:17Z",
+  "generated_at": "2026-10-17T18:38:41Z",
   "features": [
     {
       "rank": 1,
@@ -154,7 +154,7 @@
         "agent-skill",
         "readme"
       ],
-      "token_estimate": 562,
+      "token_estimate": 555,
       "depends_on": [
         "public-api",
         "writers-and-streaming",
