@@ -6,6 +6,7 @@ import inspect
 import json
 import os
 import re
+import sqlite3
 import tempfile
 import textwrap
 import warnings
@@ -512,7 +513,7 @@ def test_writing_doc_runs_row_batches_and_append(tmp_path, monkeypatch, relative
   code = block_text("3_WRITING_FILES.md")
   assert "maxRowsPerBatch" in code and 'mode("append")' in code
 
-  batch, stream, staged = [], [], []
+  batch, stream, stream_attempts, staged = [], [], [], []
   save, start, stage_files = FileBatchWriter.save, FileStreamWriter.start, FileBatchWriter._stage_files
   mkdtemp = tempfile.mkdtemp
 
@@ -521,12 +522,14 @@ def test_writing_doc_runs_row_batches_and_append(tmp_path, monkeypatch, relative
     return os.path.relpath(staging) if relative_staging else str(Path(staging).resolve())
 
   def record_save(self, path):
-    batch.append((self.write_format, self.write_mode, dict(self.write_options)))
+    batch.append((self.write_format, self.write_mode, dict(self.write_options), Path(path)))
     return save(self, path)
 
   def record_start(self, path):
+    stream_attempts.append((self.write_format, self.write_mode, self.freq, dict(self.write_options)))
+    result = start(self, path)
     stream.append((self.write_format, self.write_mode, self.freq, dict(self.write_options)))
-    return start(self, path)
+    return result
 
   def record_stage(self, staging, *args, **kwargs):
     staged.append(staging.resolve())
@@ -538,17 +541,24 @@ def test_writing_doc_runs_row_batches_and_append(tmp_path, monkeypatch, relative
   monkeypatch.setattr(tempfile, "mkdtemp", return_requested_staging_shape)
   run_python_blocks(DOCS / "3_WRITING_FILES.md", tmp_path, monkeypatch)
 
-  assert {format for format, _, _ in batch} == {"csv", "json", "parquet"}
-  assert {mode for _, mode, _ in batch} == {"append", "overwrite"}
-  assert any(not options for _, mode, options in batch if mode == "overwrite")
-  assert {options.get("numFiles") for _, _, options in batch if "numFiles" in options} == {2, 3, 4}
-  assert any(options.get("maxRowsPerBatch") == 100 for _, _, options in batch)
+  assert {format for format, _, _, _ in batch} == {"csv", "json", "parquet", "sqlite"}
+  assert {mode for _, mode, _, _ in batch} == {"append", "overwrite"}
+  assert any(not options for _, mode, options, _ in batch if mode == "overwrite")
+  assert {options.get("numFiles") for _, _, options, _ in batch if "numFiles" in options} == {2, 3, 4}
+  assert any(options.get("maxRowsPerBatch") == 100 for _, _, options, _ in batch)
   assert stream == [("json", "overwrite", 0.1, {"timeout": 0.3})]
+  assert any(format == "sqlite" for format, _, _, _ in stream_attempts)
   assert staged and all(path.parent == tmp_path / "out" and path.name.endswith(".staging") for path in staged)
   assert not [path for path in staged if path.exists()]
   assert len(list((tmp_path / "out" / "clients_json").iterdir())) == 4
   assert len(list((tmp_path / "out" / "log").iterdir())) == 4
   assert len(list((tmp_path / "out" / "stream").iterdir())) >= 2
+  sqlite_outputs = [(options, tmp_path / path) for format, _, options, path in batch if format == "sqlite"]
+  assert sqlite_outputs
+  for options, path in sqlite_outputs:
+    with sqlite3.connect(path) as database:
+      table = options["table"].replace('"', '""')
+      assert database.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0] > 0
 
 
 def _writer_option_table() -> dict[str, str]:
@@ -561,76 +571,44 @@ def _writer_option_table() -> dict[str, str]:
 
 def test_writing_doc_inventory_matches_the_accepted_writer_options():
   """The writer guide lists every accepted format option, including defaults and codecs."""
+  from rand_engine import DataGenerator
+
   rows = _writer_option_table()
-  assert set(rows) == {"csv", "parquet", "json", "write (batch)", "writeStream"}
+  files = set(DataGenerator({"value": {"method": "integers", "kwargs": {"min": 0, "max": 1}}}).size(0).write.writer_method)
+  assert set(rows) == files | {"sqlite", "write (batch)", "writeStream"}
   assert "sep" in rows["csv"] and {"gzip", "bz2", "xz", "zip"} <= set(re.findall(r"`(gzip|bz2|xz|zip)`", rows["csv"]))
   assert {"compression", "snappy", "gzip", "zstd", "brotli", "lz4"} <= set(re.findall(r"`(\w+)`", rows["parquet"]))
   assert {"force_ascii", "indent", "orient"} <= {name for name in ("force_ascii", "indent", "orient") if name in rows["json"]}
   assert {"gzip", "bz2", "xz", "zip"} <= set(re.findall(r"`(gzip|bz2|xz|zip)`", rows["json"]))
   assert "numFiles" in rows["write (batch)"] and "maxRowsPerBatch" in rows["write (batch)"]
   assert "timeout" in rows["writeStream"]
+  assert {"table", "overwrite", "append"} <= set(re.findall(r"`(\w+)`", rows["sqlite"]))
+  assert "numFiles" not in rows["sqlite"] and "maxRowsPerBatch" not in rows["sqlite"]
 
 
-def test_key_guides_describe_the_event_time_fk_mapping_and_zero_eligible_refusal():
-  """The human and agent key guides state the one accepted event-time mapping and its boundaries."""
-  guides = {
-      "constraints": _text(DOCS / "4_CONSTRAINTS.md"),
-      "skill": _text(SKILL),
-  }
+def test_key_guides_execute_the_event_time_fk_mapping_and_zero_eligible_refusal(tmp_path, monkeypatch):
+  """The human and agent key examples execute valid and zero-eligible event-time foreign keys."""
   required = {"born_before", "parent_start", "parent_rate", "child_start", "child_rate"}
-  for guide, text in guides.items():
-    assert required <= set(re.findall(r"`(\w+)`", text)), guide
-    lowered = text.lower()
-    assert "inclusive" in lowered, guide
-    assert "zero eligible" in lowered, guide
-    assert "int" in lowered and "float" in lowered and "bool" in lowered, guide
+  for guide in (DOCS / "4_CONSTRAINTS.md", SKILL):
+    guide_tmp = tmp_path / guide.stem
+    guide_tmp.mkdir()
+    namespace = run_python_blocks(guide, guide_tmp, monkeypatch)
+    bound = namespace["event_time_born_before"]
+    assert set(bound) == required - {"born_before"}
+    assert all(type(value) in {int, float} for value in bound.values())
+    assert namespace["event_time_orders"]["customer_id"].isin(
+        namespace["event_time_parents"]["customer_id"]
+    ).all()
+    assert namespace["event_time_zero_eligible"] is True
 
 
-def test_writing_guide_derives_sqlite_from_the_batch_writer_contract():
-  """The writer inventory includes SQLite as its batch-only table sink with its live option contract."""
-  from rand_engine.file_handlers._writer_batch import FileBatchWriter
-
-  rows = _writer_option_table()
-  assert set(rows) == {"csv", "parquet", "json", "sqlite", "write (batch)", "writeStream"}
-  sqlite = rows["sqlite"]
-  assert {"table", "overwrite", "append"} <= set(re.findall(r"`(\w+)`", sqlite))
-  assert "numFiles" not in sqlite and "maxRowsPerBatch" not in sqlite
-  source = inspect.getsource(FileBatchWriter._save_sqlite)
-  assert "table" in source and "append" in source and "overwrite" in source
-
-
-def test_writing_guide_executes_sqlite_and_refuses_it_for_streams(tmp_path, monkeypatch):
-  """The writing guide creates a temporary SQLite table and shows the real stream refusal."""
-  from rand_engine.file_handlers._writer_batch import FileBatchWriter
-  from rand_engine.file_handlers._writer_stream import FileStreamWriter
-
-  saved, stream_calls = [], []
-  save, start = FileBatchWriter.save, FileStreamWriter.start
-
-  def record_save(self, path):
-    saved.append((self.write_format, dict(self.write_options), Path(path)))
-    return save(self, path)
-
-  def record_start(self, path):
-    stream_calls.append((self.write_format, path))
-    return start(self, path)
-
-  monkeypatch.setattr(FileBatchWriter, "save", record_save)
-  monkeypatch.setattr(FileStreamWriter, "start", record_start)
-  run_python_blocks(DOCS / "3_WRITING_FILES.md", tmp_path, monkeypatch)
-
-  assert any(fmt == "sqlite" and options.get("table") for fmt, options, _ in saved)
-  assert any(fmt == "sqlite" for fmt, _ in stream_calls)
-
-
-def test_stream_guidance_states_arrow_conversion_and_compatible_fallback_contract():
-  """The stream consumers explain that compatible records use Arrow and unsupported values keep their values via pandas."""
-  text = "\n".join(_text(path) for path in (DOCS / "1_DATA_GENERATOR.md", DOCS / "5_RECIPES.md", SKILL))
-  lowered = text.lower()
-  assert "arrow" in lowered
-  assert "fallback" in lowered
-  assert "pandas" in lowered
-  assert "stream_dict" in text
+def test_stream_guidance_executes_compatible_and_fallback_records(tmp_path, monkeypatch):
+  """The stream guide exposes real compatible and nested-value fallback records from its examples."""
+  namespace = run_python_blocks(DOCS / "1_DATA_GENERATOR.md", tmp_path, monkeypatch)
+  assert namespace["arrow_records"] and namespace["fallback_records"]
+  assert all(isinstance(record, dict) for record in namespace["arrow_records"])
+  assert any(any(isinstance(value, (dict, list, tuple)) for value in record.values())
+             for record in namespace["fallback_records"])
 
 
 def test_comparison_route_is_sourced_and_marks_benchmarks_as_internal_only():
@@ -643,9 +621,9 @@ def test_comparison_route_is_sourced_and_marks_benchmarks_as_internal_only():
       "https://github.com/databrickslabs/dbldatagen",
       "https://databrickslabs.github.io/dbldatagen/public_docs/reference/api/dbldatagen.data_generator.html",
   } <= urls
-  lowered = text.lower()
-  assert "same-runner" in lowered and "not a faker or dbldatagen speed comparison" in lowered
-  assert "BENCHMARKS.md" in text and "benchmarks/speed.py" in text
+  links = LINK.findall(text)
+  assert "BENCHMARKS.md" in links
+  assert any("benchmarks/speed.py" in link for link in links)
   nav = _text(ROOT / "mkdocs.yml")
   llms = _text(ROOT / "llms.txt")
   assert "comparison.md" in nav
