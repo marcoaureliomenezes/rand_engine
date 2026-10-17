@@ -745,6 +745,15 @@ def _sqlite_rows(path, table):
     return database.execute(f'SELECT * FROM "{table.replace(chr(34), chr(34) * 2)}"').fetchall()
 
 
+def _sqlite_values_and_types(path, table, column):
+  quoted_table = table.replace(chr(34), chr(34) * 2)
+  quoted_column = column.replace(chr(34), chr(34) * 2)
+  with sqlite3.connect(path) as database:
+    return database.execute(
+      f'SELECT "{quoted_column}", typeof("{quoted_column}") FROM "{quoted_table}"'
+    ).fetchall()
+
+
 @pytest.mark.parametrize("table", [None, "", "bad\x00name"])
 def test_sqlite_requires_a_nonempty_nul_free_table_before_creating_output(tmp_path, table):
   path = tmp_path / "required-table.sqlite"
@@ -832,6 +841,32 @@ def test_sqlite_quotes_hostile_names_binds_values_and_round_trips_supported_type
   ]
   with sqlite3.connect(path) as database:
     assert [row[1] for row in database.execute(f'PRAGMA table_info("{table.replace(chr(34), chr(34) * 2)}")')] == columns
+
+
+@pytest.mark.parametrize(
+  "values, expected",
+  [
+    ([1, "2", 3.5], [(1, "integer"), ("2", "text"), (3.5, "real")]),
+    (["2", 1, 3.5], [("2", "text"), (1, "integer"), (3.5, "real")]),
+  ],
+)
+def test_sqlite_mixed_object_column_preserves_each_supported_value_and_storage_class(tmp_path, values, expected):
+  path = tmp_path / "mixed.sqlite"
+
+  def mixed_values(_frame):
+    return pd.DataFrame({"value": pd.Series(values, dtype=object)})
+
+  (
+    DataGenerator(SQLITE_SPEC)
+    .size(3)
+    .transformers([mixed_values])
+    .write
+    .format("sqlite")
+    .option("table", "events")
+    .save(str(path))
+  )
+
+  assert _sqlite_values_and_types(path, "events", "value") == expected
 
 
 def test_sqlite_overwrite_replaces_only_selected_table_and_preserves_unrelated_tables(tmp_path):
@@ -959,6 +994,44 @@ def test_sqlite_append_creates_then_requires_the_existing_ordered_schema(tmp_pat
   assert _sqlite_rows(path, "events") == [(1,), (2,), (1,), (2,)]
 
 
+def test_sqlite_append_all_null_column_does_not_freeze_later_integer_storage(tmp_path):
+  path = tmp_path / "null-then-integer.sqlite"
+
+  def missing(_frame):
+    return pd.DataFrame({"value": [None, pd.NA]})
+
+  def integers(_frame):
+    return pd.DataFrame({"value": [7, -2]})
+
+  (
+    DataGenerator(SQLITE_SPEC)
+    .size(2)
+    .transformers([missing])
+    .write
+    .format("sqlite")
+    .mode("append")
+    .option("table", "events")
+    .save(str(path))
+  )
+  (
+    DataGenerator(SQLITE_SPEC)
+    .size(2)
+    .transformers([integers])
+    .write
+    .format("sqlite")
+    .mode("append")
+    .option("table", "events")
+    .save(str(path))
+  )
+
+  assert _sqlite_values_and_types(path, "events", "value") == [
+    (None, "null"),
+    (None, "null"),
+    (7, "integer"),
+    (-2, "integer"),
+  ]
+
+
 def test_sqlite_append_rolls_back_every_row_when_a_real_constraint_rejects_one(tmp_path):
   path = tmp_path / "append-rollback.sqlite"
   with sqlite3.connect(path) as database:
@@ -1005,4 +1078,34 @@ def test_sqlite_refuses_unsupported_values_options_and_modes_before_output(tmp_p
   for writer in attempts:
     with pytest.raises(RandEngineError):
       writer.save(str(path))
+    assert not path.exists()
+
+
+@pytest.mark.parametrize("value", [2 ** 63, np.uint64(2 ** 63)])
+@pytest.mark.parametrize("existing", [False, True])
+def test_sqlite_refuses_out_of_signed_64_bit_integer_before_changing_destination(tmp_path, value, existing):
+  path = tmp_path / "integer-range.sqlite"
+  if existing:
+    with sqlite3.connect(path) as database:
+      database.execute('CREATE TABLE "keep" (value INTEGER)')
+      database.execute('INSERT INTO "keep" VALUES (91)')
+
+  def out_of_range(_frame):
+    return pd.DataFrame({"value": pd.Series([value], dtype=object)})
+
+  with pytest.raises(RandEngineError):
+    (
+      DataGenerator(SQLITE_SPEC)
+      .size(1)
+      .transformers([out_of_range])
+      .write
+      .format("sqlite")
+      .option("table", "events")
+      .save(str(path))
+    )
+
+  if existing:
+    assert _sqlite_tables(path) == [("keep",)]
+    assert _sqlite_rows(path, "keep") == [(91,)]
+  else:
     assert not path.exists()
