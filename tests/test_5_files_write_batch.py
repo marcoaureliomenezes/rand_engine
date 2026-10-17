@@ -809,6 +809,8 @@ def test_sqlite_quotes_hostile_names_binds_values_and_round_trips_supported_type
       "moment": [dt.datetime(2024, 1, 2, 3, 4, 5), dt.datetime(2024, 1, 3, 4, 5, 6)],
     })
 
+  assert list(typed_values(pd.DataFrame({"id": [1, 2]})).columns) == columns
+
   with sqlite3.connect(path) as database:
     database.execute('CREATE TABLE "keep" (value TEXT)')
     database.execute('INSERT INTO "keep" VALUES (?)', ("unchanged",))
@@ -874,6 +876,77 @@ def test_sqlite_overwrite_failure_keeps_prior_database_and_removes_staging(tmp_p
   assert not list(tmp_path.glob(".atomic.sqlite.*.staging"))
 
 
+def test_sqlite_overwrite_write_failure_keeps_prior_database_and_removes_staging(tmp_path, monkeypatch):
+  path = tmp_path / "atomic-write.sqlite"
+  with sqlite3.connect(path) as database:
+    database.execute('CREATE TABLE "target" (value INTEGER)')
+    database.execute('INSERT INTO "target" VALUES (99)')
+    database.execute('CREATE TABLE "other" (value INTEGER)')
+    database.execute('INSERT INTO "other" VALUES (42)')
+
+  class FailAfterFirstInsert:
+    def __init__(self, connection):
+      self.connection = connection
+      self.failed = False
+
+    def __enter__(self):
+      self.connection.__enter__()
+      return self
+
+    def __exit__(self, *args):
+      return self.connection.__exit__(*args)
+
+    def execute(self, sql, parameters=()):
+      result = self.connection.execute(sql, parameters)
+      self._fail_after_insert(sql)
+      return result
+
+    def executemany(self, sql, rows):
+      for row in rows:
+        self.execute(sql, row)
+
+    def cursor(self):
+      return FailAfterFirstInsertCursor(self.connection.cursor(), self)
+
+    def _fail_after_insert(self, sql):
+      if sql.lstrip().upper().startswith("INSERT INTO") and not self.failed:
+        self.failed = True
+        raise sqlite3.OperationalError("injected write failure")
+
+    def __getattr__(self, name):
+      return getattr(self.connection, name)
+
+  class FailAfterFirstInsertCursor:
+    def __init__(self, cursor, connection):
+      self.cursor = cursor
+      self.connection = connection
+
+    def execute(self, sql, parameters=()):
+      result = self.cursor.execute(sql, parameters)
+      self.connection._fail_after_insert(sql)
+      return result
+
+    def executemany(self, sql, rows):
+      for row in rows:
+        self.execute(sql, row)
+
+    def __getattr__(self, name):
+      return getattr(self.cursor, name)
+
+  real_connect = sqlite3.connect
+
+  def connect_then_fail(*args, **kwargs):
+    return FailAfterFirstInsert(real_connect(*args, **kwargs))
+
+  monkeypatch.setattr(sqlite3, "connect", connect_then_fail)
+  with pytest.raises(RandEngineError):
+    DataGenerator(SQLITE_SPEC).size(2).write.format("sqlite").option("table", "target").save(str(path))
+
+  assert _sqlite_rows(path, "target") == [(99,)]
+  assert _sqlite_rows(path, "other") == [(42,)]
+  assert not list(tmp_path.glob(".atomic-write.sqlite.*.staging"))
+
+
 def test_sqlite_append_creates_then_requires_the_existing_ordered_schema(tmp_path):
   path = tmp_path / "append.sqlite"
   writer = DataGenerator(SQLITE_SPEC).size(2).write.format("sqlite").option("table", "events")
@@ -883,7 +956,9 @@ def test_sqlite_append_creates_then_requires_the_existing_ordered_schema(tmp_pat
   assert _sqlite_rows(path, "events") == [(1,), (2,), (1,), (2,)]
 
   def reordered(frame):
-    return frame.assign(extra="x")[["extra", "row"]]
+    return frame.assign(extra="x")[["extra", "id"]]
+
+  assert list(reordered(pd.DataFrame({"id": [1]})).columns) == ["extra", "id"]
 
   with pytest.raises(RandEngineError):
     (
@@ -908,6 +983,8 @@ def test_sqlite_append_rolls_back_every_row_when_a_real_constraint_rejects_one(t
 
   def valid_then_invalid(_frame):
     return pd.DataFrame({"id": [2, 7]})
+
+  assert valid_then_invalid(pd.DataFrame({"id": [1, 2]})).to_dict("list") == {"id": [2, 7]}
 
   with pytest.raises(RandEngineError):
     (
