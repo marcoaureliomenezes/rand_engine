@@ -95,4 +95,3 @@ markers after the atoms settle, add the rc-3 CHANGELOG line, exit
 memory, backlog, release and doctor verbs validate it. Known library-owned doctor
 drift is reported and is neither repaired nor bypassed. No bug ledger archive is
 planned: this documentation-only candidate resolves no terminal bug record.
-
