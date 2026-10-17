@@ -197,6 +197,33 @@ def test_event_time_fk_refuses_a_child_with_no_eligible_parent_by_output_column(
   assert not isinstance(error.value, SpecValidationError)
 
 
+@pytest.mark.parametrize("parent_kwargs, skew", [(SEQ, None), (FMT, 1.2)])
+def test_event_time_fk_empty_frame_keeps_the_ordinary_fk_schema(parent_kwargs, skew):
+  ordinary = DataGenerator({
+    "parent_id": {
+      "method": "fk",
+      "kwargs": {
+        "parent": {"method": "pk", "kwargs": parent_kwargs},
+        "parent_size": 10,
+        **({"skew": skew} if skew is not None else {}),
+      },
+    },
+  }, seed=2).size(0).get_df()
+  event_time = DataGenerator({
+    "parent_id": {
+      "method": "fk",
+      "kwargs": {
+        "parent": {"method": "pk", "kwargs": parent_kwargs},
+        "parent_size": 10,
+        "born_before": EVENT_TIME,
+        **({"skew": skew} if skew is not None else {}),
+      },
+    },
+  }, seed=2).size(0).get_df()
+  assert event_time.shape == (0, 1)
+  assert event_time.equals(ordinary)
+
+
 def test_event_time_fk_is_seeded_and_continuous_through_parts_and_streams(tmp_path):
   """Uneven files and stream microbatches use the same source row indexes as one frame."""
   spec = {
