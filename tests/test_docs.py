@@ -529,7 +529,7 @@ def test_writing_doc_runs_row_batches_and_append(tmp_path, monkeypatch, relative
     return start(self, path)
 
   def record_stage(self, staging, *args, **kwargs):
-    staged.append(staging)
+    staged.append(staging.resolve())
     return stage_files(self, staging, *args, **kwargs)
 
   monkeypatch.setattr(FileBatchWriter, "save", record_save)
