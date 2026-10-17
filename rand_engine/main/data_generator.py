@@ -16,13 +16,25 @@ from rand_engine.validators.method_specs import METHOD_CATALOG
 
 
 def _stream_records_are_arrow_compatible(dataframe: pd.DataFrame) -> bool:
-  """Return whether object cells keep their Python representation through Arrow."""
-  lossless_object_types = (str, int, float, bool, date)
+  """Return whether Arrow preserves this frame's public record representation."""
+  if any(type(column) is not str for column in dataframe.columns):
+    return False
+
+  lossless_object_types = {str, int, float, bool, date}
   for column in dataframe.columns:
     values = dataframe[column]
-    if values.dtype != object:
-      continue
-    if any(value is not None and type(value) not in lossless_object_types for value in values):
+    if values.dtype == object:
+      present = [value for value in values if value is not None]
+      value_types = {type(value) for value in present}
+      if len(value_types) > 1 or not value_types <= lossless_object_types:
+        return False
+      if value_types == {int} and any(not -(2 ** 63) <= value < 2 ** 63 for value in present):
+        return False
+    elif isinstance(values.dtype, (pd.CategoricalDtype, pd.StringDtype)):
+      return False
+    elif pd.api.types.is_complex_dtype(values.dtype) or (
+      pd.api.types.is_float_dtype(values.dtype) and values.dtype.itemsize > 8
+    ):
       return False
   return True
 
