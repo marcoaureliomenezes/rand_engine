@@ -8,6 +8,7 @@ import pyarrow as pa
 import pytest
 
 import rand_engine.main.data_generator as data_generator_module
+import rand_engine.utils.stream_handler as stream_handler_module
 from rand_engine.main.data_generator import DataGenerator
 from tests.fixtures.f1_data_generator_specs_right import rand_spec_with_args
 
@@ -171,14 +172,19 @@ class _CustomValue:
     self.value = value
 
 
+class _TaggedText(str):
+  pass
+
+
 @pytest.mark.parametrize(
   ("value", "assert_value"),
   [
     ((1, "two"), lambda actual: actual == (1, "two")),
     (np.array([1, 2]), lambda actual: type(actual) is np.ndarray and actual.tolist() == [1, 2]),
+    (_TaggedText("kept"), lambda actual: type(actual) is _TaggedText and actual == "kept"),
     (_CustomValue("kept"), lambda actual: type(actual) is _CustomValue and actual.value == "kept"),
   ],
-  ids=["tuple", "numpy-array", "custom-object"],
+  ids=["tuple", "numpy-array", "string-subclass", "custom-object"],
 )
 def test_stream_dict_keeps_unproved_object_values_on_pandas_path(monkeypatch, value, assert_value):
   """Containers and custom values never enter Arrow's lossy representation."""
@@ -249,16 +255,13 @@ def test_stream_dict_arrow_batches_keep_order_and_cadence(monkeypatch):
     lambda table, frame, preserve_index: table.from_pandas(frame, preserve_index=preserve_index),
   )
   sleeps = []
-  monkeypatch.setattr(
-    data_generator_module.StreamHandler,
-    "sleep_to_contro_throughput",
-    lambda minimum, maximum: sleeps.append((minimum, maximum)),
-  )
+  monkeypatch.setattr(stream_handler_module.time, "sleep", sleeps.append)
   spec = {"id": {"method": "pk", "kwargs": {"style": "sequence", "start": 1, "step": 1}}}
 
-  records = list(islice(DataGenerator(spec).size(2).stream_dict(50, 100), 4))
+  records = list(islice(DataGenerator(spec).size(2).stream_dict(50, 100), 5))
 
-  assert [record["id"] for record in records] == [1, 2, 3, 4]
+  assert [record["id"] for record in records] == [1, 2, 3, 4, 5]
   assert all(type(record["timestamp_created"]) is float for record in records)
-  assert [(len(frame), preserve_index) for frame, preserve_index in calls] == [(2, False), (2, False)]
-  assert sleeps == [(50, 100)] * 4
+  assert [(len(frame), preserve_index) for frame, preserve_index in calls] == [(2, False)] * 3
+  assert len(sleeps) == 4
+  assert all(1 / 100 <= duration <= 1 / 50 for duration in sleeps)
