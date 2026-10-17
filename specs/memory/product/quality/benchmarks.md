@@ -1,7 +1,7 @@
 ---
 slug: benchmarks
 title: Performance benchmarks
-tldr: "A CI-only same-runner A/B benchmark times every method, modifier and built-in sink, publishes its table and enforces base, sibling and modifier limits."
+tldr: "A CI-only same-runner A/B benchmark times every generation method, two modifiers and the CSV, Parquet, JSON and stream_dict sinks, then enforces base, sibling and modifier limits."
 summary: "The benchmark coordinator alternates timed requests between long-lived base and head workers per row, reports method, modifier and sink throughput, publishes Markdown and JSON artifacts, and fails when a comparable head row exceeds the base ratio, a new distribution exceeds its sibling method, or a modifier costs more than its overhead limit."
 tags: [performance, benchmarks, ci, regression]
 sources:

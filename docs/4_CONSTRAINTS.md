@@ -25,7 +25,7 @@ assert orders["customer_id"].isin(customers["customer_id"]).all()
 
 ## `pk`
 
-<!-- derived-from: pk-fk-constraints sha256:afdf58f551d1 -->
+<!-- derived-from: pk-fk-constraints sha256:324d5cb88eec -->
 
 | kwarg | Default | Meaning |
 |---|---|---|
@@ -53,7 +53,7 @@ assert DataGenerator(spec, seed=99).size(1_000).get_df().equals(df)
 
 ## `fk`
 
-<!-- derived-from: pk-fk-constraints sha256:afdf58f551d1 -->
+<!-- derived-from: pk-fk-constraints sha256:324d5cb88eec -->
 
 | kwarg | Meaning |
 |---|---|
@@ -115,7 +115,7 @@ assert event_time_orders["customer_id"].isin(event_time_parents["customer_id"]).
 
 ## Streams and multi-file writes continue the row index
 
-<!-- derived-from: pk-fk-constraints sha256:afdf58f551d1 -->
+<!-- derived-from: pk-fk-constraints sha256:324d5cb88eec -->
 
 Each microbatch of `stream_dict`, `writeStream`, and each part of `write` with `numFiles` starts at
 the row index where the previous one ended, so `pk` values never repeat across batches.
@@ -130,7 +130,7 @@ assert [r["event_id"] for r in records] == list(range(1, 26))
 
 ## Spark
 
-<!-- derived-from: spark-generator sha256:2d770e2b3d08 -->
+<!-- derived-from: spark-generator sha256:4d2fe0f84301 -->
 
 `SparkGenerator` accepts the same stateless `pk` and `fk` definitions through its key-only adapter.
 An explicit seed controls those keys only; ordinary Spark columns remain native and unseeded.

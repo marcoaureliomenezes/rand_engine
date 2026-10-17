@@ -26,7 +26,7 @@ assert df.columns == ["user_id", "age", "is_active", "signup"]
 
 ## API
 
-<!-- derived-from: spark-generator sha256:2d770e2b3d08 -->
+<!-- derived-from: spark-generator sha256:4d2fe0f84301 -->
 
 | Call | Does |
 |---|---|
@@ -39,8 +39,8 @@ assert df.columns == ["user_id", "age", "is_active", "signup"]
 
 ## Methods
 
-<!-- derived-from: spark-generator sha256:2d770e2b3d08 -->
-<!-- derived-from: generation-methods sha256:4ee6c20c444a -->
+<!-- derived-from: spark-generator sha256:4d2fe0f84301 -->
+<!-- derived-from: generation-methods sha256:1552dc309621 -->
 
 The table records validation's current outcome for every RandSpec method. `yes` means Spark produces
 the column; `NULL + warning` means validation accepts the correlated shape, emits a warning and
@@ -146,6 +146,6 @@ else:
 
 ## Writing
 
-<!-- derived-from: spark-generator sha256:2d770e2b3d08 -->
+<!-- derived-from: spark-generator sha256:4d2fe0f84301 -->
 
 Use Spark's own `df.write`; rand-engine does not own Spark writing.

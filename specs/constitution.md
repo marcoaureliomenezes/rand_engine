@@ -23,7 +23,7 @@ gitflow: {"principal": "master", "integration": "development", "work": "feature/
 5. A writer writes exactly what was asked — row count, format, compression and file count — and tests assert the output read back, not only that a write ran.
 6. Credentials, PyPI or GitHub tokens, API keys and generated local state are never committed; PyPI publishing uses Trusted Publishing (OIDC) only.
 7. Examples, templates, tests, fixtures and evidence use synthetic, sanitized or license-safe data only — never production data or PII.
-8. The library holds no database state and runs no SQL; a database sink, if one is ever added, validates or quotes every spec-supplied identifier before it reaches the database.
+8. Generation holds no database state and never reads a database or runs lookup SQL. An explicitly approved output-only database sink may execute SQL only to persist generated rows; it quotes every spec-supplied identifier and parameter-binds every value before either reaches the database.
 9. Tests write output to pytest `tmp_path` or the workspace `.dadaia/tmp/`, never to a persistent directory in the repo tree.
 10. The core generates data with Python, NumPy and pandas alone: Spark, Faker, a message broker or a database server is never required to generate data.
 11. A runtime dependency, build tool, supported Python range or release mechanism changes only through an approved SPEC, with `specs/memory/ARCHITECTURE.md` `## Tech Stack` updated in the same change.
