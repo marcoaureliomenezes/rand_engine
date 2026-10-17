@@ -124,3 +124,23 @@ with open("out/check.csv", newline="") as file:
 assert header == '"id","name","active"'
 assert first.split(",")[2] in ("true", "false")
 ```
+
+## Returned writer reference
+
+`DataGenerator.write` returns a `FileBatchWriter`; `DataGenerator.writeStream`
+returns a `FileStreamWriter`. These are returned objects, not top-level
+`rand_engine` exports. Both inherit the format, mode and option chain from
+`FileWriter`; `save` finishes a batch write and `trigger`/`start` finish a stream
+write.
+
+::: rand_engine.file_handlers.writer.FileWriter
+    options:
+      inherited_members: true
+
+::: rand_engine.file_handlers._writer_batch.FileBatchWriter
+    options:
+      inherited_members: true
+
+::: rand_engine.file_handlers._writer_stream.FileStreamWriter
+    options:
+      inherited_members: true
