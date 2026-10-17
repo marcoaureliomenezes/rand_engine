@@ -50,7 +50,7 @@ assert not gen.get_df().equals(gen.get_df())
 
 ## Methods
 
-<!-- derived-from: generation-methods sha256:739e81e44532 -->
+<!-- derived-from: generation-methods sha256:d07a707fc569 -->
 
 Each column is `{"method": <name>, "kwargs": {...}}`. Bounds of `integers` are inclusive.
 
@@ -227,7 +227,7 @@ assert (df["adult"] == (df["age"] >= 18)).all()
 
 ## Validation
 
-<!-- derived-from: rand-spec-grammar sha256:4d556c7b982e -->
+<!-- derived-from: rand-spec-grammar sha256:907ff5270b23 -->
 
 An invalid spec raises `SpecValidationError` (a `RandEngineError`) on construction, listing every
 error with a corrected example.

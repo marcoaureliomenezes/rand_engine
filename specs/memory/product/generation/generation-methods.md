@@ -1,12 +1,13 @@
 ---
 slug: generation-methods
 title: Generation methods
-tldr: "Ten common methods run on pandas and Spark; distributions, constant, correlated methods, pk, fk and null/anomaly modifiers run on pandas."
-summary: "NPCore and PyCore provide the NumPy generator's single method map, including bounded floats, alias-sampled poisson and zipf, constants and deterministic keys; SparkCore supplies native Spark expressions for the ten common methods and refuses everything else."
+tldr: "Ten common methods (floats_normal too) run on pandas and Spark; exponential, lognormal, poisson, zipf, constant, correlated, keys and modifiers are pandas-only."
+summary: "NPCore and PyCore provide the NumPy generator's single method map, including bounded floats, exponential and lognormal, alias-sampled poisson and zipf, constants and deterministic keys; SparkCore supplies native Spark expressions for the ten common methods, a NULL string column with a warning for the four correlated methods, and refuses everything else."
 tags: [methods, numpy, spark, correlation, distributions, modifiers]
 sources:
   - rand_engine/core/**
   - rand_engine/main/_rand_generator.py
+  - rand_engine/validators/method_specs.py
 ---
 
 ## Common methods
@@ -14,7 +15,7 @@ sources:
 | method | main kwargs | produces |
 |---|---|---|
 | `integers` | `min`, `max`, `int_type` | inclusive random integers |
-| `int_zfilled` | `length` | zero-padded numeric strings |
+| `int_zfilled` | `length` (1 to 18; at most 15 on Spark) | zero-padded numeric strings of `length` digits |
 | `floats` | `min`, `max`, `decimals` | uniform values on the decimal grid, inside `[min, max]` |
 | `floats_normal` | `mean`, `std`, `decimals` | rounded normal values |
 | `booleans` | `true_prob` | booleans at the requested probability |

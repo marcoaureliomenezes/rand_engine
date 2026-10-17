@@ -42,8 +42,8 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ['3.10', '3.11', '3.12']
-        # Note: Spark tests automatically skip on Windows + Python 3.12 (worker crashes)
+        python-version: ['3.10', '3.11', '3.12', '3.13']
+        # Note: Spark tests skip where the fixture says (worker crashes on Windows)
         # All other tests run normally on all combinations
       fail-fast: false
     
@@ -140,20 +140,7 @@ jobs:
           if [ "$HAS_PR" == "false" ]; then
             echo "## 🔄 Test Execution Status" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "| OS | Python 3.10 | Python 3.11 | Python 3.12 |" >> $GITHUB_STEP_SUMMARY
-            echo "|---------|-------------|-------------|-------------|" >> $GITHUB_STEP_SUMMARY
-            
-            if [ "${{ needs.test.result }}" == "success" ]; then
-              echo "| 🐧 Linux | ✅ Passed | ✅ Passed | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
-              echo "| 🪟 Windows | ✅ Passed | ✅ Passed | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
-              echo "| 🍎 macOS | ✅ Passed | ✅ Passed | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "| 🐧 Linux | ${{ contains(needs.test.result, 'failure') && '❌ Failed' || '✅ Passed' }} | ${{ contains(needs.test.result, 'failure') && '❌ Failed' || '✅ Passed' }} | ${{ contains(needs.test.result, 'failure') && '❌ Failed' || '✅ Passed' }} |" >> $GITHUB_STEP_SUMMARY
-              echo "| 🪟 Windows | ${{ contains(needs.test.result, 'failure') && '❌ Failed' || '✅ Passed' }} | ${{ contains(needs.test.result, 'failure') && '❌ Failed' || '✅ Passed' }} | ${{ contains(needs.test.result, 'failure') && '❌ Failed' || '✅ Passed' }} |" >> $GITHUB_STEP_SUMMARY
-              echo "| 🍎 macOS | ${{ contains(needs.test.result, 'failure') && '❌ Failed' || '✅ Passed' }} | ${{ contains(needs.test.result, 'failure') && '❌ Failed' || '✅ Passed' }} | ${{ contains(needs.test.result, 'failure') && '❌ Failed' || '✅ Passed' }} |" >> $GITHUB_STEP_SUMMARY
-            fi
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Total Test Combinations:** 9 (3 OS × 3 Python versions)" >> $GITHUB_STEP_SUMMARY
+            echo "**Tests:** ${{ needs.test.result }}" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             
             # Next Steps

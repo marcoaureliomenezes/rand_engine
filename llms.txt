@@ -4,7 +4,7 @@
 
 ## Docs
 
-<!-- derived-from: public-api sha256:89376c1754d6 -->
+<!-- derived-from: public-api sha256:55069f519242 -->
 
 - [README](https://github.com/marcoaureliomenezes/rand_engine/blob/master/README.md): landing page with install, a 30-second example, when to use it, the five get-started cases and the docs links
 - [Getting started](https://marcoaureliomenezes.github.io/rand_engine/getting-started/): install and the first spec
@@ -25,7 +25,7 @@
 
 ## Recipes
 
-<!-- derived-from: templates-and-examples sha256:85481f658af5 -->
+<!-- derived-from: templates-and-examples sha256:fa66c7f7252b -->
 
 - [Recipes](https://marcoaureliomenezes.github.io/rand_engine/5_RECIPES/): Faker pools, Kafka or any queue, parquet lake, related tables
 
@@ -40,7 +40,7 @@
 
 ## Optional
 
-<!-- derived-from: benchmarks sha256:005825e85875 -->
+<!-- derived-from: benchmarks sha256:abbf3ecadacb -->
 
 - [Benchmarks](https://marcoaureliomenezes.github.io/rand_engine/BENCHMARKS/): rows/µs per method and sink, measured in CI
 - [Changelog](https://github.com/marcoaureliomenezes/rand_engine/blob/master/CHANGELOG.md): release notes and breaking changes

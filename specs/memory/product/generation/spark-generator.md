@@ -7,11 +7,13 @@ tags: [spark, pyspark, generator]
 sources:
   - rand_engine/main/spark_generator.py
   - rand_engine/core/_spark_core.py
+  - rand_engine/validators/common_validator.py
 ---
 
 ## Role and use
 
 - `SparkGenerator(spark, F, spec).size(n).get_df()` builds a Spark DataFrame; PySpark is supplied by the caller and is not a runtime dependency.
+- CI runs the Spark tests on Linux and macOS with Python 3.10 to 3.13 and on Windows with Python 3.10 and 3.11; on Windows with Python 3.12 or later they skip.
 - `get_df()` without `.size(n)` raises `RandEngineError` naming `.size(n)`.
 - Generation starts from `spark.range(size)`, adds one column per spec entry and drops the technical `id` unless the spec defines it.
 

@@ -47,7 +47,7 @@ a scaffolded example ([[get-started-cli]]) and the docs site, `llms.txt` and age
 | slug | title | tldr |
 |------|-------|------|
 | `data-generator` | DataGenerator | The pandas generator validates a RandSpec, owns its random generator, and returns DataFrames, files, file streams or an endless record stream. |
-| `generation-methods` | Generation methods | Ten common methods run on pandas and Spark; distributions, constant, correlated methods, pk, fk and null/anomaly modifiers run on pandas. |
+| `generation-methods` | Generation methods | Ten common methods (floats_normal too) run on pandas and Spark; exponential, lognormal, poisson, zipf, constant, correlated, keys and modifiers are pandas-only. |
 | `spark-generator` | SparkGenerator | The Spark generator builds a Spark DataFrame from the ten common RandSpec methods with native expressions, no Python UDF, and refuses NumPy-only features. |
 
 ### onboarding
@@ -104,7 +104,7 @@ graph TD
 
 ## Known limits
 
-- Distributions, constants, null and anomaly modifiers, correlated methods, transformers and pk/fk run on pandas only; Spark runs the ten common methods and refuses the rest.
+- The `exponential`, `lognormal`, `poisson` and `zipf` distributions, constants, null and anomaly modifiers, correlated methods, transformers and pk/fk run on pandas only; Spark runs the ten common methods, `floats_normal` included, warns and produces a NULL string column for `distincts_map`, `distincts_map_prop`, `distincts_multi_map` and `complex_distincts`, and refuses the rest.
 - Seeds reach the pandas path only; Spark output is unseeded.
 - PK/FK relations are stateless: parent and child link through definitions, seeds and row indexes, with no stored keys.
 - Built-in sinks are files only; queues, object storage and databases are reached by forwarding DataFrames or `stream_dict` records.

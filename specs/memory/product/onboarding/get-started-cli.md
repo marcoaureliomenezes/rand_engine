@@ -15,7 +15,7 @@ sources:
 - `rand-engine` (console script) and `python -m rand_engine` run the same parser; it uses only the standard library and never reads stdin ([[public-api]]).
 - `rand-engine list` prints one line per case, `<slug>  <description>`, in a fixed order, and exits 0.
 - `rand-engine get-started <slug> [--out DIR]` writes `DIR/<slug>-example.py` (default `DIR` is the current directory, created when missing), prints the written path and exits 0. The `-example` suffix keeps the file name from shadowing a package the example imports.
-- An existing target file is left unchanged: the command prints the path on stderr and exits 1. An unknown slug or a missing argument exits 2 with usage that lists the five slugs.
+- An existing target file is left unchanged: the command prints the path on stderr and exits 1. `get-started` with an unknown or missing slug exits 2 with usage that lists the five slugs; a bare `rand-engine` exits 2 with usage that lists the subcommands `list` and `get-started`.
 - A slug always yields the same bytes: the file is a copy of the packaged `rand_engine/cases/<slug>.py.txt`.
 
 ## Cases
@@ -24,7 +24,7 @@ sources:
 |---|---|
 | `test-data` | a DataFrame for pipeline tests with `null_rate` and `anomaly_rate` ([[generation-methods]]) |
 | `lake` | `pk`/`fk` related tables written as Parquet under `lake/` in the run directory, read back and joined ([[pk-fk-constraints]], [[writers-and-streaming]]) |
-| `kafka` | an event stream printed as JSON lines; a Kafka producer block runs only when `SEND_TO_KAFKA` is set, so no broker or client is needed by default ([[data-generator]]) |
+| `kafka` | an event stream printed as JSON lines; a Kafka producer block runs only when the file's `SEND_TO_KAFKA` constant is set to `True`, so no broker or client is needed by default ([[data-generator]]) |
 | `databricks` | a Spark notebook on native `SparkGenerator`, with a note on `DataGenerator`-only features and the `spark.createDataFrame` path ([[spark-generator]]) |
 | `faker` | Faker pools sampled at NumPy speed through `RandSpecs.faker_pool`; needs the `rand-engine[faker]` extra ([[templates-and-examples]]) |
 

@@ -7,6 +7,8 @@ tags: [performance, benchmarks, ci, regression]
 sources:
   - benchmarks/**
   - .github/workflows/benchmarks.yml
+  - docs/BENCHMARKS.md
+  - docs/benchmarks.json
 ---
 
 ## Coverage
@@ -23,8 +25,14 @@ sources:
 
 ## Delivery and gate
 
-- Pull requests to the principal or integration branch run stress tests and the speed benchmark in one CI job.
+- Pull requests to the principal or integration branch, and a manual dispatch, run stress tests and the speed benchmark in one CI job.
 - The generated Markdown is placed in the job summary and one updated pull-request comment; Markdown and JSON are uploaded as artifacts.
 - Any comparable method or sink row slower than 1.3 times its base fails the job.
 - Within the same run, `poisson` and `zipf` may cost at most 1.5 times `distincts_prop`, and `exponential` and `lognormal` at most 1.5 times `floats_normal`.
 - A modifier's overhead (its row time minus the unmodified `integers` time) may be at most 1.75 times that unmodified time for `null_rate` and 2.5 times for `anomaly_rate`; a modified column therefore costs at most 2.75 and 3.5 times the plain column. Modifier rows have no base comparison.
+
+## Benchmark record
+
+- A candidate whose code touches a measured path records the CI artifact of its last measured head byte for byte as `docs/benchmarks.json` and `docs/BENCHMARKS.md`; the record commit adds only `docs/` and `tests/`, so the measured paths stay at the recorded head.
+- The committed JSON names its head and base commits and is the next run's comparison base; tests check that it names the recorded commits, holds every inventory row at both sizes and passes every repo limit.
+- The docs site serves `docs/BENCHMARKS.md` as its Benchmarks page ([[documentation]]).

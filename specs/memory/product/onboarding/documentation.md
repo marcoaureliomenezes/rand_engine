@@ -15,7 +15,7 @@ sources:
 
 ## Site
 
-- `https://marcoaureliomenezes.github.io/rand_engine/` is built by Zensical over `mkdocs.yml`, with mkdocstrings rendering the API reference from the numpy-style docstrings of the public surface ([[public-api]]); MkDocs-Material builds the same configuration as fallback.
+- `https://marcoaureliomenezes.github.io/rand_engine/` is built by Zensical over `mkdocs.yml`, with mkdocstrings rendering the API reference from the numpy-style docstrings of the public surface ([[public-api]]).
 - Navigation: Home (the README, copied at build), Getting started, five Tutorials (one per get-started case), How-to guides (data generator, Spark generator, writing files, keys, recipes), Reference, Explanation and Benchmarks ([[benchmarks]]).
 - Each tutorial includes its case file verbatim, the same bytes `rand-engine get-started <slug>` writes ([[get-started-cli]]).
 - The site serves `/llms.txt` at its root and each page's Markdown source beside its HTML.
@@ -33,5 +33,5 @@ sources:
 
 ## Executed docs
 
-- Every `python` block of the README, of each Markdown page under `docs/` and of the skill runs in order in a temporary directory; a `python no-run` fence is reserved to the Kafka producer and the tutorials' case includes.
+- Every `python` block of the README, of each Markdown page under `docs/` and of the skill runs in order in a temporary directory; a `python no-run` fence is allowed only for the Kafka producer in `docs/5_RECIPES.md`, each tutorial's one include of its case file, and the skill's Spark blocks.
 - The skill's method table is checked against the method catalog, its Spark column against what validation does; README and `llms.txt` links must resolve.

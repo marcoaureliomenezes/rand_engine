@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `llms.txt` at the docs-site root, linking the site pages and the skill.
 - README rebuilt as a landing page: pitch, badges, install, a 30-second example, the five cases and the docs-site link. Install Faker through the declared extra: `pip install "rand-engine[faker]"`.
 - The validation error footer links the docs site.
+- Python 3.13 tested in CI and advertised (classifiers 3.10–3.13).
+- Package keywords (14) and the `Typing :: Typed` classifier.
 
 ### Fixed
 
@@ -28,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Test-group `pyspark` 3.5.8 and `setuptools` 83.0.0 are locked to patched versions (GHSA-9437-39hj-3c93, GHSA-h35f-9h28-mq5c).
 - The `0.7.0` header is dated `2026-10-14` (it read `Unreleased`).
 - README no longer installs Faker unpinned with `pip install faker`.
+- `int_zfilled` `length` outside 1..18 is refused at validation on both engines (it used to validate, then raise in `get_df`).
+- The package docstring states the library's purpose.
+- `FileStreamWriter.trigger(frequency)` is annotated `float`.
 
 ## [0.7.0] - 2026-10-14
 

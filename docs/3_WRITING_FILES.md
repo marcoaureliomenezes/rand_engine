@@ -24,7 +24,7 @@ assert len(os.listdir("out/clients_json")) == 4
 
 ## Writer contract
 
-<!-- derived-from: writers-and-streaming sha256:21b53d28967c -->
+<!-- derived-from: writers-and-streaming sha256:554e6476d19d -->
 
 - `csv` and `parquet` are written by pyarrow; `json` by pandas (`orient="records"`, one record per line).
 - Only the options below are accepted. Any other raises `RandEngineError` naming it and listing the
@@ -55,7 +55,7 @@ else:
 
 ## Batch: `write`
 
-<!-- derived-from: writers-and-streaming sha256:21b53d28967c -->
+<!-- derived-from: writers-and-streaming sha256:554e6476d19d -->
 
 - `save(path)` with `numFiles` 1 writes one file at `path`, the format and compression extension
   added when missing (`out/clients.csv` + `gzip` → `out/clients.csv.gz`; parquet never gets one).
@@ -85,7 +85,7 @@ assert sum(len(pd.read_csv(f"out/log/{f}")) for f in logs) == 2_000
 
 ## Stream: `writeStream`
 
-<!-- derived-from: writers-and-streaming sha256:21b53d28967c -->
+<!-- derived-from: writers-and-streaming sha256:554e6476d19d -->
 
 `start(path)` writes one microbatch of `size` rows to `path/part-<uuid>.<ext>`, sleeps
 `trigger(frequency)` seconds and repeats until `timeout` seconds have passed. `mode("overwrite")`
@@ -99,7 +99,7 @@ assert len(files) >= 2
 
 ## CSV written by pyarrow
 
-<!-- derived-from: writers-and-streaming sha256:21b53d28967c -->
+<!-- derived-from: writers-and-streaming sha256:554e6476d19d -->
 
 CSV output differs from `pandas.DataFrame.to_csv`:
 

@@ -27,15 +27,15 @@ tags:
 
 ## Gates
 
-- Push to any branch but `master`/`development` with no open PR: the pytest matrix (Ubuntu, Windows, macOS × Python 3.10-3.12) with coverage reported.
+- Push to any branch but `master`/`development` with no open PR: the pytest matrix (Ubuntu, Windows, macOS × Python 3.10–3.13) with coverage reported.
 - PR to `development`: source must not be `master`; the matrix with `--cov-fail-under=60`; Bandit, Semgrep, Safety and Trivy run advisory (they never fail the job); CodeQL analyzes.
 - PR to `master`: source must be `development`; the matrix with coverage.
 - PR to `master` or `development`: the benchmark workflow runs stress tests and a same-runner A/B speed comparison, publishes its summary/comment/artifact and fails a comparable row above the base ratio, a distribution method above its sibling or a modifier above its overhead limit.
-- Merge to `development`: tests (Ubuntu, Python 3.10-3.12), build with the next `rcN` version, `twine check`, a wheel install smoke, the RC tag, PyPI publish.
-- Merge to `master`: tests, build of the `pyproject.toml` version (no RC suffix), the tag, PyPI publish, a GitHub release.
-- The repo `verify:` line (the local job gate) runs `ruff check --select D` (numpy convention) on the six public-surface modules before the suite: 0.03 s measured. No type checker is configured, and CI runs no lint.
-- Inside every pytest run: an `inspect` check that each public callable of `DataGenerator`, `SparkGenerator`, `RandSpecs` and the writer objects carries a numpydoc docstring (it covers the `_`-prefixed writer modules ruff skips), and the doctest examples of those modules; under 1 s measured. The CLI cases add 0.85 s in-process and 2.4 s for the subprocess; the additions total about 4.3 s on a 72.2 s suite run.
-- Docs workflow, on PRs to `development` and `master` and pushes to `feature/**` and `master`: the strict Zensical build, aborting on a broken internal link (2.2 s measured); on `master` it deploys the site to GitHub Pages.
+- Merge to `development`: tests (Ubuntu, Python 3.10–3.13), build with the next `rcN` version, `twine check`, a wheel install smoke, the RC tag, PyPI publish.
+- Merge to `master`: tests (Ubuntu, Python 3.10–3.13), build of the `pyproject.toml` version (no RC suffix), the tag, PyPI publish, a GitHub release.
+- The repo `verify:` line (the local job gate) runs `ruff check --select D` (numpy convention) on the six public-surface modules before the suite. No type checker is configured, and CI runs no lint.
+- Inside every pytest run: an `inspect` check that each public callable of `DataGenerator`, `SparkGenerator`, `RandSpecs` and the writer objects carries a numpydoc docstring (it covers the `_`-prefixed writer modules ruff skips), and the doctest examples of those modules. A full suite run takes 45–93 s on each Ubuntu and macOS leg of Tests on Push run 38973485937.
+- Docs workflow, on PRs to `development` and `master` and pushes to `feature/**` and `master`: the strict Zensical build, aborting on a broken internal link (1.13 s in Docs run 38973485919); on `master` it deploys the site to GitHub Pages.
 
 <!-- dadaia:fixed slop-tests -->
 ### Slop — tests (fixed)

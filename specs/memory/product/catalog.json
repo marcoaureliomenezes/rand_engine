@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-16T13:55:14Z",
+  "generated_at": "2026-10-16T23:44:45Z",
   "features": [
     {
       "rank": 1,
@@ -14,7 +14,7 @@
         "package",
         "exceptions"
       ],
-      "token_estimate": 477,
+      "token_estimate": 562,
       "depends_on": [
         "data-generator",
         "spark-generator",
@@ -46,7 +46,7 @@
         "faker",
         "arrow"
       ],
-      "token_estimate": 487,
+      "token_estimate": 506,
       "depends_on": [
         "data-generator",
         "spark-generator",
@@ -91,8 +91,8 @@
       "slug": "generation-methods",
       "title": "Generation methods",
       "area": "generation",
-      "tldr": "Ten common methods run on pandas and Spark; distributions, constant, correlated methods, pk, fk and null/anomaly modifiers run on pandas.",
-      "summary": "NPCore and PyCore provide the NumPy generator's single method map, including bounded floats, alias-sampled poisson and zipf, constants and deterministic keys; SparkCore supplies native Spark expressions for the ten common methods and refuses everything else.",
+      "tldr": "Ten common methods (floats_normal too) run on pandas and Spark; exponential, lognormal, poisson, zipf, constant, correlated, keys and modifiers are pandas-only.",
+      "summary": "NPCore and PyCore provide the NumPy generator's single method map, including bounded floats, exponential and lognormal, alias-sampled poisson and zipf, constants and deterministic keys; SparkCore supplies native Spark expressions for the ten common methods, a NULL string column with a warning for the four correlated methods, and refuses everything else.",
       "path": "specs/memory/product/generation/generation-methods.md",
       "tags": [
         "methods",
@@ -102,7 +102,7 @@
         "distributions",
         "modifiers"
       ],
-      "token_estimate": 953,
+      "token_estimate": 968,
       "depends_on": [
         "data-generator",
         "spark-generator",
@@ -111,7 +111,8 @@
       ],
       "sources": [
         "rand_engine/core/**",
-        "rand_engine/main/_rand_generator.py"
+        "rand_engine/main/_rand_generator.py",
+        "rand_engine/validators/method_specs.py"
       ]
     },
     {
@@ -127,14 +128,15 @@
         "pyspark",
         "generator"
       ],
-      "token_estimate": 340,
+      "token_estimate": 383,
       "depends_on": [
         "rand-spec-grammar",
         "generation-methods"
       ],
       "sources": [
         "rand_engine/main/spark_generator.py",
-        "rand_engine/core/_spark_core.py"
+        "rand_engine/core/_spark_core.py",
+        "rand_engine/validators/common_validator.py"
       ]
     },
     {
@@ -152,7 +154,7 @@
         "agent-skill",
         "readme"
       ],
-      "token_estimate": 454,
+      "token_estimate": 459,
       "depends_on": [
         "public-api",
         "benchmarks",
@@ -182,7 +184,7 @@
         "scaffolds",
         "examples"
       ],
-      "token_estimate": 427,
+      "token_estimate": 452,
       "depends_on": [
         "public-api",
         "generation-methods",
@@ -215,7 +217,7 @@
         "json",
         "parquet"
       ],
-      "token_estimate": 597,
+      "token_estimate": 614,
       "depends_on": [
         "data-generator"
       ],
@@ -237,11 +239,15 @@
         "ci",
         "regression"
       ],
-      "token_estimate": 381,
-      "depends_on": [],
+      "token_estimate": 512,
+      "depends_on": [
+        "documentation"
+      ],
       "sources": [
         "benchmarks/**",
-        ".github/workflows/benchmarks.yml"
+        ".github/workflows/benchmarks.yml",
+        "docs/BENCHMARKS.md",
+        "docs/benchmarks.json"
       ]
     },
     {
@@ -259,7 +265,7 @@
         "pk",
         "fk"
       ],
-      "token_estimate": 254,
+      "token_estimate": 267,
       "depends_on": [
         "spark-generator",
         "rand-spec-grammar"
@@ -283,7 +289,7 @@
         "grammar",
         "validation"
       ],
-      "token_estimate": 670,
+      "token_estimate": 676,
       "depends_on": [
         "pk-fk-constraints",
         "generation-methods",

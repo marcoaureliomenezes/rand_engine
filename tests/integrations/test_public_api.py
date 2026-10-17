@@ -444,6 +444,40 @@ def test_wheel_documentation_url_is_the_docs_site_named_by_the_error_footer(buil
     assert "Documentation: " + docs in str(exc_info.value)
 
 
+def _wheel_metadata(wheel_path):
+    with ZipFile(wheel_path) as wheel:
+        metadata_path = next(name for name in wheel.namelist() if name.endswith(".dist-info/METADATA"))
+        return BytesParser().parsebytes(wheel.read(metadata_path))
+
+
+def test_package_docstring_first_line_is_the_wheel_summary(built_wheel):
+    import rand_engine
+
+    assert rand_engine.__doc__.splitlines()[0] == _wheel_metadata(built_wheel)["Summary"]
+
+
+def test_wheel_keywords_are_the_fourteen_search_terms(built_wheel):
+    keywords = _wheel_metadata(built_wheel)["Keywords"].split(",")
+
+    assert sorted(keywords) == [
+        "data-engineering", "data-generator", "fake-data", "faker", "kafka", "mock-data",
+        "numpy", "pandas", "parquet", "pyspark", "random-data", "spark", "synthetic-data",
+        "test-data",
+    ]
+
+
+def test_wheel_advertises_typed_and_exactly_the_tested_python_set(built_wheel):
+    metadata = _wheel_metadata(built_wheel)
+    classifiers = metadata.get_all("Classifier", [])
+    prefix = "Programming Language :: Python :: 3."
+
+    assert "Typing :: Typed" in classifiers
+    assert sorted(c for c in classifiers if c.startswith(prefix)) == [
+        prefix + "10", prefix + "11", prefix + "12", prefix + "13",
+    ]
+    assert metadata["Requires-Python"] == ">=3.10"
+
+
 @pytest.mark.parametrize("legacy", [{"args": [0, 3]}, {"splitable": True}, {"sep": ","}, {"pk": 1}])
 def test_legacy_column_keys_are_refused_at_validation(legacy):
     from rand_engine import DataGenerator

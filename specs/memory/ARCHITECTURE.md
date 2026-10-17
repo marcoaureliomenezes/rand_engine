@@ -17,7 +17,7 @@ commit that carries its accepted ADR.
 
 ## Tech Stack
 
-- Python `^3.10` library `rand_engine`, built by Poetry (`poetry-core`) and published to PyPI as `rand-engine`; `pyproject.toml` holds the one version.
+- Python `>=3.10` library `rand_engine` (`requires-python`, CI-tested on 3.10–3.13), built by Poetry (`poetry-core`) from a static PEP 621 `[project]` table and published to PyPI as `rand-engine`; `pyproject.toml` holds the one version.
 - NumPy `^2.1` — the vectorized column engine (`NPCore`); each `DataGenerator` owns one `np.random.default_rng(seed)` passed to generation methods; keys are computed from definitions, the key seed, column name and row index.
 - pandas `^2.2` — DataFrame assembly, transformers and JSON-lines output.
 - PyArrow `^23.0` — CSV and Parquet conversion and output for the batch and stream writers.
@@ -26,7 +26,6 @@ commit that carries its accepted ADR.
 - pytest `^9.0`, pytest-cov (test group) — the suite and its fixture data.
 - ruff `>=0.17.1` (test group) — pydocstyle `D` rules with the numpy convention on the public-surface modules.
 - Zensical `==0.0.70` and mkdocstrings-python `==2.0.9` (optional `docs` group, Python `>=3.11`) — the strict docs-site build and its API reference from numpy-style docstrings, over `mkdocs.yml`.
-- MkDocs-Material — the fallback builder of the same `mkdocs.yml`; not installed by any group.
 - GitHub Actions — test matrix, advisory security scans, same-runner A/B benchmarks, RC and stable publishing through PyPI Trusted Publishing, and the docs build with its GitHub Pages deploy.
 
 ## Structure

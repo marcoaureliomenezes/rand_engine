@@ -38,4 +38,4 @@ sources:
 
 - `WebServerLogs.metadata()` returns the columns for an Apache common log entry; its timestamp transformer renders UTC and the final line carries `+0000`.
 - `WebServerLogs.transformers()` joins those columns and returns only `log_entry`.
-- `rand_engine.templates` re-exports `RandSpecs`.
+- `rand_engine.templates` re-exports `RandSpecs`; its package docstring marks that import deprecated in favour of `from rand_engine import RandSpecs`.

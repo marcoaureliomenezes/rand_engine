@@ -218,10 +218,13 @@ def test_cli_imports_only_stdlib_and_rand_engine():
     elif isinstance(node, ast.ImportFrom) and node.level == 0:
       roots.add(node.module.split(".")[0])
   assert roots - set(sys.stdlib_module_names) <= {"rand_engine"}
+
+
+def test_pyproject_declares_open_python_and_the_four_dependencies():
   pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
-  deps = tomllib.loads(pyproject.read_text(encoding="utf-8"))["tool"]["poetry"]["dependencies"]
-  assert deps == {
-    "python": "^3.10",
+  data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+  assert data.get("project", {}).get("requires-python") == ">=3.10"
+  assert data["tool"]["poetry"]["dependencies"] == {
     "numpy": "^2.1.1",
     "pandas": "^2.2.2",
     "pyarrow": "^23.0.1",

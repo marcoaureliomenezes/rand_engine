@@ -154,6 +154,12 @@ def _integers(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
     return tuple(issues)
 
 
+def _int_zfilled(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
+    if 1 <= kwargs["length"] <= 18:
+        return ()
+    return (("length", "must be an integer within 1..18"),)
+
+
 def _normal(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
     issues: list[SemanticIssue] = []
     if kwargs.get("std", 1.0) < 0:
@@ -324,6 +330,7 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
             required={"length": int},
             arrow_types=_fixed_arrow_types(pa.string()),
             example={"method": "int_zfilled", "kwargs": {"length": 8}},
+            semantic=_int_zfilled,
         ),
         "floats": _spec(
             required={"min": (int, float), "max": (int, float)},

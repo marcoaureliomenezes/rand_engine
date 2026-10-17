@@ -13,12 +13,12 @@ sources:
 ## Primary keys
 
 - `pk` is a column method with `sequence` and `permuted` styles. Sequence computes `start + row_index * step`; permuted applies a keyed bijection over a declared domain and then adds `start`.
-- An optional integer-format string template renders either style as strings. Keys do not depend on the generator seed and are unique while the validated domain and int64 guards hold.
+- An optional integer-format string template renders either style as strings. A `pk` value does not depend on the generator seed and is unique while the validated domain and int64 guards hold.
 
 ## Foreign keys
 
 - `fk` receives a parent `pk` column spec, `parent_size` and optional non-negative `skew`.
-- The child seed, column name, full FK definition and child row index select a parent row. The parent value is rebuilt from its `pk` definition, so parent and child can be generated in separate processes.
+- The key seed derived from the generator seed, the column name, the full FK definition and the child row index select a parent row. The parent value is rebuilt from its `pk` definition, so parent and child can be generated in separate processes.
 - Uniform selection is the default; positive skew applies a Zipf distribution over permuted parent ranks so hot keys are scattered.
 
 ## Continuity and boundaries

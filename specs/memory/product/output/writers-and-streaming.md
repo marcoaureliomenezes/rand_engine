@@ -25,8 +25,8 @@ sources:
 
 ## Stream writer
 
-- `generator.writeStream.trigger(seconds).option("timeout", seconds).start(path)` writes repeated `size`-row microbatches to `part-<uuid>` files; overwrite mode empties the directory first, and `maxRowsPerBatch` is not an accepted stream option.
-- Each microbatch advances the row offset; `start` blocks until the timeout expires.
+- `generator.writeStream.trigger(frequency).option("timeout", seconds).start(path)` writes repeated `size`-row microbatches, sleeping `frequency` seconds (a float, default 1) after each write, to `part-<uuid>` files; overwrite mode empties the directory first, and `maxRowsPerBatch` is not an accepted stream option.
+- Each microbatch advances the row offset; `start` blocks until the timeout (default 20 seconds) expires.
 
 ## Formats
 
