@@ -215,6 +215,62 @@ def test_writing_doc_runs_row_batches_and_append():
   assert "maxRowsPerBatch" in code and 'mode("append")' in code
 
 
+def _writer_option_table() -> dict[str, str]:
+  """The writing guide's format and writer option rows."""
+  text = _text(DOCS / "3_WRITING_FILES.md")
+  table = re.search(r"^\| Format \| Options \|\n\|[-| ]+\n((?:\|.*\n)+)", text, re.M).group(1)
+  return {cells[0].replace("`", ""): cells[1] for row in table.splitlines()
+          for cells in [[cell.strip() for cell in row.strip("|").split("|")]]}
+
+
+def test_writing_doc_inventory_matches_the_accepted_writer_options():
+  """The writer guide lists every accepted format option, including defaults and codecs."""
+  rows = _writer_option_table()
+  assert set(rows) == {"csv", "parquet", "json", "write (batch)", "writeStream"}
+  assert "sep" in rows["csv"] and {"gzip", "bz2", "xz", "zip"} <= set(re.findall(r"`(gzip|bz2|xz|zip)`", rows["csv"]))
+  assert "`snappy` (default)" in rows["parquet"]
+  assert {"force_ascii", "indent", "orient"} <= {name for name in ("force_ascii", "indent", "orient") if name in rows["json"]}
+  assert {"gzip", "bz2", "xz", "zip"} <= set(re.findall(r"`(gzip|bz2|xz|zip)`", rows["json"]))
+  assert "numFiles (default 1)" in rows["write (batch)"] and "maxRowsPerBatch" in rows["write (batch)"]
+  assert "timeout" in rows["writeStream"] and "default 20" in rows["writeStream"]
+
+
+def test_writing_doc_executes_the_documented_writer_lifecycle(tmp_path, monkeypatch):
+  """The guide runs batch and stream chains whose options, modes and files match their documented outcomes."""
+  from rand_engine.file_handlers._writer_batch import FileBatchWriter
+  from rand_engine.file_handlers._writer_stream import FileStreamWriter
+
+  batch, stream = [], []
+  save, start = FileBatchWriter.save, FileStreamWriter.start
+
+  def record_save(self, path):
+    batch.append((self.write_format, self.write_mode, dict(self.write_options), path))
+    return save(self, path)
+
+  def record_start(self, path):
+    stream.append((self.write_format, self.write_mode, self.freq, dict(self.write_options), path))
+    return start(self, path)
+
+  monkeypatch.setattr(FileBatchWriter, "save", record_save)
+  monkeypatch.setattr(FileStreamWriter, "start", record_start)
+  monkeypatch.chdir(tmp_path)
+  namespace = {"__name__": "__docs__"}
+  for i, body in enumerate(b for info, b in python_blocks(DOCS / "3_WRITING_FILES.md") if info == "python"):
+    exec(compile(body, f"3_WRITING_FILES.md[{i}]", "exec"), namespace)
+
+  assert ("parquet", "overwrite", {}, "out/clients.parquet") in batch
+  assert ("csv", "overwrite", {"compression": "gzip"}, "out/clients.csv") in batch
+  assert ("json", "overwrite", {"numFiles": 4}, "out/clients_json") in batch
+  assert ("csv", "overwrite", {"numFiles": 3, "sep": ";"}, "out/parts.csv") in batch
+  assert ("csv", "overwrite", {"numFiles": 2, "maxRowsPerBatch": 100}, "out/log.csv") in batch
+  assert ("csv", "append", {"numFiles": 2}, "out/log.csv") in batch
+  assert stream == [("json", "overwrite", 0.1, {"timeout": 0.3}, "out/stream.json")]
+  assert not list((tmp_path / "out").glob("*.staging"))
+  assert len(list((tmp_path / "out" / "clients_json").iterdir())) == 4
+  assert len(list((tmp_path / "out" / "log").iterdir())) == 4
+  assert len(list((tmp_path / "out" / "stream").iterdir())) >= 2
+
+
 def test_recipes_run_the_helpers():
   """5_RECIPES.md builds specs with RandSpecs.faker_pool and RandSpecs.from_schema."""
   code = block_text("5_RECIPES.md")
