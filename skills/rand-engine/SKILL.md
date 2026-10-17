@@ -58,29 +58,32 @@ assert DataGenerator(spec, seed=42).size(1_000).transformers([flag_adult]).get_d
 
 Every method below runs on `DataGenerator` (NumPy). The last column says whether `SparkGenerator` accepts it.
 
-| Method | kwargs (required first) | Produces | Spark |
-|---|---|---|---|
-| `integers` | `min`, `max`; optional `int_type` | ints in range | yes |
-| `int_zfilled` | `length` (1..18) | zero-padded digit string | yes |
-| `floats` | `min`, `max`; optional `decimals` | uniform floats | yes |
-| `floats_normal` | `mean`, `std`; optional `decimals` | normal floats | yes |
-| `exponential` | optional `scale`, `decimals` | skewed positive floats | refused |
-| `lognormal` | optional `mean`, `std`, `decimals` | heavy-tailed floats | refused |
-| `poisson` | optional `lam` | counts | refused |
-| `zipf` | optional `a` | rank-skewed ints | refused |
-| `booleans` | optional `true_prob` | bools | yes |
-| `distincts` | `distincts` | uniform pick from a list | yes |
-| `distincts_prop` | `distincts` | weighted pick from a dict | yes |
-| `constant` | `value` | the same scalar in every row | refused |
-| `dates` | `start`, `end`; optional `date_format` | date strings | yes |
-| `unix_timestamps` | `start`, `end`; optional `date_format` | epoch seconds | yes |
-| `uuid4` | none | uuid strings | yes |
-| `distincts_map` | `distincts` plus `cols` | correlated key/value columns | NULL + warning |
-| `distincts_map_prop` | `distincts` plus `cols` | weighted correlated pair | NULL + warning |
-| `distincts_multi_map` | `distincts` plus `cols` | correlated columns, one per level | NULL + warning |
-| `complex_distincts` | `pattern`, `replacement`, `templates` | strings built from templates | NULL + warning |
-| `pk` | optional `style`, `start`, `step`, `domain`, `key`, `format` | unique keys | refused |
-| `fk` | `parent`, `parent_size`; optional `skew` | references to parent keys | refused |
+| Method | Required kwargs | Optional kwargs | Column fields | Produces | Spark |
+|---|---|---|---|---|---|
+| `integers` | `min`, `max` | `int_type` | — | ints in range | yes |
+| `int_zfilled` | `length` | — | — | zero-padded digit string | yes |
+| `floats` | `min`, `max` | `decimals` | — | uniform floats | yes |
+| `floats_normal` | `mean`, `std` | `decimals` | — | normal floats | yes |
+| `booleans` | — | `true_prob` | — | bools | yes |
+| `distincts` | `distincts` | — | — | uniform pick from a list | yes |
+| `distincts_prop` | `distincts` | — | — | weighted pick from a dict | yes |
+| `unix_timestamps` | `start`, `end` | `date_format` | — | epoch seconds | yes |
+| `dates` | `start`, `end` | `date_format` | — | date strings | yes |
+| `uuid4` | — | — | — | uuid strings | yes |
+| `exponential` | — | `scale`, `decimals` | — | skewed positive floats | refused |
+| `lognormal` | — | `mean`, `std`, `decimals` | — | heavy-tailed floats | refused |
+| `poisson` | — | `lam` | — | counts | refused |
+| `zipf` | — | `a` | — | rank-skewed ints | refused |
+| `constant` | `value` | — | — | the same scalar in every row | refused |
+| `distincts_map` | `distincts` | — | `cols` | correlated key/value columns | NULL + warning |
+| `distincts_map_prop` | `distincts` | — | `cols` | weighted correlated pair | NULL + warning |
+| `distincts_multi_map` | `distincts` | — | `cols` | correlated columns, one per level | NULL + warning |
+| `complex_distincts` | `pattern`, `replacement`, `templates` | — | — | strings built from templates | NULL + warning |
+| `pk` | — | `style`, `start`, `step`, `domain`, `key`, `format` | — | unique keys | refused |
+| `fk` | `parent`, `parent_size` | `skew` | — | references to parent keys | refused |
+
+**Column fields** are required keys outside `kwargs`. Only the three map methods require `cols`;
+`null_rate`, `anomaly_rate`, and `anomaly_values` are global NumPy-only modifiers.
 
 `dates` `date_format` accepts `%Y %m %d %H %M %S %f` only. Spark refuses `uint64` and integer domains wider than 2**53; it also refuses `int_zfilled` length 16 or above. The four correlated methods validate with a warning and give a NULL column. `null_rate` and `anomaly_rate` are NumPy only. `RandSpecs.faker_pool("name", locale="pt_BR", pool_size=500, seed=0)` returns a `distincts` spec and needs `rand-engine[faker]`; `RandSpecs.from_schema(arrow_schema, overrides={...})` builds a validated RandSpec from supported Arrow families. For the complete boundaries, factory inventory and runnable examples, see the [method guide](https://marcoaureliomenezes.github.io/rand_engine/1_DATA_GENERATOR/) and [recipes](https://marcoaureliomenezes.github.io/rand_engine/5_RECIPES/).
 

@@ -54,29 +54,32 @@ assert not gen.get_df().equals(gen.get_df())
 
 Each column is `{"method": <name>, "kwargs": {...}}`. Bounds of `integers` are inclusive.
 
-| Method | Required kwargs | Optional kwargs |
-|---|---|---|
-| `integers` | `min`, `max` | `int_type` (`int8`…`int64`, `uint8`…`uint64`; default `int32`) |
-| `int_zfilled` | `length` (integer 1…18) | — |
-| `floats` | `min`, `max` | `decimals` (default 2) |
-| `floats_normal` | `mean`, `std` | `decimals` (default 2) |
-| `exponential` | — | `scale` (> 0, default 1.0), `decimals` (default 2) |
-| `lognormal` | — | `mean` (default 0.0), `std` (≥ 0, default 1.0), `decimals` (default 2) |
-| `poisson` | — | `lam` (0 to 10^6, default 1.0); int64 column |
-| `zipf` | — | `a` (> 1, default 2.0); int64 column |
-| `constant` | `value` (a scalar) | — |
-| `booleans` | — | `true_prob` (default 0.5) |
-| `distincts` | `distincts` (list) | — |
-| `distincts_prop` | `distincts` (dict value → integer weight) | — |
-| `uuid4` | — | — |
-| `unix_timestamps` | `start`, `end` | `date_format` (default `%Y-%m-%d`) |
-| `dates` | `start`, `end` | `date_format` (default `%Y-%m-%d`) |
-| `distincts_map` | `distincts` (dict key → list of values) | column `cols` (exactly 2 names) |
-| `distincts_map_prop` | `distincts` (dict key → `[[value, weight], ...]`) | column `cols` (exactly 2 names) |
-| `distincts_multi_map` | `distincts` (dict key → one list per level) | column `cols` (levels + 1 names) |
-| `complex_distincts` | `pattern`, `replacement`, `templates` | — |
-| `pk` | — | `style`, `start`, `step`, `domain`, `key`, `format`; see [4_CONSTRAINTS.md](4_CONSTRAINTS.md) |
-| `fk` | `parent`, `parent_size` | `skew`; see [4_CONSTRAINTS.md](4_CONSTRAINTS.md) |
+| Method | Required kwargs | Optional kwargs | Column fields |
+|---|---|---|---|
+| `integers` | `min`, `max` | `int_type` (default `int32`) | — |
+| `int_zfilled` | `length` (integer 1…18) | — | — |
+| `floats` | `min`, `max` | `decimals` (default 2) | — |
+| `floats_normal` | `mean`, `std` | `decimals` (default 2) | — |
+| `booleans` | — | `true_prob` (default 0.5) | — |
+| `distincts` | `distincts` (list) | — | — |
+| `distincts_prop` | `distincts` (dict value → integer weight) | — | — |
+| `unix_timestamps` | `start`, `end` | `date_format` (default `%Y-%m-%d`) | — |
+| `dates` | `start`, `end` | `date_format` (default `%Y-%m-%d`) | — |
+| `uuid4` | — | — | — |
+| `exponential` | — | `scale` (default 1.0), `decimals` (default 2) | — |
+| `lognormal` | — | `mean` (default 0.0), `std` (default 1.0), `decimals` (default 2) | — |
+| `poisson` | — | `lam` (default 1.0) | — |
+| `zipf` | — | `a` (default 2.0) | — |
+| `constant` | `value` (a scalar) | — | — |
+| `distincts_map` | `distincts` (dict key → list of values) | — | `cols` (exactly 2 names) |
+| `distincts_map_prop` | `distincts` (dict key → `[[value, weight], ...]`) | — | `cols` (exactly 2 names) |
+| `distincts_multi_map` | `distincts` (dict key → one list per level) | — | `cols` (levels + 1 names) |
+| `complex_distincts` | `pattern`, `replacement`, `templates` | — | — |
+| `pk` | — | `style`, `start`, `step`, `domain`, `key`, `format`; see [4_CONSTRAINTS.md](4_CONSTRAINTS.md) | — |
+| `fk` | `parent`, `parent_size` | `skew`; see [4_CONSTRAINTS.md](4_CONSTRAINTS.md) | — |
+
+**Column fields** are required keys beside `kwargs`, not optional kwargs. Only the three map
+methods require `cols`; the global optional modifiers are documented separately below.
 
 `dates` and `unix_timestamps` parse `start` and `end` with `date_format`. A `dates` value is a
 string drawn at whole-second resolution in UTC; its `date_format` may use only the directives

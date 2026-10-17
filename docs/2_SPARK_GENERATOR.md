@@ -74,6 +74,34 @@ is the only parameter key; `args`, `splitable`, `sep` and `pk` as column keys ar
 Spark accepts `int_zfilled` only through length 15, refuses `uint64`, and refuses integer domains
 whose inclusive width exceeds 2**53 because it uses an exact double carrier for those bounds.
 
+The correlated methods are runtime placeholders in Spark: each warning accompanies a real,
+bounded DataFrame whose corresponding column is `string` and entirely NULL.
+
+```python
+import warnings
+
+correlated_specs = {
+    "pair": {"method": "distincts_map", "cols": ["kind", "value"],
+             "kwargs": {"distincts": {"a": ["b"]}}},
+    "weighted_pair": {"method": "distincts_map_prop", "cols": ["kind", "value"],
+                      "kwargs": {"distincts": {"a": [["b", 1]]}}},
+    "levels": {"method": "distincts_multi_map", "cols": ["kind", "value"],
+               "kwargs": {"distincts": {"a": [["b"]]}}},
+    "templated": {"method": "complex_distincts",
+                  "kwargs": {"pattern": "<x>", "replacement": "x", "templates": []}},
+}
+for column, definition in correlated_specs.items():
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        dataframe = SparkGenerator(spark, F, {column: definition}).size(8).get_df()
+    assert any(definition["method"] in str(item.message) for item in caught)
+    assert dataframe.schema[column].dataType.typeName() == "string"
+    assert dataframe.count() == 8
+    assert dataframe.where(dataframe[column].isNotNull()).count() == 0
+    for item in caught:
+        warnings.warn(str(item.message), item.category)
+```
+
 ```python
 from rand_engine.validators.exceptions import SpecValidationError
 
