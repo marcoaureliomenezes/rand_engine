@@ -17,11 +17,13 @@ the main thread syncs this definition after that repair lands.
 | `validators/{method_specs,advanced_validator,common_validator}.py` | catalog owns key grammar; Advanced accepts keys and Common rejects them for Spark | 0 | UPDATE | the catalog and validators must accept the same bounded key grammar before either engine runs. |
 | `main/_rand_generator.py` | passes offset, seed and column to `Keys` | 0 | KEEP | existing dispatch already carries every pandas key input; it needs no alternate generation path. |
 | `main/spark_generator.py` | builds ordinary columns natively from `spark.range`, then drops technical `id` | 0 | UPDATE | add one vectorized adapter for key columns while retaining the native ordinary-column path. |
-| `file_handlers/{writer,_writer_batch}.py` | file-only batch builder stages CSV, JSON and Parquet output | 0 | UPDATE | the existing builder is the sole SQLite entry point; staging and writer validation can carry its bounded transactional sink. |
+| `file_handlers/{writer,_writer_batch,_writer_stream}.py` | batch builder stages CSV, JSON and Parquet; stream builder has its own format intake | 0 | UPDATE | the existing batch builder is the sole SQLite entry point, while the stream builder owns its pre-output SQLite refusal. |
 | `main/data_generator.py` `stream_dict` | normalizes then calls pandas `to_dict("records")` | 0 | UPDATE | substitute Arrow only after unchanged normalization and only for representation failures. |
 | `utils/stream_handler.py` | owns normalization and throughput sleep | 0 | KEEP | normalization and protected `StreamHandler` body stay exactly as released. |
-| `tests/test_{8_consistency,1_advanced_validator,1_common_validator,3_spark_generator,5_files_write_batch,6_stream_objects,docs}.py` | current contract homes for keys, validation, Spark, batch output, streams and executable docs | 0 | UPDATE | each new contract hardens its existing seam; no current assertion is removed, skipped or weakened. |
-| public docs, skill and docstrings | currently describe key refusal on Spark, file-only output and pandas record conversion | 0 | UPDATE | these are the established human/agent consumers of the changed behavior. |
+| `tests/test_{8_consistency,1_advanced_validator,1_common_validator,3_spark_generator,5_files_write_batch,5_files_write_stream,6_stream_objects,docs}.py` | current contract homes for keys, validation, Spark, batch/stream output, streams and executable docs | 0 | UPDATE | each new contract hardens its existing seam; no current assertion is removed, skipped or weakened. |
+| `specs/constitution.md` invariant 8 | prohibits all SQL, although the approved sink is output-only SQL | 0 | UPDATE | AC5.4 gives its exact replacement; closure changes no other invariant. |
+| `docs/comparison.md` | absent | 0 | ADD | one factual, sourced capability comparison has no existing canonical owner; the page serves a distinct decision need and avoids modifying product guides into competitor claims. |
+| public docs, skill and docstrings | currently describe key refusal on Spark, file-only output and pandas record conversion | 0 | UPDATE | these are the established human/agent consumers of the changed behavior and expose the comparison page through existing navigation/indexes. |
 
 ### 1.1 Authorities
 
@@ -32,7 +34,10 @@ the main thread syncs this definition after that repair lands.
 | pandas key dispatch and continuity | `RandGenerator` existing offset/key-seed call | `DataGenerator`, file/stream writers | none |
 | Spark key output | `SparkGenerator` vectorized adapter over `Keys` | `spark.range` source indexes | xxhash approximation and any driver parent table |
 | SQLite builder policy and transaction | `FileBatchWriter` | `FileWriter`, stdlib `sqlite3` | no sink or file-option reuse for SQLite |
+| SQLite stream refusal | `FileStreamWriter` format intake | `FileWriter` shared policy | accidental stream SQLite output |
 | record representation conversion | `DataGenerator.stream_dict` after `StreamHandler.convert_dt_to_str` | PyArrow table conversion | unconditional pandas conversion for compatible batches |
+| output-SQL governance | `specs/constitution.md` invariant 8, exact AC5.4 text | `FileBatchWriter`, closure memory pass | blanket no-SQL wording |
+| factual product comparison | `docs/comparison.md` sourced primary references | navigation, `llms.txt`, benchmark methodology/results | unsourced or speed-winner claims |
 | published behavior | final code and public docstrings | docs, skill, `llms.txt`, catalog atoms | stale Spark-key refusal claims |
 
 `born_before` accepts only builtin `int` and `float`, excluding `bool`; no
@@ -48,6 +53,7 @@ that overflow during generation.
 | Spark key acceptance | `SparkGenerator`, validation tests, Spark guide and method inventory | Job 2 |
 | SQLite batch format | `DataGenerator.write`, writer guides and executable docs | Job 3 |
 | Arrow records | `stream_dict`, Kafka examples and stream tests | Job 4 |
+| factual comparison | navigation, `llms.txt`, strict docs build and product documentation memory | Job 5 and reconciliation |
 | public guidance | docstrings, guides, skill, `llms.txt`, rendered navigation and memory | Job 5 and reconciliation |
 
 ## 2. Decisions and gate cost
@@ -66,7 +72,8 @@ that overflow during generation.
   complete conversions. It neither changes `StreamHandler` nor swallows unrelated
   errors.
 - The existing `verify:` remains the only job gate. Its latest official rc-3
-  worktree merge measured 1,155 passed, 8 deselected and 9 warnings in 115.42 s.
+  worktree merge at `6aeaca0` measured 1,156 passed, 8 deselected and 9 warnings
+  in 89.29 s.
   Targeted RED evidence runs before a task merge; later worktree merge runs the
   unchanged full gate. No dependency, environment, workflow, benchmark or gate is
   added.
@@ -79,12 +86,12 @@ that overflow during generation.
 |---|---|---:|---|
 | Job 1 | — | 1 | `tests/test_8_consistency.py`, `tests/test_1_advanced_validator.py`, `rand_engine/core/_keys.py`, `rand_engine/validators/method_specs.py`, `rand_engine/validators/advanced_validator.py` |
 | Job 2 | Job 1 | 2 | `tests/test_1_common_validator.py`, `tests/test_3_spark_generator.py`, `rand_engine/validators/method_specs.py`, `rand_engine/validators/common_validator.py`, `rand_engine/main/spark_generator.py` |
-| Job 3 | Job 1 | 2 | `tests/test_5_files_write_batch.py`, `rand_engine/file_handlers/writer.py`, `rand_engine/file_handlers/_writer_batch.py` |
+| Job 3 | — | 2 | `tests/test_5_files_write_batch.py`, `tests/test_5_files_write_stream.py`, `rand_engine/file_handlers/writer.py`, `rand_engine/file_handlers/_writer_batch.py`, `rand_engine/file_handlers/_writer_stream.py` |
 | Job 4 | — | 2 | `tests/test_6_stream_objects.py`, `rand_engine/main/data_generator.py` |
-| Job 5 | Job 1, Job 2, Job 3, Job 4 | 3 | `tests/test_docs.py`, `rand_engine/main/data_generator.py`, `rand_engine/main/spark_generator.py`, `rand_engine/file_handlers/writer.py`, `rand_engine/file_handlers/_writer_batch.py`, `docs/1_DATA_GENERATOR.md`, `docs/2_SPARK_GENERATOR.md`, `docs/3_WRITING_FILES.md`, `docs/4_CONSTRAINTS.md`, `docs/5_RECIPES.md`, `docs/explanation.md`, `docs/reference.md`, `mkdocs.yml`, `llms.txt`, `skills/rand-engine/SKILL.md` |
+| Job 5 | Job 1, Job 2, Job 3, Job 4 | 3 | `tests/test_docs.py`, `rand_engine/main/data_generator.py`, `rand_engine/main/spark_generator.py`, `rand_engine/file_handlers/writer.py`, `rand_engine/file_handlers/_writer_batch.py`, `docs/1_DATA_GENERATOR.md`, `docs/2_SPARK_GENERATOR.md`, `docs/3_WRITING_FILES.md`, `docs/4_CONSTRAINTS.md`, `docs/5_RECIPES.md`, `docs/comparison.md`, `docs/explanation.md`, `docs/reference.md`, `mkdocs.yml`, `llms.txt`, `skills/rand-engine/SKILL.md` |
 
-Jobs 2 and 3 wait for Job 1 because they consume the shared key grammar;
-Job 4 is independent. Job 5 waits for all behavior jobs because it owns the one
+Job 2 waits for Job 1 because it consumes the shared key grammar; Jobs 3 and 4
+are independent. Job 5 waits for all behavior jobs because it owns the one
 documentation-test seam and all public consumers. The only cross-job source-file
 overlaps are ordered by those edges.
 
@@ -92,7 +99,9 @@ overlaps are ordered by those edges.
 
 **W:** `CHANGELOG.md`, `docs/1_DATA_GENERATOR.md`, `docs/2_SPARK_GENERATOR.md`,
 `docs/3_WRITING_FILES.md`, `docs/4_CONSTRAINTS.md`, `docs/5_RECIPES.md`,
-`docs/explanation.md`, `docs/reference.md`, `llms.txt`, `skills/rand-engine/SKILL.md`,
+`docs/BENCHMARKS.md`, `docs/benchmarks.json`, `docs/comparison.md`,
+`docs/explanation.md`, `docs/reference.md`, `mkdocs.yml`, `llms.txt`,
+`skills/rand-engine/SKILL.md`, `specs/constitution.md`,
 `specs/backlog/BACKLOG.json`, `specs/backlog/_archive/backlog_histo.jsonl`,
 `specs/memory/ARCHITECTURE.md`, `specs/memory/QUALITY.md`,
 `specs/memory/product/catalog.json`, `specs/memory/product/index.md`,
@@ -107,9 +116,11 @@ overlaps are ordered by those edges.
 `specs/memory/product/quality/benchmarks.md`,
 `specs/releases/0.8.0/_RELEASE.json`.
 
-The product engineer runs the RC-FLOW closure: reconcile the final diff, refresh
-affected docs/skill derived-from markers after atoms settle, regenerate the catalog,
-record the CHANGELOG/closure summary, and exit exactly the four Origin entries as
-delivered. `outreach` remains active. Existing memory, backlog, release and doctor
-checks validate closure. A successful candidate-head benchmark is evidence only;
-its artifacts are copied byte-for-byte only if available before closure.
+The product engineer runs the RC-FLOW closure: apply only AC5.4's exact invariant
+8 replacement, reconcile the final diff, refresh affected docs/skill derived-from
+markers after atoms settle, regenerate the catalog, record the CHANGELOG/closure
+summary, and exit exactly the four Origin entries as delivered. `outreach` remains
+active. Existing memory, backlog, release and doctor checks validate closure. A
+successful candidate-head benchmark artifact is copied byte-for-byte only if
+available before closure; otherwise Actions/PR evidence is recorded without a
+fabricated source record.
