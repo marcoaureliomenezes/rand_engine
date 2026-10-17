@@ -145,6 +145,29 @@ def test_tutorial_no_run_fences_are_only_case_includes():
   assert [b for b in bodies if _include_of(b) is None or not (ROOT / _include_of(b)).is_file()] == []
 
 
+def test_getting_started_maps_each_packaged_scaffold():
+  """Getting started puts each CLI scaffold's command, file, run command, prerequisite, outcome and guide in one map."""
+  rows = _table_rows(DOCS / "getting-started.md", ("Use case", "Command", "File", "Run", "Prerequisite", "Outcome", "Guide"))
+  by_slug = {re.search(r"`([^`]+)`", row[0]).group(1): row for row in rows}
+  assert set(by_slug) == set(CASES)
+  prerequisites = {
+      "test-data": "rand-engine",
+      "lake": "rand-engine",
+      "kafka": "kafka-python",
+      "databricks": "PySpark",
+      "faker": "rand-engine[faker]",
+  }
+  for slug, row in by_slug.items():
+    use_case, command, filename, run, prerequisite, outcome, guide = row
+    assert f"`{slug}`" in use_case
+    assert command == f"`rand-engine get-started {slug}`"
+    assert filename == f"`{slug}-example.py`"
+    assert run == f"`python {slug}-example.py`"
+    assert prerequisites[slug] in prerequisite
+    assert outcome
+    assert LINK.findall(guide) == [f"tutorials/{slug}.md"]
+
+
 def test_readme_python_blocks_execute_in_order(tmp_path, monkeypatch):
   """Every README `python` block runs, in order, in one namespace; only {python, python no-run} fences."""
   blocks = python_blocks(ROOT / "README.md")
@@ -771,6 +794,20 @@ def _llms():
   assert [p for p in pages if not (DOCS / (p.removesuffix("/").removesuffix(".md") or "index")).with_suffix(".md").is_file()] == []
   assert f"{REPO_BLOB}{PRINCIPAL}/skills/rand-engine/SKILL.md" in links
   assert [s for s in CASES if f"{REPO_BLOB}{PRINCIPAL}/rand_engine/cases/{s}.py.txt" not in links] == []
+
+
+def test_llms_points_agents_at_the_api_writer_error_builder_domain_and_case_destinations():
+  """llms.txt advertises rendered destinations for each discovery route and every runnable case file."""
+  links = set(LINK.findall(_text(ROOT / "llms.txt")))
+  assert {
+      f"{SITE}reference/",
+      f"{SITE}3_WRITING_FILES/",
+      f"{SITE}errors/",
+      f"{SITE}5_RECIPES/",
+      f"{SITE}1_DATA_GENERATOR/",
+      f"{SITE}2_SPARK_GENERATOR/",
+  } <= links
+  assert {f"{REPO_BLOB}{PRINCIPAL}/rand_engine/cases/{slug}.py.txt" for slug in CASES} <= links
 
 
 @pytest.mark.parametrize("check", [
