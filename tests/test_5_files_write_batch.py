@@ -884,45 +884,9 @@ def test_sqlite_overwrite_write_failure_keeps_prior_database_and_removes_staging
     database.execute('CREATE TABLE "other" (value INTEGER)')
     database.execute('INSERT INTO "other" VALUES (42)')
 
-  class FailAfterFirstInsert:
-    def __init__(self, connection):
-      self.connection = connection
-      self.failed = False
-
-    def __enter__(self):
-      self.connection.__enter__()
-      return self
-
-    def __exit__(self, *args):
-      return self.connection.__exit__(*args)
-
+  class FailAfterFirstInsertCursor(sqlite3.Cursor):
     def execute(self, sql, parameters=()):
-      result = self.connection.execute(sql, parameters)
-      self._fail_after_insert(sql)
-      return result
-
-    def executemany(self, sql, rows):
-      for row in rows:
-        self.execute(sql, row)
-
-    def cursor(self):
-      return FailAfterFirstInsertCursor(self.connection.cursor(), self)
-
-    def _fail_after_insert(self, sql):
-      if sql.lstrip().upper().startswith("INSERT INTO") and not self.failed:
-        self.failed = True
-        raise sqlite3.OperationalError("injected write failure")
-
-    def __getattr__(self, name):
-      return getattr(self.connection, name)
-
-  class FailAfterFirstInsertCursor:
-    def __init__(self, cursor, connection):
-      self.cursor = cursor
-      self.connection = connection
-
-    def execute(self, sql, parameters=()):
-      result = self.cursor.execute(sql, parameters)
+      result = super().execute(sql, parameters)
       self.connection._fail_after_insert(sql)
       return result
 
@@ -930,13 +894,33 @@ def test_sqlite_overwrite_write_failure_keeps_prior_database_and_removes_staging
       for row in rows:
         self.execute(sql, row)
 
-    def __getattr__(self, name):
-      return getattr(self.cursor, name)
+  class FailAfterFirstInsert(sqlite3.Connection):
+    def __init__(self, *args, **kwargs):
+      super().__init__(*args, **kwargs)
+      self.failed = False
+
+    def execute(self, sql, parameters=()):
+      result = super().execute(sql, parameters)
+      self._fail_after_insert(sql)
+      return result
+
+    def executemany(self, sql, rows):
+      for row in rows:
+        self.execute(sql, row)
+
+    def cursor(self, factory=FailAfterFirstInsertCursor):
+      return super().cursor(factory=factory)
+
+    def _fail_after_insert(self, sql):
+      if sql.lstrip().upper().startswith("INSERT INTO") and not self.failed:
+        self.failed = True
+        raise sqlite3.OperationalError("injected write failure")
 
   real_connect = sqlite3.connect
 
   def connect_then_fail(*args, **kwargs):
-    return FailAfterFirstInsert(real_connect(*args, **kwargs))
+    kwargs["factory"] = FailAfterFirstInsert
+    return real_connect(*args, **kwargs)
 
   monkeypatch.setattr(sqlite3, "connect", connect_then_fail)
   with pytest.raises(RandEngineError):
