@@ -42,14 +42,17 @@ class SparkGenerator:
 
   def __init__(self, spark, F, metadata, seed=None):
     # Validação obrigatória - sempre executada
-    CommonValidator.validate_spark_and_raise(metadata)
-    key_metadata = {
-      column: config for column, config in metadata.items()
-      if isinstance(config, dict) and config.get("method") in ("pk", "fk")
-    }
+    errors = CommonValidator.validate_spark_spec(metadata)
+    key_metadata = {}
+    if isinstance(metadata, dict):
+      key_metadata = {
+        column: config for column, config in metadata.items()
+        if isinstance(config, dict) and config.get("method") in ("pk", "fk")
+      }
     key_errors = AdvancedValidator.validate(key_metadata) if key_metadata else []
-    if key_errors:
-      CommonValidator._raise(key_errors, "SPARKGENERATOR")
+    errors.extend(error for error in key_errors if error not in errors)
+    if errors:
+      CommonValidator._raise(errors, "SPARKGENERATOR")
     
     self.spark = spark
     self.F = F
