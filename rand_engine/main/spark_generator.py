@@ -79,7 +79,7 @@ class SparkGenerator:
     Returns
     -------
     dict
-        Method name to ``SparkCore`` generator function.
+        Method name to its Spark or stateless key generator function.
 
     Examples
     --------
@@ -105,6 +105,8 @@ class SparkGenerator:
       "distincts_multi_map": SparkCore.gen_distincts_multi_map,
       "distincts_map_prop": SparkCore.gen_distincts_map_prop,
       "complex_distincts": SparkCore.gen_complex_distincts,
+      "pk": Keys.gen_pk,
+      "fk": Keys.gen_fk,
     }
  
   def size(self, size):
