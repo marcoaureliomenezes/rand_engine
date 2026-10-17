@@ -4,6 +4,7 @@ import importlib
 import io
 import inspect
 import json
+import os
 import re
 import tempfile
 import textwrap
@@ -502,7 +503,8 @@ def test_recipes_render_the_current_common_and_advanced_factory_surfaces():
   }
 
 
-def test_writing_doc_runs_row_batches_and_append(tmp_path, monkeypatch):
+@pytest.mark.parametrize("relative_staging", [False, True], ids=["absolute-staging", "relative-staging"])
+def test_writing_doc_runs_row_batches_and_append(tmp_path, monkeypatch, relative_staging):
   """3_WRITING_FILES.md executes maxRowsPerBatch and mode("append") (new parts beside the old ones)."""
   from rand_engine.file_handlers._writer_batch import FileBatchWriter
   from rand_engine.file_handlers._writer_stream import FileStreamWriter
@@ -512,6 +514,11 @@ def test_writing_doc_runs_row_batches_and_append(tmp_path, monkeypatch):
 
   batch, stream, staged = [], [], []
   save, start, stage_files = FileBatchWriter.save, FileStreamWriter.start, FileBatchWriter._stage_files
+  mkdtemp = tempfile.mkdtemp
+
+  def return_requested_staging_shape(*args, **kwargs):
+    staging = mkdtemp(*args, **kwargs)
+    return os.path.relpath(staging) if relative_staging else str(Path(staging).resolve())
 
   def record_save(self, path):
     batch.append((self.write_format, self.write_mode, dict(self.write_options)))
@@ -528,6 +535,7 @@ def test_writing_doc_runs_row_batches_and_append(tmp_path, monkeypatch):
   monkeypatch.setattr(FileBatchWriter, "save", record_save)
   monkeypatch.setattr(FileStreamWriter, "start", record_start)
   monkeypatch.setattr(FileBatchWriter, "_stage_files", record_stage)
+  monkeypatch.setattr(tempfile, "mkdtemp", return_requested_staging_shape)
   run_python_blocks(DOCS / "3_WRITING_FILES.md", tmp_path, monkeypatch)
 
   assert {format for format, _, _ in batch} == {"csv", "json", "parquet"}
