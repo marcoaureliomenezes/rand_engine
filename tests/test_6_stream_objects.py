@@ -217,6 +217,76 @@ def test_stream_dict_keeps_mixed_object_column_on_pandas_path(monkeypatch):
   assert records[1]["value"] == (1, 2)
 
 
+@pytest.mark.parametrize(
+  ("frame_factory", "expected_records"),
+  [
+    (
+      lambda index: pd.DataFrame({"value": pd.Series([1, 2.5], dtype="object")}, index=index),
+      [{"value": 1}, {"value": 2.5}],
+    ),
+    (
+      lambda index: pd.DataFrame(
+        {"value": pd.Series([np.complex128(1 + 2j), np.complex128(3 + 4j)])}, index=index
+      ),
+      [{"value": 1 + 2j}, {"value": 3 + 4j}],
+    ),
+    (
+      lambda index: pd.DataFrame({"value": pd.Series([date(2025, 1, 2), 1], dtype="object")}, index=index),
+      [{"value": date(2025, 1, 2)}, {"value": 1}],
+    ),
+    (
+      lambda index: pd.DataFrame({"value": pd.Series([2**63, 1], dtype="object")}, index=index),
+      [{"value": 2**63}, {"value": 1}],
+    ),
+    (
+      lambda index: pd.DataFrame(
+        {"value": pd.Series(pd.Categorical([_TaggedText("kept"), _TaggedText("two")]))}, index=index
+      ),
+      [{"value": _TaggedText("kept")}, {"value": _TaggedText("two")}],
+    ),
+    (
+      lambda index: pd.DataFrame(
+        {"value": pd.Series([_TaggedText("kept"), _TaggedText("two")], dtype="string")}, index=index
+      ),
+      [{"value": _TaggedText("kept")}, {"value": _TaggedText("two")}],
+    ),
+    (
+      lambda index: pd.DataFrame([[7], [8]], columns=[1], index=index),
+      [{1: 7}, {1: 8}],
+    ),
+  ],
+  ids=[
+    "heterogeneous-numbers",
+    "complex",
+    "date-and-int",
+    "large-integer",
+    "category-string-subclass",
+    "extension-string-subclass",
+    "non-string-label",
+  ],
+)
+def test_stream_dict_keeps_unproved_scalar_and_label_partitions_on_pandas_path(
+  monkeypatch, frame_factory, expected_records
+):
+  """Lossy scalar or label partitions retain the existing pandas records."""
+  calls = _record_arrow_boundary(
+    monkeypatch,
+    lambda table, frame, preserve_index: pytest.fail("unproved stream records must not enter Arrow"),
+  )
+
+  stream = _stream_for_frame(lambda frame: frame_factory(frame.index))
+  records = list(islice(stream, 2))
+  for record in records:
+    record.pop("timestamp_created")
+
+  assert calls == []
+  assert records == expected_records
+  for record, expected in zip(records, expected_records):
+    assert {key: type(value) for key, value in record.items()} == {
+      key: type(value) for key, value in expected.items()
+    }
+
+
 def test_stream_dict_falls_back_only_for_arrow_representation_error(monkeypatch):
   """An Arrow representation failure retains pandas records unchanged."""
   calls = _record_arrow_boundary(
