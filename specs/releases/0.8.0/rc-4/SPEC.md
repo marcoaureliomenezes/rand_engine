@@ -175,7 +175,10 @@ and types remain compatible.
   `.write.format("sqlite").option("table", name).mode(mode).save(database_path)`
   for SQLite, where `mode` is `overwrite` (default) or `append`. `table` is required
   and must be a non-empty string without NUL; all generated column and table names
-  are safely quoted, including spaces, quotes and SQL-looking text.
+  are safely quoted, including spaces, quotes and SQL-looking text. After generation
+  and transformation, every column label must be a unique `str` without NUL;
+  duplicate, non-string or NUL-bearing labels are refused before output or commit,
+  with no coercion or lossy name mapping.
 - AC3.2 (integration): overwrite leaves the prior destination unchanged until a
   complete staged database transaction succeeds, then atomically replaces the
   destination. It replaces only the selected table's schema and rows while
