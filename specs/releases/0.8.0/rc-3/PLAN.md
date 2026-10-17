@@ -16,6 +16,7 @@ found zero open bugs. The current candidate changes documentation contracts only
 | `tests/test_docs.py` documentation contracts and executable blocks | owns the reference-`__all__`, method-table, tutorial, landing-link and executable-documentation seams | 0 open; `reference-test-self-referential` was resolved here in rc-2 and must remain hardened | UPDATE | it is the one existing home for semantic inventories and runnable docs. New cases derive expected data from code authorities; the canonical reference assertion is unchanged. |
 | `docs/reference.md` | renders exactly the three top-level `rand_engine.__all__` objects | 0 | KEEP | the main API reference is already the single canonical `__all__` surface; returned writers and errors need destinations without adding their directives to this page. |
 | `docs/3_WRITING_FILES.md` | explains writer use, formats and many options, but does not render the returned writer classes as a reference | 0 | UPDATE | this existing writer page carries the separate returned-writer reference and detailed guidance; a new writer page would duplicate it. |
+| `docs/errors.md` | absent | 0 | ADD | caller-facing error taxonomy has no natural existing documentation owner; a dedicated rendered reference avoids treating an internal-module path as a new public import. |
 | `docs/1_DATA_GENERATOR.md`, `docs/2_SPARK_GENERATOR.md`, `skills/rand-engine/SKILL.md` | name methods, with incomplete `int_zfilled` and Spark-domain detail | 0 | UPDATE | the existing human and agent inventories are the discovery paths; their semantic inventories come from `METHOD_CATALOG` and live Spark validation. |
 | `docs/5_RECIPES.md` | gives happy-path `faker_pool` and `from_schema` examples | 0 | UPDATE | it is the established builder guide; add the bounded supported-type/default, override and error guidance there. |
 | `docs/getting-started.md`, `docs/tutorials/*.md`, `llms.txt`, `mkdocs.yml` | list scaffolds and agent links, but do not provide all prerequisite/outcome maps or all required rendered destinations | 0 | UPDATE | the current onboarding, tutorial, agent index and navigation surfaces can carry the material without an export pipeline. |
@@ -37,17 +38,18 @@ found zero open bugs. The current candidate changes documentation contracts only
 
 | changed surface | consumers | answered by |
 |---|---|---|
-| returned writers and error reference destinations | docs navigation, `llms.txt`, users following `DataGenerator.write` and caught exceptions | Job 2 |
-| method/domain inventory | human guide, agent skill and executable docs blocks | Jobs 1–2 |
-| builders and factory inventory | recipes, reference/discovery and tutorials | Jobs 1–2 |
+| returned writers and error reference destinations | docs navigation, `llms.txt`, users following `DataGenerator.write` and caught exceptions | Job 1 |
+| method/domain inventory | human guide, agent skill and executable docs blocks | Job 2 |
+| builders and factory inventory | recipes, reference/discovery and tutorials | Job 2 |
 | scaffold commands and outcomes | getting-started, five tutorials, direct case files and agent index | Job 3 |
-| documentation memory and deferred markers | catalog readers, docs provenance and release closure | Job 4 |
+| documentation memory and deferred markers | catalog readers, docs provenance and release closure | Reconciliation |
 
 ## 2. Decisions and measured gate cost
 
-- The existing `tests/test_docs.py` is the sole test home. A RED task adds strict
-  xfail semantic cases; each implementation removes only the markers for the
-  documentation it makes true. No current assert is moved, weakened or removed.
+- The existing `tests/test_docs.py` is the sole test home. Every documentation
+  job carries a separate RED test task followed by an implementation task whose
+  `W:` excludes tests; no test is skipped or marked xfail. No current assert is
+  moved, weakened or removed.
 - Existing docs execution remains the evidence for runnable examples. Repository
   `verify:` and test CI run documentation tests; the strict Zensical build runs in
   Docs CI. No command, workflow, dependency, export pipeline or gate is added.
@@ -61,8 +63,8 @@ found zero open bugs. The current candidate changes documentation contracts only
 
 | job | waits on | wave | W: |
 |---|---|---|---|
-| Job 1 | — | 1 | `tests/test_docs.py` |
-| Job 2 | Job 1 | 2 | `tests/test_docs.py`, `docs/1_DATA_GENERATOR.md`, `docs/2_SPARK_GENERATOR.md`, `docs/3_WRITING_FILES.md`, `docs/5_RECIPES.md`, `docs/reference.md`, `mkdocs.yml`, `skills/rand-engine/SKILL.md` |
+| Job 1 | — | 1 | `tests/test_docs.py`, `docs/3_WRITING_FILES.md`, `docs/errors.md`, `mkdocs.yml` |
+| Job 2 | Job 1 | 2 | `tests/test_docs.py`, `docs/1_DATA_GENERATOR.md`, `docs/2_SPARK_GENERATOR.md`, `docs/5_RECIPES.md`, `skills/rand-engine/SKILL.md` |
 | Job 3 | Job 2 | 3 | `tests/test_docs.py`, `docs/getting-started.md`, `docs/tutorials/test-data.md`, `docs/tutorials/lake.md`, `docs/tutorials/kafka.md`, `docs/tutorials/databricks.md`, `docs/tutorials/faker.md`, `llms.txt` |
 
 Job edges serialize work because all non-closure contracts have one declared
