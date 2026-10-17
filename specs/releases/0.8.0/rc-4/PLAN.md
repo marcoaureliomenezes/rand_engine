@@ -1,6 +1,6 @@
 # PLAN — Release: 0.8.0, candidate 4 (stateless relations and output throughput)
 
-**Status:** Draft
+**Status:** Approved
 **Release ID:** 0.8.0
 **Owner:** dd-sw-engineer-sr
 **SPEC:** `specs/releases/0.8.0/rc-4/SPEC.md`
