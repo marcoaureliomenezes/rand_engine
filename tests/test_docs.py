@@ -215,6 +215,187 @@ def test_spark_doc_runs_the_refusal_of_new_methods():
   assert any(method in code for method in NEW_METHODS - {"constant"})
 
 
+def _method_rows(path: Path) -> dict[str, str]:
+  """Return the documented parameter cell for each row in the primary method table."""
+  text = _text(path)
+  table = re.search(
+      r"^\| Method \| Required kwargs \| Optional kwargs \|\n\|[-| ]+\n((?:\|.*\n)+)",
+      text,
+      re.M,
+  ).group(1)
+  return {
+      method: "|".join(row.split("|")[2:]).strip()
+      for row in table.splitlines()
+      for method in re.findall(r"`(\w+)`", row.split("|")[1])
+  }
+
+
+def test_data_generator_method_inventory_is_the_catalog_with_its_parameters():
+  """The human method table exposes every catalog method and each declared parameter."""
+  from rand_engine.validators.method_specs import METHOD_CATALOG
+
+  rows = _method_rows(DOCS / "1_DATA_GENERATOR.md")
+  assert set(rows) == set(METHOD_CATALOG)
+  assert {
+      (method, name)
+      for method, entry in METHOD_CATALOG.items()
+      for name in (*entry.required, *entry.optional)
+      if name not in rows[method]
+  } == set()
+
+
+def test_spark_method_inventory_matches_live_validation():
+  """The human Spark table records every catalog method's current validation outcome."""
+  from rand_engine.validators.method_specs import METHOD_CATALOG
+
+  match = re.search(
+      r"^\| Method \| Spark \|\n\|[-| ]+\n((?:\|.*\n)+)",
+      _text(DOCS / "2_SPARK_GENERATOR.md"),
+      re.M,
+  )
+  assert match is not None
+  table = match.group(1)
+  rows = {
+      method: cells[-1]
+      for row in table.splitlines()
+      for cells in [[cell.strip() for cell in row.strip("|").split("|")]]
+      for method in re.findall(r"`(\w+)`", cells[0])
+  }
+  assert set(rows) == set(METHOD_CATALOG)
+  assert {name: (rows[name], spark_outcome(spec.example)) for name, spec in METHOD_CATALOG.items()
+          if rows[name] != spark_outcome(spec.example)} == {}
+
+
+def documented_spark_specs(name, tmp_path, monkeypatch):
+  """Run a guide and return each Spark spec with whether construction refused it."""
+  from rand_engine import SparkGenerator
+  from rand_engine.validators.exceptions import SpecValidationError
+
+  seen = []
+  init = SparkGenerator.__init__
+
+  def record(self, spark, functions, spec, *args, **kwargs):
+    try:
+      init(self, spark, functions, spec, *args, **kwargs)
+    except SpecValidationError:
+      seen.append((spec, True))
+      raise
+    seen.append((spec, False))
+
+  monkeypatch.setattr(SparkGenerator, "__init__", record)
+  run_python_blocks(DOCS / name, tmp_path, monkeypatch)
+  return seen
+
+
+def test_data_generator_doc_executes_int_zfilled_boundaries(tmp_path, monkeypatch):
+  """The pandas guide executes both accepted and refused int_zfilled lengths."""
+  outcomes = {
+      column["kwargs"]["length"]: refused
+      for spec, refused in documented_specs("1_DATA_GENERATOR.md", tmp_path, monkeypatch)
+      for column in spec.values()
+      if column["method"] == "int_zfilled"
+  }
+  assert {length: outcomes.get(length) for length in (1, 18, 0, 19)} == {
+      1: False, 18: False, 0: True, 19: True,
+  }
+
+
+def test_spark_doc_executes_integer_boundaries(tmp_path, monkeypatch, spark_session):
+  """The Spark guide executes its exact digit, carrier and width partitions."""
+  outcomes = [
+      (column, refused)
+      for spec, refused in documented_spark_specs("2_SPARK_GENERATOR.md", tmp_path, monkeypatch)
+      for column in spec.values()
+  ]
+  assert {
+      (column["method"], tuple(sorted(column["kwargs"].items()))): refused
+      for column, refused in outcomes
+      if column["method"] == "int_zfilled"
+  }.items() >= {
+      ("int_zfilled", (("length", 15),)): False,
+      ("int_zfilled", (("length", 16),)): True,
+  }.items()
+  integers = [(column["kwargs"], refused) for column, refused in outcomes if column["method"] == "integers"]
+  assert any(kwargs.get("int_type") == "uint64" and refused for kwargs, refused in integers)
+  assert any(
+      kwargs.get("int_type") == "int64"
+      and kwargs.get("max", 0) - kwargs.get("min", 0) + 1 > 2**53
+      and refused
+      for kwargs, refused in integers
+  )
+
+
+def documented_builder_calls(tmp_path, monkeypatch):
+  """Run recipe blocks while recording the builder outputs and refusal partitions they show."""
+  from rand_engine import RandSpecs
+  from rand_engine.validators.exceptions import RandEngineError, SpecValidationError
+
+  calls = []
+  faker_pool, from_schema = RandSpecs.faker_pool, RandSpecs.from_schema
+
+  def record_faker(*args, **kwargs):
+    try:
+      result = faker_pool(*args, **kwargs)
+    except RandEngineError as error:
+      calls.append(("faker_pool", args, kwargs, type(error)))
+      raise
+    calls.append(("faker_pool", args, kwargs, result))
+    return result
+
+  def record_schema(*args, **kwargs):
+    try:
+      result = from_schema(*args, **kwargs)
+    except SpecValidationError as error:
+      calls.append(("from_schema", args, kwargs, type(error)))
+      raise
+    calls.append(("from_schema", args, kwargs, result))
+    return result
+
+  monkeypatch.setattr(RandSpecs, "faker_pool", record_faker)
+  monkeypatch.setattr(RandSpecs, "from_schema", record_schema)
+  run_python_blocks(DOCS / "5_RECIPES.md", tmp_path, monkeypatch)
+  return calls
+
+
+def test_recipes_execute_builder_defaults_overrides_and_refusals(tmp_path, monkeypatch):
+  """Recipes exercise the real builder recipes, override modes and error partitions."""
+  import pyarrow as pa
+  from rand_engine.validators.exceptions import RandEngineError, SpecValidationError
+
+  calls = documented_builder_calls(tmp_path, monkeypatch)
+  faker = [entry for entry in calls if entry[0] == "faker_pool"]
+  assert any(isinstance(entry[-1], dict) and entry[-1]["method"] == "distincts" for entry in faker)
+  assert any(entry[-1] is RandEngineError for entry in faker)
+  schemas = [entry for entry in calls if entry[0] == "from_schema"]
+  supported = {
+      type(field.type)
+      for _, args, _, result in schemas
+      if isinstance(result, dict)
+      for field in args[0]
+  }
+  assert {type(pa.bool_()), type(pa.int64()), type(pa.float64()), type(pa.string()),
+          type(pa.date32()), type(pa.timestamp("us")), type(pa.null())} <= supported
+  assert any(isinstance(result, dict) and kwargs.get("overrides") for _, _, kwargs, result in schemas)
+  assert any(entry[-1] is SpecValidationError for entry in schemas)
+
+
+def test_recipes_render_the_current_common_and_advanced_factory_surfaces():
+  """The recipe reference renders both supported factory families from their defining classes."""
+  from rand_engine.examples import AdvancedRandSpecs, CommonRandSpecs
+
+  factories = lambda cls: {
+      name for name, member in inspect.getmembers(cls)
+      if not name.startswith("_") and callable(member)
+  }
+  common = factories(CommonRandSpecs) - {"faker_pool", "from_schema"}
+  advanced = factories(AdvancedRandSpecs)
+  assert len(common) == len(advanced) == 10
+  assert set(_directives(DOCS / "5_RECIPES.md")) >= {
+      f"{CommonRandSpecs.__module__}.{CommonRandSpecs.__qualname__}",
+      f"{AdvancedRandSpecs.__module__}.{AdvancedRandSpecs.__qualname__}",
+  }
+
+
 def test_writing_doc_runs_row_batches_and_append(tmp_path, monkeypatch):
   """3_WRITING_FILES.md executes maxRowsPerBatch and mode("append") (new parts beside the old ones)."""
   from rand_engine.file_handlers._writer_batch import FileBatchWriter
