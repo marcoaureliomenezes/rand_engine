@@ -508,8 +508,20 @@ def test_spark_key_vectors_match_pandas_across_noncontiguous_partition_batches(
     assert dataframe.orderBy("id").toPandas().to_dict("records") == expected
 
 
-def test_spark_key_validation_reuses_the_pandas_key_semantics(spark_session, spark_functions):
-    """Malformed keys are collected at construction, before a Spark job can run."""
+@pytest.mark.parametrize(
+    ("ordinary_column", "ordinary_messages"),
+    [
+        (None, ()),
+        (
+            {"method": "integers", "kwargs": {"min": 1}},
+            ("method 'integers' requires parameter 'max'",),
+        ),
+    ],
+)
+def test_spark_key_validation_reuses_the_pandas_key_semantics(
+    spark_session, spark_functions, ordinary_column, ordinary_messages
+):
+    """Malformed key and ordinary columns report every issue before Spark runs."""
     spec = {
         "parent_id": {
             "method": "fk",
@@ -525,14 +537,23 @@ def test_spark_key_validation_reuses_the_pandas_key_semantics(spark_session, spa
             },
         },
     }
+    if ordinary_column is not None:
+        spec["age"] = ordinary_column
     pandas_errors = AdvancedValidator.validate(spec)
 
     assert pandas_errors
     with pytest.raises(SpecValidationError) as exc_info:
         SparkGenerator(spark_session, spark_functions, spec, seed=123)
 
-    for message in ("pk 'style' is unknown", "'parent_size' must be an integer >= 1", "born_before.child_rate"):
-        assert message in str(exc_info.value)
+    error_text = str(exc_info.value)
+    assert "SPARKGENERATOR SPEC VALIDATION ERROR" in error_text
+    for message in (
+        "pk 'style' is unknown",
+        "'parent_size' must be an integer >= 1",
+        "born_before.child_rate",
+        *ordinary_messages,
+    ):
+        assert message in error_text
         assert any(message in error for error in pandas_errors)
 
 
