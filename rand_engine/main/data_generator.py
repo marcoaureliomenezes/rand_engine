@@ -1,6 +1,7 @@
 """Generate pandas DataFrames, dict streams and files from one RandSpec and one seed."""
 from functools import cache, partial
 import time
+from datetime import date
 import pandas as pd
 import numpy as np
 import pyarrow as pa
@@ -12,6 +13,18 @@ from rand_engine.utils.stream_handler import StreamHandler
 from rand_engine.validators.advanced_validator import AdvancedValidator
 from rand_engine.validators.exceptions import RandEngineError
 from rand_engine.validators.method_specs import METHOD_CATALOG
+
+
+def _stream_records_are_arrow_compatible(dataframe: pd.DataFrame) -> bool:
+  """Return whether object cells keep their Python representation through Arrow."""
+  lossless_object_types = (str, int, float, bool, date)
+  for column in dataframe.columns:
+    values = dataframe[column]
+    if values.dtype != object:
+      continue
+    if any(value is not None and type(value) not in lossless_object_types for value in values):
+      return False
+  return True
 
 
 class DataGenerator:
@@ -274,7 +287,13 @@ class DataGenerator:
       df_data_microbatch = self.wrapped_df_generator(size, offset)()
       offset += size
       df_data_parsed = StreamHandler.convert_dt_to_str(df_data_microbatch)
-      list_of_records = df_data_parsed.to_dict('records')
+      if _stream_records_are_arrow_compatible(df_data_parsed):
+        try:
+          list_of_records = pa.Table.from_pandas(df_data_parsed, preserve_index=False).to_pylist()
+        except (pa.ArrowInvalid, pa.ArrowTypeError):
+          list_of_records = df_data_parsed.to_dict('records')
+      else:
+        list_of_records = df_data_parsed.to_dict('records')
       for record in list_of_records:
         record["timestamp_created"] = round(time.time(), 3)
         yield record
