@@ -128,16 +128,21 @@ class Keys:
       if not eligible.all():
         raise RandEngineError(f"fk column '{column}' has a child with no eligible parent")
       idx = np.empty(indexes.size, dtype=np.int64)
-      for count in np.unique(eligible):
-        selected = eligible == count
+      order = np.argsort(eligible, kind="stable")
+      sorted_eligible = eligible[order]
+      starts = np.r_[0, np.flatnonzero(np.diff(sorted_eligible)) + 1]
+      ends = np.r_[starts[1:], indexes.size]
+      for start, end in zip(starts, ends):
+        positions = order[start:end]
+        count = int(sorted_eligible[start])
         fk_seed = cls._fk_seed(parent, int(count), skew, key_seed, column)
-        h = cls.cell_hash(fk_seed, indexes[selected])
+        h = cls.cell_hash(fk_seed, indexes[positions])
         if skew:
-          idx[selected] = cls._feistel(
-            cls._zipf_rank(h, int(count), skew), int(count), fk_seed
+          idx[positions] = cls._feistel(
+            cls._zipf_rank(h, count, skew), count, fk_seed
           )
         else:
-          idx[selected] = h % count
+          idx[positions] = h % count
     return cls._pk_at(idx, 0, parent_size - 1, **parent.get("kwargs", {}))
 
 

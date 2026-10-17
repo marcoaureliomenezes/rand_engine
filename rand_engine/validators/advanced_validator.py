@@ -373,11 +373,13 @@ class AdvancedValidator:
             required = {"parent_start", "parent_rate", "child_start", "child_rate"}
             for field in sorted(required - set(born_before)):
                 errors.append(f"❌ Column '{col_name}': fk 'born_before' requires '{field}'")
-            for field in sorted(set(born_before) - required):
+            for field in born_before:
+                if field in required:
+                    continue
                 errors.append(f"❌ Column '{col_name}': fk 'born_before' does not take '{field}'")
             for field in sorted(required & set(born_before)):
                 value = born_before[field]
-                if type(value) not in (int, float) or not math.isfinite(value):
+                if type(value) not in (int, float) or (isinstance(value, float) and not math.isfinite(value)):
                     errors.append(
                         f"❌ Column '{col_name}': fk 'born_before.{field}' must be a finite builtin int or float"
                     )
