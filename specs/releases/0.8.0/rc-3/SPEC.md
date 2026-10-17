@@ -210,9 +210,10 @@ yet let a user answer several ordinary questions from one accurate source:
 - AC4.3 (unit): the agent skill's method outcomes remain derived from live
   validation, and its examples remain executable under the existing docs harness.
   Links from the skill and `llms.txt` resolve; no test asserts editorial prose.
-- AC4.4 (no new test; reason: the strict build and documentation tests already run
-  in the repo `verify:` and CI gates): this candidate adds no build step, dependency,
-  gate or second generated documentation source.
+- AC4.4 (no new test; reason: documentation tests already run in the repo
+  `verify:` and test CI, while the strict Zensical build runs in the existing Docs
+  CI): this candidate adds no build step, dependency, gate or second generated
+  documentation source.
 
 ### FR5 — Reconcile product truth and release-facing documentation
 
@@ -254,8 +255,8 @@ yet let a user answer several ordinary questions from one accurate source:
 
 | wave | scope | ACs |
 |---|---|---|
-| 1 — dev-loop contracts | semantic inventories for writers, errors, methods, builders and cases, using the existing docs test home | AC1.1–AC1.4, AC2.1, AC2.4, AC3.3 |
-| 2 — shared human reference | returned writers, errors, builders and code-backed method/domain reference | AC1.2–AC2.3 |
+| 1 — dev-loop contracts | semantic inventories for writers, errors, methods, builders and cases, using the existing docs test home | AC1.1–AC1.4, AC2.1, AC2.4 contract, AC3.3 |
+| 2 — shared human reference | returned writers, errors, builders, code-backed method/domain reference and writer guidance | AC1.2–AC2.4 |
 | 3 — onboarding and agent discovery | five scaffold outcomes, use-case routing, `llms.txt` and the skill | AC3.1–AC4.4 |
 | 4 — promote-facing closure | release notes, product memory and deferred markers | AC5.1–AC5.3 |
 
