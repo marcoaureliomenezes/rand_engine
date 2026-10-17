@@ -21,6 +21,19 @@ def _stream_records_are_arrow_compatible(dataframe: pd.DataFrame) -> bool:
     return False
 
   lossless_object_types = {str, int, float, bool, date}
+  lossless_extension_types = (
+    pd.BooleanDtype,
+    pd.Int8Dtype,
+    pd.Int16Dtype,
+    pd.Int32Dtype,
+    pd.Int64Dtype,
+    pd.UInt8Dtype,
+    pd.UInt16Dtype,
+    pd.UInt32Dtype,
+    pd.UInt64Dtype,
+    pd.Float32Dtype,
+    pd.Float64Dtype,
+  )
   for column in dataframe.columns:
     values = dataframe[column]
     if values.dtype == object:
@@ -30,11 +43,13 @@ def _stream_records_are_arrow_compatible(dataframe: pd.DataFrame) -> bool:
         return False
       if value_types == {int} and any(not -(2 ** 63) <= value < 2 ** 63 for value in present):
         return False
-    elif isinstance(values.dtype, (pd.CategoricalDtype, pd.StringDtype)):
-      return False
-    elif pd.api.types.is_complex_dtype(values.dtype) or (
-      pd.api.types.is_float_dtype(values.dtype) and values.dtype.itemsize > 8
-    ):
+    elif isinstance(values.dtype, lossless_extension_types):
+      continue
+    elif isinstance(values.dtype, np.dtype) and values.dtype.kind in {"b", "i", "u"}:
+      continue
+    elif isinstance(values.dtype, np.dtype) and values.dtype.kind == "f" and values.dtype.itemsize <= 8:
+      continue
+    else:
       return False
   return True
 
