@@ -563,6 +563,25 @@ def test_spark_key_validation_keeps_the_existing_top_level_shape_error(spark_ses
         SparkGenerator(spark_session, spark_functions, ["not", "a", "RandSpec"], seed=123)
 
 
+@pytest.mark.parametrize(
+    ("column", "problem"),
+    [
+        ({"method": "pk", "args": [1], "kwargs": {}}, "args"),
+        ({"method": "pk", "kwargs": {}, "null_rate": 0.25}, "null_rate"),
+    ],
+)
+def test_spark_key_validation_reports_each_generic_key_problem_once(
+    spark_session, spark_functions, column, problem
+):
+    """A generic key error has one column diagnostic from Spark validation."""
+    with pytest.raises(SpecValidationError) as exc_info:
+        SparkGenerator(spark_session, spark_functions, {"account_id": column}, seed=123)
+
+    error_text = str(exc_info.value)
+    assert error_text.count("❌ Column 'account_id'") == 1
+    assert problem in error_text
+
+
 def test_spark_key_zero_size_keeps_the_requested_schema(spark_session, spark_functions):
     """A zero-row key frame is valid and does not expose an implementation index."""
     spec = {"account_id": {"method": "pk", "kwargs": {"start": 9, "step": 4}}}
