@@ -59,8 +59,12 @@ that overflow during generation.
 - SQLite uses only `sqlite3`, adjacent staging for overwrite and a single
   transaction for append. Identifiers are quoted and values are parameter-bound.
   No database handle crosses into generation.
-- Arrow conversion catches representation exceptions only. It neither changes
-  `StreamHandler` nor executes both conversions for compatible data.
+- Arrow conversion first makes one cheap lossless-type decision for object cells,
+  then catches only representation exceptions. It keeps scalar strings and dates,
+  including the benchmark workload, on Arrow; it sends nested containers, NumPy
+  arrays, custom objects and other unproved cells to pandas without comparing two
+  complete conversions. It neither changes `StreamHandler` nor swallows unrelated
+  errors.
 - The existing `verify:` remains the only job gate. Its latest official rc-3
   worktree merge measured 1,155 passed, 8 deselected and 9 warnings in 115.42 s.
   Targeted RED evidence runs before a task merge; later worktree merge runs the
