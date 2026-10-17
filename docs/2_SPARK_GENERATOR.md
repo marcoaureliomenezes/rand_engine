@@ -37,7 +37,7 @@ There is no seed, no `.transformers`, no `.write`: use Spark's own `withColumn` 
 ## Methods
 
 <!-- derived-from: spark-generator sha256:2d770e2b3d08 -->
-<!-- derived-from: generation-methods sha256:d07a707fc569 -->
+<!-- derived-from: generation-methods sha256:4ee6c20c444a -->
 
 The table records validation's current outcome for every RandSpec method. `yes` means Spark produces
 the column; `NULL + warning` means validation accepts the correlated shape, emits a warning and

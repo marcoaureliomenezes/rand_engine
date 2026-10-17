@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-16T23:44:45Z",
+  "generated_at": "2026-10-17T18:37:15Z",
   "features": [
     {
       "rank": 1,
@@ -144,8 +144,8 @@
       "slug": "documentation",
       "title": "Documentation site, llms.txt and agent skill",
       "area": "onboarding",
-      "tldr": "A strict-built GitHub Pages site, a landing README, a root llms.txt and an Agent Skill document rand-engine, and the suite executes their code.",
-      "summary": "The docs site at https://marcoaureliomenezes.github.io/rand_engine/ is built by Zensical from the repo Markdown and the public docstrings; README is a landing page that becomes the site home; llms.txt indexes site pages, the skill and the case files for agents; skills/rand-engine/SKILL.md teaches agents the RandSpec grammar. Every python block of the README, the docs pages and the skill runs in the suite.",
+      "tldr": "A strict-built documentation site, a landing README, llms.txt and an Agent Skill cover the API, examples and use cases, and the suite executes their runnable code.",
+      "summary": "Zensical builds the repository's documentation from Markdown and public docstrings for the GitHub Pages target; README becomes the site home; rendered references cover the public API, returned writers and caller-facing errors; llms.txt indexes rendered guides, the skill and direct case files; and the suite checks semantic inventories, links and runnable Python blocks.",
       "path": "specs/memory/product/onboarding/documentation.md",
       "tags": [
         "docs",
@@ -154,12 +154,15 @@
         "agent-skill",
         "readme"
       ],
-      "token_estimate": 459,
+      "token_estimate": 562,
       "depends_on": [
         "public-api",
+        "writers-and-streaming",
         "benchmarks",
         "get-started-cli",
-        "rand-spec-grammar"
+        "generation-methods",
+        "rand-spec-grammar",
+        "templates-and-examples"
       ],
       "sources": [
         "docs/**",
