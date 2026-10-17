@@ -730,7 +730,7 @@ def test_any_mode_but_append_replaces_the_multi_file_destination(tmp_path, mode)
   assert len(new) == 2 and not new & old
 
 
-SQLITE_SPEC = {"row": {"method": "integers", "kwargs": {"min": 0, "max": 9}}}
+SQLITE_SPEC = PK_SPEC
 
 
 def _sqlite_tables(path):
@@ -767,14 +767,18 @@ def test_sqlite_refuses_invalid_transformed_column_labels_before_touching_destin
   with sqlite3.connect(path) as database:
     database.execute('CREATE TABLE "keep" (value INTEGER)')
     database.execute('INSERT INTO "keep" VALUES (91)')
+    database.execute('CREATE TABLE "target" (value INTEGER)')
+    database.execute('INSERT INTO "target" VALUES (17)')
 
   def relabel(frame):
+    if len(columns) == 2:
+      return pd.DataFrame([[1, 2]], columns=columns)
     return frame.set_axis(columns, axis="columns")
 
   with pytest.raises(RandEngineError):
     (
       DataGenerator(SQLITE_SPEC)
-      .size(len(columns))
+      .size(1)
       .transformers([relabel])
       .write
       .format("sqlite")
@@ -782,8 +786,9 @@ def test_sqlite_refuses_invalid_transformed_column_labels_before_touching_destin
       .save(str(path))
     )
 
-  assert _sqlite_tables(path) == [("keep",)]
+  assert _sqlite_tables(path) == [("keep",), ("target",)]
   assert _sqlite_rows(path, "keep") == [(91,)]
+  assert _sqlite_rows(path, "target") == [(17,)]
   assert not list(tmp_path.glob(".invalid-columns.sqlite.*.staging"))
 
 
@@ -839,7 +844,7 @@ def test_sqlite_overwrite_replaces_only_selected_table_and_preserves_unrelated_t
 
   assert _sqlite_tables(path) == [("other",), ("target",)]
   assert _sqlite_rows(path, "other") == [(42,)]
-  assert _sqlite_rows(path, "target") == [(0,), (1,), (2,)]
+  assert _sqlite_rows(path, "target") == [(1,), (2,), (3,)]
 
 
 def test_sqlite_overwrite_failure_keeps_prior_database_and_removes_staging(tmp_path):
@@ -872,10 +877,10 @@ def test_sqlite_overwrite_failure_keeps_prior_database_and_removes_staging(tmp_p
 def test_sqlite_append_creates_then_requires_the_existing_ordered_schema(tmp_path):
   path = tmp_path / "append.sqlite"
   writer = DataGenerator(SQLITE_SPEC).size(2).write.format("sqlite").option("table", "events")
-  writer.save(str(path))
+  writer.mode("append").save(str(path))
   writer.mode("append").save(str(path))
 
-  assert _sqlite_rows(path, "events") == [(0,), (1,), (0,), (1,)]
+  assert _sqlite_rows(path, "events") == [(1,), (2,), (1,), (2,)]
 
   def reordered(frame):
     return frame.assign(extra="x")[["extra", "row"]]
@@ -892,7 +897,31 @@ def test_sqlite_append_creates_then_requires_the_existing_ordered_schema(tmp_pat
       .save(str(path))
     )
 
-  assert _sqlite_rows(path, "events") == [(0,), (1,), (0,), (1,)]
+  assert _sqlite_rows(path, "events") == [(1,), (2,), (1,), (2,)]
+
+
+def test_sqlite_append_rolls_back_every_row_when_a_real_constraint_rejects_one(tmp_path):
+  path = tmp_path / "append-rollback.sqlite"
+  with sqlite3.connect(path) as database:
+    database.execute('CREATE TABLE "events" ("id" INTEGER CHECK ("id" < 5))')
+    database.execute('INSERT INTO "events" VALUES (1)')
+
+  def valid_then_invalid(_frame):
+    return pd.DataFrame({"id": [2, 7]})
+
+  with pytest.raises(RandEngineError):
+    (
+      DataGenerator(SQLITE_SPEC)
+      .size(2)
+      .transformers([valid_then_invalid])
+      .write
+      .format("sqlite")
+      .mode("append")
+      .option("table", "events")
+      .save(str(path))
+    )
+
+  assert _sqlite_rows(path, "events") == [(1,)]
 
 
 def test_sqlite_refuses_unsupported_values_options_and_modes_before_output(tmp_path):
