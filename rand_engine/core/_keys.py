@@ -124,6 +124,8 @@ class Keys:
       else:
         idx = h % np.int64(parent_size)
     else:
+      if not indexes.size:
+        return cls._pk_at(indexes, 0, parent_size - 1, **parent.get("kwargs", {}))
       eligible = cls._eligible_parent_counts(indexes, parent_size, born_before)
       if not eligible.all():
         raise RandEngineError(f"fk column '{column}' has a child with no eligible parent")
