@@ -101,7 +101,7 @@ Job 5, which retains the full public-guidance and documentation-test work.
 | Job 2 | Job 1 | 2 | `tests/test_1_common_validator.py`, `tests/test_3_spark_generator.py`, `rand_engine/validators/method_specs.py`, `rand_engine/validators/common_validator.py`, `rand_engine/main/spark_generator.py`, `docs/2_SPARK_GENERATOR.md`, `skills/rand-engine/SKILL.md` |
 | Job 3 | — | 2 | `tests/test_5_files_write_batch.py`, `tests/test_5_files_write_stream.py`, `rand_engine/file_handlers/writer.py`, `rand_engine/file_handlers/_writer_batch.py`, `rand_engine/file_handlers/_writer_stream.py` |
 | Job 4 | — | 2 | `tests/test_6_stream_objects.py`, `rand_engine/main/data_generator.py` |
-| Job 5 | Job 1, Job 2, Job 3, Job 4 | 3 | `tests/test_docs.py`, `rand_engine/main/data_generator.py`, `rand_engine/main/spark_generator.py`, `rand_engine/file_handlers/writer.py`, `rand_engine/file_handlers/_writer_batch.py`, `docs/1_DATA_GENERATOR.md`, `docs/2_SPARK_GENERATOR.md`, `docs/3_WRITING_FILES.md`, `docs/4_CONSTRAINTS.md`, `docs/5_RECIPES.md`, `docs/comparison.md`, `docs/explanation.md`, `docs/reference.md`, `mkdocs.yml`, `llms.txt`, `skills/rand-engine/SKILL.md` |
+| Job 5 | Job 1, Job 2, Job 3, Job 4 | 3 | `tests/test_docs.py`, `rand_engine/main/data_generator.py`, `rand_engine/main/spark_generator.py`, `rand_engine/file_handlers/writer.py`, `rand_engine/file_handlers/_writer_batch.py`, `docs/1_DATA_GENERATOR.md`, `docs/2_SPARK_GENERATOR.md`, `docs/3_WRITING_FILES.md`, `docs/4_CONSTRAINTS.md`, `docs/5_RECIPES.md`, `docs/tutorials/databricks.md`, `docs/comparison.md`, `docs/explanation.md`, `docs/reference.md`, `mkdocs.yml`, `llms.txt`, `skills/rand-engine/SKILL.md` |
 
 Job 2 waits for Job 1 because it consumes the shared key grammar and its shared
 skill consumer. Jobs 3 and 4 are independent. Job 5 waits for all behavior jobs
@@ -114,6 +114,7 @@ edges.
 
 **W:** `CHANGELOG.md`, `docs/1_DATA_GENERATOR.md`, `docs/2_SPARK_GENERATOR.md`,
 `docs/3_WRITING_FILES.md`, `docs/4_CONSTRAINTS.md`, `docs/5_RECIPES.md`,
+`docs/tutorials/databricks.md`,
 `docs/BENCHMARKS.md`, `docs/benchmarks.json`, `docs/comparison.md`,
 `docs/explanation.md`, `docs/reference.md`, `mkdocs.yml`, `llms.txt`,
 `skills/rand-engine/SKILL.md`, `specs/constitution.md`,
