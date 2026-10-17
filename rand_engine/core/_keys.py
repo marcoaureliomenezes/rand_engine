@@ -1,5 +1,6 @@
 import json
 import zlib
+from fractions import Fraction
 
 import numpy as np
 
@@ -88,13 +89,60 @@ class Keys:
 
 
   @classmethod
-  def gen_fk(cls, size: int, parent: dict, parent_size: int, skew: float = 0.0, offset: int = 0,
-             key_seed: int = 0, column: str = "") -> np.ndarray | list:
+  def _event_time_fraction(cls, value: int | float) -> Fraction:
+    return Fraction(value) if isinstance(value, int) else Fraction.from_float(value)
+
+
+  @classmethod
+  def _eligible_parent_counts(cls, indexes: np.ndarray, parent_size: int, born_before: dict) -> np.ndarray:
+    parent_start = cls._event_time_fraction(born_before["parent_start"])
+    parent_rate = cls._event_time_fraction(born_before["parent_rate"])
+    child_start = cls._event_time_fraction(born_before["child_start"])
+    child_rate = cls._event_time_fraction(born_before["child_rate"])
+    counts = []
+    for index in indexes:
+      child_time = child_start + Fraction(int(index), 1) / child_rate
+      eligible = (child_time - parent_start) * parent_rate
+      counts.append(min(parent_size, max(0, eligible.numerator // eligible.denominator + 1)))
+    return np.asarray(counts, dtype=np.int64)
+
+
+  @classmethod
+  def _fk_seed(cls, parent: dict, parent_size: int, skew: float, key_seed: int, column: str) -> int:
     kwargs = json.dumps({"parent": parent, "parent_size": parent_size, "skew": float(skew)}, sort_keys=True)
-    fk_seed = zlib.crc32(f"{key_seed}/{column}/{kwargs}".encode())
-    h = cls.cell_hash(fk_seed, np.arange(offset, offset + size, dtype=np.int64))
-    if skew:  # Zipf over ranks, ranks permuted so the hot parents are not the first row indices
-      idx = cls._feistel(cls._zipf_rank(h, parent_size, skew), parent_size, fk_seed)
+    return zlib.crc32(f"{key_seed}/{column}/{kwargs}".encode())
+
+
+  @classmethod
+  def _fk_at(cls, indexes: np.ndarray, parent: dict, parent_size: int, skew: float,
+             key_seed: int, column: str, born_before: dict | None = None) -> np.ndarray | list:
+    if born_before is None:
+      fk_seed = cls._fk_seed(parent, parent_size, skew, key_seed, column)
+      h = cls.cell_hash(fk_seed, indexes)
+      if skew:  # Zipf over ranks, ranks permuted so the hot parents are not the first row indices
+        idx = cls._feistel(cls._zipf_rank(h, parent_size, skew), parent_size, fk_seed)
+      else:
+        idx = h % np.int64(parent_size)
     else:
-      idx = h % np.int64(parent_size)
+      eligible = cls._eligible_parent_counts(indexes, parent_size, born_before)
+      if not eligible.all():
+        raise RandEngineError(f"fk column '{column}' has a child with no eligible parent")
+      idx = np.empty(indexes.size, dtype=np.int64)
+      for count in np.unique(eligible):
+        selected = eligible == count
+        fk_seed = cls._fk_seed(parent, int(count), skew, key_seed, column)
+        h = cls.cell_hash(fk_seed, indexes[selected])
+        if skew:
+          idx[selected] = cls._feistel(
+            cls._zipf_rank(h, int(count), skew), int(count), fk_seed
+          )
+        else:
+          idx[selected] = h % count
     return cls._pk_at(idx, 0, parent_size - 1, **parent.get("kwargs", {}))
+
+
+  @classmethod
+  def gen_fk(cls, size: int, parent: dict, parent_size: int, skew: float = 0.0, offset: int = 0,
+             key_seed: int = 0, column: str = "", born_before: dict | None = None) -> np.ndarray | list:
+    indexes = np.arange(offset, offset + size, dtype=np.int64)
+    return cls._fk_at(indexes, parent, parent_size, skew, key_seed, column, born_before)

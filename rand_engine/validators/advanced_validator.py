@@ -2,6 +2,8 @@
 
 import json
 import string
+import math
+from collections.abc import Mapping
 from types import MappingProxyType
 from typing import Any
 
@@ -366,6 +368,23 @@ class AdvancedValidator:
             or not 0 <= skew < float("inf")
         ):
             errors.append(f"❌ Column '{col_name}': fk 'skew' must be a finite number >= 0 (0 is uniform)")
+        born_before = kwargs.get("born_before")
+        if isinstance(born_before, Mapping):
+            required = {"parent_start", "parent_rate", "child_start", "child_rate"}
+            for field in sorted(required - set(born_before)):
+                errors.append(f"❌ Column '{col_name}': fk 'born_before' requires '{field}'")
+            for field in sorted(set(born_before) - required):
+                errors.append(f"❌ Column '{col_name}': fk 'born_before' does not take '{field}'")
+            for field in sorted(required & set(born_before)):
+                value = born_before[field]
+                if type(value) not in (int, float) or not math.isfinite(value):
+                    errors.append(
+                        f"❌ Column '{col_name}': fk 'born_before.{field}' must be a finite builtin int or float"
+                    )
+                elif field.endswith("rate") and value <= 0:
+                    errors.append(
+                        f"❌ Column '{col_name}': fk 'born_before.{field}' must be greater than 0"
+                    )
         return errors
 
     @staticmethod

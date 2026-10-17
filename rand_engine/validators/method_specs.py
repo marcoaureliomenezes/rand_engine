@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
+from collections.abc import Mapping as MappingABC
 import re
 import sys
 from types import MappingProxyType
@@ -519,7 +520,7 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
         ),
         "fk": _spec(
             required={"parent": dict, "parent_size": int},
-            optional={"skew": (int, float)},
+            optional={"skew": (int, float), "born_before": MappingABC},
             engines=(NUMPY,),
             kind=KEY,
             arrow_types=_fk_arrow_type,
