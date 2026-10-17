@@ -57,7 +57,7 @@ Each column is `{"method": <name>, "kwargs": {...}}`. Bounds of `integers` are i
 | Method | Required kwargs | Optional kwargs |
 |---|---|---|
 | `integers` | `min`, `max` | `int_type` (`int8`…`int64`, `uint8`…`uint64`; default `int32`) |
-| `int_zfilled` | `length` | — |
+| `int_zfilled` | `length` (integer 1…18) | — |
 | `floats` | `min`, `max` | `decimals` (default 2) |
 | `floats_normal` | `mean`, `std` | `decimals` (default 2) |
 | `exponential` | — | `scale` (> 0, default 1.0), `decimals` (default 2) |
@@ -71,7 +71,12 @@ Each column is `{"method": <name>, "kwargs": {...}}`. Bounds of `integers` are i
 | `uuid4` | — | — |
 | `unix_timestamps` | `start`, `end` | `date_format` (default `%Y-%m-%d`) |
 | `dates` | `start`, `end` | `date_format` (default `%Y-%m-%d`) |
-| `pk`, `fk` | see [4_CONSTRAINTS.md](4_CONSTRAINTS.md) | |
+| `distincts_map` | `distincts` (dict key → list of values) | column `cols` (exactly 2 names) |
+| `distincts_map_prop` | `distincts` (dict key → `[[value, weight], ...]`) | column `cols` (exactly 2 names) |
+| `distincts_multi_map` | `distincts` (dict key → one list per level) | column `cols` (levels + 1 names) |
+| `complex_distincts` | `pattern`, `replacement`, `templates` | — |
+| `pk` | — | `style`, `start`, `step`, `domain`, `key`, `format`; see [4_CONSTRAINTS.md](4_CONSTRAINTS.md) |
+| `fk` | `parent`, `parent_size` | `skew`; see [4_CONSTRAINTS.md](4_CONSTRAINTS.md) |
 
 `dates` and `unix_timestamps` parse `start` and `end` with `date_format`. A `dates` value is a
 string drawn at whole-second resolution in UTC; its `date_format` may use only the directives
@@ -79,6 +84,19 @@ string drawn at whole-second resolution in UTC; its `date_format` may use only t
 engines, naming the supported set.
 
 ```python
+from rand_engine.validators.exceptions import SpecValidationError
+
+for length in (1, 18):
+    DataGenerator({"id": {"method": "int_zfilled", "kwargs": {"length": length}}})
+
+for length in (0, 19):
+    try:
+        DataGenerator({"id": {"method": "int_zfilled", "kwargs": {"length": length}}})
+    except SpecValidationError:
+        pass
+    else:
+        raise AssertionError("expected int_zfilled length refusal")
+
 spec = {
     "price": {"method": "floats", "kwargs": {"min": 1, "max": 100, "decimals": 2}},
     "status": {"method": "distincts_prop", "kwargs": {"distincts": {"paid": 9, "refunded": 1}}},

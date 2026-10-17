@@ -60,28 +60,29 @@ Every method below runs on `DataGenerator` (NumPy). The last column says whether
 
 | Method | kwargs (required first) | Produces | Spark |
 |---|---|---|---|
-| `integers` | `min`, `max`, `int_type` ("int32") | ints in range | yes |
-| `int_zfilled` | `length` | zero-padded digit string | yes |
-| `floats` | `min`, `max`, `decimals` (2) | uniform floats | yes |
-| `floats_normal` | `mean`, `std`, `decimals` (2) | normal floats | yes |
-| `exponential` | `scale` (1.0), `decimals` | skewed positive floats | refused |
-| `lognormal` | `mean` (0.0), `std` (1.0), `decimals` | heavy-tailed floats | refused |
-| `poisson` | `lam` (1.0, max 10^6) | counts | refused |
-| `zipf` | `a` (2.0, > 1) | rank-skewed ints | refused |
-| `booleans` | `true_prob` (0.5) | bools | yes |
-| `distincts` | `distincts` (list) | uniform pick from the list | yes |
-| `distincts_prop` | `distincts` ({value: int weight}) | weighted pick | yes |
-| `constant` | `value` (a scalar) | the same value in every row | refused |
-| `dates` | `start`, `end`, `date_format` ("%Y-%m-%d") | date strings | yes |
-| `unix_timestamps` | `start`, `end`, `date_format` ("%Y-%m-%d") | epoch seconds | yes |
+| `integers` | `min`, `max`; optional `int_type` | ints in range | yes |
+| `int_zfilled` | `length` (1..18) | zero-padded digit string | yes |
+| `floats` | `min`, `max`; optional `decimals` | uniform floats | yes |
+| `floats_normal` | `mean`, `std`; optional `decimals` | normal floats | yes |
+| `exponential` | optional `scale`, `decimals` | skewed positive floats | refused |
+| `lognormal` | optional `mean`, `std`, `decimals` | heavy-tailed floats | refused |
+| `poisson` | optional `lam` | counts | refused |
+| `zipf` | optional `a` | rank-skewed ints | refused |
+| `booleans` | optional `true_prob` | bools | yes |
+| `distincts` | `distincts` | uniform pick from a list | yes |
+| `distincts_prop` | `distincts` | weighted pick from a dict | yes |
+| `constant` | `value` | the same scalar in every row | refused |
+| `dates` | `start`, `end`; optional `date_format` | date strings | yes |
+| `unix_timestamps` | `start`, `end`; optional `date_format` | epoch seconds | yes |
 | `uuid4` | none | uuid strings | yes |
-| `distincts_map` | `distincts` ({key: [values]}) + `cols` (2) | correlated key/value columns | NULL + warning |
-| `distincts_map_prop` | `distincts` ({key: [[value, weight]]}) + `cols` (2) | weighted correlated pair | NULL + warning |
-| `distincts_multi_map` | `distincts` ({key: [[level1...], [level2...]]}) + `cols` (levels + 1) | correlated columns, one per level | NULL + warning |
+| `distincts_map` | `distincts` plus `cols` | correlated key/value columns | NULL + warning |
+| `distincts_map_prop` | `distincts` plus `cols` | weighted correlated pair | NULL + warning |
+| `distincts_multi_map` | `distincts` plus `cols` | correlated columns, one per level | NULL + warning |
 | `complex_distincts` | `pattern`, `replacement`, `templates` | strings built from templates | NULL + warning |
-| `pk`, `fk` | see below | unique keys and references to them | refused |
+| `pk` | optional `style`, `start`, `step`, `domain`, `key`, `format` | unique keys | refused |
+| `fk` | `parent`, `parent_size`; optional `skew` | references to parent keys | refused |
 
-`dates` `date_format` accepts `%Y %m %d %H %M %S %f` only. On Spark the correlated methods and `complex_distincts` validate with a warning and give a NULL column. `null_rate` and `anomaly_rate` are NumPy only too. Faker values: `RandSpecs.faker_pool("name", locale="pt_BR", pool_size=500, seed=0)` returns a `distincts` spec (needs `rand-engine[faker]`). `RandSpecs.from_schema(arrow_schema, overrides={...})` builds a spec from a pyarrow schema. If unsure of a kwarg, check the Reference page rather than guessing.
+`dates` `date_format` accepts `%Y %m %d %H %M %S %f` only. Spark refuses `uint64` and integer domains wider than 2**53; it also refuses `int_zfilled` length 16 or above. The four correlated methods validate with a warning and give a NULL column. `null_rate` and `anomaly_rate` are NumPy only. `RandSpecs.faker_pool("name", locale="pt_BR", pool_size=500, seed=0)` returns a `distincts` spec and needs `rand-engine[faker]`; `RandSpecs.from_schema(arrow_schema, overrides={...})` builds a validated RandSpec from supported Arrow families. For the complete boundaries, factory inventory and runnable examples, see the [method guide](https://marcoaureliomenezes.github.io/rand_engine/1_DATA_GENERATOR/) and [recipes](https://marcoaureliomenezes.github.io/rand_engine/5_RECIPES/).
 
 ## Related tables: pk and fk
 
