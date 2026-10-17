@@ -571,6 +571,87 @@ def test_writing_doc_inventory_matches_the_accepted_writer_options():
   assert "timeout" in rows["writeStream"]
 
 
+def test_key_guides_describe_the_event_time_fk_mapping_and_zero_eligible_refusal():
+  """The human and agent key guides state the one accepted event-time mapping and its boundaries."""
+  guides = {
+      "constraints": _text(DOCS / "4_CONSTRAINTS.md"),
+      "skill": _text(SKILL),
+  }
+  required = {"born_before", "parent_start", "parent_rate", "child_start", "child_rate"}
+  for guide, text in guides.items():
+    assert required <= set(re.findall(r"`(\w+)`", text)), guide
+    lowered = text.lower()
+    assert "inclusive" in lowered, guide
+    assert "zero eligible" in lowered, guide
+    assert "int" in lowered and "float" in lowered and "bool" in lowered, guide
+
+
+def test_writing_guide_derives_sqlite_from_the_batch_writer_contract():
+  """The writer inventory includes SQLite as its batch-only table sink with its live option contract."""
+  from rand_engine.file_handlers._writer_batch import FileBatchWriter
+
+  rows = _writer_option_table()
+  assert set(rows) == {"csv", "parquet", "json", "sqlite", "write (batch)", "writeStream"}
+  sqlite = rows["sqlite"]
+  assert {"table", "overwrite", "append"} <= set(re.findall(r"`(\w+)`", sqlite))
+  assert "numFiles" not in sqlite and "maxRowsPerBatch" not in sqlite
+  source = inspect.getsource(FileBatchWriter._save_sqlite)
+  assert "table" in source and "append" in source and "overwrite" in source
+
+
+def test_writing_guide_executes_sqlite_and_refuses_it_for_streams(tmp_path, monkeypatch):
+  """The writing guide creates a temporary SQLite table and shows the real stream refusal."""
+  from rand_engine.file_handlers._writer_batch import FileBatchWriter
+  from rand_engine.file_handlers._writer_stream import FileStreamWriter
+
+  saved, stream_calls = [], []
+  save, start = FileBatchWriter.save, FileStreamWriter.start
+
+  def record_save(self, path):
+    saved.append((self.write_format, dict(self.write_options), Path(path)))
+    return save(self, path)
+
+  def record_start(self, path):
+    stream_calls.append((self.write_format, path))
+    return start(self, path)
+
+  monkeypatch.setattr(FileBatchWriter, "save", record_save)
+  monkeypatch.setattr(FileStreamWriter, "start", record_start)
+  run_python_blocks(DOCS / "3_WRITING_FILES.md", tmp_path, monkeypatch)
+
+  assert any(fmt == "sqlite" and options.get("table") for fmt, options, _ in saved)
+  assert any(fmt == "sqlite" for fmt, _ in stream_calls)
+
+
+def test_stream_guidance_states_arrow_conversion_and_compatible_fallback_contract():
+  """The stream consumers explain that compatible records use Arrow and unsupported values keep their values via pandas."""
+  text = "\n".join(_text(path) for path in (DOCS / "1_DATA_GENERATOR.md", DOCS / "5_RECIPES.md", SKILL))
+  lowered = text.lower()
+  assert "arrow" in lowered
+  assert "fallback" in lowered
+  assert "pandas" in lowered
+  assert "stream_dict" in text
+
+
+def test_comparison_route_is_sourced_and_marks_benchmarks_as_internal_only():
+  """The capability comparison has primary sources and does not present rand-engine measurements as competitor timings."""
+  page = DOCS / "comparison.md"
+  text = _text(page)
+  urls = set(re.findall(r"https://[^)\s]+", text))
+  assert {
+      "https://faker.readthedocs.io/en/stable/",
+      "https://github.com/databrickslabs/dbldatagen",
+      "https://databrickslabs.github.io/dbldatagen/public_docs/reference/api/dbldatagen.data_generator.html",
+  } <= urls
+  lowered = text.lower()
+  assert "same-runner" in lowered and "not a faker or dbldatagen speed comparison" in lowered
+  assert "BENCHMARKS.md" in text and "benchmarks/speed.py" in text
+  nav = _text(ROOT / "mkdocs.yml")
+  llms = _text(ROOT / "llms.txt")
+  assert "comparison.md" in nav
+  assert f"{SITE}comparison/" in llms
+
+
 def test_recipes_run_the_helpers():
   """5_RECIPES.md builds specs with RandSpecs.faker_pool and RandSpecs.from_schema."""
   code = block_text("5_RECIPES.md")
