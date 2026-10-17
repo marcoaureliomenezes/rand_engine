@@ -4,11 +4,15 @@ Short, runnable patterns. Every `python` block runs in CI, in order, in one name
 
 ## Faker pools
 
-<!-- derived-from: generation-methods sha256:d07a707fc569 -->
+<!-- derived-from: generation-methods sha256:4ee6c20c444a -->
 <!-- derived-from: templates-and-examples sha256:fa66c7f7252b -->
 
-Faker is slow per value; `RandSpecs.faker_pool` draws a pool once and returns a `distincts` spec
-(needs the optional `rand-engine[faker]`). `seed` fixes the pool.
+Faker is slow per value; `RandSpecs.faker_pool` draws a pool once and returns a `distincts` spec.
+Install the optional extra first: `pip install "rand-engine[faker]"`. It accepts a Faker provider
+such as `name` or `email`, a locale (default `en_US`), a positive `pool_size` (default 100), and
+an optional seed. The seed fixes the materialized pool, then NumPy samples that pool for every row.
+Invalid pool sizes, unavailable Faker, unsupported locales/providers, provider failures and
+non-scalar provider values raise `RandEngineError`.
 
 ```python
 from rand_engine import DataGenerator, RandSpecs
@@ -19,23 +23,76 @@ people = DataGenerator({
     "email": RandSpecs.faker_pool("email", pool_size=500, seed=0),
 }, seed=1).size(2_000).get_df()
 assert people["name"].isin(name_spec["kwargs"]["distincts"]).all()
+
+from rand_engine.validators.exceptions import RandEngineError
+
+try:
+    RandSpecs.faker_pool("name", pool_size=0)
+except RandEngineError:
+    pass
+else:
+    raise AssertionError("expected positive pool_size")
 ```
 
 ## Spec from an Arrow schema
 
 <!-- derived-from: templates-and-examples sha256:fa66c7f7252b -->
 
-`RandSpecs.from_schema` maps each field's Arrow type to a method and validates the result;
-`overrides` replaces or tunes a field (a `method` key replaces it, other keys merge into it).
+`RandSpecs.from_schema` maps Arrow metadata to a validated RandSpec. Boolean fields become
+`booleans(true_prob=0.5)`; integer fields become `integers(min=0, max=min(100, type maximum),
+int_type=<Arrow type>)`; floating fields become `floats(0..1, decimals=2)`; string and large-string
+fields become `uuid4`; date fields become `dates(2000-01-01..2030-12-31)`; timezone-naive timestamps
+become second-resolution `dates`; and null fields become `constant(None)`. Nullable fields retain
+the same recipe: Arrow nullability does not add a RandSpec modifier.
+
+For an override, `kwargs` merge into the default recipe. An override containing `method` replaces
+the whole field recipe. The builder refuses non-schemas, unknown fields, duplicate schema names,
+non-dict overrides, unsupported Arrow families without a complete `method` replacement, and any
+resulting invalid RandSpec with `SpecValidationError`.
 
 ```python
 import pyarrow as pa
+from rand_engine.validators.exceptions import SpecValidationError
 
-schema = pa.schema([("id", pa.int64()), ("score", pa.float64()), ("active", pa.bool_())])
-spec = RandSpecs.from_schema(schema, overrides={"score": {"kwargs": {"min": 0, "max": 10}}})
+schema = pa.schema([
+    ("active", pa.bool_()), ("id", pa.int64()), ("score", pa.float64()),
+    ("label", pa.string()), ("note", pa.large_string()), ("day", pa.date32()),
+    ("at", pa.timestamp("s")), ("missing", pa.null()),
+])
+spec = RandSpecs.from_schema(schema, overrides={
+    "score": {"kwargs": {"min": 0, "max": 10}},
+    "label": {"method": "distincts", "kwargs": {"distincts": ["trial", "paid"]}},
+})
 df = DataGenerator(spec, seed=1).size(500).get_df()
-assert list(df.columns) == ["id", "score", "active"] and df["score"].between(0, 10).all()
+assert list(spec) == list(schema.names) and df["score"].between(0, 10).all()
+assert spec["label"] == {"method": "distincts", "kwargs": {"distincts": ["trial", "paid"]}}
+
+try:
+    RandSpecs.from_schema(pa.schema([("amount", pa.decimal128(10, 2))]))
+except SpecValidationError:
+    pass
+else:
+    raise AssertionError("expected unsupported Arrow type")
+
+try:
+    RandSpecs.from_schema(pa.schema([("id", pa.int32())]), overrides={"missing": {}})
+except SpecValidationError:
+    pass
+else:
+    raise AssertionError("expected unknown override")
+
 ```
+
+## Ready-made specifications
+
+`RandSpecs` is the top-level alias for `CommonRandSpecs`: its ten factories work with both
+`DataGenerator` and `SparkGenerator`. `AdvancedRandSpecs` has ten factories for `DataGenerator`
+only; they demonstrate correlated and template methods. Use the factory pages as a compact inventory,
+then run a returned spec with the generator that family supports.
+
+::: rand_engine.examples.common_rand_specs.CommonRandSpecs
+
+::: rand_engine.examples.advanced_rand_specs.AdvancedRandSpecs
 
 ## Kafka or any queue
 

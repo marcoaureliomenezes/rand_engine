@@ -34,7 +34,7 @@ assert len(os.listdir("out/clients_json")) == 4
 |---|---|
 | `csv` | `sep` (delimiter, default `,`); `compression`: `gzip`, `bz2`, `xz`, `zip`; `index`: only `False` (Arrow writes no index) |
 | `parquet` | `compression`: `snappy` (default), `gzip`, `zstd`, `brotli`, `lz4` |
-| `json` | `force_ascii`, `indent`, `compression` (`gzip`, `bz2`, `zip`); `orient`: only `"records"` |
+| `json` | `force_ascii`, `indent`, `compression` (`gzip`, `bz2`, `xz`, `zip`); `orient`: only `"records"` |
 | `write` (batch) | `numFiles` (default 1); `maxRowsPerBatch` (positive int; rows generated and written per batch, so memory stays bounded) |
 | `writeStream` | `timeout` in seconds (default 20) |
 
@@ -60,8 +60,9 @@ else:
 - `save(path)` with `numFiles` 1 writes one file at `path`, the format and compression extension
   added when missing (`out/clients.csv` + `gzip` → `out/clients.csv.gz`; parquet never gets one).
 - With `numFiles` > 1, `path` (extensions stripped) is a folder of `part_<id>.<ext>` files sharing
-  the `size` rows; `mode("overwrite")` (the default) empties that folder first, any other mode
-  adds files beside the old ones.
+  the `size` rows. The batch writer stages every new file beside the destination and commits only
+  after staging succeeds. Only `mode("append")` adds staged parts to an existing folder; every
+  other mode replaces the destination folder when the commit succeeds.
 - A final file has one schema: with `maxRowsPerBatch` every batch of a file must produce the same
   schema, and `mode("append")` to a single file must match the existing one.
 - Keys continue across the files: `pk` values never repeat between parts.
@@ -87,9 +88,10 @@ assert sum(len(pd.read_csv(f"out/log/{f}")) for f in logs) == 2_000
 
 <!-- derived-from: writers-and-streaming sha256:554e6476d19d -->
 
-`start(path)` writes one microbatch of `size` rows to `path/part-<uuid>.<ext>`, sleeps
-`trigger(frequency)` seconds and repeats until `timeout` seconds have passed. `mode("overwrite")`
-(the default) empties the folder first. `start` blocks until the timeout.
+`trigger(frequency)` only configures the pause after each write and returns the stream writer.
+`start(path)` writes one microbatch of `size` rows to `path/part-<uuid>.<ext>`, sleeps the
+configured number of seconds and repeats until `timeout` seconds have passed. `mode("overwrite")`
+(the default) clears the folder first. `start` blocks until the timeout.
 
 ```python
 gen.writeStream.format("json").trigger(frequency=0.1).option("timeout", 0.3).start("out/stream.json")
@@ -124,3 +126,23 @@ with open("out/check.csv", newline="") as file:
 assert header == '"id","name","active"'
 assert first.split(",")[2] in ("true", "false")
 ```
+
+## Returned writer reference
+
+`DataGenerator.write` returns a `FileBatchWriter`; `DataGenerator.writeStream`
+returns a `FileStreamWriter`. These are returned objects, not top-level
+`rand_engine` exports. Both inherit the format, mode and option chain from
+`FileWriter`; `save` completes a batch write, `trigger` configures a stream writer
+and returns it, and `start` performs blocking stream writes until the timeout.
+
+::: rand_engine.file_handlers.writer.FileWriter
+    options:
+      inherited_members: true
+
+::: rand_engine.file_handlers._writer_batch.FileBatchWriter
+    options:
+      inherited_members: true
+
+::: rand_engine.file_handlers._writer_stream.FileStreamWriter
+    options:
+      inherited_members: true

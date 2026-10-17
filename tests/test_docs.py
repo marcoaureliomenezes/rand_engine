@@ -4,6 +4,7 @@ import importlib
 import io
 import inspect
 import json
+import os
 import re
 import tempfile
 import textwrap
@@ -32,6 +33,15 @@ def python_blocks(path: Path) -> list[tuple[str, str]]:
   return [(info.strip(), body) for info, body in FENCE.findall(path.read_text(encoding="utf-8"))]
 
 
+def run_python_blocks(doc: Path, tmp_path, monkeypatch) -> dict:
+  """Run a documentation page's runnable blocks in their shared namespace."""
+  monkeypatch.chdir(tmp_path)
+  namespace = {"__name__": "__docs__"}
+  for i, body in enumerate(body for info, body in python_blocks(doc) if info == "python"):
+    exec(compile(body, f"{doc.name}[{i}]", "exec"), namespace)
+  return namespace
+
+
 SKILL = ROOT / "skills" / "rand-engine" / "SKILL.md"
 
 
@@ -42,10 +52,7 @@ def test_doc_python_blocks_execute_in_order(doc, tmp_path, monkeypatch, request)
   blocks = [body for info, body in python_blocks(doc) if info == "python"]
   if any("pyspark" in body for body in blocks):
     request.getfixturevalue("spark_session")  # the doc's getOrCreate() reuses it; skips where Spark cannot run
-  monkeypatch.chdir(tmp_path)
-  namespace = {"__name__": "__docs__"}
-  for i, body in enumerate(blocks):
-    exec(compile(body, f"{doc.name}[{i}]", "exec"), namespace)
+  run_python_blocks(doc, tmp_path, monkeypatch)
 
 
 def test_no_run_is_only_the_kafka_producer():
@@ -60,11 +67,33 @@ def test_no_run_is_only_the_kafka_producer():
   assert all("from pyspark" in body for info, body in skill if info == "python no-run")
 
 
+def _table_rows(path: Path, headers: tuple[str, ...]) -> list[list[str]]:
+  """Return cells from a documentation table with this exact semantic header."""
+  heading = "| " + " | ".join(headers) + " |"
+  match = re.search(rf"^{re.escape(heading)}\n\|[-| ]+\n((?:\|.*\n)+)", _text(path), re.M)
+  assert match is not None
+  return [[cell.strip() for cell in row.strip("|").split("|")] for row in match.group(1).splitlines()]
+
+
+def _parameter_names(cell: str) -> frozenset[str]:
+  """Read parameter identifiers, excluding parenthesized literal/default detail."""
+  return frozenset(re.findall(r"`([A-Za-z_]\w*)`", re.sub(r"\([^()]*\)", "", cell)))
+
+
+def method_parameter_rows(path: Path, headers: tuple[str, ...]) -> dict[str, tuple[frozenset[str], frozenset[str], frozenset[str]]]:
+  """Method -> exact required kwargs, optional kwargs, and top-level column fields."""
+  rows = _table_rows(path, headers)
+  return {
+      method: (_parameter_names(cells[1]), _parameter_names(cells[2]), _parameter_names(cells[3]))
+      for cells in rows
+      for method in re.findall(r"`(\w+)`", cells[0])
+  }
+
+
 def skill_method_table() -> dict[str, str]:
   """Method name -> the Spark column's text, for every row of SKILL.md's method table."""
-  rows = re.findall(r"^\| Method \|.*\n\|[-| ]+\n((?:\|.*\n)+)", SKILL.read_text(encoding="utf-8"), re.M)[0].splitlines()
-  cells = [[c.strip() for c in row.strip("|").split("|")] for row in rows]
-  return {name: cell[-1] for cell in cells for name in re.findall(r"`(\w+)`", cell[0])}
+  rows = _table_rows(SKILL, ("Method", "Required kwargs", "Optional kwargs", "Column fields", "Produces", "Spark"))
+  return {name: cells[-1] for cells in rows for name in re.findall(r"`(\w+)`", cells[0])}
 
 
 def spark_outcome(spec) -> str:
@@ -115,6 +144,29 @@ def test_tutorial_no_run_fences_are_only_case_includes():
   """A `no-run` fence under docs/tutorials/ is exactly one snippet-include line of an existing case file."""
   bodies = [body for doc in DOCS.glob("tutorials/*.md") for info, body in python_blocks(doc) if info == "python no-run"]
   assert [b for b in bodies if _include_of(b) is None or not (ROOT / _include_of(b)).is_file()] == []
+
+
+def test_getting_started_maps_each_packaged_scaffold():
+  """Getting started puts each CLI scaffold's command, file, run command, prerequisite, outcome and guide in one map."""
+  rows = _table_rows(DOCS / "getting-started.md", ("Use case", "Command", "File", "Run", "Prerequisite", "Outcome", "Guide"))
+  by_slug = {re.search(r"`([^`]+)`", row[0]).group(1): row for row in rows}
+  assert set(by_slug) == set(CASES)
+  prerequisites = {
+      "test-data": "rand-engine",
+      "lake": "rand-engine",
+      "kafka": "kafka-python",
+      "databricks": "PySpark",
+      "faker": "rand-engine[faker]",
+  }
+  for slug, row in by_slug.items():
+    use_case, command, filename, run, prerequisite, outcome, guide = row
+    assert f"`{slug}`" in use_case
+    assert command == f"`rand-engine get-started {slug}`"
+    assert filename == f"`{slug}-example.py`"
+    assert run == f"`python {slug}-example.py`"
+    assert prerequisites[slug] in prerequisite
+    assert outcome
+    assert LINK.findall(guide) == [f"tutorials/{slug}.md"]
 
 
 def test_readme_python_blocks_execute_in_order(tmp_path, monkeypatch):
@@ -209,10 +261,314 @@ def test_spark_doc_runs_the_refusal_of_new_methods():
   assert any(method in code for method in NEW_METHODS - {"constant"})
 
 
-def test_writing_doc_runs_row_batches_and_append():
+def test_human_and_skill_method_inventories_match_the_catalog_parameters():
+  """Both method tables separate the catalog's kwargs from top-level column fields."""
+  from rand_engine.validators.method_specs import METHOD_CATALOG
+
+  expected = {
+      method: (frozenset(entry.required), frozenset(entry.optional), frozenset({"cols"}) if entry.requires_cols else frozenset())
+      for method, entry in METHOD_CATALOG.items()
+  }
+  human = method_parameter_rows(
+      DOCS / "1_DATA_GENERATOR.md",
+      ("Method", "Required kwargs", "Optional kwargs", "Column fields"),
+  )
+  skill = method_parameter_rows(
+      SKILL,
+      ("Method", "Required kwargs", "Optional kwargs", "Column fields", "Produces", "Spark"),
+  )
+  assert human == expected
+  assert skill == expected
+
+
+def test_spark_method_inventory_matches_live_validation():
+  """The human Spark table records every catalog method's current validation outcome."""
+  from rand_engine.validators.method_specs import METHOD_CATALOG
+
+  match = re.search(
+      r"^\| Method \| Spark \|\n\|[-| ]+\n((?:\|.*\n)+)",
+      _text(DOCS / "2_SPARK_GENERATOR.md"),
+      re.M,
+  )
+  assert match is not None
+  table = match.group(1)
+  rows = {
+      method: cells[-1]
+      for row in table.splitlines()
+      for cells in [[cell.strip() for cell in row.strip("|").split("|")]]
+      for method in re.findall(r"`(\w+)`", cells[0])
+  }
+  assert set(rows) == set(METHOD_CATALOG)
+  assert {name: (rows[name], spark_outcome(spec.example)) for name, spec in METHOD_CATALOG.items()
+          if rows[name] != spark_outcome(spec.example)} == {}
+
+
+def documented_spark_specs(name, tmp_path, monkeypatch):
+  """Run a guide and return each Spark spec with whether construction refused it."""
+  from rand_engine import SparkGenerator
+  from rand_engine.validators.exceptions import SpecValidationError
+
+  seen = []
+  init = SparkGenerator.__init__
+
+  def record(self, spark, functions, spec, *args, **kwargs):
+    try:
+      init(self, spark, functions, spec, *args, **kwargs)
+    except SpecValidationError:
+      seen.append((spec, True))
+      raise
+    seen.append((spec, False))
+
+  monkeypatch.setattr(SparkGenerator, "__init__", record)
+  run_python_blocks(DOCS / name, tmp_path, monkeypatch)
+  return seen
+
+
+def test_data_generator_doc_executes_int_zfilled_boundaries(tmp_path, monkeypatch):
+  """The pandas guide executes both accepted and refused int_zfilled lengths."""
+  outcomes = {
+      column["kwargs"]["length"]: refused
+      for spec, refused in documented_specs("1_DATA_GENERATOR.md", tmp_path, monkeypatch)
+      for column in spec.values()
+      if column["method"] == "int_zfilled"
+  }
+  assert {length: outcomes.get(length) for length in (1, 18, 0, 19)} == {
+      1: False, 18: False, 0: True, 19: True,
+  }
+
+
+def test_spark_doc_executes_integer_boundaries(tmp_path, monkeypatch, spark_session):
+  """The Spark guide executes its exact digit, carrier and width partitions."""
+  outcomes = [
+      (column, refused)
+      for spec, refused in documented_spark_specs("2_SPARK_GENERATOR.md", tmp_path, monkeypatch)
+      for column in spec.values()
+  ]
+  assert {
+      (column["method"], tuple(sorted(column["kwargs"].items()))): refused
+      for column, refused in outcomes
+      if column["method"] == "int_zfilled"
+  }.items() >= {
+      ("int_zfilled", (("length", 15),)): False,
+      ("int_zfilled", (("length", 16),)): True,
+  }.items()
+  integers = [(column["kwargs"], refused) for column, refused in outcomes if column["method"] == "integers"]
+  assert any(kwargs.get("int_type") == "uint64" and refused for kwargs, refused in integers)
+  assert any(
+      kwargs.get("int_type") == "int64"
+      and kwargs.get("max", 0) - kwargs.get("min", 0) + 1 > 2**53
+      and refused
+      for kwargs, refused in integers
+  )
+
+
+def documented_correlated_spark_frames(tmp_path, monkeypatch):
+  """Run the Spark guide and retain real DataFrames made from correlated specs."""
+  from rand_engine import SparkGenerator
+  from rand_engine.validators.method_specs import CORRELATED, METHOD_CATALOG
+
+  frames = []
+  get_df = SparkGenerator.get_df
+
+  def record(self):
+    dataframe = get_df(self)
+    methods = {column["method"] for column in self.metadata.values()}
+    if any(METHOD_CATALOG[method].kind == CORRELATED for method in methods):
+      frames.append((self.metadata, dataframe))
+    return dataframe
+
+  monkeypatch.setattr(SparkGenerator, "get_df", record)
+  with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    run_python_blocks(DOCS / "2_SPARK_GENERATOR.md", tmp_path, monkeypatch)
+  return frames, caught
+
+
+def test_spark_doc_executes_correlated_methods_as_null_strings(tmp_path, monkeypatch, spark_session):
+  """The Spark guide runs all correlated methods as warned NULL string columns."""
+  from rand_engine.validators.method_specs import CORRELATED, METHOD_CATALOG
+
+  frames, caught = documented_correlated_spark_frames(tmp_path, monkeypatch)
+  expected = {name for name, entry in METHOD_CATALOG.items() if entry.kind == CORRELATED}
+  observed = {
+      column["method"]
+      for metadata, _ in frames
+      for column in metadata.values()
+      if column["method"] in expected
+  }
+  assert observed == expected
+  assert {method for method in expected if any(method in str(item.message) for item in caught)} == expected
+  for metadata, dataframe in frames:
+    assert 0 < dataframe.count() <= 10_000
+    for name, column in metadata.items():
+      if column["method"] in expected:
+        field = dataframe.schema[name]
+        assert field.dataType.typeName() == "string"
+        assert dataframe.where(dataframe[name].isNotNull()).count() == 0
+
+
+def documented_builder_calls(tmp_path, monkeypatch):
+  """Run recipe blocks while recording the builder outputs and refusal partitions they show."""
+  from rand_engine import RandSpecs
+  from rand_engine.validators.exceptions import RandEngineError, SpecValidationError
+
+  calls = []
+  faker_pool, from_schema = RandSpecs.faker_pool, RandSpecs.from_schema
+
+  def record_faker(*args, **kwargs):
+    try:
+      result = faker_pool(*args, **kwargs)
+    except RandEngineError as error:
+      calls.append(("faker_pool", args, kwargs, type(error)))
+      raise
+    calls.append(("faker_pool", args, kwargs, result))
+    return result
+
+  def record_schema(*args, **kwargs):
+    try:
+      result = from_schema(*args, **kwargs)
+    except SpecValidationError as error:
+      calls.append(("from_schema", args, kwargs, type(error)))
+      raise
+    calls.append(("from_schema", args, kwargs, result))
+    return result
+
+  monkeypatch.setattr(RandSpecs, "faker_pool", record_faker)
+  monkeypatch.setattr(RandSpecs, "from_schema", record_schema)
+  run_python_blocks(DOCS / "5_RECIPES.md", tmp_path, monkeypatch)
+  return calls
+
+
+def test_recipes_execute_builder_defaults_overrides_and_refusals(tmp_path, monkeypatch):
+  """Recipes exercise the real builder recipes, override modes and error partitions."""
+  import pyarrow as pa
+  from rand_engine.validators.exceptions import RandEngineError, SpecValidationError
+
+  calls = documented_builder_calls(tmp_path, monkeypatch)
+  faker = [entry for entry in calls if entry[0] == "faker_pool"]
+  assert any(isinstance(entry[-1], dict) and entry[-1]["method"] == "distincts" for entry in faker)
+  assert any(entry[-1] is RandEngineError for entry in faker)
+  schemas = [entry for entry in calls if entry[0] == "from_schema"]
+  families = {
+      name
+      for _, args, _, result in schemas
+      if isinstance(result, dict)
+      for field in args[0]
+      for name, predicate in {
+          "boolean": pa.types.is_boolean,
+          "integer": pa.types.is_integer,
+          "floating": pa.types.is_floating,
+          "string": lambda value: pa.types.is_string(value) or pa.types.is_large_string(value),
+          "date": pa.types.is_date,
+          "timestamp": lambda value: pa.types.is_timestamp(value) and value.tz is None,
+          "null": pa.types.is_null,
+      }.items()
+      if predicate(field.type)
+  }
+  assert families == {"boolean", "integer", "floating", "string", "date", "timestamp", "null"}
+  overrides = [
+      (entry[2]["overrides"], entry[-1])
+      for entry in schemas
+      if isinstance(entry[-1], dict) and entry[2].get("overrides")
+  ]
+  assert any(
+      "method" not in override
+      and set(override.get("kwargs", {})) < set(result[name]["kwargs"])
+      and all(result[name]["kwargs"][key] == value for key, value in override.get("kwargs", {}).items())
+      for values, result in overrides
+      for name, override in values.items()
+  )
+  assert any(
+      "method" in override and result[name] == override
+      for values, result in overrides
+      for name, override in values.items()
+  )
+  assert any(entry[-1] is SpecValidationError for entry in schemas)
+
+
+def test_recipes_render_the_current_common_and_advanced_factory_surfaces():
+  """The recipe reference renders both supported factory families from their defining classes."""
+  from rand_engine.examples import AdvancedRandSpecs, CommonRandSpecs
+
+  factories = lambda cls: {
+      name for name, member in inspect.getmembers(cls)
+      if not name.startswith("_") and callable(member)
+  }
+  common = factories(CommonRandSpecs) - {"faker_pool", "from_schema"}
+  advanced = factories(AdvancedRandSpecs)
+  assert len(common) == len(advanced) == 10
+  assert set(_directives(DOCS / "5_RECIPES.md")) >= {
+      f"{CommonRandSpecs.__module__}.{CommonRandSpecs.__qualname__}",
+      f"{AdvancedRandSpecs.__module__}.{AdvancedRandSpecs.__qualname__}",
+  }
+
+
+@pytest.mark.parametrize("relative_staging", [False, True], ids=["absolute-staging", "relative-staging"])
+def test_writing_doc_runs_row_batches_and_append(tmp_path, monkeypatch, relative_staging):
   """3_WRITING_FILES.md executes maxRowsPerBatch and mode("append") (new parts beside the old ones)."""
+  from rand_engine.file_handlers._writer_batch import FileBatchWriter
+  from rand_engine.file_handlers._writer_stream import FileStreamWriter
+
   code = block_text("3_WRITING_FILES.md")
   assert "maxRowsPerBatch" in code and 'mode("append")' in code
+
+  batch, stream, staged = [], [], []
+  save, start, stage_files = FileBatchWriter.save, FileStreamWriter.start, FileBatchWriter._stage_files
+  mkdtemp = tempfile.mkdtemp
+
+  def return_requested_staging_shape(*args, **kwargs):
+    staging = mkdtemp(*args, **kwargs)
+    return os.path.relpath(staging) if relative_staging else str(Path(staging).resolve())
+
+  def record_save(self, path):
+    batch.append((self.write_format, self.write_mode, dict(self.write_options)))
+    return save(self, path)
+
+  def record_start(self, path):
+    stream.append((self.write_format, self.write_mode, self.freq, dict(self.write_options)))
+    return start(self, path)
+
+  def record_stage(self, staging, *args, **kwargs):
+    staged.append(staging.resolve())
+    return stage_files(self, staging, *args, **kwargs)
+
+  monkeypatch.setattr(FileBatchWriter, "save", record_save)
+  monkeypatch.setattr(FileStreamWriter, "start", record_start)
+  monkeypatch.setattr(FileBatchWriter, "_stage_files", record_stage)
+  monkeypatch.setattr(tempfile, "mkdtemp", return_requested_staging_shape)
+  run_python_blocks(DOCS / "3_WRITING_FILES.md", tmp_path, monkeypatch)
+
+  assert {format for format, _, _ in batch} == {"csv", "json", "parquet"}
+  assert {mode for _, mode, _ in batch} == {"append", "overwrite"}
+  assert any(not options for _, mode, options in batch if mode == "overwrite")
+  assert {options.get("numFiles") for _, _, options in batch if "numFiles" in options} == {2, 3, 4}
+  assert any(options.get("maxRowsPerBatch") == 100 for _, _, options in batch)
+  assert stream == [("json", "overwrite", 0.1, {"timeout": 0.3})]
+  assert staged and all(path.parent == tmp_path / "out" and path.name.endswith(".staging") for path in staged)
+  assert not [path for path in staged if path.exists()]
+  assert len(list((tmp_path / "out" / "clients_json").iterdir())) == 4
+  assert len(list((tmp_path / "out" / "log").iterdir())) == 4
+  assert len(list((tmp_path / "out" / "stream").iterdir())) >= 2
+
+
+def _writer_option_table() -> dict[str, str]:
+  """The writing guide's format and writer option rows."""
+  text = _text(DOCS / "3_WRITING_FILES.md")
+  table = re.search(r"^\| Format \| Options \|\n\|[-| ]+\n((?:\|.*\n)+)", text, re.M).group(1)
+  return {cells[0].replace("`", ""): cells[1] for row in table.splitlines()
+          for cells in [[cell.strip() for cell in row.strip("|").split("|")]]}
+
+
+def test_writing_doc_inventory_matches_the_accepted_writer_options():
+  """The writer guide lists every accepted format option, including defaults and codecs."""
+  rows = _writer_option_table()
+  assert set(rows) == {"csv", "parquet", "json", "write (batch)", "writeStream"}
+  assert "sep" in rows["csv"] and {"gzip", "bz2", "xz", "zip"} <= set(re.findall(r"`(gzip|bz2|xz|zip)`", rows["csv"]))
+  assert {"compression", "snappy", "gzip", "zstd", "brotli", "lz4"} <= set(re.findall(r"`(\w+)`", rows["parquet"]))
+  assert {"force_ascii", "indent", "orient"} <= {name for name in ("force_ascii", "indent", "orient") if name in rows["json"]}
+  assert {"gzip", "bz2", "xz", "zip"} <= set(re.findall(r"`(gzip|bz2|xz|zip)`", rows["json"]))
+  assert "numFiles" in rows["write (batch)"] and "maxRowsPerBatch" in rows["write (batch)"]
+  assert "timeout" in rows["writeStream"]
 
 
 def test_recipes_run_the_helpers():
@@ -327,6 +683,62 @@ def test_reference_directive_names_the_canonical_documented_object():
   assert [o for o in objs if not inspect.getdoc(o)] == []
 
 
+def _directives(path: Path) -> list[str]:
+  return re.findall(r"^::: (\S+)\s*$", path.read_text(encoding="utf-8"), re.M)
+
+
+def _writer_reference_surface():
+  from rand_engine.file_handlers._writer_batch import FileBatchWriter
+  from rand_engine.file_handlers._writer_stream import FileStreamWriter
+  from rand_engine.file_handlers.writer import FileWriter
+  classes = (FileWriter, FileBatchWriter, FileStreamWriter)
+  return {
+    f"{cls.__module__}.{cls.__qualname__}": {
+      name for name, member in inspect.getmembers(cls)
+      if not name.startswith("_") and callable(member)
+    }
+    for cls in classes
+  }
+
+
+def test_returned_writer_reference_resolves_the_live_class_and_callable_inventory():
+  """The writing guide renders the classes returned by write and writeStream, with their chain and terminal calls."""
+  expected = {
+    "rand_engine.file_handlers.writer.FileWriter": {"format", "mode", "option", "options"},
+    "rand_engine.file_handlers._writer_batch.FileBatchWriter": {"format", "mode", "option", "options", "save"},
+    "rand_engine.file_handlers._writer_stream.FileStreamWriter": {"format", "mode", "option", "options", "trigger", "start"},
+  }
+  assert _writer_reference_surface() == expected
+  assert _directives(DOCS / "3_WRITING_FILES.md") == list(expected)
+
+
+def test_error_reference_resolves_the_caller_facing_family():
+  """The error reference renders every library exception a caller can catch, including its common base."""
+  from rand_engine.validators import exceptions
+  expected = [
+    exceptions.RandEngineError,
+    exceptions.SpecValidationError,
+    exceptions.ColumnGenerationError,
+    exceptions.TransformerError,
+    exceptions.FileWriterError,
+  ]
+  assert all(issubclass(error, exceptions.RandEngineError) for error in expected)
+  assert _directives(DOCS / "errors.md") == [f"{error.__module__}.{error.__qualname__}" for error in expected]
+
+
+def test_reference_navigation_exposes_the_main_writer_and_error_destinations():
+  """The docs navigation links to the main API and to separate returned-writer and error references."""
+  nav = (ROOT / "mkdocs.yml").read_text(encoding="utf-8")
+  assert [path for path in ("reference.md", "3_WRITING_FILES.md", "errors.md") if path not in nav] == []
+  reference = re.search(r"^  - Reference:\n((?:^      - .+\n)+)", nav, re.M)
+  children = re.findall(r"^      - (.*): (.*)$", reference.group(1), re.M)
+  assert children == [
+    ("Main API", "reference.md"),
+    ("Returned writers", "3_WRITING_FILES.md"),
+    ("Errors", "errors.md"),
+  ]
+
+
 def test_docstrings_of_this_file_carry_no_ac_id():
   """No docstring in this file names an acceptance-criterion id."""
   tree = ast.parse(Path(__file__).read_text(encoding="utf-8"))
@@ -390,6 +802,20 @@ def _llms():
   assert [p for p in pages if not (DOCS / (p.removesuffix("/").removesuffix(".md") or "index")).with_suffix(".md").is_file()] == []
   assert f"{REPO_BLOB}{PRINCIPAL}/skills/rand-engine/SKILL.md" in links
   assert [s for s in CASES if f"{REPO_BLOB}{PRINCIPAL}/rand_engine/cases/{s}.py.txt" not in links] == []
+
+
+def test_llms_points_agents_at_the_api_writer_error_builder_domain_and_case_destinations():
+  """llms.txt advertises rendered destinations for each discovery route and every runnable case file."""
+  links = set(LINK.findall(_text(ROOT / "llms.txt")))
+  assert {
+      f"{SITE}reference/",
+      f"{SITE}3_WRITING_FILES/",
+      f"{SITE}errors/",
+      f"{SITE}5_RECIPES/",
+      f"{SITE}1_DATA_GENERATOR/",
+      f"{SITE}2_SPARK_GENERATOR/",
+  } <= links
+  assert {f"{REPO_BLOB}{PRINCIPAL}/rand_engine/cases/{slug}.py.txt" for slug in CASES} <= links
 
 
 @pytest.mark.parametrize("check", [

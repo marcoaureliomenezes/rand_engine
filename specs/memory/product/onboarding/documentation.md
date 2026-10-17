@@ -1,8 +1,8 @@
 ---
 slug: documentation
 title: Documentation site, llms.txt and agent skill
-tldr: "A strict-built GitHub Pages site, a landing README, a root llms.txt and an Agent Skill document rand-engine, and the suite executes their code."
-summary: "The docs site at https://marcoaureliomenezes.github.io/rand_engine/ is built by Zensical from the repo Markdown and the public docstrings; README is a landing page that becomes the site home; llms.txt indexes site pages, the skill and the case files for agents; skills/rand-engine/SKILL.md teaches agents the RandSpec grammar. Every python block of the README, the docs pages and the skill runs in the suite."
+tldr: "Strict-built docs, README, llms.txt and an Agent Skill cover APIs, examples and use cases with executable code."
+summary: "Zensical builds the repository's documentation from Markdown and public docstrings for the GitHub Pages target; README becomes the site home; rendered references cover the public API, returned writers and caller-facing errors; llms.txt indexes rendered guides, the skill and direct case files; and the suite checks semantic inventories, links and runnable Python blocks."
 tags: [docs, site, llms-txt, agent-skill, readme]
 sources:
   - docs/**
@@ -15,11 +15,11 @@ sources:
 
 ## Site
 
-- `https://marcoaureliomenezes.github.io/rand_engine/` is built by Zensical over `mkdocs.yml`, with mkdocstrings rendering the API reference from the numpy-style docstrings of the public surface ([[public-api]]).
-- Navigation: Home (the README, copied at build), Getting started, five Tutorials (one per get-started case), How-to guides (data generator, Spark generator, writing files, keys, recipes), Reference, Explanation and Benchmarks ([[benchmarks]]).
-- Each tutorial includes its case file verbatim, the same bytes `rand-engine get-started <slug>` writes ([[get-started-cli]]).
-- The site serves `/llms.txt` at its root and each page's Markdown source beside its HTML.
-- The docs workflow runs the strict build, which fails on a broken internal link, on pull requests to `development` and `master` and on pushes to `feature/**` and `master`; a push to `master` deploys the site to GitHub Pages. The working tree never holds a build: `site/`, `.cache/` and the generated `docs/index.md` are ignored.
+- Zensical builds `mkdocs.yml` for the `https://marcoaureliomenezes.github.io/rand_engine/` GitHub Pages target. Mkdocstrings renders numpy-style docstrings; the main reference follows `rand_engine.__all__`, and separate destinations render the returned writer classes and the caller-facing exception family ([[public-api]], [[writers-and-streaming]]).
+- Navigation: Home (the README, copied at build), Getting started, five Tutorials, How-to guides, a Reference group for the main API, returned writers and errors, Explanation and Benchmarks ([[benchmarks]]).
+- Getting started maps all five packaged scaffolds to their command, filename, run command, prerequisite, observable outcome and tutorial. Each tutorial includes its case file verbatim, the same bytes `rand-engine get-started <slug>` writes ([[get-started-cli]]).
+- The workflow copies `llms.txt` to the site root and the source Markdown tree beside rendered HTML in the Pages artifact.
+- The docs workflow runs the strict build, which fails on a broken internal link, on pull requests to `development` and `master` and on pushes to `feature/**` and `master`; only a push to `master` uploads and deploys the Pages artifact. `site/`, `.cache/` and the generated `docs/index.md` are ignored build products.
 
 ## Landing README
 
@@ -28,10 +28,10 @@ sources:
 
 ## llms.txt and the agent skill
 
-- The root `llms.txt` lists site pages, the agent skill and the five case files for language models.
-- `skills/rand-engine/SKILL.md` carries Agent Skills front matter (`name: rand-engine`, a `description` saying when to use it) and covers the RandSpec grammar, choosing a method, `pk`/`fk`, sinks, Spark, `rand-engine get-started` and errors ([[rand-spec-grammar]]). It lives in the repo, never in the wheel.
+- The root `llms.txt` links rendered guides and references, the agent skill and all five direct case files on the principal branch. Its site routes correspond to navigation destinations and its repository links resolve to existing files.
+- `skills/rand-engine/SKILL.md` carries Agent Skills front matter (`name: rand-engine`, a `description` saying when to use it) and covers the complete catalog-backed method inventory, engine outcomes, the RandSpec grammar, builders, `pk`/`fk`, sinks, Spark, `rand-engine get-started` and errors ([[generation-methods]], [[rand-spec-grammar]], [[templates-and-examples]]). It lives in the repo, never in the wheel.
 
 ## Executed docs
 
-- Every `python` block of the README, of each Markdown page under `docs/` and of the skill runs in order in a temporary directory; a `python no-run` fence is allowed only for the Kafka producer in `docs/5_RECIPES.md`, each tutorial's one include of its case file, and the skill's Spark blocks.
-- The skill's method table is checked against the method catalog, its Spark column against what validation does; README and `llms.txt` links must resolve.
+- Runnable `python` blocks of the README, each Markdown page under `docs/` and the skill run in order in a temporary directory. A `python no-run` fence is reserved for the Kafka producer, each tutorial's case-file include and the skill's Spark blocks; separate contracts execute the packaged cases.
+- Documentation contracts derive method parameters from `METHOD_CATALOG`, Spark outcomes from live validation, returned-writer and error inventories from their classes, factory inventories from the example classes, and scaffold names from `CASES`. README and `llms.txt` links resolve, and the strict site build validates internal routes.

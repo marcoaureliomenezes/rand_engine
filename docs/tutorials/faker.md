@@ -2,19 +2,19 @@
 
 For anyone who needs realistic names, emails or cities at volume. It teaches `RandSpecs.faker_pool`: Faker draws a small pool once, and NumPy samples it into many rows.
 
+## Prerequisite and run
+
 Install the extra first:
 
 ```bash
 pip install "rand-engine[faker]"
-```
-
-Get the file:
-
-```bash
 rand-engine get-started faker
+python faker-example.py
 ```
 
-It writes the file to the current directory. `--out DIR` writes it to `DIR` instead, created when missing. An existing file is never overwritten.
+The command writes `faker-example.py` to the current directory. `--out DIR` writes it to `DIR`
+instead, created when missing. An existing file is never overwritten. Running it prints the first
+rows of a 10,000-row DataFrame and the distinct-name count from the configured pool.
 
 ```python no-run
 --8<-- "rand_engine/cases/faker.py.txt"

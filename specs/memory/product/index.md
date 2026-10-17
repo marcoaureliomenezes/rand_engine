@@ -54,7 +54,7 @@ a scaffolded example ([[get-started-cli]]) and the docs site, `llms.txt` and age
 
 | slug | title | tldr |
 |------|-------|------|
-| `documentation` | Documentation site, llms.txt and agent skill | A strict-built GitHub Pages site, a landing README, a root llms.txt and an Agent Skill document rand-engine, and the suite executes their code. |
+| `documentation` | Documentation site, llms.txt and agent skill | Strict-built docs, README, llms.txt and an Agent Skill cover APIs, examples and use cases with executable code. |
 | `get-started-cli` | Get-started CLI | The rand-engine console script lists five adoption cases and writes any of them as a runnable example file. |
 
 ### output

@@ -2,19 +2,30 @@
 
 For Spark and Databricks users. It teaches `SparkGenerator`, which builds a users table natively in Spark.
 
+## Prerequisite and run
+
+Use a Databricks runtime, or a machine with PySpark and Java available. `rand-engine` itself does
+not install PySpark. Scaffold the file, then import it into Databricks or run it where that Spark
+environment is already available:
+
 Get the file:
 
 ```bash
+pip install rand-engine
 rand-engine get-started databricks
+python databricks-example.py
 ```
 
-It writes the file to the current directory. `--out DIR` writes it to `DIR` instead, created when missing. An existing file is never overwritten.
+It writes `databricks-example.py` to the current directory. `--out DIR` writes it to `DIR` instead,
+created when missing. An existing file is never overwritten. The native path builds a 1,000-row
+Spark DataFrame, then shows its first rows and schema; the final cell also shows the 100-row
+pandas-to-Spark route.
 
 ```python no-run
 --8<-- "rand_engine/cases/databricks.py.txt"
 ```
 
-The file is in Databricks notebook source format: its first line is `# Databricks notebook source`, and its cells are separated by `# COMMAND ----------`. Import it into a Databricks workspace as a notebook, or run it with `python` where PySpark is installed.
+The file is in Databricks notebook source format: its first line is `# Databricks notebook source`, and its cells are separated by `# COMMAND ----------`. Import it into a Databricks workspace as a notebook, or run it with `python` where PySpark and Java are available.
 
 ## DataGenerator-only features
 

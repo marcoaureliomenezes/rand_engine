@@ -2,13 +2,21 @@
 
 For pipeline tests that need a DataFrame with nulls and extreme values. It teaches `null_rate` and `anomaly_rate` on a column.
 
+## Prerequisite and run
+
+Install `rand-engine`, then scaffold and run the file from the directory where it was written:
+
 Get the file:
 
 ```bash
+pip install rand-engine
 rand-engine get-started test-data
+python test-data-example.py
 ```
 
-It writes the file to the current directory. `--out DIR` writes it to `DIR` instead, created when missing. An existing file is never overwritten.
+It writes `test-data-example.py` to the current directory. `--out DIR` writes it to `DIR` instead,
+created when missing. An existing file is never overwritten. Running it prints the first rows of a
+1,000-row DataFrame, the null count for `amount`, and rows carrying the configured anomaly values.
 
 ```python no-run
 --8<-- "rand_engine/cases/test-data.py.txt"

@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The validation error footer links the docs site.
 - Python 3.13 tested in CI and advertised (classifiers 3.10–3.13).
 - Package keywords (14) and the `Typing :: Typed` classifier.
+- Rendered references for the returned batch/stream writers and the caller-facing error family, including executable catch examples.
+- Catalog-backed pandas/Spark method tables, engine boundaries, Arrow-schema and Faker builder guidance, and inventories of the ready-made specifications.
+- A five-case onboarding map with prerequisites, run commands and observable outcomes; tutorials and `llms.txt` now route humans and agents to rendered guides or direct runnable case files.
 
 ### Fixed
 

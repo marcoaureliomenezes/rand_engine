@@ -18,7 +18,10 @@ nav:
       - Writing files: 3_WRITING_FILES.md
       - Constraints: 4_CONSTRAINTS.md
       - Recipes: 5_RECIPES.md
-  - Reference: reference.md
+  - Reference:
+      - Main API: reference.md
+      - Returned writers: 3_WRITING_FILES.md
+      - Errors: errors.md
   - Explanation: explanation.md
   - Benchmarks: BENCHMARKS.md
 
