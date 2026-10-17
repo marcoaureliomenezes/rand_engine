@@ -367,15 +367,40 @@ def test_recipes_execute_builder_defaults_overrides_and_refusals(tmp_path, monke
   assert any(isinstance(entry[-1], dict) and entry[-1]["method"] == "distincts" for entry in faker)
   assert any(entry[-1] is RandEngineError for entry in faker)
   schemas = [entry for entry in calls if entry[0] == "from_schema"]
-  supported = {
-      type(field.type)
+  families = {
+      name
       for _, args, _, result in schemas
       if isinstance(result, dict)
       for field in args[0]
+      for name, predicate in {
+          "boolean": pa.types.is_boolean,
+          "integer": pa.types.is_integer,
+          "floating": pa.types.is_floating,
+          "string": lambda value: pa.types.is_string(value) or pa.types.is_large_string(value),
+          "date": pa.types.is_date,
+          "timestamp": lambda value: pa.types.is_timestamp(value) and value.tz is None,
+          "null": pa.types.is_null,
+      }.items()
+      if predicate(field.type)
   }
-  assert {type(pa.bool_()), type(pa.int64()), type(pa.float64()), type(pa.string()),
-          type(pa.date32()), type(pa.timestamp("us")), type(pa.null())} <= supported
-  assert any(isinstance(result, dict) and kwargs.get("overrides") for _, _, kwargs, result in schemas)
+  assert families == {"boolean", "integer", "floating", "string", "date", "timestamp", "null"}
+  overrides = [
+      (entry[2]["overrides"], entry[-1])
+      for entry in schemas
+      if isinstance(entry[-1], dict) and entry[2].get("overrides")
+  ]
+  assert any(
+      "method" not in override
+      and set(override.get("kwargs", {})) < set(result[name]["kwargs"])
+      and all(result[name]["kwargs"][key] == value for key, value in override.get("kwargs", {}).items())
+      for values, result in overrides
+      for name, override in values.items()
+  )
+  assert any(
+      "method" in override and result[name] == override
+      for values, result in overrides
+      for name, override in values.items()
+  )
   assert any(entry[-1] is SpecValidationError for entry in schemas)
 
 
