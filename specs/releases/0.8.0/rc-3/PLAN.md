@@ -74,11 +74,14 @@ inventory.
 ## 3. Reconciliation (after Jobs 1–3)
 
 **W:** `CHANGELOG.md`, `docs/1_DATA_GENERATOR.md`, `docs/2_SPARK_GENERATOR.md`,
-`docs/5_RECIPES.md`, `specs/backlog/BACKLOG.json`,
+`docs/3_WRITING_FILES.md`, `docs/5_RECIPES.md`, `llms.txt`,
+`specs/backlog/BACKLOG.json`,
 `specs/backlog/_archive/backlog_histo.jsonl`, `specs/memory/ARCHITECTURE.md`,
 `specs/memory/QUALITY.md`, `specs/memory/product/catalog.json`,
 `specs/memory/product/api/public-api.md`,
 `specs/memory/product/content/templates-and-examples.md`,
+`specs/memory/product/generation/generation-methods.md`,
+`specs/memory/product/index.md`,
 `specs/memory/product/onboarding/documentation.md`,
 `specs/memory/product/onboarding/get-started-cli.md`,
 `specs/memory/product/output/writers-and-streaming.md`,
@@ -90,5 +93,6 @@ the listed atoms and derived docs, generate the catalog, refresh all three defer
 markers after the atoms settle, add the rc-3 CHANGELOG line, exit
 `documentation-excellence`, and record the closure summary/state. The existing
 memory, backlog, release and doctor verbs validate it. Known library-owned doctor
-drift is reported and is neither repaired nor bypassed.
+drift is reported and is neither repaired nor bypassed. No bug ledger archive is
+planned: this documentation-only candidate resolves no terminal bug record.
 

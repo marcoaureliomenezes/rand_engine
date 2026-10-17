@@ -12,4 +12,3 @@
 `docs/3_WRITING_FILES.md` is the returned-writer surface from Job 1;
 `docs/reference.md` retains exactly its three `rand_engine.__all__` directives.
 Examples use the existing docs harness, temporary output and no more than 10^4 rows.
-

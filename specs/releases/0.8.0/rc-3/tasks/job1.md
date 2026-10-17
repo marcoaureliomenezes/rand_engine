@@ -14,4 +14,3 @@ the caller-facing error reference. `docs/reference.md` stays unchanged with its
 three `rand_engine.__all__` directives. The RED cases assert inventories and
 resolvable destinations, never editorial wording. They introduce no runtime
 assertion and do not execute a new docs build.
-
