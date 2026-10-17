@@ -131,7 +131,10 @@ class FileBatchWriter(FileWriter):
     if isinstance(value, (bool, np.bool_)):
       return int(value), "INTEGER"
     if isinstance(value, (int, np.integer)):
-      return int(value), "INTEGER"
+      converted = int(value)
+      if not -(2 ** 63) <= converted < 2 ** 63:
+        raise RandEngineError("sqlite integers must fit in signed 64 bits")
+      return converted, "INTEGER"
     if isinstance(value, (float, np.floating)):
       return float(value), "REAL"
     if isinstance(value, str):
@@ -146,30 +149,32 @@ class FileBatchWriter(FileWriter):
 
 
   @classmethod
-  def _sqlite_frame(cls, frame) -> tuple[list[str], list[str], list[tuple[object, ...]]]:
+  def _sqlite_frame(cls, frame) -> tuple[list[str], list[str | None], list[tuple[object, ...]]]:
     columns = list(frame.columns)
     if (
       any(not isinstance(column, str) or "\x00" in column for column in columns)
       or len(set(columns)) != len(columns)
     ):
       raise RandEngineError("sqlite column labels must be unique, NUL-free strings")
-    types = [None] * len(columns)
+    types = [set() for _ in columns]
     rows = []
     for row in frame.itertuples(index=False, name=None):
       converted = []
       for index, value in enumerate(row):
         sqlite_value, sqlite_type = cls._sqlite_value(value)
-        if sqlite_value is not None and types[index] is None:
-          types[index] = sqlite_type
+        if sqlite_value is not None:
+          types[index].add(sqlite_type)
         converted.append(sqlite_value)
       rows.append(tuple(converted))
-    return columns, [sqlite_type or "TEXT" for sqlite_type in types], rows
+    # A declared SQLite affinity coerces values on insert.  Leave heterogeneous
+    # and all-null columns untyped so their bound values keep their storage class.
+    return columns, [None if not values else next(iter(values)) if len(values) == 1 else "" for values in types], rows
 
 
   @classmethod
-  def _sqlite_create(cls, database, table: str, columns: list[str], types: list[str]) -> None:
+  def _sqlite_create(cls, database, table: str, columns: list[str], types: list[str | None]) -> None:
     definitions = ", ".join(
-      f"{cls._sqlite_identifier(column)} {sqlite_type}"
+      f"{cls._sqlite_identifier(column)}{f' {sqlite_type}' if sqlite_type else ''}"
       for column, sqlite_type in zip(columns, types)
     )
     database.execute(f"CREATE TABLE {cls._sqlite_identifier(table)} ({definitions})")
@@ -191,6 +196,24 @@ class FileBatchWriter(FileWriter):
       f"INSERT INTO {cls._sqlite_identifier(table)} ({quoted_columns}) VALUES ({placeholders})",
       rows,
     )
+
+
+  @staticmethod
+  def _sqlite_schema_matches(existing: list[tuple[str, str]], columns: list[str], types: list[str | None]) -> bool:
+    if [column for column, _type in existing] != columns:
+      return False
+    for (_column, existing_type), expected_type in zip(existing, types):
+      if expected_type is None:
+        continue
+      if expected_type == "":
+        if existing_type:
+          return False
+        continue
+      if existing_type and existing_type != expected_type:
+        return False
+      if not existing_type:
+        continue
+    return True
 
 
   def _save_sqlite(self, path: str) -> None:
@@ -216,9 +239,8 @@ class FileBatchWriter(FileWriter):
         database = sqlite3.connect(str(destination))
         database.execute("BEGIN")
         existing = self._sqlite_existing_schema(database, table)
-        expected = list(zip(columns, types))
         if existing:
-          if existing != expected:
+          if not self._sqlite_schema_matches(existing, columns, types):
             raise RandEngineError("sqlite append schema does not match the existing table")
         else:
           self._sqlite_create(database, table, columns, types)
