@@ -32,10 +32,16 @@ rand-engine list
 rand-engine get-started lake
 ```
 
-`list` prints the slugs; `get-started <slug>` writes a runnable script into the current directory. Each slug has a tutorial:
+`list` prints the slugs; `get-started <slug>` writes a runnable script into the current directory.
+Run the written file from that directory. `--out DIR` writes it to a directory of your choice.
 
-- [Test data](tutorials/test-data.md)
-- [Lake](tutorials/lake.md)
-- [Kafka](tutorials/kafka.md)
-- [Databricks](tutorials/databricks.md)
-- [Faker](tutorials/faker.md)
+| Use case | Command | File | Run | Prerequisite | Outcome | Guide |
+| --- | --- | --- | --- | --- | --- | --- |
+| Pipeline test data (`test-data`) | `rand-engine get-started test-data` | `test-data-example.py` | `python test-data-example.py` | `rand-engine` | A 1,000-row DataFrame with null and anomaly counts | [Tutorial](tutorials/test-data.md) |
+| Related Parquet tables (`lake`) | `rand-engine get-started lake` | `lake-example.py` | `python lake-example.py` | `rand-engine` | Parquet customer and order tables under `lake/`, read back and joined | [Tutorial](tutorials/lake.md) |
+| Kafka or another queue (`kafka`) | `rand-engine get-started kafka` | `kafka-example.py` | `python kafka-example.py` | `rand-engine`; `kafka-python` only to enable the producer | 100 JSON event lines on stdout; the optional producer sends to a configured broker | [Tutorial](tutorials/kafka.md) |
+| Spark or Databricks (`databricks`) | `rand-engine get-started databricks` | `databricks-example.py` | `python databricks-example.py` | A Databricks runtime, or PySpark and Java | A native Spark DataFrame is shown with its schema | [Tutorial](tutorials/databricks.md) |
+| Faker pools (`faker`) | `rand-engine get-started faker` | `faker-example.py` | `python faker-example.py` | `rand-engine[faker]` | A 10,000-row DataFrame sampled from reproducible name, email and city pools | [Tutorial](tutorials/faker.md) |
+
+Choose [Writing files](3_WRITING_FILES.md) for a direct file writer, [Keys](4_CONSTRAINTS.md) for
+related tables, and [Recipes](5_RECIPES.md) for the runnable Kafka-or-queue and Parquet patterns.

@@ -11,6 +11,7 @@
 - [DataGenerator](https://marcoaureliomenezes.github.io/rand_engine/1_DATA_GENERATOR/): every method and its kwargs, float rules, `null_rate` / `anomaly_rate`, seeds, `stream_dict`
 - [SparkGenerator](https://marcoaureliomenezes.github.io/rand_engine/2_SPARK_GENERATOR/): the same spec on Spark
 - [Writing files](https://marcoaureliomenezes.github.io/rand_engine/3_WRITING_FILES/): `write`, `writeStream`, formats and accepted options
+- [Errors](https://marcoaureliomenezes.github.io/rand_engine/errors/): validation, generation and writer error classes with catch examples
 - [Keys](https://marcoaureliomenezes.github.io/rand_engine/4_CONSTRAINTS/): `pk` and `fk` columns
 - [Reference](https://marcoaureliomenezes.github.io/rand_engine/reference/): the public API, one canonical entry per object
 - [Explanation](https://marcoaureliomenezes.github.io/rand_engine/explanation/): the RandSpec model and the NumPy core

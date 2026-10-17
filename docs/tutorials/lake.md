@@ -2,13 +2,21 @@
 
 For data engineers who need related tables. It teaches `pk` and `fk`: orders point at customers, and a join proves every order finds its customer.
 
+## Prerequisite and run
+
+Install `rand-engine`, then scaffold and run the file from the directory where it was written:
+
 Get the file:
 
 ```bash
+pip install rand-engine
 rand-engine get-started lake
+python lake-example.py
 ```
 
-It writes the file to the current directory. `--out DIR` writes it to `DIR` instead, created when missing. An existing file is never overwritten.
+It writes `lake-example.py` to the current directory. `--out DIR` writes it to `DIR` instead,
+created when missing. An existing file is never overwritten. Running it writes Parquet files below
+`lake/`, reads them back, and prints customer, order, and joined-row counts.
 
 ```python no-run
 --8<-- "rand_engine/cases/lake.py.txt"
