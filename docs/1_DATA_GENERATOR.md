@@ -76,7 +76,7 @@ Each column is `{"method": <name>, "kwargs": {...}}`. Bounds of `integers` are i
 | `distincts_multi_map` | `distincts` (dict key → one list per level) | — | `cols` (levels + 1 names) |
 | `complex_distincts` | `pattern`, `replacement`, `templates` | — | — |
 | `pk` | — | `style`, `start`, `step`, `domain`, `key`, `format`; see [4_CONSTRAINTS.md](4_CONSTRAINTS.md) | — |
-| `fk` | `parent`, `parent_size` | `skew`; see [4_CONSTRAINTS.md](4_CONSTRAINTS.md) | — |
+| `fk` | `parent`, `parent_size` | `skew`, `born_before`; see [4_CONSTRAINTS.md](4_CONSTRAINTS.md) | — |
 
 **Column fields** are required keys beside `kwargs`, not optional kwargs. Only the three map
 methods require `cols`; the global optional modifiers are documented separately below.

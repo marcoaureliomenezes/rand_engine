@@ -80,7 +80,7 @@ Every method below runs on `DataGenerator` (NumPy). The last column says whether
 | `distincts_multi_map` | `distincts` | — | `cols` | correlated columns, one per level | NULL + warning |
 | `complex_distincts` | `pattern`, `replacement`, `templates` | — | — | strings built from templates | NULL + warning |
 | `pk` | — | `style`, `start`, `step`, `domain`, `key`, `format` | — | unique keys | refused |
-| `fk` | `parent`, `parent_size` | `skew` | — | references to parent keys | refused |
+| `fk` | `parent`, `parent_size` | `skew`, `born_before` | — | references to parent keys | refused |
 
 **Column fields** are required keys outside `kwargs`. Only the three map methods require `cols`;
 `null_rate`, `anomaly_rate`, and `anomaly_values` are global NumPy-only modifiers.
