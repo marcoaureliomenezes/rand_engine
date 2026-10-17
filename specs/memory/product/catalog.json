@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-17T18:37:15Z",
+  "generated_at": "2026-10-17T18:38:17Z",
   "features": [
     {
       "rank": 1,
@@ -144,7 +144,7 @@
       "slug": "documentation",
       "title": "Documentation site, llms.txt and agent skill",
       "area": "onboarding",
-      "tldr": "A strict-built documentation site, a landing README, llms.txt and an Agent Skill cover the API, examples and use cases, and the suite executes their runnable code.",
+      "tldr": "Strict-built docs, README, llms.txt and an Agent Skill cover APIs, examples and use cases with executable code.",
       "summary": "Zensical builds the repository's documentation from Markdown and public docstrings for the GitHub Pages target; README becomes the site home; rendered references cover the public API, returned writers and caller-facing errors; llms.txt indexes rendered guides, the skill and direct case files; and the suite checks semantic inventories, links and runnable Python blocks.",
       "path": "specs/memory/product/onboarding/documentation.md",
       "tags": [

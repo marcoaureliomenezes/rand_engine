@@ -1,7 +1,7 @@
 ---
 slug: documentation
 title: Documentation site, llms.txt and agent skill
-tldr: "A strict-built documentation site, a landing README, llms.txt and an Agent Skill cover the API, examples and use cases, and the suite executes their runnable code."
+tldr: "Strict-built docs, README, llms.txt and an Agent Skill cover APIs, examples and use cases with executable code."
 summary: "Zensical builds the repository's documentation from Markdown and public docstrings for the GitHub Pages target; README becomes the site home; rendered references cover the public API, returned writers and caller-facing errors; llms.txt indexes rendered guides, the skill and direct case files; and the suite checks semantic inventories, links and runnable Python blocks."
 tags: [docs, site, llms-txt, agent-skill, readme]
 sources:
