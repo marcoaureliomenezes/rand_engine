@@ -10,9 +10,13 @@
   adapting this repository and its child worktrees to the evolved dadaia-workspace;
   do not change dadaia-workspace.
 - The mandatory refinement found zero open bugs, pending ADRs or live audit
-  findings. It bounded this candidate to the four technical backlog entries above.
-  `outreach` remains outside this candidate because its own provenance schedules it
-  after stable 0.8.0 publication.
+  findings. It bounded the candidate's product behavior to the four technical
+  backlog entries above.
+- The same operator demand authorizes preparing a factual in-repository comparison
+  page before stable 0.8.0 publishes the Pages site. This preparation avoids a
+  later documentation-only release; it performs no external outreach act and does
+  not deliver or exit the separate `outreach` entry, whose external work remains
+  scheduled after stable publication.
 - The concrete compatibility choices below are proposed defaults from repository
   inspection. They take effect only when the operator approves this SPEC and its
   PLAN.
@@ -64,6 +68,8 @@ and types remain compatible.
 - Public docstrings, human docs, the agent skill, CHANGELOG and product memory state
   the delivered behavior. Existing benchmark CI supplies performance evidence
   without a new gate or invented result.
+- The stable documentation set includes a sourced capability comparison of
+  rand-engine, Faker and dbldatagen without unsupported performance claims.
 
 ## 3. Non-goals
 
@@ -81,9 +87,12 @@ and types remain compatible.
   workflows, benchmark code, release policy or dadaia-workspace.
 - A break in `stream_dict` values, missing-value handling, date/datetime behavior,
   transformed mixed columns, ordering, timestamps or throughput controls.
-- Outreach, comparison marketing, external posts, Context7, awesome-list PRs,
-  Discussions or conda-forge. The separate `outreach` entry remains active until
-  its post-publication work is actually performed or otherwise dispositioned.
+- Competitive speed claims without a reproducible cross-tool protocol, a winner,
+  aggregate score or unsupported cost/adoption claim; and external posts,
+  Context7, awesome-list PRs, Discussions or conda-forge. The factual in-repository
+  comparison in AC5.5 is included, while the separate `outreach` entry remains
+  active until its post-publication external work is performed or otherwise
+  dispositioned.
 
 ## 4. Requirements
 
@@ -231,6 +240,15 @@ and types remain compatible.
   refreshes every affected docs/skill consumer marker; updates ARCHITECTURE and
   QUALITY only where repository truth changed; records CHANGELOG; and exits only
   the four delivered Origin backlog entries.
+- AC5.5 (unit and existing strict docs build): `docs/comparison.md` presents a
+  factual capability table for rand-engine, Faker and dbldatagen using primary
+  official sources for each tool's execution model, output surface, required data
+  source, relationship/repeatability scope and deployment scope. It explains that
+  the tools serve overlapping rather than identical use cases; links rand-engine's
+  existing internal same-runner A/B benchmark methodology and results; and states
+  that those results are not a Faker/dbldatagen speed comparison. Existing
+  navigation and `llms.txt` expose the page. It publishes no invented competitor
+  measurement, winner, score, dependency, benchmark, workflow or gate.
 
 ## 5. Replaces
 
@@ -254,7 +272,7 @@ and types remain compatible.
 |---|---|---|
 | 1 — shared relation foundation | catalog-owned `born_before` grammar, inclusive eligibility and stateless NumPy behavior | AC1.1–AC1.4 |
 | 2 — independent product paths | Spark key parity after wave 1; SQLite batch output and compatible Arrow records may proceed independently | AC2.1–AC4.3 |
-| 3 — promote-facing evidence | public docstrings, human/agent guidance, existing CI benchmark evidence and closure reconciliation | AC4.4, AC5.1–AC5.4 |
+| 3 — promote-facing evidence | public docstrings, human/agent guidance, factual comparison page, existing CI benchmark evidence and closure reconciliation | AC4.4, AC5.1–AC5.5 |
 
 | risk | control |
 |---|---|
