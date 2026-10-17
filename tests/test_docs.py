@@ -327,6 +327,55 @@ def test_reference_directive_names_the_canonical_documented_object():
   assert [o for o in objs if not inspect.getdoc(o)] == []
 
 
+def _directives(path: Path) -> list[str]:
+  return re.findall(r"^::: (\S+)\s*$", path.read_text(encoding="utf-8"), re.M)
+
+
+def _writer_reference_surface():
+  from rand_engine.file_handlers._writer_batch import FileBatchWriter
+  from rand_engine.file_handlers._writer_stream import FileStreamWriter
+  from rand_engine.file_handlers.writer import FileWriter
+  classes = (FileWriter, FileBatchWriter, FileStreamWriter)
+  return {
+    f"{cls.__module__}.{cls.__qualname__}": {
+      name for name, member in inspect.getmembers(cls)
+      if not name.startswith("_") and callable(member)
+    }
+    for cls in classes
+  }
+
+
+def test_returned_writer_reference_resolves_the_live_class_and_callable_inventory():
+  """The writing guide renders the classes returned by write and writeStream, with their chain and terminal calls."""
+  expected = {
+    "rand_engine.file_handlers.writer.FileWriter": {"format", "mode", "option", "options"},
+    "rand_engine.file_handlers._writer_batch.FileBatchWriter": {"format", "mode", "option", "options", "save"},
+    "rand_engine.file_handlers._writer_stream.FileStreamWriter": {"format", "mode", "option", "options", "trigger", "start"},
+  }
+  assert _writer_reference_surface() == expected
+  assert _directives(DOCS / "3_WRITING_FILES.md") == list(expected)
+
+
+def test_error_reference_resolves_the_caller_facing_family():
+  """The error reference renders every library exception a caller can catch, including its common base."""
+  from rand_engine.validators import exceptions
+  expected = [
+    exceptions.RandEngineError,
+    exceptions.SpecValidationError,
+    exceptions.ColumnGenerationError,
+    exceptions.TransformerError,
+    exceptions.FileWriterError,
+  ]
+  assert all(issubclass(error, exceptions.RandEngineError) for error in expected)
+  assert _directives(DOCS / "errors.md") == [f"{error.__module__}.{error.__qualname__}" for error in expected]
+
+
+def test_reference_navigation_exposes_the_main_writer_and_error_destinations():
+  """The docs navigation links to the main API and to separate returned-writer and error references."""
+  nav = (ROOT / "mkdocs.yml").read_text(encoding="utf-8")
+  assert [path for path in ("reference.md", "3_WRITING_FILES.md", "errors.md") if path not in nav] == []
+
+
 def test_docstrings_of_this_file_carry_no_ac_id():
   """No docstring in this file names an acceptance-criterion id."""
   tree = ast.parse(Path(__file__).read_text(encoding="utf-8"))
