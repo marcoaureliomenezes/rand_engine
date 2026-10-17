@@ -67,7 +67,7 @@ a scaffolded example ([[get-started-cli]]) and the docs site, `llms.txt` and age
 
 | slug | title | tldr |
 |------|-------|------|
-| `benchmarks` | Performance benchmarks | A CI-only same-runner A/B benchmark times every generation method, two modifiers and the CSV, Parquet, JSON and stream_dict sinks, then enforces base, sibling and modifier limits. |
+| `benchmarks` | Performance benchmarks | CI compares every generation method, two modifiers and four sinks on the same runner, publishes results and enforces regression limits. |
 
 ### relations
 

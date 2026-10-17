@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-17T22:59:50Z",
+  "generated_at": "2026-10-17T23:10:45Z",
   "features": [
     {
       "rank": 1,
@@ -234,7 +234,7 @@
       "slug": "benchmarks",
       "title": "Performance benchmarks",
       "area": "quality",
-      "tldr": "A CI-only same-runner A/B benchmark times every generation method, two modifiers and the CSV, Parquet, JSON and stream_dict sinks, then enforces base, sibling and modifier limits.",
+      "tldr": "CI compares every generation method, two modifiers and four sinks on the same runner, publishes results and enforces regression limits.",
       "summary": "The benchmark coordinator alternates timed requests between long-lived base and head workers per row, reports method, modifier and sink throughput, publishes Markdown and JSON artifacts, and fails when a comparable head row exceeds the base ratio, a new distribution exceeds its sibling method, or a modifier costs more than its overhead limit.",
       "path": "specs/memory/product/quality/benchmarks.md",
       "tags": [
