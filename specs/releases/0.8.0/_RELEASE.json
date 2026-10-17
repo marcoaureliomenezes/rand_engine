@@ -260,6 +260,18 @@
       "agent": "dd-product-engineer",
       "kind": "summary",
       "text": "delivered: rc-4 implemented at 864535d: exact event-time fk.born_before eligibility across DataFrames, files, streams and Spark; Spark pk/fk parity through the shared indexed Keys authority with key-only explicit seeding and native ordinary columns; output-only stdlib SQLite batch persistence with quoted identifiers, bound values, atomic selected-table overwrite and transactional append; lossless eligible stream_dict conversion through Arrow with narrow pandas fallback; public docstrings, guides, Agent Skill and primary-source capability comparison; exact constitution invariant 8 output-SQL boundary; independent measurement from the final Job 5 official merge gate at 864535d: verify exit 0, 1237 passed, 8 deselected and 9 warnings in 68.80 s; candidate size 0301699..864535d: 35 files, +2383/-67; verdict.py stats 0.8.0-rc4: 7 sequences, 13 verdicts, 6 rejected, first-pass rejected 4/7; memory: authoritative drift changed data-generator, generation-methods, spark-generator, documentation, writers-and-streaming, pk-fk-constraints and rand-spec-grammar, catalog regenerated, every derived marker matches, public-api reviewed unchanged, and the unlisted benchmarks atom corrected its sink-coverage wording while the sourced rc-2 artifact remains byte-for-byte unchanged; release drift, memory, backlog, bug and release checks exit 0; doctor reports no rand-engine spec or hook error, with its global nonzero exit limited to workspace TTL artifacts across three other contexts and prior rand-engine coordination; goal readout: the four technical Origin demands delivered, 0 open bugs, outreach the only active backlog item; carried: candidate-head benchmark and full PR checks must pass after closure, stable PyPI and Pages publication wait for promotion, and outreach remains active for post-stable execution; backlog exits: spark-pk-fk-parity, db-key-sink-writer, event-time-ordered-fk and stream-dict-via-arrow delivered by 0.8.0."
+    },
+    {
+      "ts": "2026-10-17T23:11:12Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over af952b5313458c52a54f82a6d718dc021487e675..161a6c8cde94: 1 reviewed, 0 changed.",
+      "since": "af952b5313458c52a54f82a6d718dc021487e675",
+      "until": "161a6c8cde9408a1bd576f056f2e6f214c509c4c",
+      "reviewed": [
+        "documentation"
+      ],
+      "changed": []
     }
   ]
 }
