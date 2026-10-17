@@ -17,8 +17,9 @@ python databricks-example.py
 ```
 
 It writes `databricks-example.py` to the current directory. `--out DIR` writes it to `DIR` instead,
-created when missing. An existing file is never overwritten. The native path shows a 1,000-row
-Spark DataFrame and its schema; the final cell also shows the 100-row pandas-to-Spark route.
+created when missing. An existing file is never overwritten. The native path builds a 1,000-row
+Spark DataFrame, then shows its first rows and schema; the final cell also shows the 100-row
+pandas-to-Spark route.
 
 ```python no-run
 --8<-- "rand_engine/cases/databricks.py.txt"

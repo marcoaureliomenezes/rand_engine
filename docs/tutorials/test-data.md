@@ -15,8 +15,8 @@ python test-data-example.py
 ```
 
 It writes `test-data-example.py` to the current directory. `--out DIR` writes it to `DIR` instead,
-created when missing. An existing file is never overwritten. Running it prints a 1,000-row sample,
-the null count for `amount`, and rows carrying the configured anomaly values.
+created when missing. An existing file is never overwritten. Running it prints the first rows of a
+1,000-row DataFrame, the null count for `amount`, and rows carrying the configured anomaly values.
 
 ```python no-run
 --8<-- "rand_engine/cases/test-data.py.txt"
