@@ -242,6 +242,19 @@ def test_event_time_fk_handles_huge_finite_inputs_and_row_indexes_without_overfl
   assert frame["parent_id"].iloc[0] in parent.tolist()
 
 
+def test_event_time_fk_accepts_arbitrarily_large_builtin_integer_times():
+  """A finite builtin integer time stays valid through validation and generation."""
+  huge_integer = 10**400
+  born_before = {
+    "parent_start": -huge_integer,
+    "parent_rate": 1,
+    "child_start": 0,
+    "child_rate": 1,
+  }
+  values = _fk({"start": 1}, 3, 4, born_before=born_before)
+  assert set(values) <= {1, 2, 3}
+
+
 def test_fk_without_event_time_keeps_its_pinned_values():
   assert _fk({"start": 0}, 1000, 6, seed=5, col="c").tolist() == [694, 724, 271, 36, 653, 152]
 

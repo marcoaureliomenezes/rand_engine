@@ -489,6 +489,16 @@ def test_fk_event_time_grammar_collects_only_the_four_required_finite_builtin_va
   assert any("born_before" in error and field in error for error in errors)
 
 
+def test_fk_event_time_grammar_collects_heterogeneous_extra_mapping_keys():
+  """Event-time validation reports every extra field without ordering unlike keys."""
+  born_before = {**EVENT_TIME_FK["born_before"], 7: 1, "extra": 1}
+  errors = AdvancedValidator.validate({"pid": {"method": "fk", "kwargs": {**EVENT_TIME_FK, "born_before": born_before}}})
+  assert len(errors) == 2
+  assert all("Column 'pid'" in error and "born_before" in error for error in errors)
+  assert any("7" in error for error in errors)
+  assert any("extra" in error for error in errors)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
 
