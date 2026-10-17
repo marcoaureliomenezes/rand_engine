@@ -1,11 +1,15 @@
 """Batch file writer: one ``save`` generates the rows and writes one file or several parts."""
+import datetime as dt
 import os
 from pathlib import Path
 import shutil
+import sqlite3
 import tempfile
 from typing import Iterator
 import uuid
 
+import numpy as np
+import pandas as pd
 import pyarrow as pa
 
 from rand_engine.file_handlers.file_handler import FileHandler
@@ -113,6 +117,161 @@ class FileBatchWriter(FileWriter):
       shutil.rmtree(backup)
 
 
+  @staticmethod
+  def _sqlite_identifier(value: str) -> str:
+    return f'"{value.replace(chr(34), chr(34) * 2)}"'
+
+
+  @staticmethod
+  def _sqlite_value(value: object) -> tuple[object, str]:
+    if value is None or value is pd.NA or value is pd.NaT:
+      return None, "TEXT"
+    if isinstance(value, (float, np.floating)) and np.isnan(value):
+      return None, "REAL"
+    if isinstance(value, (bool, np.bool_)):
+      return int(value), "INTEGER"
+    if isinstance(value, (int, np.integer)):
+      return int(value), "INTEGER"
+    if isinstance(value, (float, np.floating)):
+      return float(value), "REAL"
+    if isinstance(value, str):
+      return value, "TEXT"
+    if isinstance(value, bytes):
+      return value, "BLOB"
+    if isinstance(value, dt.datetime):
+      return value.isoformat(), "TEXT"
+    if isinstance(value, dt.date):
+      return value.isoformat(), "TEXT"
+    raise RandEngineError(f"sqlite cannot write value of type '{type(value).__name__}'")
+
+
+  @classmethod
+  def _sqlite_frame(cls, frame) -> tuple[list[str], list[str], list[tuple[object, ...]]]:
+    columns = list(frame.columns)
+    if (
+      any(not isinstance(column, str) or "\x00" in column for column in columns)
+      or len(set(columns)) != len(columns)
+    ):
+      raise RandEngineError("sqlite column labels must be unique, NUL-free strings")
+    types = [None] * len(columns)
+    rows = []
+    for row in frame.itertuples(index=False, name=None):
+      converted = []
+      for index, value in enumerate(row):
+        sqlite_value, sqlite_type = cls._sqlite_value(value)
+        if sqlite_value is not None and types[index] is None:
+          types[index] = sqlite_type
+        converted.append(sqlite_value)
+      rows.append(tuple(converted))
+    return columns, [sqlite_type or "TEXT" for sqlite_type in types], rows
+
+
+  @classmethod
+  def _sqlite_create(cls, database, table: str, columns: list[str], types: list[str]) -> None:
+    definitions = ", ".join(
+      f"{cls._sqlite_identifier(column)} {sqlite_type}"
+      for column, sqlite_type in zip(columns, types)
+    )
+    database.execute(f"CREATE TABLE {cls._sqlite_identifier(table)} ({definitions})")
+
+
+  @classmethod
+  def _sqlite_existing_schema(cls, database, table: str) -> list[tuple[str, str]]:
+    return [
+      (row[1], row[2].upper())
+      for row in database.execute(f"PRAGMA table_info({cls._sqlite_identifier(table)})")
+    ]
+
+
+  @classmethod
+  def _sqlite_insert(cls, database, table: str, columns: list[str], rows: list[tuple[object, ...]]) -> None:
+    quoted_columns = ", ".join(cls._sqlite_identifier(column) for column in columns)
+    placeholders = ", ".join("?" for _ in columns)
+    database.executemany(
+      f"INSERT INTO {cls._sqlite_identifier(table)} ({quoted_columns}) VALUES ({placeholders})",
+      rows,
+    )
+
+
+  def _save_sqlite(self, path: str) -> None:
+    options = dict(self.write_options)
+    table = options.pop("table", None)
+    if options:
+      raise RandEngineError("sqlite accepts only the 'table' option")
+    if not isinstance(table, str) or not table or "\x00" in table:
+      raise RandEngineError("sqlite option 'table' must be a non-empty NUL-free string")
+    if self.write_mode not in ("overwrite", "append"):
+      raise RandEngineError("sqlite mode must be 'overwrite' or 'append'")
+
+    total = self._resolved_size(self.size_def())
+    _catalog_def, batch = self.file_def()
+    columns, types, rows = self._sqlite_frame(batch(total, 0))
+    destination = Path(path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+
+    if self.write_mode == "append":
+      destination_existed = destination.exists()
+      database = None
+      try:
+        database = sqlite3.connect(str(destination))
+        database.execute("BEGIN")
+        existing = self._sqlite_existing_schema(database, table)
+        expected = list(zip(columns, types))
+        if existing:
+          if existing != expected:
+            raise RandEngineError("sqlite append schema does not match the existing table")
+        else:
+          self._sqlite_create(database, table, columns, types)
+        self._sqlite_insert(database, table, columns, rows)
+        database.commit()
+      except RandEngineError:
+        if database is not None:
+          database.rollback()
+        raise
+      except sqlite3.Error as error:
+        if database is not None:
+          database.rollback()
+        raise RandEngineError(f"sqlite write failed: {error}") from error
+      finally:
+        if database is not None:
+          database.close()
+      if not destination_existed and not destination.exists():
+        raise RandEngineError("sqlite append did not create its destination")
+      return
+
+    descriptor, staging_name = tempfile.mkstemp(
+      prefix=f".{destination.name}.", suffix=".staging", dir=destination.parent
+    )
+    os.close(descriptor)
+    staging = Path(staging_name)
+    try:
+      if destination.exists():
+        source = sqlite3.connect(str(destination))
+        try:
+          target = sqlite3.connect(str(staging))
+          try:
+            source.backup(target)
+          finally:
+            target.close()
+        finally:
+          source.close()
+      database = sqlite3.connect(str(staging))
+      try:
+        database.execute("BEGIN")
+        database.execute(f"DROP TABLE IF EXISTS {self._sqlite_identifier(table)}")
+        self._sqlite_create(database, table, columns, types)
+        self._sqlite_insert(database, table, columns, rows)
+        database.commit()
+      except sqlite3.Error as error:
+        database.rollback()
+        raise RandEngineError(f"sqlite write failed: {error}") from error
+      finally:
+        database.close()
+      os.replace(staging, destination)
+    finally:
+      staging.unlink(missing_ok=True)
+
+
   def _open_session(
     self,
     path: Path,
@@ -201,6 +360,10 @@ class FileBatchWriter(FileWriter):
     >>> sum(len(pd.read_csv(os.path.join(path, name))) for name in os.listdir(path))
     10
     """
+    if self.write_format == "sqlite":
+      self._save_sqlite(path)
+      return
+
     write_options = dict(self.write_options)
     num_files = self._positive_integer("numFiles", write_options.pop("numFiles", 1))
     batch_limit = write_options.pop("maxRowsPerBatch", None)
