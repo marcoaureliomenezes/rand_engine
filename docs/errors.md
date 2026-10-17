@@ -24,12 +24,16 @@ try:
     DataGenerator(bad_spec)
 except SpecValidationError as error:
     assert "age" in str(error)
+else:
+    raise AssertionError("expected SpecValidationError")
 
 spec = {"age": {"method": "integers", "kwargs": {"min": 18, "max": 80}}}
 try:
     DataGenerator(spec).size(1).write.format("csv").option("engine", "fast").save("out/ages.csv")
 except RandEngineError as error:
     assert "engine" in str(error)
+else:
+    raise AssertionError("expected RandEngineError")
 ```
 
 ## Exception reference
