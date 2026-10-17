@@ -66,11 +66,33 @@ def test_no_run_is_only_the_kafka_producer():
   assert all("from pyspark" in body for info, body in skill if info == "python no-run")
 
 
+def _table_rows(path: Path, headers: tuple[str, ...]) -> list[list[str]]:
+  """Return cells from a documentation table with this exact semantic header."""
+  heading = "| " + " | ".join(headers) + " |"
+  match = re.search(rf"^{re.escape(heading)}\n\|[-| ]+\n((?:\|.*\n)+)", _text(path), re.M)
+  assert match is not None
+  return [[cell.strip() for cell in row.strip("|").split("|")] for row in match.group(1).splitlines()]
+
+
+def _parameter_names(cell: str) -> frozenset[str]:
+  """Read parameter identifiers, excluding parenthesized literal/default detail."""
+  return frozenset(re.findall(r"`([A-Za-z_]\w*)`", re.sub(r"\([^()]*\)", "", cell)))
+
+
+def method_parameter_rows(path: Path, headers: tuple[str, ...]) -> dict[str, tuple[frozenset[str], frozenset[str], frozenset[str]]]:
+  """Method -> exact required kwargs, optional kwargs, and top-level column fields."""
+  rows = _table_rows(path, headers)
+  return {
+      method: (_parameter_names(cells[1]), _parameter_names(cells[2]), _parameter_names(cells[3]))
+      for cells in rows
+      for method in re.findall(r"`(\w+)`", cells[0])
+  }
+
+
 def skill_method_table() -> dict[str, str]:
   """Method name -> the Spark column's text, for every row of SKILL.md's method table."""
-  rows = re.findall(r"^\| Method \|.*\n\|[-| ]+\n((?:\|.*\n)+)", SKILL.read_text(encoding="utf-8"), re.M)[0].splitlines()
-  cells = [[c.strip() for c in row.strip("|").split("|")] for row in rows]
-  return {name: cell[-1] for cell in cells for name in re.findall(r"`(\w+)`", cell[0])}
+  rows = _table_rows(SKILL, ("Method", "Required kwargs", "Optional kwargs", "Column fields", "Produces", "Spark"))
+  return {name: cells[-1] for cells in rows for name in re.findall(r"`(\w+)`", cells[0])}
 
 
 def spark_outcome(spec) -> str:
@@ -215,33 +237,24 @@ def test_spark_doc_runs_the_refusal_of_new_methods():
   assert any(method in code for method in NEW_METHODS - {"constant"})
 
 
-def _method_rows(path: Path) -> dict[str, str]:
-  """Return the documented parameter cell for each row in the primary method table."""
-  text = _text(path)
-  table = re.search(
-      r"^\| Method \| Required kwargs \| Optional kwargs \|\n\|[-| ]+\n((?:\|.*\n)+)",
-      text,
-      re.M,
-  ).group(1)
-  return {
-      method: "|".join(row.split("|")[2:]).strip()
-      for row in table.splitlines()
-      for method in re.findall(r"`(\w+)`", row.split("|")[1])
-  }
-
-
-def test_data_generator_method_inventory_is_the_catalog_with_its_parameters():
-  """The human method table exposes every catalog method and each declared parameter."""
+def test_human_and_skill_method_inventories_match_the_catalog_parameters():
+  """Both method tables separate the catalog's kwargs from top-level column fields."""
   from rand_engine.validators.method_specs import METHOD_CATALOG
 
-  rows = _method_rows(DOCS / "1_DATA_GENERATOR.md")
-  assert set(rows) == set(METHOD_CATALOG)
-  assert {
-      (method, name)
+  expected = {
+      method: (frozenset(entry.required), frozenset(entry.optional), frozenset({"cols"}) if entry.requires_cols else frozenset())
       for method, entry in METHOD_CATALOG.items()
-      for name in (*entry.required, *entry.optional)
-      if name not in rows[method]
-  } == set()
+  }
+  human = method_parameter_rows(
+      DOCS / "1_DATA_GENERATOR.md",
+      ("Method", "Required kwargs", "Optional kwargs", "Column fields"),
+  )
+  skill = method_parameter_rows(
+      SKILL,
+      ("Method", "Required kwargs", "Optional kwargs", "Column fields", "Produces", "Spark"),
+  )
+  assert human == expected
+  assert skill == expected
 
 
 def test_spark_method_inventory_matches_live_validation():
@@ -323,6 +336,51 @@ def test_spark_doc_executes_integer_boundaries(tmp_path, monkeypatch, spark_sess
       and refused
       for kwargs, refused in integers
   )
+
+
+def documented_correlated_spark_frames(tmp_path, monkeypatch):
+  """Run the Spark guide and retain real DataFrames made from correlated specs."""
+  from rand_engine import SparkGenerator
+  from rand_engine.validators.method_specs import CORRELATED, METHOD_CATALOG
+
+  frames = []
+  get_df = SparkGenerator.get_df
+
+  def record(self):
+    dataframe = get_df(self)
+    methods = {column["method"] for column in self.metadata.values()}
+    if any(METHOD_CATALOG[method].kind == CORRELATED for method in methods):
+      frames.append((self.metadata, dataframe))
+    return dataframe
+
+  monkeypatch.setattr(SparkGenerator, "get_df", record)
+  with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    run_python_blocks(DOCS / "2_SPARK_GENERATOR.md", tmp_path, monkeypatch)
+  return frames, caught
+
+
+def test_spark_doc_executes_correlated_methods_as_null_strings(tmp_path, monkeypatch, spark_session):
+  """The Spark guide runs all correlated methods as warned NULL string columns."""
+  from rand_engine.validators.method_specs import CORRELATED, METHOD_CATALOG
+
+  frames, caught = documented_correlated_spark_frames(tmp_path, monkeypatch)
+  expected = {name for name, entry in METHOD_CATALOG.items() if entry.kind == CORRELATED}
+  observed = {
+      name
+      for metadata, _ in frames
+      for name, column in metadata.items()
+      if column["method"] in expected
+  }
+  assert observed == expected
+  assert {method for method in expected if any(method in str(item.message) for item in caught)} == expected
+  for metadata, dataframe in frames:
+    assert dataframe.count() <= 10_000
+    for name, column in metadata.items():
+      if column["method"] in expected:
+        field = dataframe.schema[name]
+        assert field.dataType.typeName() == "string"
+        assert dataframe.where(dataframe[name].isNotNull()).count() == 0
 
 
 def documented_builder_calls(tmp_path, monkeypatch):
