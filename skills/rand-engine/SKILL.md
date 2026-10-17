@@ -79,8 +79,8 @@ Every method below runs on `DataGenerator` (NumPy). The last column says whether
 | `distincts_map_prop` | `distincts` | — | `cols` | weighted correlated pair | NULL + warning |
 | `distincts_multi_map` | `distincts` | — | `cols` | correlated columns, one per level | NULL + warning |
 | `complex_distincts` | `pattern`, `replacement`, `templates` | — | — | strings built from templates | NULL + warning |
-| `pk` | — | `style`, `start`, `step`, `domain`, `key`, `format` | — | unique keys | refused |
-| `fk` | `parent`, `parent_size` | `skew`, `born_before` | — | references to parent keys | refused |
+| `pk` | — | `style`, `start`, `step`, `domain`, `key`, `format` | — | unique keys | yes |
+| `fk` | `parent`, `parent_size` | `skew`, `born_before` | — | references to parent keys | yes |
 
 **Column fields** are required keys outside `kwargs`. Only the three map methods require `cols`;
 `null_rate`, `anomaly_rate`, and `anomaly_values` are global NumPy-only modifiers.
@@ -108,7 +108,9 @@ assert customers["customer_id"].is_unique
 assert orders["customer_id"].isin(customers["customer_id"]).all()
 ```
 
-Hand keyed tables to Spark with `spark.createDataFrame(df)`; `SparkGenerator` refuses `pk` and `fk`.
+`SparkGenerator` accepts the same stateless key definitions. Its `seed` applies only to `pk` and
+`fk`; ordinary Spark methods remain unseeded. It computes key columns with a key-only
+`mapInPandas` adapter over source row indexes and keeps ordinary columns native to Spark.
 
 ## Sinks
 
@@ -139,7 +141,11 @@ assert [r["event_id"] for r in records] == list(range(1, 26))
 
 ## Spark
 
-`SparkGenerator(spark, F, spec).size(n).get_df()` returns a Spark DataFrame built from native expressions. It has no seed, no `.transformers` and no `.write`: use Spark's `df.write`. It refuses the methods marked "refused" above with a `SpecValidationError` that points at `DataGenerator`.
+`SparkGenerator(spark, F, spec, seed=None).size(n).get_df()` returns a Spark DataFrame. Ordinary
+columns use native expressions; `pk` and `fk` use a key-only `mapInPandas` adapter over source row
+indexes, and `seed` affects only those key columns. It has no `.transformers` or `.write`: use
+Spark's `df.write`. It refuses the methods marked "refused" above with a `SpecValidationError` that
+points at `DataGenerator`.
 
 ```python no-run
 from pyspark.sql import SparkSession, functions as F
