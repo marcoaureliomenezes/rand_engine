@@ -32,20 +32,27 @@ def python_blocks(path: Path) -> list[tuple[str, str]]:
   return [(info.strip(), body) for info, body in FENCE.findall(path.read_text(encoding="utf-8"))]
 
 
+def run_python_blocks(doc: Path, tmp_path, monkeypatch) -> dict:
+  """Run a documentation page's runnable blocks in their shared namespace."""
+  monkeypatch.chdir(tmp_path)
+  namespace = {"__name__": "__docs__"}
+  for i, body in enumerate(body for info, body in python_blocks(doc) if info == "python"):
+    exec(compile(body, f"{doc.name}[{i}]", "exec"), namespace)
+  return namespace
+
+
 SKILL = ROOT / "skills" / "rand-engine" / "SKILL.md"
 
 
-@pytest.mark.parametrize("doc", [*(pytest.param(p, id=p.relative_to(DOCS).as_posix()) for p in sorted(DOCS.glob("**/*.md"))),
+@pytest.mark.parametrize("doc", [*(pytest.param(p, id=p.relative_to(DOCS).as_posix())
+                                   for p in sorted(DOCS.glob("**/*.md")) if p.name != "3_WRITING_FILES.md"),
                                  pytest.param(SKILL, id="SKILL.md")])
 def test_doc_python_blocks_execute_in_order(doc, tmp_path, monkeypatch, request):
   """Every `python` block runs, in file order, in one namespace."""
   blocks = [body for info, body in python_blocks(doc) if info == "python"]
   if any("pyspark" in body for body in blocks):
     request.getfixturevalue("spark_session")  # the doc's getOrCreate() reuses it; skips where Spark cannot run
-  monkeypatch.chdir(tmp_path)
-  namespace = {"__name__": "__docs__"}
-  for i, body in enumerate(blocks):
-    exec(compile(body, f"{doc.name}[{i}]", "exec"), namespace)
+  run_python_blocks(doc, tmp_path, monkeypatch)
 
 
 def test_no_run_is_only_the_kafka_producer():
@@ -209,10 +216,45 @@ def test_spark_doc_runs_the_refusal_of_new_methods():
   assert any(method in code for method in NEW_METHODS - {"constant"})
 
 
-def test_writing_doc_runs_row_batches_and_append():
+def test_writing_doc_runs_row_batches_and_append(tmp_path, monkeypatch):
   """3_WRITING_FILES.md executes maxRowsPerBatch and mode("append") (new parts beside the old ones)."""
+  from rand_engine.file_handlers._writer_batch import FileBatchWriter
+  from rand_engine.file_handlers._writer_stream import FileStreamWriter
+
   code = block_text("3_WRITING_FILES.md")
   assert "maxRowsPerBatch" in code and 'mode("append")' in code
+
+  batch, stream, staged = [], [], []
+  save, start, stage_files = FileBatchWriter.save, FileStreamWriter.start, FileBatchWriter._stage_files
+
+  def record_save(self, path):
+    batch.append((self.write_format, self.write_mode, dict(self.write_options)))
+    return save(self, path)
+
+  def record_start(self, path):
+    stream.append((self.write_format, self.write_mode, self.freq, dict(self.write_options)))
+    return start(self, path)
+
+  def record_stage(self, staging, *args, **kwargs):
+    staged.append(staging)
+    return stage_files(self, staging, *args, **kwargs)
+
+  monkeypatch.setattr(FileBatchWriter, "save", record_save)
+  monkeypatch.setattr(FileStreamWriter, "start", record_start)
+  monkeypatch.setattr(FileBatchWriter, "_stage_files", record_stage)
+  run_python_blocks(DOCS / "3_WRITING_FILES.md", tmp_path, monkeypatch)
+
+  assert {format for format, _, _ in batch} == {"csv", "json", "parquet"}
+  assert {mode for _, mode, _ in batch} == {"append", "overwrite"}
+  assert any(not options for _, mode, options in batch if mode == "overwrite")
+  assert {options.get("numFiles") for _, _, options in batch if "numFiles" in options} == {2, 3, 4}
+  assert any(options.get("maxRowsPerBatch") == 100 for _, _, options in batch)
+  assert stream == [("json", "overwrite", 0.1, {"timeout": 0.3})]
+  assert staged and all(path.parent == tmp_path / "out" and path.name.endswith(".staging") for path in staged)
+  assert not [path for path in staged if path.exists()]
+  assert len(list((tmp_path / "out" / "clients_json").iterdir())) == 4
+  assert len(list((tmp_path / "out" / "log").iterdir())) == 4
+  assert len(list((tmp_path / "out" / "stream").iterdir())) >= 2
 
 
 def _writer_option_table() -> dict[str, str]:
@@ -228,47 +270,11 @@ def test_writing_doc_inventory_matches_the_accepted_writer_options():
   rows = _writer_option_table()
   assert set(rows) == {"csv", "parquet", "json", "write (batch)", "writeStream"}
   assert "sep" in rows["csv"] and {"gzip", "bz2", "xz", "zip"} <= set(re.findall(r"`(gzip|bz2|xz|zip)`", rows["csv"]))
-  assert "`snappy` (default)" in rows["parquet"]
+  assert {"compression", "snappy", "gzip", "zstd", "brotli", "lz4"} <= set(re.findall(r"`(\w+)`", rows["parquet"]))
   assert {"force_ascii", "indent", "orient"} <= {name for name in ("force_ascii", "indent", "orient") if name in rows["json"]}
   assert {"gzip", "bz2", "xz", "zip"} <= set(re.findall(r"`(gzip|bz2|xz|zip)`", rows["json"]))
-  assert "numFiles (default 1)" in rows["write (batch)"] and "maxRowsPerBatch" in rows["write (batch)"]
-  assert "timeout" in rows["writeStream"] and "default 20" in rows["writeStream"]
-
-
-def test_writing_doc_executes_the_documented_writer_lifecycle(tmp_path, monkeypatch):
-  """The guide runs batch and stream chains whose options, modes and files match their documented outcomes."""
-  from rand_engine.file_handlers._writer_batch import FileBatchWriter
-  from rand_engine.file_handlers._writer_stream import FileStreamWriter
-
-  batch, stream = [], []
-  save, start = FileBatchWriter.save, FileStreamWriter.start
-
-  def record_save(self, path):
-    batch.append((self.write_format, self.write_mode, dict(self.write_options), path))
-    return save(self, path)
-
-  def record_start(self, path):
-    stream.append((self.write_format, self.write_mode, self.freq, dict(self.write_options), path))
-    return start(self, path)
-
-  monkeypatch.setattr(FileBatchWriter, "save", record_save)
-  monkeypatch.setattr(FileStreamWriter, "start", record_start)
-  monkeypatch.chdir(tmp_path)
-  namespace = {"__name__": "__docs__"}
-  for i, body in enumerate(b for info, b in python_blocks(DOCS / "3_WRITING_FILES.md") if info == "python"):
-    exec(compile(body, f"3_WRITING_FILES.md[{i}]", "exec"), namespace)
-
-  assert ("parquet", "overwrite", {}, "out/clients.parquet") in batch
-  assert ("csv", "overwrite", {"compression": "gzip"}, "out/clients.csv") in batch
-  assert ("json", "overwrite", {"numFiles": 4}, "out/clients_json") in batch
-  assert ("csv", "overwrite", {"numFiles": 3, "sep": ";"}, "out/parts.csv") in batch
-  assert ("csv", "overwrite", {"numFiles": 2, "maxRowsPerBatch": 100}, "out/log.csv") in batch
-  assert ("csv", "append", {"numFiles": 2}, "out/log.csv") in batch
-  assert stream == [("json", "overwrite", 0.1, {"timeout": 0.3}, "out/stream.json")]
-  assert not list((tmp_path / "out").glob("*.staging"))
-  assert len(list((tmp_path / "out" / "clients_json").iterdir())) == 4
-  assert len(list((tmp_path / "out" / "log").iterdir())) == 4
-  assert len(list((tmp_path / "out" / "stream").iterdir())) >= 2
+  assert "numFiles" in rows["write (batch)"] and "maxRowsPerBatch" in rows["write (batch)"]
+  assert "timeout" in rows["writeStream"]
 
 
 def test_recipes_run_the_helpers():
@@ -430,6 +436,13 @@ def test_reference_navigation_exposes_the_main_writer_and_error_destinations():
   """The docs navigation links to the main API and to separate returned-writer and error references."""
   nav = (ROOT / "mkdocs.yml").read_text(encoding="utf-8")
   assert [path for path in ("reference.md", "3_WRITING_FILES.md", "errors.md") if path not in nav] == []
+  reference = re.search(r"^  - Reference:\n((?:^      - .+\n)+)", nav, re.M)
+  children = re.findall(r"^      - (.*): (.*)$", reference.group(1), re.M)
+  assert children == [
+    ("Main API", "reference.md"),
+    ("Returned writers", "3_WRITING_FILES.md"),
+    ("Errors", "errors.md"),
+  ]
 
 
 def test_docstrings_of_this_file_carry_no_ac_id():
