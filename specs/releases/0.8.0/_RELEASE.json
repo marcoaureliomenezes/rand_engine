@@ -272,6 +272,12 @@
         "documentation"
       ],
       "changed": []
+    },
+    {
+      "ts": "2026-10-17T23:12:10Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-4 closure metadata correction at 161a6c8 shortened the benchmark tldr to the 160-character schema without losing method, modifier, sink, publication or regression-limit truth, regenerated catalog/index and refreshed the benchmark-derived llms marker; all 13 memory frontmatters were swept, maximum tldr length 152, and release.py recorded documentation reviewed unchanged through 161a6c8; actual redacted doctor JSON on the resulting release state reports 0 LINT-1, 0 specs errors, 7 nonblocking TREE-5 warnings and 0 ledger findings, superseding the earlier closure summary's incomplete doctor sentence; carried: the global doctor exit remains 1 for six HOOKS-DRIFT-1 errors across three repository paths, 66 expired handoffs, 10 expired temporary entries, 19 worktree information/warnings and 11 retained reaped entries, with no projection, library, foreign repository or broad fix attempted; candidate-head benchmark and full PR checks still must pass before promotion, stable PyPI and Pages publication wait for promotion, and outreach remains active for post-stable execution; backlog exits: spark-pk-fk-parity, db-key-sink-writer, event-time-ordered-fk and stream-dict-via-arrow delivered by 0.8.0."
     }
   ]
 }
