@@ -30,10 +30,12 @@
 ## Bug window review
 
 Rc-3 delivered documentation only and resolved no bug record. `BUGS.jsonl` is
-unchanged across `c713b02..3e69edd`, reports zero open bugs, and introduces no
-`fix_sha` after the rc-2 fixes already judged in rc-3's bug window. There is
-therefore no fix to classify KEEP or REBUILD and no bug-window implementation work
-in this candidate.
+unchanged across the actual candidate window `c713b02..6aeaca0`, reports zero open
+bugs, and introduces no `fix_sha` after the rc-2 fixes already judged in rc-3's bug
+window. The compatibility commits `6dbba12` and `6aeaca0` in that window modify
+only `tests/test_docs.py`; neither changes the bug ledger nor records a fix.
+There is therefore no fix to classify KEEP or REBUILD and no bug-window
+implementation work in this candidate.
 
 ## 1. Problem
 
