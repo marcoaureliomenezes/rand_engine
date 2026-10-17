@@ -288,6 +288,4 @@ yet let a user answer several ordinary questions from one accurate source:
 ### Open questions
 
 None. The confirmed grill answers the documentation depth, engine/domain coverage,
-five-example execution, agent-readable outputs and marker reconciliation. The Draft
-SPEC and the later PLAN still require the operator's explicit approval before the
-candidate may enter implementation.
+five-example execution, agent-readable outputs and marker reconciliation.

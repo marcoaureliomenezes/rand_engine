@@ -41,9 +41,25 @@ else:
 ::: rand_engine.validators.exceptions.RandEngineError
 
 ::: rand_engine.validators.exceptions.SpecValidationError
+    options:
+      show_docstring_description: false
+      show_docstring_examples: false
+      show_source: false
 
 ::: rand_engine.validators.exceptions.ColumnGenerationError
+    options:
+      show_docstring_description: false
+      show_docstring_examples: false
+      show_source: false
 
 ::: rand_engine.validators.exceptions.TransformerError
+    options:
+      show_docstring_description: false
+      show_docstring_examples: false
+      show_source: false
 
 ::: rand_engine.validators.exceptions.FileWriterError
+    options:
+      show_docstring_description: false
+      show_docstring_examples: false
+      show_source: false
