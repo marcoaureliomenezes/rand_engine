@@ -95,9 +95,14 @@ and types remain compatible.
 - **Key parity:** equal complete output values for the same explicit seed, RandSpec
   and row indexes; output order is compared by row index and does not redefine
   Spark ordering.
-- **Arrow-compatible batch:** the already-normalized pandas batch can be converted
-  by `pyarrow.Table.from_pandas(..., preserve_index=False)` without an Arrow
-  representation error.
+- **Arrow-compatible batch:** the already-normalized pandas batch passes a cheap
+  lossless-type eligibility check and can be converted by
+  `pyarrow.Table.from_pandas(..., preserve_index=False)` without an Arrow
+  representation error. Typed numeric/boolean columns, nulls and scalar object
+  values proved lossless by contract tests — including ordinary strings and dates
+  used by the existing stream benchmark — are eligible. Nested containers, NumPy
+  arrays, custom objects and other unproved object-cell representations are not,
+  even when Arrow can encode them.
 - **SQLite destination:** the database file passed to `save`; the `table` option
   selects the only table this save may replace or append.
 
@@ -105,9 +110,11 @@ and types remain compatible.
 
 - AC1.1 (unit): `fk` accepts an optional `born_before` mapping with exactly
   `parent_start`, `parent_rate`, `child_start` and `child_rate`. Starts are finite
-  real numbers and rates are finite real numbers strictly greater than zero;
-  booleans, missing/extra keys, non-mappings, non-finite values and non-positive
-  rates are collected as validation errors before generation.
+  builtin `int` or `float` values and rates are finite builtin `int` or `float`
+  values strictly greater than zero. Booleans, missing/extra keys, non-mappings,
+  non-finite values and non-positive rates are collected as validation errors
+  before generation. No `Decimal`, `Fraction`, NumPy-scalar or other numeric input
+  promise is introduced.
 - AC1.2 (unit): for child row index `j`, the eligible count is the number of parent
   indexes in `[0, parent_size)` satisfying
   `parent_start + p / parent_rate <= child_start + j / child_rate`. Equivalently it
@@ -181,13 +188,18 @@ and types remain compatible.
   normalization, an Arrow-compatible batch is converted through
   `Table.from_pandas(..., preserve_index=False).to_pylist()`. Ordinary scalars,
   nullable integer/boolean/float columns, nulls, dates, normalized datetimes,
-  transformed columns and `timestamp_created` have exactly the current Python
-  values and types.
-- AC4.2 (integration): only Arrow representation failures such as
-  `ArrowInvalid`/`ArrowTypeError` trigger the existing
-  `DataFrame.to_dict("records")` conversion. A real mixed object column proves the
-  fallback returns the current records. Compatible batches are not converted by
-  both paths merely to compare them, and unrelated exceptions are not swallowed.
+  transformed safe scalar columns and `timestamp_created` have exactly the current
+  Python values and types. The ordinary string-heavy workload measured by the
+  existing `stream_dict` benchmark remains eligible for this Arrow path.
+- AC4.2 (integration): a batch that fails the lossless-type eligibility check, or
+  raises a narrow Arrow representation error such as
+  `ArrowInvalid`/`ArrowTypeError`, uses the existing
+  `DataFrame.to_dict("records")` conversion. Real tuple, NumPy-array and mixed
+  object partitions prove the fallback preserves their current values and Python
+  types even where Arrow could encode them by changing representation. The guard
+  may inspect object-column cell types cheaply; it does not run both complete
+  conversions for an eligible batch, swallow unrelated exceptions, add a public
+  flag/framework or change `StreamHandler`.
 - AC4.3 (integration): record order, infinite iteration, resolved size, throughput
   bounds, batch cadence, transformer/modifier behavior and timestamp insertion
   remain unchanged. Existing `stream_dict` tests stay green without weakening or
