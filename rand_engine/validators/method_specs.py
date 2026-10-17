@@ -510,7 +510,7 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
                 "key": int,
                 "format": str,
             },
-            engines=(NUMPY,),
+            engines=(NUMPY, SPARK),
             kind=KEY,
             arrow_types=_pk_arrow_type,
             example={
@@ -521,7 +521,7 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
         "fk": _spec(
             required={"parent": dict, "parent_size": int},
             optional={"skew": (int, float), "born_before": MappingABC},
-            engines=(NUMPY,),
+            engines=(NUMPY, SPARK),
             kind=KEY,
             arrow_types=_fk_arrow_type,
             example={
