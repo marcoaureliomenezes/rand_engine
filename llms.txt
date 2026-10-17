@@ -15,6 +15,7 @@
 - [Keys](https://marcoaureliomenezes.github.io/rand_engine/4_CONSTRAINTS/): `pk` and `fk` columns
 - [Reference](https://marcoaureliomenezes.github.io/rand_engine/reference/): the public API, one canonical entry per object
 - [Explanation](https://marcoaureliomenezes.github.io/rand_engine/explanation/): the RandSpec model and the NumPy core
+- [Comparison](https://marcoaureliomenezes.github.io/rand_engine/comparison/): factual scope comparison with Faker and dbldatagen
 
 ## Tutorials
 

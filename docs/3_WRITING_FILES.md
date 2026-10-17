@@ -35,6 +35,7 @@ assert len(os.listdir("out/clients_json")) == 4
 | `csv` | `sep` (delimiter, default `,`); `compression`: `gzip`, `bz2`, `xz`, `zip`; `index`: only `False` (Arrow writes no index) |
 | `parquet` | `compression`: `snappy` (default), `gzip`, `zstd`, `brotli`, `lz4` |
 | `json` | `force_ascii`, `indent`, `compression` (`gzip`, `bz2`, `xz`, `zip`); `orient`: only `"records"` |
+| `sqlite` | `table` (required, non-empty table name); `overwrite` or `append`; no file batching or file-format options |
 | `write` (batch) | `numFiles` (default 1); `maxRowsPerBatch` (positive int; rows generated and written per batch, so memory stays bounded) |
 | `writeStream` | `timeout` in seconds (default 20) |
 
@@ -82,6 +83,36 @@ log.write.format("csv").options(numFiles=2).mode("append").save("out/log.csv")
 logs = os.listdir("out/log")
 assert len(logs) == 4
 assert sum(len(pd.read_csv(f"out/log/{f}")) for f in logs) == 2_000
+```
+
+### SQLite table sink
+
+SQLite is a batch-only output sink: use `write.format("sqlite").option("table", name)` and one
+of `overwrite` or `append`. Identifiers are quoted and row values are bound. An overwrite stages
+the selected table replacement while preserving unrelated tables; append is transactional. SQLite
+stores bools and signed 64-bit integers as INTEGER, floats as REAL, strings and ISO dates as TEXT,
+bytes as BLOB, and nulls as NULL. Mixed and all-null columns have no declared affinity. It does
+not create a primary-key constraint from a RandSpec key, resume files, or accept `numFiles`,
+`maxRowsPerBatch`, or other file options.
+
+```python
+import sqlite3
+from rand_engine.validators.exceptions import RandEngineError
+
+sqlite_path = "out/clients.sqlite"
+sqlite_table = 'client "events"'
+gen.write.format("sqlite").option("table", sqlite_table).mode("overwrite").save(sqlite_path)
+gen.write.format("sqlite").option("table", sqlite_table).mode("append").save(sqlite_path)
+with sqlite3.connect(sqlite_path) as database:
+    quoted = sqlite_table.replace('"', '""')
+    assert database.execute(f'SELECT COUNT(*) FROM "{quoted}"').fetchone()[0] == 2_000
+
+try:
+    gen.writeStream.format("sqlite").option("table", "events").start("out/events.sqlite")
+except RandEngineError:
+    pass
+else:
+    raise AssertionError("SQLite is batch-only")
 ```
 
 ## Stream: `writeStream`

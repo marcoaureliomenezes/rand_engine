@@ -1,7 +1,7 @@
 # DataGenerator — pandas DataFrames from a RandSpec
 
 `DataGenerator` turns a RandSpec (a dict, or a callable returning one) into a pandas DataFrame,
-an infinite stream of dicts, or files. Every Python block in this guide runs in CI, in order.
+an infinite stream of dicts, files, or one SQLite output table. Every Python block in this guide runs in CI, in order.
 
 ```python
 from rand_engine import DataGenerator
@@ -269,6 +269,10 @@ else:
 `stream_dict` never ends: it generates `size` rows per microbatch, converts datetime columns to
 strings and adds `timestamp_created` (epoch seconds) to each record. Stop it yourself.
 
+After that unchanged normalization, a strictly lossless scalar frame uses Arrow to form records.
+Object columns containing nested containers, mixed values, custom values, unproved extension
+types, or non-string labels keep the pandas record path, preserving their public Python values.
+
 ```python
 from itertools import islice
 
@@ -276,4 +280,14 @@ spec = {"user_id": {"method": "int_zfilled", "kwargs": {"length": 8}}}
 stream = DataGenerator(spec, seed=1).size(10).stream_dict(min_throughput=500, max_throughput=1000)
 records = list(islice(stream, 25))
 assert len(records) == 25 and set(records[0]) == {"user_id", "timestamp_created"}
+
+arrow_records = list(islice(
+    DataGenerator({"value": {"method": "integers", "kwargs": {"min": 1, "max": 3}}}, seed=3)
+    .size(2).stream_dict(500, 1000), 2
+))
+fallback_records = list(islice(
+    DataGenerator({"value": {"method": "distincts", "kwargs": {"distincts": [{"nested": [1, 2]}]}}}, seed=3)
+    .size(1).stream_dict(500, 1000), 1
+))
+assert isinstance(fallback_records[0]["value"], dict)
 ```

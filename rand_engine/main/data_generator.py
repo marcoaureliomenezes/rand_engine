@@ -58,6 +58,9 @@ class DataGenerator:
   """
   Generate pandas DataFrames, dict streams or files from a RandSpec.
 
+  ``stream_dict`` uses Arrow only when it preserves the normalized record representation;
+  unsupported values retain the pandas record path.
+
   Parameters
   ----------
   random_spec : dict or callable

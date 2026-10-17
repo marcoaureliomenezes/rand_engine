@@ -77,6 +77,42 @@ top_share = sales["product_id"].value_counts().iloc[0] / len(sales)
 assert top_share > 1 / 200 * 10  # a few parents take most of the rows
 ```
 
+### Event-time eligibility
+
+`born_before` is an optional FK mapping with exactly four fields: `parent_start`, `parent_rate`,
+`child_start`, and `child_rate`. Each is a finite built-in `int` or `float` (never `bool`), and
+the rates are positive. For child row `i`, every parent born at or before that child's event time
+is eligible, inclusively. If no parent is eligible, generation raises `RandEngineError` naming the
+FK column. The key calculation is stateless and supports exact large integer inputs.
+
+```python
+from rand_engine.validators.exceptions import RandEngineError
+
+event_time_born_before = {
+    "parent_start": 0,
+    "parent_rate": 1.0,
+    "child_start": 2,
+    "child_rate": 1.0,
+}
+event_time_parent = {"method": "pk", "kwargs": {"start": 1}}
+event_time_parents = DataGenerator({"customer_id": event_time_parent}, seed=1).size(4).get_df()
+event_time_orders = DataGenerator({
+    "customer_id": {"method": "fk", "kwargs": {
+        "parent": event_time_parent, "parent_size": 4, "born_before": event_time_born_before,
+    }},
+}, seed=2).size(4).get_df()
+try:
+    DataGenerator({"customer_id": {"method": "fk", "kwargs": {
+        "parent": event_time_parent, "parent_size": 4,
+        "born_before": {"parent_start": 10, "parent_rate": 1, "child_start": 0, "child_rate": 1},
+    }}}, seed=2).size(1).get_df()
+except RandEngineError as error:
+    event_time_zero_eligible = "customer_id" in str(error)
+else:
+    event_time_zero_eligible = False
+assert event_time_orders["customer_id"].isin(event_time_parents["customer_id"]).all()
+```
+
 ## Streams and multi-file writes continue the row index
 
 <!-- derived-from: pk-fk-constraints sha256:afdf58f551d1 -->
@@ -96,5 +132,5 @@ assert [r["event_id"] for r in records] == list(range(1, 26))
 
 <!-- derived-from: spark-generator sha256:2d770e2b3d08 -->
 
-`SparkGenerator` refuses `pk` and `fk` with a `SpecValidationError`: keys run on the NumPy engine only.
-Generate the keyed tables with `DataGenerator` and hand them to Spark with `spark.createDataFrame`.
+`SparkGenerator` accepts the same stateless `pk` and `fk` definitions through its key-only adapter.
+An explicit seed controls those keys only; ordinary Spark columns remain native and unseeded.

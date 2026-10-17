@@ -16,6 +16,9 @@ class SparkGenerator:
   """
   Generate a PySpark DataFrame from a RandSpec.
 
+  Ordinary columns use native Spark expressions. Stateless ``pk`` and ``fk`` columns use
+  the shared key authority; an explicit seed applies to those key columns only.
+
   Parameters
   ----------
   spark : pyspark.sql.SparkSession

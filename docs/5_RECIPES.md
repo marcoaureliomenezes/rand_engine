@@ -99,6 +99,8 @@ then run a returned spec with the generator that family supports.
 <!-- derived-from: data-generator sha256:8af2e4c55309 -->
 
 `stream_dict` yields JSON-ready dicts at a bounded rate; send them with your client.
+Compatible scalar records use Arrow after normalization; nested or otherwise unproved values keep
+the pandas record conversion so their Python representation is retained.
 
 ```python
 import json

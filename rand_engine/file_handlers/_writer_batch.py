@@ -19,9 +19,10 @@ from rand_engine.validators.exceptions import RandEngineError
 
 class FileBatchWriter(FileWriter):
   """
-  Write the rows of a DataGenerator to files, once per ``save``.
+  Write the rows of a DataGenerator to files or one SQLite table, once per ``save``.
 
-  Built by ``DataGenerator.write``; chain ``format``, ``mode`` and ``option`` first.
+  Built by ``DataGenerator.write``; chain ``format``, ``mode`` and ``option`` first. SQLite
+  accepts only a table name, quotes identifiers, binds values, and supports overwrite or append.
 
   Examples
   --------

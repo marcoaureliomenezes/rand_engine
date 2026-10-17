@@ -6,6 +6,8 @@ class FileWriter:
   """
   Configure the file format, write mode and options of ``write`` and ``writeStream``.
 
+  SQLite is an output-only batch format with a required ``table`` option; stream writers refuse it.
+
   Examples
   --------
   >>> import os, tempfile
@@ -75,7 +77,7 @@ class FileWriter:
     Parameters
     ----------
     format : str
-        ``"csv"``, ``"parquet"`` or ``"json"``.
+        ``"csv"``, ``"parquet"``, ``"json"`` or batch-only ``"sqlite"``.
 
     Returns
     -------
@@ -106,7 +108,7 @@ class FileWriter:
     key : str
         Option name: ``"compression"`` (file codec), ``"numFiles"`` (parts per ``save``),
         ``"maxRowsPerBatch"`` (rows per write batch) or ``"timeout"`` (seconds a
-        ``start`` runs, default 20).
+        ``start`` runs, default 20). SQLite accepts only ``"table"``.
     value : Any
         Option value.
 
