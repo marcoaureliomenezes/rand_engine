@@ -102,6 +102,7 @@ def _safe_stream_frame(frame):
   return pd.DataFrame(
     {
       "integer": pd.array([7, pd.NA], dtype="Int64"),
+      "nullable_integer": pd.array([8, 9], dtype="Int64"),
       "boolean": pd.array([True, pd.NA], dtype="boolean"),
       "floating": [1.5, float("nan")],
       "datetime": [pd.Timestamp(dt(2025, 1, 2, 3, 4, 5)), pd.NaT],
@@ -133,12 +134,13 @@ def test_stream_dict_uses_arrow_after_normalization_for_lossless_records(monkeyp
   timestamps = [record.pop("timestamp_created") for record in records]
 
   assert [(list(frame.columns), preserve_index) for frame, preserve_index in calls] == [
-    (["integer", "boolean", "floating", "datetime", "text", "date", "transformed"], False)
+    (["integer", "nullable_integer", "boolean", "floating", "datetime", "text", "date", "transformed"], False)
   ]
   assert all(type(timestamp) is float for timestamp in timestamps)
   assert records == [
     {
       "integer": 7,
+      "nullable_integer": 8,
       "boolean": True,
       "floating": 1.5,
       "datetime": "2025-01-02 03:04:05",
@@ -148,6 +150,7 @@ def test_stream_dict_uses_arrow_after_normalization_for_lossless_records(monkeyp
     },
     {
       "integer": None,
+      "nullable_integer": 9,
       "boolean": None,
       "floating": None,
       "datetime": None,
@@ -158,6 +161,7 @@ def test_stream_dict_uses_arrow_after_normalization_for_lossless_records(monkeyp
   ]
   assert {name: type(value) for name, value in records[0].items()} == {
     "integer": int,
+    "nullable_integer": int,
     "boolean": bool,
     "floating": float,
     "datetime": str,
@@ -251,6 +255,19 @@ def test_stream_dict_keeps_mixed_object_column_on_pandas_path(monkeypatch):
       [{"value": _TaggedText("kept")}, {"value": _TaggedText("two")}],
     ),
     (
+      lambda index: pd.DataFrame(
+        {"value": pd.Series([pd.Period("2025-01", freq="M"), pd.Period("2025-02", freq="M")])},
+        index=index,
+      ),
+      [{"value": pd.Period("2025-01", freq="M")}, {"value": pd.Period("2025-02", freq="M")}],
+    ),
+    (
+      lambda index: pd.DataFrame(
+        {"value": pd.Series([pd.Interval(1, 2), pd.Interval(3, 4)])}, index=index
+      ),
+      [{"value": pd.Interval(1, 2)}, {"value": pd.Interval(3, 4)}],
+    ),
+    (
       lambda index: pd.DataFrame([[7], [8]], columns=[1], index=index),
       [{1: 7}, {1: 8}],
     ),
@@ -262,6 +279,8 @@ def test_stream_dict_keeps_mixed_object_column_on_pandas_path(monkeypatch):
     "large-integer",
     "category-string-subclass",
     "extension-string-subclass",
+    "period-extension",
+    "interval-extension",
     "non-string-label",
   ],
 )
