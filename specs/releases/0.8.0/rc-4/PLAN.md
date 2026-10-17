@@ -23,7 +23,7 @@ the main thread syncs this definition after that repair lands.
 | `tests/test_{8_consistency,1_advanced_validator,1_common_validator,3_spark_generator,5_files_write_batch,5_files_write_stream,6_stream_objects,docs}.py` | current contract homes for keys, validation, Spark, batch/stream output, streams and executable docs | 0 | UPDATE | each new contract hardens its existing seam; no current assertion is removed, skipped or weakened. |
 | `specs/constitution.md` invariant 8 | prohibits all SQL, although the approved sink is output-only SQL | 0 | UPDATE | AC5.4 gives its exact replacement; closure changes no other invariant. |
 | `docs/comparison.md` | absent | 0 | ADD | one factual, sourced capability comparison has no existing canonical owner; the page serves a distinct decision need and avoids modifying product guides into competitor claims. |
-| public docs, skill and docstrings | currently describe key refusal on Spark, file-only output and pandas record conversion | 0 | UPDATE | these are the established human/agent consumers of the changed behavior and expose the comparison page through existing navigation/indexes. |
+| public docs, skill and docstrings | currently describe key refusal on Spark, file-only output and pandas record conversion | 0 | UPDATE | these are the established human/agent consumers of the changed behavior and expose the comparison page through existing navigation/indexes. The catalog inventory tests make the key-guide and skill consumers immediate dependencies of Jobs 1 and 2. |
 
 ### 1.1 Authorities
 
@@ -56,6 +56,19 @@ that overflow during generation.
 | factual comparison | navigation, `llms.txt`, strict docs build and product documentation memory | Job 5 and reconciliation |
 | public guidance | docstrings, guides, skill, `llms.txt`, rendered navigation and memory | Job 5 and reconciliation |
 
+### 1.3 Immediate inventory consumers
+
+`tests/test_docs.py` compares the catalog's required and optional method
+inventories to `docs/1_DATA_GENERATOR.md` and `skills/rand-engine/SKILL.md`; its
+Spark outcome inventory likewise consumes `docs/2_SPARK_GENERATOR.md` and that
+skill. The normal definition plan would leave those public consumers with Job 5.
+Under the operator-authorized rand-engine/worktree workaround, Jobs 1 and 2 each
+make the minimal consumer update for their already-approved contract before their
+job merge. This changes neither an AC nor the implementation phase: it is an
+ordering adjustment inside the existing AC5.2 consumer work, with no workspace
+law, hook, projection, gate or phase bypass. Job 1 precedes Job 2; both precede
+Job 5, which retains the full public-guidance and documentation-test work.
+
 ## 2. Decisions and gate cost
 
 - `Keys` remains the one key-value authority. Its new indexed helper is internal:
@@ -84,16 +97,18 @@ that overflow during generation.
 
 | job | waits on | wave | W: |
 |---|---|---:|---|
-| Job 1 | — | 1 | `tests/test_8_consistency.py`, `tests/test_1_advanced_validator.py`, `rand_engine/core/_keys.py`, `rand_engine/validators/method_specs.py`, `rand_engine/validators/advanced_validator.py` |
-| Job 2 | Job 1 | 2 | `tests/test_1_common_validator.py`, `tests/test_3_spark_generator.py`, `rand_engine/validators/method_specs.py`, `rand_engine/validators/common_validator.py`, `rand_engine/main/spark_generator.py` |
+| Job 1 | — | 1 | `tests/test_8_consistency.py`, `tests/test_1_advanced_validator.py`, `rand_engine/core/_keys.py`, `rand_engine/validators/method_specs.py`, `rand_engine/validators/advanced_validator.py`, `docs/1_DATA_GENERATOR.md`, `skills/rand-engine/SKILL.md` |
+| Job 2 | Job 1 | 2 | `tests/test_1_common_validator.py`, `tests/test_3_spark_generator.py`, `rand_engine/validators/method_specs.py`, `rand_engine/validators/common_validator.py`, `rand_engine/main/spark_generator.py`, `docs/2_SPARK_GENERATOR.md`, `skills/rand-engine/SKILL.md` |
 | Job 3 | — | 2 | `tests/test_5_files_write_batch.py`, `tests/test_5_files_write_stream.py`, `rand_engine/file_handlers/writer.py`, `rand_engine/file_handlers/_writer_batch.py`, `rand_engine/file_handlers/_writer_stream.py` |
 | Job 4 | — | 2 | `tests/test_6_stream_objects.py`, `rand_engine/main/data_generator.py` |
 | Job 5 | Job 1, Job 2, Job 3, Job 4 | 3 | `tests/test_docs.py`, `rand_engine/main/data_generator.py`, `rand_engine/main/spark_generator.py`, `rand_engine/file_handlers/writer.py`, `rand_engine/file_handlers/_writer_batch.py`, `docs/1_DATA_GENERATOR.md`, `docs/2_SPARK_GENERATOR.md`, `docs/3_WRITING_FILES.md`, `docs/4_CONSTRAINTS.md`, `docs/5_RECIPES.md`, `docs/comparison.md`, `docs/explanation.md`, `docs/reference.md`, `mkdocs.yml`, `llms.txt`, `skills/rand-engine/SKILL.md` |
 
-Job 2 waits for Job 1 because it consumes the shared key grammar; Jobs 3 and 4
-are independent. Job 5 waits for all behavior jobs because it owns the one
-documentation-test seam and all public consumers. The only cross-job source-file
-overlaps are ordered by those edges.
+Job 2 waits for Job 1 because it consumes the shared key grammar and its shared
+skill consumer. Jobs 3 and 4 are independent. Job 5 waits for all behavior jobs
+because it owns the one documentation-test seam and all remaining public
+consumers. The consumer-file overlaps are intentionally ordered as Job 1, then
+Job 2, then Job 5; all other cross-job source-file overlaps are ordered by these
+edges.
 
 ## 3. Reconciliation (after Jobs 1–5)
 
