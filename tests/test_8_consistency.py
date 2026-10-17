@@ -140,6 +140,13 @@ def _fk(parent_kwargs, parent_size, size, seed=2, skew=None, col="parent_id", bo
   return DataGenerator({col: {"method": "fk", "kwargs": kw}}, seed=seed).size(size).get_df()[col]
 
 
+def _fk_at(parent_kwargs, parent_size, offset, seed=2, skew=None, col="parent_id"):
+  kw = {"parent": {"method": "pk", "kwargs": parent_kwargs}, "parent_size": parent_size}
+  if skew is not None:
+    kw["skew"] = skew
+  return DataGenerator({col: {"method": "fk", "kwargs": kw}}, seed=seed).wrapped_df_generator(1, offset)()[col].iloc[0]
+
+
 EVENT_TIME = {
   "parent_start": 0,
   "parent_rate": 2,
@@ -159,6 +166,29 @@ def test_event_time_fk_only_selects_parents_born_by_each_child(parent_kwargs, sk
   parent = _pk(parent_kwargs, 10)
   child = _fk(parent_kwargs, 10, 3, skew=skew, born_before=EVENT_TIME)
   assert all(value in parent.iloc[:limit].tolist() for value, limit in zip(child, [2, 4, 6]))
+  expected = [_fk_at(parent_kwargs, limit, offset, skew=skew) for offset, limit in enumerate([2, 4, 6])]
+  assert child.tolist() == expected
+
+
+def test_event_time_fk_accepts_the_first_parent_at_an_exactly_coincident_birth_time():
+  first_parent_only = {
+    "parent_start": 0,
+    "parent_rate": 2,
+    "child_start": 0,
+    "child_rate": 1,
+  }
+  assert _fk({"start": 10}, 10, 1, born_before=first_parent_only).tolist() == [10]
+
+
+@pytest.mark.parametrize("skew", [None, 1.2])
+def test_event_time_fk_clamp_to_all_parents_preserves_the_ordinary_fk_vector(skew):
+  all_parents_born = {
+    "parent_start": 0,
+    "parent_rate": 1,
+    "child_start": 100,
+    "child_rate": 1,
+  }
+  assert _fk(SEQ, 10, 6, skew=skew, born_before=all_parents_born).equals(_fk(SEQ, 10, 6, skew=skew))
 
 
 def test_event_time_fk_refuses_a_child_with_no_eligible_parent_by_output_column():
