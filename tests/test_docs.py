@@ -44,8 +44,7 @@ def run_python_blocks(doc: Path, tmp_path, monkeypatch) -> dict:
 SKILL = ROOT / "skills" / "rand-engine" / "SKILL.md"
 
 
-@pytest.mark.parametrize("doc", [*(pytest.param(p, id=p.relative_to(DOCS).as_posix())
-                                   for p in sorted(DOCS.glob("**/*.md")) if p.name != "3_WRITING_FILES.md"),
+@pytest.mark.parametrize("doc", [*(pytest.param(p, id=p.relative_to(DOCS).as_posix()) for p in sorted(DOCS.glob("**/*.md"))),
                                  pytest.param(SKILL, id="SKILL.md")])
 def test_doc_python_blocks_execute_in_order(doc, tmp_path, monkeypatch, request):
   """Every `python` block runs, in file order, in one namespace."""
