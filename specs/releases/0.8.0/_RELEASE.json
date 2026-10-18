@@ -656,6 +656,16 @@
       "agent": "dd-product-engineer",
       "kind": "summary",
       "text": "delivered: rc-11 implemented at 325b3e2: CHANGELOG's current 0.8.0 stream bullet now states normalized pandas to_dict(records) conversion, while the Unreleased header and every other byte remain unchanged; no runtime, test, gate, benchmark, dependency, workspace or publication-date behavior changed; the official Job 1 merge gate passed Ruff with 1283 passed, 8 deselected and 10 known warnings in 67.16 s, with no task-local suite; implementation size 5579970..325b3e2 is 1 file, +1/-1; 0 open bugs; data-generator and documentation product truth were reviewed unchanged, release.py drift from 5059eb0..e0cb294 found no memory worklist, and no atom, generated catalog, derived marker or source coverage changed; verdict.py stats 0.8.0-rc11: fix-induced bugs n/a against <=20%, first-pass approval 1/2 (50%) against >=70%, closure duration n/a against <=4 h, non-block commits after closure 0 against 0, memory drift 0 against 0, rebuild-due patches 0 against 0, oldest record read 2026-10-10T22:35:19Z; carried: the future official rc merge gate, post-merge CI, corrected public-source proof and unchanged independent frozen rescore remain pending, so the last completed frozen result stays 95/100 overall, Guides 87.5% and Trust 75%, the prior 100 is superseded and no point is pre-awarded; stable promotion remains held until the score is strictly above 90 overall and in every category; outreach remains active with no exit, and stable 0.7 publication-date bookkeeping stays outside rc-11; backlog exits: none."
+    },
+    {
+      "ts": "2026-10-18T16:18:29Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 5059eb0eefaa9213db1eec16ff84ebf1d2e4c610..a920a7c1262d: 0 reviewed, 0 changed.",
+      "since": "5059eb0eefaa9213db1eec16ff84ebf1d2e4c610",
+      "until": "a920a7c1262da0d51cdce06ed8efde7fedd6d6b1",
+      "reviewed": [],
+      "changed": []
     }
   ]
 }
