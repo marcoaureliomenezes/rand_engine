@@ -1,17 +1,4 @@
 {
   "schema": "backlog-v1",
-  "active": [
-    {
-      "id": "outreach",
-      "title": "Outreach \u2014 awesome-lists, comparison page, posts, Discussions, conda-forge on demand",
-      "opened": "2026-10-14",
-      "status": "idea",
-      "description": "After 0.8.0. PRs to awesome-lists (statice/awesome-synthetic-data, vinta/awesome-python, awesome-data-engineering); a \"rand-engine vs Faker vs dbldatagen\" page with speed measured in the CI benchmark job; posts; GitHub Discussions; conda-forge on demand.",
-      "provenance": "operator grill 2026-10-14 (main thread), handoff 2026-10-14T132004Z-main-thread-adoption-grill.handoff.json: operator chose \"Confirmo tudo, bugs inclusos (Recommended)\" \u2014 outreach goes to backlog after 0.8.0",
-      "relates": [
-        "docs-site",
-        "readme-landing"
-      ]
-    }
-  ]
+  "active": []
 }

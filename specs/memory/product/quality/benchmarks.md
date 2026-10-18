@@ -1,12 +1,13 @@
 ---
 slug: benchmarks
 title: Performance benchmarks
-tldr: "CI compares every generation method, two modifiers and four sinks on the same runner, publishes results and enforces regression limits."
-summary: "The benchmark coordinator alternates timed requests between long-lived base and head workers per row, reports method, modifier and sink throughput, publishes Markdown and JSON artifacts, and fails when a comparable head row exceeds the base ratio, a new distribution exceeds its sibling method, or a modifier costs more than its overhead limit."
+tldr: "CI enforces same-runner rand-engine regression limits and separately records bounded, validated observations against Faker and dbldatagen."
+summary: "The regression coordinator compares long-lived base and head workers and enforces method, modifier and sink limits; a separate non-gating workflow installs pinned comparison dependencies and the public wheel, validates two named Python and Spark workloads, and retains raw samples, medians, plans and provenance without a winner or threshold."
 tags: [performance, benchmarks, ci, regression]
 sources:
   - benchmarks/**
   - .github/workflows/benchmarks.yml
+  - .github/workflows/comparison.yml
   - docs/BENCHMARKS.md
   - docs/benchmarks.json
 ---
@@ -30,6 +31,13 @@ sources:
 - Any comparable method or sink row slower than 1.3 times its base fails the job.
 - Within the same run, `poisson` and `zipf` may cost at most 1.5 times `distincts_prop`, and `exponential` and `lognormal` at most 1.5 times `floats_normal`.
 - A modifier's overhead (its row time minus the unmodified `integers` time) may be at most 1.75 times that unmodified time for `null_rate` and 2.5 times for `anomaly_rate`; a modified column therefore costs at most 2.75 and 3.5 times the plain column. Modifier rows have no base comparison.
+
+## Bounded cross-library observation
+
+- A distinct observational workflow uses a pinned CI-only environment and the installed public, non-editable `rand-engine` wheel; its dedicated requirements do not modify the package dependency declarations or the project lock.
+- One contract materializes 100,000 three-field Python dictionaries from rand-engine and Faker. The other fully evaluates 1,000,000 three-field Spark rows at eight partitions from rand-engine and dbldatagen, retaining schemas, null and domain checks, aggregates and executed plans that hash every payload column.
+- Each side warms once, then runs three timed samples in AB/BA/AB order. Setup, warm-up and complete output validation stay outside those sample clocks; the versioned JSON retains raw samples, medians, environment and package identity, wheel and harness hashes, validations and plans.
+- The workflow is unscheduled and non-required, carries no limit or ranking field and cannot change the internal 1.3 regression authority. The public comparison guide records the actual bounded observations and their limits without inferring a universal winner ([[documentation]]).
 
 ## Benchmark record
 

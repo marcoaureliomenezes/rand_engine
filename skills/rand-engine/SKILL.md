@@ -25,7 +25,7 @@ For a project that wants a small package-use context, run:
 rand-engine get-started agent --out PROJECT
 ```
 
-It writes `PROJECT/AGENTS.md` for rand-engine use only. The starter begins in 0.8.0 and is not in the published 0.8.0rc4 wheel. If the project already has `AGENTS.md`, preserve it and review both files before merging the package-use guidance into its existing instructions.
+It writes `PROJECT/AGENTS.md` for rand-engine use only. If the project already has `AGENTS.md`, preserve it and review both files before merging the package-use guidance into its existing instructions.
 
 ## The RandSpec grammar
 
@@ -174,7 +174,7 @@ assert os.path.exists("out/clients.parquet") and len(os.listdir("out/clients")) 
 ```
 
 For Kafka or any queue, iterate `.stream_dict(min_throughput=..., max_throughput=...)`: each record is a dict with `timestamp_created` added; send it with your own client. It never ends, so stop it yourself.
-After unchanged normalization, every microbatch converts to pandas records, preserving public Python values.
+Each microbatch converts to pandas records, preserving public Python values.
 
 ```python
 from itertools import islice
