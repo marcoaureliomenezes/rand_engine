@@ -73,7 +73,8 @@ tests can remain GREEN on their parent because public behavior is unchanged.
 
 The jobs are parallel-safe because their exact write sets are disjoint. Within
 each job, tasks run in table order. Job 2's ledger transition waits for the
-source correction merged into its job tree.
+source correction merged into its job tree and is a governance-only write in
+that job's `wt-main`; the one job review follows the ledger transition.
 
 ## 3. Requirement trace and post-merge boundary
 
@@ -84,7 +85,7 @@ source correction merged into its job tree.
 | AC1.5 | existing benchmark workflow after reviewed candidate-head push; no task changes it. |
 | AC2.1 | Job 2 RED oracle over prepared documentation and every copied case resource. |
 | AC2.2–AC2.3 | Job 2 canonical case/tutorial correction plus existing CLI/include byte-identity contracts. |
-| AC2.4 | Job 2 canonical ledger resolution after the RED/GREEN evidence and reviewed correction are merged. |
+| AC2.4 | Job 2 canonical ledger resolution after the RED/GREEN evidence and correction are merged into the job tree. |
 | AC3.1 | unchanged official job/candidate merge gates, strict docs build and native CI matrix. |
 | AC3.2–AC3.3 | main thread after whole-candidate review, official merge and feature push: retrieve public preview/resources, run the consumer path, observe benchmark, then obtain an independent frozen-rubric rescore. No source task claims those observations. |
 
