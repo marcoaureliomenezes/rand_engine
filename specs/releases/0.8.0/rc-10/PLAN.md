@@ -68,20 +68,26 @@ tests can remain GREEN on their parent because public behavior is unchanged.
 
 | job | waits on | wave | W: |
 |---|---|---|---|
-| Job 1 | — | 1 | `rand_engine/main/data_generator.py`, `tests/test_6_stream_objects.py`, `docs/1_DATA_GENERATOR.md`, `docs/5_RECIPES.md`, `docs/explanation.md`, `docs/compatibility.md`, `skills/rand-engine/SKILL.md` |
+| Job 1 | Job 2 (remaining J1.T4/J1.T3 only) | 2 | `rand_engine/main/data_generator.py`, `tests/test_6_stream_objects.py`, `tests/test_docs.py`, `docs/1_DATA_GENERATOR.md`, `docs/5_RECIPES.md`, `docs/explanation.md`, `docs/compatibility.md`, `skills/rand-engine/SKILL.md` |
 | Job 2 | — | 1 | `tests/test_docs.py`, `rand_engine/cases/faker.py.txt`, `docs/tutorials/faker.md`, `specs/bugs/BUGS.jsonl` |
 
-The jobs are parallel-safe because their exact write sets are disjoint. Within
-each job, tasks run in table order. Job 2's ledger transition waits for the
-source correction merged into its job tree and is a governance-only write in
-that job's `wt-main`; the one job review follows the ledger transition.
+Job 1's original J1.T1/J1.T2 ran under the original disjoint allocation. During
+the approved AC1.4 consumer sweep, the existing documentation-contract owner
+was found to name the example variables that the guide must neutralize. Its
+test ownership was omitted from the initial W set. Remaining J1.T4/J1.T3
+therefore wait for Job 2's official merge so `tests/test_docs.py` has one job
+owner at a time; this is an allocation repair, not a new requirement, gate or
+approval. Within each remaining job, tasks run in table order. Job 2's ledger
+transition waits for the source correction merged into its job tree and is a
+governance-only write in that job's `wt-main`; the one job review follows the
+ledger transition.
 
 ## 3. Requirement trace and post-merge boundary
 
 | acceptance criteria | owner and evidence |
 |---|---|
 | AC1.1–AC1.3 | Job 1: authorized test adjustment, then source REBUILD; retained observable partitions and parent benchmark failure establish the before state. |
-| AC1.4 | Job 1 consumer-guidance task updates every named human and agent consumer of the replaced record-path claim. |
+| AC1.4 | Job 1 first updates the existing guide-execution assertion to the approved neutral names, then updates every named human and agent consumer of the replaced record-path claim. |
 | AC1.5 | existing benchmark workflow after reviewed candidate-head push; no task changes it. |
 | AC2.1 | Job 2 RED oracle over prepared documentation and every copied case resource. |
 | AC2.2–AC2.3 | Job 2 canonical case/tutorial correction plus existing CLI/include byte-identity contracts. |
