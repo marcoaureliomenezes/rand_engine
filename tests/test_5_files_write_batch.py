@@ -11,7 +11,7 @@ import time
 import threading
 import weakref
 import gzip, bz2, lzma, zipfile
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 import pyarrow.parquet as pq
 from rand_engine.file_handlers.file_handler import FileHandler
 
@@ -820,7 +820,7 @@ def test_sqlite_quotes_hostile_names_binds_values_and_round_trips_supported_type
 
   assert list(typed_values(pd.DataFrame({"id": [1, 2]})).columns) == columns
 
-  with sqlite3.connect(path) as database:
+  with closing(sqlite3.connect(path)) as database, database:
     database.execute('CREATE TABLE "keep" (value TEXT)')
     database.execute('INSERT INTO "keep" VALUES (?)', ("unchanged",))
 
@@ -871,7 +871,7 @@ def test_sqlite_mixed_object_column_preserves_each_supported_value_and_storage_c
 
 def test_sqlite_overwrite_replaces_only_selected_table_and_preserves_unrelated_tables(tmp_path):
   path = tmp_path / "overwrite.sqlite"
-  with sqlite3.connect(path) as database:
+  with closing(sqlite3.connect(path)) as database, database:
     database.execute('CREATE TABLE "target" (old TEXT)')
     database.execute('INSERT INTO "target" VALUES ("old value")')
     database.execute('CREATE TABLE "other" (value INTEGER)')

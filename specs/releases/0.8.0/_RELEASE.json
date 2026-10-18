@@ -3,12 +3,12 @@
   "release": "0.8.0",
   "phase": "CLOSURE",
   "defined": {
-    "sha": "da18f0da082da242c40cf37ae6594d388ab31f0b",
-    "ts": "2026-10-17T21:21:14Z"
+    "sha": "891d96a",
+    "ts": "2026-10-18T02:03:40Z"
   },
   "implemented": {
-    "sha": "864535d0c4ece6c833a04bb5932bc5d0bd144bf2",
-    "ts": "2026-10-17T22:56:09Z"
+    "sha": "beb281b913b21ea11b19353def140d89e1abfd2f",
+    "ts": "2026-10-18T02:38:51Z"
   },
   "shipped": null,
   "log": [
@@ -278,6 +278,133 @@
       "agent": "dd-product-engineer",
       "kind": "summary",
       "text": "delivered: rc-4 closure metadata correction at 161a6c8 shortened the benchmark tldr to the 160-character schema without losing method, modifier, sink, publication or regression-limit truth, regenerated catalog/index and refreshed the benchmark-derived llms marker; all 13 memory frontmatters were swept, maximum tldr length 152, and release.py recorded documentation reviewed unchanged through 161a6c8; actual redacted doctor JSON on the resulting release state reports 0 LINT-1, 0 specs errors, 7 nonblocking TREE-5 warnings and 0 ledger findings, superseding the earlier closure summary's incomplete doctor sentence; carried: the global doctor exit remains 1 for six HOOKS-DRIFT-1 errors across three repository paths, 66 expired handoffs, 10 expired temporary entries, 19 worktree information/warnings and 11 retained reaped entries, with no projection, library, foreign repository or broad fix attempted; candidate-head benchmark and full PR checks still must pass before promotion, stable PyPI and Pages publication wait for promotion, and outreach remains active for post-stable execution; backlog exits: spark-pk-fk-parity, db-key-sink-writer, event-time-ordered-fk and stream-dict-via-arrow delivered by 0.8.0."
+    },
+    {
+      "ts": "2026-10-18T00:14:08Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.8.0 (prior candidate closed at 864535d0c4ece6c833a04bb5932bc5d0bd144bf2)"
+    },
+    {
+      "ts": "2026-10-18T01:24:39Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-5",
+      "milestone": "defined",
+      "sha": "2dc5278",
+      "text": "Candidate defined at 2dc5278; phase IMPLEMENTATION."
+    },
+    {
+      "ts": "2026-10-18T01:33:19Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-5",
+      "milestone": "implemented",
+      "sha": "851a3b58f4e2873df7948bf3a4013201d1b027c1",
+      "text": "Candidate implemented at 851a3b58f4e2873df7948bf3a4013201d1b027c1; phase CLOSURE."
+    },
+    {
+      "ts": "2026-10-18T01:34:14Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 161a6c8cde9408a1bd576f056f2e6f214c509c4c..b528031a9d00: 0 reviewed, 0 changed.",
+      "since": "161a6c8cde9408a1bd576f056f2e6f214c509c4c",
+      "until": "b528031a9d008aafb024c55513ceb2d349001b05",
+      "reviewed": [],
+      "changed": []
+    },
+    {
+      "ts": "2026-10-18T01:34:46Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-5 restored the declared platform gate without changing product behavior: five full-suite workflows select pinned Temurin Java 17 before dependency installation and the two SQLite overwrite fixtures close their setup connections after commit and before atomic replacement; the official Job 1 merge gate exited 0 with 1237 passed, 8 deselected and 9 warnings in 86.83 s, and verdict.py stats 0.8.0-rc5 reports 1 sequence, 1 verdict, 0 rejected and first-pass rejected 0/1; memory: release.py drift reports no worklist entry over 161a6c8..b528031, so product atoms, canonical memory, generated catalog and derived docs remain unchanged, while release, memory, backlog and bug checks exit 0 and the bug ledger has 0 open records; doctor reports no rand-engine spec error and retains seven nonblocking TREE-5 warnings, while its nonzero global findings belong to foreign hooks/worktrees and workspace TTL state that this candidate does not modify; carried: PR #47's fresh cross-platform matrix and benchmark still must pass before merge, and the old-head benchmark run 39081652038 remains failed because stream_dict measured 8.478 s against base 6.484 s, ratio 1.31, which this platform-only candidate does not claim to fix; stable PyPI and Pages publication wait for promotion, and outreach remains the only active backlog item for post-stable execution; backlog exits: none."
+    },
+    {
+      "ts": "2026-10-18T01:39:04Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.8.0 (prior candidate closed at 851a3b58f4e2873df7948bf3a4013201d1b027c1)"
+    },
+    {
+      "ts": "2026-10-18T01:41:58Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-6",
+      "milestone": "defined",
+      "sha": "7141670",
+      "text": "Candidate defined at 7141670; phase IMPLEMENTATION."
+    },
+    {
+      "ts": "2026-10-18T01:50:11Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-6",
+      "milestone": "implemented",
+      "sha": "77d9e551fca8a75f1612052867f74fcc7e7c7aed",
+      "text": "Candidate implemented at 77d9e551fca8a75f1612052867f74fcc7e7c7aed; phase CLOSURE."
+    },
+    {
+      "ts": "2026-10-18T01:50:59Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over b528031a9d008aafb024c55513ceb2d349001b05..59fe7fbc4ae7: 1 reviewed, 0 changed.",
+      "since": "b528031a9d008aafb024c55513ceb2d349001b05",
+      "until": "59fe7fbc4ae713fd5622cd2b0ccaf00d3414c790",
+      "reviewed": [
+        "data-generator"
+      ],
+      "changed": []
+    },
+    {
+      "ts": "2026-10-18T01:51:16Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-6 replaces the stream_dict Arrow object's present-value list, type-set construction and separate integer rescan with one pass over the existing NumPy view, without changing product behavior; independent review found 0 mismatches across 2,959 semantic frames and 22 unchanged stream-object contract tests passed, while the benchmark-shaped 200,000-row helper probe improved from a 0.086322 s old median to a 0.053290 s new median; the official Job 1 merge gate exited 0 with Ruff green, 1237 passed, 8 deselected and 9 warnings in 114.46 s, and verdict.py stats 0.8.0-rc6 reports 1 sequence, 1 verdict, 0 rejected and first-pass rejected 0/1; memory: data-generator was reviewed unchanged because eligibility, normalization, Arrow conversion, fallback and returned records remain identical, and release.py drift now reports nothing drifted; release, memory, backlog and bug checks exit 0 with 0 open bugs; doctor reports the expected active rc-6 worktree plus workspace-expired artifacts and onboarding information, with no rand-engine spec or hook error and no broad fix attempted; carried: AC1.2 remains unclaimed until the fresh final-head PR same-runner benchmark passes, while old-head run 39081652038 remains failed at ratio 1.31; stable PyPI and Pages publication wait for promotion, and outreach remains the only active backlog item for post-stable execution; backlog exits: none."
+    },
+    {
+      "ts": "2026-10-18T01:57:07Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.8.0 (prior candidate closed at 77d9e551fca8a75f1612052867f74fcc7e7c7aed)"
+    },
+    {
+      "ts": "2026-10-18T02:03:40Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-7",
+      "milestone": "defined",
+      "sha": "891d96a",
+      "text": "Candidate defined at 891d96a; phase IMPLEMENTATION."
+    },
+    {
+      "ts": "2026-10-18T02:38:51Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-7",
+      "milestone": "implemented",
+      "sha": "beb281b913b21ea11b19353def140d89e1abfd2f",
+      "text": "Candidate implemented at beb281b913b21ea11b19353def140d89e1abfd2f; phase CLOSURE."
+    },
+    {
+      "ts": "2026-10-18T02:39:32Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 59fe7fbc4ae713fd5622cd2b0ccaf00d3414c790..905ad92d42ee: 4 reviewed, 0 changed.",
+      "since": "59fe7fbc4ae713fd5622cd2b0ccaf00d3414c790",
+      "until": "905ad92d42eeb7cf46ac6e40acf0968c5bc52224",
+      "reviewed": [
+        "public-api",
+        "documentation",
+        "get-started-cli",
+        "benchmarks"
+      ],
+      "changed": []
+    },
+    {
+      "ts": "2026-10-18T02:40:32Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-7 makes get-started target creation exclusive so a competing file is preserved, declares the metadata-preserving poetry-core>=2.2.0 backend floor, pins all fourteen workflow installers to poetry==2.5.1 through the selected Python, and makes the existing public-reference assertion multiplicity-safe; the exact-floor and normal package builds passed, the independent Job 1 review approved beb281b, and the official Job 1 merge gate exited 0 with 1238 passed, 8 deselected and 9 warnings in 155.60 s; verdict.py stats 0.8.0-rc7 reports 1 sequence, 1 verdict, 0 rejected and first-pass rejected 0/1; memory: CHANGELOG and Architecture state the maintenance result and exact tool constraints, QUALITY was reviewed unchanged, and release.py's authoritative source worklist required public-api, documentation, get-started-cli and benchmarks to be reviewed unchanged; catalog/index regeneration and llms.txt required no byte change, and release.py drift reports nothing drifted; the resolved CLI race is archived, release, memory, backlog and bug checks exit 0 with 0 open bugs, and context doctor reports no rand-engine spec error beyond seven nonblocking TREE-5 template warnings while global errors belong to foreign hooks and workspace state outside this candidate; carried: PR #47 still needs fresh final-head CI and same-runner benchmark evidence before merge, stable PyPI and Pages publication wait for promotion, and outreach remains the only active backlog item for post-stable execution; backlog exits: none."
     }
   ]
 }

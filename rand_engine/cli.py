@@ -29,11 +29,13 @@ def main(argv=None) -> int:
       print(f"{slug}  {description}")
     return 0
   target = Path(args.out) / f"{args.slug}-example.py"
-  if target.exists():
-    print(f"error: {target} already exists, not overwriting", file=sys.stderr)
-    return 1
   data = (resources.files("rand_engine") / "cases" / f"{args.slug}.py.txt").read_bytes()
   target.parent.mkdir(parents=True, exist_ok=True)
-  target.write_bytes(data)
+  try:
+    with target.open("xb") as scaffold:
+      scaffold.write(data)
+  except FileExistsError:
+    print(f"error: {target} already exists, not overwriting", file=sys.stderr)
+    return 1
   print(target)
   return 0

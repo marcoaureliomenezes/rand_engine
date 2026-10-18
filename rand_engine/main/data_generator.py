@@ -37,12 +37,19 @@ def _stream_records_are_arrow_compatible(dataframe: pd.DataFrame) -> bool:
   for column in dataframe.columns:
     values = dataframe[column]
     if values.dtype == object:
-      present = [value for value in values if value is not None]
-      value_types = {type(value) for value in present}
-      if len(value_types) > 1 or not value_types <= lossless_object_types:
-        return False
-      if value_types == {int} and any(not -(2 ** 63) <= value < 2 ** 63 for value in present):
-        return False
+      object_type = None
+      for value in values.to_numpy(copy=False):
+        if value is None:
+          continue
+        value_type = type(value)
+        if value_type not in lossless_object_types:
+          return False
+        if object_type is None:
+          object_type = value_type
+        elif object_type is not value_type:
+          return False
+        if value_type is int and not -(2 ** 63) <= value < 2 ** 63:
+          return False
     elif isinstance(values.dtype, lossless_extension_types):
       continue
     elif isinstance(values.dtype, np.dtype) and values.dtype.kind in {"b", "i", "u"}:

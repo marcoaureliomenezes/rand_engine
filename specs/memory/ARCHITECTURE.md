@@ -17,7 +17,7 @@ commit that carries its accepted ADR.
 
 ## Tech Stack
 
-- Python `>=3.10` library `rand_engine` (`requires-python`, CI-tested on 3.10–3.13), built by Poetry (`poetry-core`) from a static PEP 621 `[project]` table and published to PyPI as `rand-engine`; `pyproject.toml` holds the one version.
+- Python `>=3.10` library `rand_engine` (`requires-python`, CI-tested on 3.10–3.13), built in CI with `poetry==2.5.1` and the `poetry-core>=2.2.0` backend from a static PEP 621 `[project]` table, then published to PyPI as `rand-engine`; `pyproject.toml` holds the one version.
 - NumPy `^2.1` — the vectorized column engine (`NPCore`); each `DataGenerator` owns one `np.random.default_rng(seed)` passed to generation methods; keys are computed from definitions, the key seed, column name and row index.
 - pandas `^2.2` — DataFrame assembly, transformers, JSON-lines output and the compatibility-preserving fallback for streamed records.
 - PyArrow `^23.0` — CSV and Parquet conversion/output plus lossless streamed-record conversion for eligible normalized frames.

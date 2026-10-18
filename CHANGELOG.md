@@ -41,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `int_zfilled` `length` outside 1..18 is refused at validation on both engines (it used to validate, then raise in `get_df`).
 - The package docstring states the library's purpose.
 - `FileStreamWriter.trigger(frequency)` is annotated `float`.
+- `rand-engine get-started` creates its target exclusively, so a file created concurrently is preserved and receives the existing no-overwrite error.
+- Package builds require `poetry-core>=2.2.0`, and every GitHub Actions installer uses Poetry 2.5.1 through the selected Python.
 
 ## [0.7.0] - 2026-10-14
 

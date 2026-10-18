@@ -738,7 +738,7 @@ def test_reference_directive_names_the_canonical_documented_object():
   import rand_engine
   objs = [getattr(rand_engine, n) for n in rand_engine.__all__]
   directives = re.findall(r"^::: (\S+)\s*$", (DOCS / "reference.md").read_text(encoding="utf-8"), re.M)
-  assert set(directives) == {f"{o.__module__}.{o.__qualname__}" for o in objs}
+  assert sorted(directives) == sorted(f"{o.__module__}.{o.__qualname__}" for o in objs)
   assert [o for o in objs if not inspect.getdoc(o)] == []
 
 

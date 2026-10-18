@@ -174,6 +174,27 @@ def test_existing_target_is_left_unchanged_and_exit_1_names_it(tmp_path, capsys)
   assert str(target) in captured.out + captured.err
 
 
+def test_get_started_preserves_target_created_at_write_boundary(tmp_path, monkeypatch, capsys):
+  target = tmp_path / "faker-example.py"
+  original_open = Path.open
+  raced = False
+
+  def open_with_competitor(path, mode="r", *args, **kwargs):
+    nonlocal raced
+    if path == target and mode in ("wb", "xb") and not raced:
+      raced = True
+      with original_open(target, "xb") as competitor:
+        competitor.write(b"competitor")
+    return original_open(path, mode, *args, **kwargs)
+
+  monkeypatch.setattr(Path, "open", open_with_competitor)
+  assert run(["get-started", "faker", "--out", str(tmp_path)]) == 1
+  assert target.read_bytes() == b"competitor"
+  captured = capsys.readouterr()
+  assert captured.out == ""
+  assert captured.err == f"error: {target} already exists, not overwriting\n"
+
+
 def test_cli_never_reads_stdin(tmp_path, monkeypatch):
   monkeypatch.setattr(sys, "stdin", NoStdin())
   assert run(["list"]) == 0
