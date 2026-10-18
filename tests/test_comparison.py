@@ -1,5 +1,10 @@
 import importlib
+import json
+import sys
+import tempfile
+import types
 import unittest
+from pathlib import Path
 
 
 PYTHON_ROWS = 100_000
@@ -87,6 +92,7 @@ class TestSparkContract(unittest.TestCase):
         ("nulls", {"ordinal": 0, "value": 1, "tier": 0}),
         ("aggregate", {"count": SPARK_ROWS}),
         ("physical_plan", "HashAggregate(xxhash64(ordinal, value))"),
+        ("physical_plan", "HashAggregate(xxhash64(ordinal, value)) Scan [ordinal, value, tier]"),
     ]:
       observation = spark_observation()
       observation[key] = value
@@ -98,6 +104,32 @@ class TestSparkContract(unittest.TestCase):
 
 
 class TestComparisonArtifact(unittest.TestCase):
+  def test_spark_validator_callback_populates_observation_before_validation(self):
+    records = python_records()
+    callback_calls = []
+
+    def python_factory():
+      return records
+
+    def spark_factory():
+      observation = {}
+
+      def validate():
+        callback_calls.append(observation)
+        observation.update(spark_observation())
+
+      return {"observation": observation, "validator": validate}
+
+    comparison().run_comparison(
+      {
+        "python": {"rand-engine": python_factory, "faker": python_factory},
+        "spark": {"rand-engine": spark_factory, "dbldatagen": spark_factory},
+      },
+      provenance={"rand_engine": {"version": "0.8.0", "editable": False}},
+    )
+
+    self.assertEqual(len(callback_calls), 8)
+
   def test_runner_warms_each_side_once_then_keeps_ab_ba_ab_raw_samples_and_medians(self):
     calls = []
     records = python_records()
@@ -139,6 +171,7 @@ class TestComparisonArtifact(unittest.TestCase):
 
   def test_artifact_requires_provenance_validation_schemas_and_physical_plans_without_a_ranking(self):
     artifact = {
+      "artifact_version": 1,
       "status": "success",
       "provenance": {
         "rand_engine": {"version": "0.8.0", "editable": False, "wheel_sha256": "a" * 64},
@@ -177,8 +210,57 @@ class TestComparisonArtifact(unittest.TestCase):
       },
     }
     comparison().validate_artifact(artifact)
+    versionless = dict(artifact)
+    versionless.pop("artifact_version")
+    with self.assertRaises(ValueError):
+      comparison().validate_artifact(versionless)
     for forbidden in ("winner", "score", "threshold", "ranking"):
       with self.subTest(forbidden=forbidden):
         rejected = {**artifact, forbidden: "no"}
         with self.assertRaises(ValueError):
           comparison().validate_artifact(rejected)
+
+
+class TestControlledFailure(unittest.TestCase):
+  def test_main_writes_controlled_failure_artifacts_and_returns_nonzero(self):
+    class FailingBuilder:
+      def master(self, _master):
+        return self
+
+      def appName(self, _name):
+        return self
+
+      def config(self, _key, _value):
+        return self
+
+      def getOrCreate(self):
+        raise RuntimeError("setup failed")
+
+    fake_sql = types.ModuleType("pyspark.sql")
+    fake_sql.SparkSession = type("SparkSession", (), {"builder": FailingBuilder()})
+    fake_pyspark = types.ModuleType("pyspark")
+    fake_pyspark.sql = fake_sql
+    with tempfile.TemporaryDirectory() as temporary:
+      output = Path(temporary)
+      original_modules = {name: sys.modules.get(name) for name in ("pyspark", "pyspark.sql")}
+      try:
+        sys.modules.update({"pyspark": fake_pyspark, "pyspark.sql": fake_sql})
+        result = comparison().main([
+          "--output-dir", str(output),
+          "--pip-report", str(output / "pip-report.json"),
+          "--wheel-sha256", "a" * 64,
+          "--harness-sha", "b" * 40,
+        ])
+      finally:
+        for name, module in original_modules.items():
+          if module is None:
+            sys.modules.pop(name, None)
+          else:
+            sys.modules[name] = module
+
+      self.assertNotEqual(result, 0)
+      for filename in ("comparison.json", "comparison.md"):
+        self.assertTrue((output / filename).is_file())
+      artifact = json.loads((output / "comparison.json").read_text(encoding="utf-8"))
+      self.assertEqual(artifact["status"], "controlled_failure")
+      self.assertEqual(artifact["errors"], ["RuntimeError: setup failed"])
