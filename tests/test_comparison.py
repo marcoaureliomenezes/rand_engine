@@ -27,7 +27,7 @@ def spark_observation():
     "partitions": SPARK_PARTITIONS,
     "schema": [
       ("ordinal", "long", False),
-      ("value", "long", False),
+      ("value", "int", False),
       ("tier", "string", False),
     ],
     "ordinal": {"minimum": 0, "maximum": SPARK_ROWS - 1, "distinct_count": SPARK_ROWS},
@@ -79,6 +79,15 @@ class TestPythonContract(unittest.TestCase):
 class TestSparkContract(unittest.TestCase):
   def test_spark_validator_requires_full_evaluation_and_exact_workload_observation(self):
     comparison().validate_spark_observation(spark_observation())
+
+  def test_spark_validator_accepts_nullable_schema_when_observed_payload_has_no_nulls(self):
+    observation = spark_observation()
+    observation["schema"] = [
+      ("ordinal", "long", True),
+      ("value", "int", True),
+      ("tier", "string", True),
+    ]
+    comparison().validate_spark_observation(observation)
 
   def test_spark_validator_rejects_missing_payload_or_contract_evidence(self):
     cases = []
