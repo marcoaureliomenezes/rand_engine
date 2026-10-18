@@ -20,8 +20,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      COMPARISON_DIR: ${{ runner.temp }}/rand-engine-comparison
-      COMPARISON_PYTHON: ${{ runner.temp }}/rand-engine-comparison/venv/bin/python
       WHEEL_SHA256: db4422a43a20605babb369ac223d526e5607f6539f5056c5d277ead22ad173ba
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -43,6 +41,11 @@ jobs:
           HARNESS_SHA: ${{ github.sha }}
           RUNNER_ID: ${{ runner.name }}
         run: |
+          comparison_dir="$RUNNER_TEMP/rand-engine-comparison"
+          echo "COMPARISON_DIR=$comparison_dir" >> "$GITHUB_ENV"
+          echo "COMPARISON_PYTHON=$comparison_dir/venv/bin/python" >> "$GITHUB_ENV"
+          export COMPARISON_DIR="$comparison_dir"
+          export COMPARISON_PYTHON="$comparison_dir/venv/bin/python"
           mkdir -p "$COMPARISON_DIR/output"
           python - "$COMPARISON_DIR/workflow.json" <<'PY'
           import json
