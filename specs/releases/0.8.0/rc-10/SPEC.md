@@ -111,8 +111,8 @@ an unobserved fix.
 - Stable publication, promotion, search indexing or rank, acceptance of the two
   external submissions, broad outreach closure, comparison CI, posts,
   Discussions, Context7 or conda-forge.
-- Changing dadaia-workspace, hooks, worktree behavior, agents, skills, rules or
-  configuration.
+- Changing dadaia-workspace or its hooks, worktree behavior, agent/persona
+  projections, workspace skills, rules or configuration.
 
 ## 4. Requirements
 
@@ -196,9 +196,11 @@ an unobserved fix.
 
 ## 5. Replaces
 
-- Rc-4 AC4.1–AC4.3 and their current Arrow-compatible eligibility, conversion
-  and fallback implementation are replaced by one normalized pandas record
-  conversion under AC1.1–AC1.5.
+- Rc-4 AC4.1 and AC4.2's implementation-specific Arrow eligibility, conversion
+  and fallback requirements are replaced by one normalized pandas record
+  conversion under AC1.1–AC1.5. Rc-4 AC4.3's no-assert-removal clause is revised
+  only for the exact Arrow-specific assertions authorized in AC1.3; all public
+  contract coverage required by that criterion remains preserved under AC1.2.
 - Arrow-only assertions and tests listed in AC1.3 are replaced by the retained
   public record contracts in AC1.2. No public assertion is replaced.
 - The two ordinary installation comments in the canonical Faker case and the
