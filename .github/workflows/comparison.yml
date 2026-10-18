@@ -44,6 +44,7 @@ jobs:
           comparison_dir="$RUNNER_TEMP/rand-engine-comparison"
           echo "COMPARISON_DIR=$comparison_dir" >> "$GITHUB_ENV"
           echo "COMPARISON_PYTHON=$comparison_dir/venv/bin/python" >> "$GITHUB_ENV"
+          echo "PYSPARK_PYTHON=$comparison_dir/venv/bin/python" >> "$GITHUB_ENV"
           export COMPARISON_DIR="$comparison_dir"
           export COMPARISON_PYTHON="$comparison_dir/venv/bin/python"
           mkdir -p "$COMPARISON_DIR/output"
