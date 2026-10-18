@@ -50,6 +50,10 @@ its stated authorities. The bug ledger has zero open records. The active
 - The comparison runner is a standard-library-importable harness boundary. It
   imports Faker, Spark and dbldatagen only within explicit runner factories, so
   the ordinary pytest matrix never acquires comparator dependencies.
+- The five protected internal benchmark paths are checked as source-review
+  evidence from the candidate diff, rather than by a repository/hash assertion
+  in the new comparison test module. That preserves AC2.7 without adding a
+  permanent test that mirrors version-control state.
 - `benchmarks/comparison-requirements.txt` pins the dedicated comparison
   environment. The workflow installs the public `rand-engine==0.8.0` wheel
   without an editable checkout, records pip's report and the installed wheel
@@ -62,10 +66,14 @@ its stated authorities. The bug ledger has zero open records. The active
   plans, and cannot emit winner, score or threshold fields.
 - The new workflow is push-triggered only for comparison-owned changes on
   canonical `wt/**` branches, plus `workflow_dispatch` after it reaches the
-  default branch. The main thread may push the reviewed Job 3 branch to obtain
+  default branch. The main thread may push the reviewed Job 1 branch to obtain
   the first real-runner run. Existing benchmarks do not trigger on that push;
   no existing benchmark file changes and no new required check or schedule is
   introduced.
+- The new workflow uses Java 17 through the supported immutable
+  `actions/setup-java@v5` commit
+  `b6effb05e454b25005698d916606bdc6ffcbf961`; the existing workflow pins stay
+  outside this candidate.
 - Actual Actions execution is the E2E test for the workflow. The workflow has
   no local YAML-text mirror: its correctness evidence is a real job that
   preserves its JSON/Markdown artifacts and summary even on controlled harness
@@ -83,19 +91,23 @@ its stated authorities. The bug ledger has zero open records. The active
 
 | job | waits on | wave | W: |
 |---|---|---|---|
-| Job 1 | stable-publication evidence | 1 | `CHANGELOG.md`, `tests/test_docs.py` |
-| Job 2 | stable-publication evidence | 2 | `benchmarks/comparison.py`, `benchmarks/comparison-requirements.txt`, `tests/test_comparison.py` |
-| Job 3 | Job 2 | 3 | `.github/workflows/comparison.yml` |
-| Job 4 | Job 3 and validated first Actions artifact | 4 | `docs/comparison.md` |
+| Job 1 | stable-publication evidence | 1 | `CHANGELOG.md`, `tests/test_docs.py`, `benchmarks/comparison.py`, `benchmarks/comparison-requirements.txt`, `tests/test_comparison.py`, `.github/workflows/comparison.yml`, `docs/comparison.md` |
+
+One sequential job is sufficient: its tasks carry the four required evidence
+boundaries in order while its one final review and official merge run the
+unchanged verify line once. Splitting those boundaries into four jobs would add
+three independent full verification runs and reviews without an independently
+deliverable artifact.
 
 ## 3. Requirement trace and post-merge boundary
 
 | acceptance criteria | owner and evidence |
 |---|---|
-| AC1.1–AC1.3 | Job 1 RED/GREEN pair, named official publication evidence and exact header-only semantic review. |
-| AC2.1–AC2.7 | Job 2 contract tests and implementation review, including base-byte comparison of every protected internal benchmark path. |
-| AC3.1–AC3.4 | Job 3 workflow review, then the main thread's first reviewed job-branch push and retained Actions JSON/Markdown/summary evidence. The real run is observational and never a required PR condition. |
-| AC4.1–AC4.3 | Job 4 artifact-grounded guide update, semantic comparison against the validated Actions output, strict site build and the unchanged official merge verification. |
+| AC1.1–AC1.3 | Job 1 T1–T2 RED/GREEN pair, named official publication evidence and exact header-only semantic review. |
+| AC2.1–AC2.6 | Job 1 T3–T4 contract tests and implementation review. |
+| AC2.7 | final job reviewer and main-thread diff evidence confirm every protected internal benchmark path is byte-identical to the candidate base. |
+| AC3.1–AC3.4 | Job 1 T5, then the main thread's checkpoint and push of the still-live canonical Job 1 branch, followed by retained Actions JSON/Markdown/summary evidence. The real run is observational and never a required PR condition. |
+| AC4.1–AC4.3 | Job 1 T6 artifact-grounded guide update, semantic comparison against the validated Actions output, strict site build and the unchanged final official merge verification. |
 
 ## 4. Reconciliation (after all runnable jobs)
 
@@ -103,11 +115,12 @@ its stated authorities. The bug ledger has zero open records. The active
 `specs/memory/product/quality/benchmarks.md`,
 `specs/memory/product/onboarding/documentation.md`,
 `specs/memory/product/catalog.json`, `specs/memory/product/index.md`,
+`llms.txt`,
 `specs/releases/0.8.0/_RELEASE.json`.
 
 The product engineer reconciles only source truth established by the final
 candidate diff and the validated observation. It records the actual
 publication/date evidence and Actions artifact separately, regenerates affected
-memory indexes/markers, leaves `outreach` active unless its owner can truthfully
-close it, and retains the internal benchmark's base/workload/limit as its own
-authority.
+memory indexes/markers and the existing benchmark-derived marker in `llms.txt`,
+leaves `outreach` active unless its owner can truthfully close it, and retains
+the internal benchmark's base/workload/limit as its own authority.
