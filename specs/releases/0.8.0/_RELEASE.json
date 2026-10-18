@@ -552,6 +552,19 @@
       "until": "9ff37b0140e9f05b9bd2f3c44ea899d2e90e4c19",
       "reviewed": [],
       "changed": []
+    },
+    {
+      "ts": "2026-10-18T13:57:47Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over ff103d4335d2479fd600844d8856ccfaf190014e..22f1d66ea7e6: 2 reviewed, 0 changed.",
+      "since": "ff103d4335d2479fd600844d8856ccfaf190014e",
+      "until": "22f1d66ea7e6aa64a00685b6f37b98cfe4a7f583",
+      "reviewed": [
+        "documentation",
+        "get-started-cli"
+      ],
+      "changed": []
     }
   ]
 }
