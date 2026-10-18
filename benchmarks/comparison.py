@@ -53,9 +53,9 @@ def validate_spark_observation(observation: Any) -> None:
   expected_names = ("ordinal", "value", "tier")
   for index, name in enumerate(expected_names):
     field = schema[index]
-    if not isinstance(field, (list, tuple)) or len(field) != 3 or field[0] != name or field[2] is not False:
-      raise ValueError("Spark schema does not match the approved nullability")
-  if schema[0][1] not in {"long", "bigint"} or schema[1][1] not in {"long", "bigint"} or schema[2][1] != "string":
+    if not isinstance(field, (list, tuple)) or len(field) != 3 or field[0] != name or type(field[2]) is not bool:
+      raise ValueError("Spark schema does not retain the observed payload metadata")
+  if schema[0][1] not in {"long", "bigint"} or schema[1][1] != "int" or schema[2][1] != "string":
     raise ValueError("Spark schema does not match the approved types")
   ordinal = observation.get("ordinal")
   if ordinal != {"minimum": 0, "maximum": SPARK_ROWS - 1, "distinct_count": SPARK_ROWS}:
@@ -71,10 +71,29 @@ def validate_spark_observation(observation: Any) -> None:
   aggregate = observation.get("aggregate")
   if not isinstance(aggregate, dict) or aggregate.get("count") != SPARK_ROWS or aggregate.get("sum") is None:
     raise ValueError("Spark aggregate must retain the fully evaluated payload")
-  plan = observation.get("physical_plan")
-  plan_lower = plan.lower() if isinstance(plan, str) else ""
-  if "xxhash64" not in plan_lower or any(name not in plan_lower for name in expected_names):
+  if not _plan_hashes_payload(observation.get("physical_plan"), expected_names):
     raise ValueError("Spark physical plan must retain every payload expression")
+
+
+def _plan_hashes_payload(plan: Any, names: tuple[str, ...]) -> bool:
+  """Return whether one physical-plan hash call includes every payload name."""
+  if not isinstance(plan, str):
+    return False
+  lowered = plan.lower()
+  start = lowered.find("xxhash64(")
+  if start < 0:
+    return False
+  depth = 0
+  for index in range(start + len("xxhash64"), len(lowered)):
+    character = lowered[index]
+    if character == "(":
+      depth += 1
+    elif character == ")":
+      depth -= 1
+      if depth == 0:
+        arguments = lowered[start:index + 1]
+        return all(name in arguments for name in names)
+  return False
 
 
 def _timed(callable_: Callable[[], Any], clock: Callable[[], float]) -> tuple[float, Any]:
@@ -88,10 +107,10 @@ def _validate_result(workload: str, result: Any) -> dict[str, Any]:
     validate_python_records(result)
     return {"status": "passed"}
   observation = result.get("observation", result) if isinstance(result, dict) else result
-  validate_spark_observation(observation)
   validator = result.get("validator") if isinstance(result, dict) else None
   if validator is not None:
     validator()
+  validate_spark_observation(observation)
   return {"status": "passed", "observation": observation}
 
 
@@ -103,7 +122,7 @@ def _workload_definition(workload: str) -> dict[str, Any]:
 
 def run_comparison(
     factories: dict[str, dict[str, Callable[[], Any]]], *, clock: Callable[[], float] = time.perf_counter,
-    provenance: dict[str, Any],
+    provenance: dict[str, Any], setup_seconds: dict[str, float] | None = None,
 ) -> dict[str, Any]:
   """Collect warm-ups, alternating samples and validations for both contracts."""
   workloads: dict[str, Any] = {}
@@ -115,6 +134,7 @@ def run_comparison(
     validation_seconds = 0.0
     schemas: dict[str, Any] = {}
     plans: dict[str, str] = {}
+    observations: dict[str, Any] = {}
     for side in sides:
       factory = factories[workload][side]
       warmup_started = time.perf_counter()
@@ -127,6 +147,7 @@ def run_comparison(
         observation = validation["observation"]
         schemas[side] = observation["schema"]
         plans[side] = observation["physical_plan"]
+        observations[side] = observation
       warmups.append(side)
     samples = {side: [] for side in sides}
     for side in order:
@@ -138,6 +159,7 @@ def run_comparison(
         observation = validation["observation"]
         schemas[side] = observation["schema"]
         plans[side] = observation["physical_plan"]
+        observations[side] = observation
       samples[side].append(seconds)
     entry: dict[str, Any] = {
         "definition": _workload_definition(workload),
@@ -147,12 +169,13 @@ def run_comparison(
         "samples": samples,
         "medians": {side: statistics.median(samples[side]) for side in sides},
         "validation": {"status": "passed"},
-        "setup_seconds": 0.0,
+        "setup_seconds": None if setup_seconds is None else setup_seconds[workload],
         "validation_seconds": validation_seconds,
     }
     if workload == "spark":
       entry["schemas"] = schemas
       entry["physical_plans"] = plans
+      entry["validation_observations"] = observations
     workloads[workload] = entry
   return {"artifact_version": 1, "status": "success", "provenance": provenance, "workloads": workloads}
 
@@ -169,7 +192,7 @@ def validate_artifact(artifact: Any) -> None:
   """Validate the durable observational artifact before publication."""
   if not isinstance(artifact, dict) or _has_forbidden_field(artifact):
     raise ValueError("Artifact has an unsupported field")
-  if artifact.get("artifact_version") not in {None, 1} or artifact.get("status") != "success":
+  if type(artifact.get("artifact_version")) is not int or artifact["artifact_version"] != 1 or artifact.get("status") != "success":
     raise ValueError("Artifact must be a successful versioned observation")
   provenance = artifact.get("provenance")
   if not isinstance(provenance, dict):
@@ -242,21 +265,15 @@ def _spark_factories(spark: Any) -> dict[str, Callable[[], dict[str, Any]]]:
   }
 
   def observe(frame: Any) -> dict[str, Any]:
-    frame = frame.select(F.col("ordinal").cast("long").alias("ordinal"), F.col("value").cast("long").alias("value"), F.col("tier").cast("string").alias("tier"))
+    frame = frame.select(
+        F.col("ordinal").cast("long").alias("ordinal"),
+        F.col("value").cast("int").alias("value"),
+        F.col("tier").cast("string").alias("tier"),
+    )
     hashed = frame.select(F.xxhash64("ordinal", "value", "tier").alias("payload_hash"))
     aggregate = hashed.agg(F.count("*").alias("count"), F.sum("payload_hash").alias("sum"))
     aggregate_result = aggregate.collect()[0].asDict(recursive=True)
-    observation = {
-        "count": SPARK_ROWS,
-        "partitions": frame.rdd.getNumPartitions(),
-        "schema": [(field.name, "long" if field.dataType.simpleString() == "bigint" else field.dataType.simpleString(), field.nullable) for field in frame.schema],
-        "ordinal": {"minimum": 0, "maximum": SPARK_ROWS - 1, "distinct_count": SPARK_ROWS},
-        "value": {"minimum": 0, "maximum": 999_999},
-        "tier": {"values": ["bronze", "silver", "gold"]},
-        "nulls": {"ordinal": 0, "value": 0, "tier": 0},
-        "aggregate": aggregate_result,
-        "physical_plan": aggregate._jdf.queryExecution().executedPlan().toString(),
-    }
+    observation: dict[str, Any] = {}
 
     def validate() -> None:
       summary = frame.agg(
@@ -269,12 +286,27 @@ def _spark_factories(spark: Any) -> dict[str, Callable[[], dict[str, Any]]]:
           F.sort_array(F.collect_set("tier")).alias("tiers"),
       ).collect()[0].asDict(recursive=True)
       observation.update({
-          "count": summary["count"], "ordinal": {"minimum": summary["ordinal_min"], "maximum": summary["ordinal_max"], "distinct_count": summary["distinct_count"]},
+          "count": summary["count"],
+          "partitions": frame.rdd.getNumPartitions(),
+          "schema": [
+              (field.name, field.dataType.simpleString(), field.nullable)
+              for field in frame.schema
+          ],
+          "ordinal": {
+              "minimum": summary["ordinal_min"],
+              "maximum": summary["ordinal_max"],
+              "distinct_count": summary["distinct_count"],
+          },
           "value": {"minimum": summary["value_min"], "maximum": summary["value_max"]},
           "tier": {"values": summary["tiers"]},
-          "nulls": {"ordinal": summary["ordinal_nulls"], "value": summary["value_nulls"], "tier": summary["tier_nulls"]},
+          "nulls": {
+              "ordinal": summary["ordinal_nulls"],
+              "value": summary["value_nulls"],
+              "tier": summary["tier_nulls"],
+          },
+          "aggregate": aggregate_result,
+          "physical_plan": aggregate._jdf.queryExecution().executedPlan().toString(),
       })
-      validate_spark_observation(observation)
 
     return {"observation": observation, "validator": validate}
 
@@ -361,13 +393,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.error("wheel and harness hashes must be SHA-256 and Git SHA values")
   args.output_dir.mkdir(parents=True, exist_ok=True)
   try:
-    setup_started = time.perf_counter()
+    python_setup_started = time.perf_counter()
+    python_factories = _python_factories()
+    python_setup_seconds = time.perf_counter() - python_setup_started
+    spark_setup_started = time.perf_counter()
     from pyspark.sql import SparkSession
     spark = SparkSession.builder.master("local[8]").appName("rand-engine-comparison").config("spark.sql.shuffle.partitions", "8").config("spark.ui.enabled", "false").getOrCreate()
-    setup_seconds = time.perf_counter() - setup_started
     try:
-      artifact = run_comparison({"python": _python_factories(), "spark": _spark_factories(spark)}, provenance=_provenance(args))
-      artifact["spark_session_setup_seconds"] = setup_seconds
+      provenance = _provenance(args)
+      spark_factories = _spark_factories(spark)
+      spark_setup_seconds = time.perf_counter() - spark_setup_started
+      artifact = run_comparison(
+          {"python": python_factories, "spark": spark_factories},
+          provenance=provenance,
+          setup_seconds={"python": python_setup_seconds, "spark": spark_setup_seconds},
+      )
       validate_artifact(artifact)
     finally:
       spark.stop()
@@ -375,7 +415,7 @@ def main(argv: list[str] | None = None) -> int:
     artifact = {"artifact_version": 1, "status": "controlled_failure", "errors": [f"{type(error).__name__}: {error}"]}
   (args.output_dir / "comparison.json").write_text(json.dumps(artifact, indent=2, sort_keys=True) + "\n", encoding="utf-8")
   (args.output_dir / "comparison.md").write_text(markdown(artifact), encoding="utf-8")
-  return 0
+  return 0 if artifact["status"] == "success" else 1
 
 
 if __name__ == "__main__":
