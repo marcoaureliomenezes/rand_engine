@@ -4,7 +4,7 @@ For anyone who needs realistic names, emails or cities at volume. It teaches `Ra
 
 ## Prerequisite and run
 
-Install the extra first:
+Install the extra first. For preview builds, use the [Getting started](https://marcoaureliomenezes.github.io/rand_engine/getting-started/) guide for the generated command:
 
 ```bash
 pip install "rand-engine[faker]"
@@ -22,7 +22,7 @@ rows of a 10,000-row DataFrame and the distinct-name count from the configured p
 
 ## What it shows
 
-- **Install**: the file needs the `faker` extra; the install line is at the top of the file.
+- **Install**: the `faker` extra is required; use the command above or the Getting started guide.
 - **Pools**: `name` uses the `pt_BR` locale, and `email` and `city` use the default locale. Each pool has a size and a seed.
 - **Sample**: 10 000 rows drawn from the pools and the native columns, then the head, and the number of distinct names against the pool size.
 
