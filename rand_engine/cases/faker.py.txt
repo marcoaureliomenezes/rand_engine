@@ -1,8 +1,7 @@
 # Databricks notebook source
-# Faker: small realistic value pools drawn once, then sampled at NumPy speed into many rows. Needs the faker extra: pip install "rand-engine[faker]"
+# Faker: small realistic value pools drawn once, then sampled at NumPy speed into many rows. Needs the faker extra; install it through the [Getting started](https://marcoaureliomenezes.github.io/rand_engine/getting-started/) guide.
 
 # COMMAND ----------
-# The extra is required. Install it before running: pip install "rand-engine[faker]"
 
 from rand_engine import DataGenerator, RandSpecs
 

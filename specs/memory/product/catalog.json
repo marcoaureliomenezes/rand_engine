@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-17T23:10:45Z",
+  "generated_at": "2026-10-18T15:18:25Z",
   "features": [
     {
       "rank": 1,
@@ -64,7 +64,7 @@
       "title": "DataGenerator",
       "area": "generation",
       "tldr": "The pandas generator validates a RandSpec, owns its random generator, and returns DataFrames, files, file streams or an endless lossless record stream.",
-      "summary": "DataGenerator(spec, seed) is the pandas composition root; size and transformers feed get_df, stream_dict, write and writeStream, with one owned NumPy generator, a fixed column-to-modifier order, continuous key offsets and an Arrow record path used only when it preserves public Python values.",
+      "summary": "DataGenerator(spec, seed) is the pandas composition root; size and transformers feed get_df, stream_dict, write and writeStream, with one owned NumPy generator, a fixed column-to-modifier order, continuous key offsets and one normalized pandas record path that preserves public Python values.",
       "path": "specs/memory/product/generation/data-generator.md",
       "tags": [
         "pandas",
@@ -72,7 +72,7 @@
         "generator",
         "dataframe"
       ],
-      "token_estimate": 531,
+      "token_estimate": 495,
       "depends_on": [
         "writers-and-streaming",
         "templates-and-examples",
@@ -144,8 +144,8 @@
       "slug": "documentation",
       "title": "Documentation site, llms.txt and agent skill",
       "area": "onboarding",
-      "tldr": "Strict-built docs, README, llms.txt and an Agent Skill cover APIs, examples and use cases with executable code.",
-      "summary": "Zensical builds the repository's documentation from Markdown and public docstrings for the GitHub Pages target; README becomes the site home; rendered references cover the public API, returned writers and caller-facing errors; a sourced comparison describes product capabilities; llms.txt indexes rendered guides, the skill and direct case files; and the suite checks semantic inventories, links and runnable Python blocks.",
+      "tldr": "Strict-built stable or preview docs, README, llms.txt and Agent guidance cover APIs, tutorials, compatibility, migration, support and security routes.",
+      "summary": "Zensical builds an isolated stable or immutable-source preview from Markdown and public docstrings for the GitHub Pages target; README becomes the site home; rendered references and five tutorials cover package use; one compatibility guide covers tested boundaries, migration and recovery; llms.txt indexes rendered guides, the mirrored canonical skill and all six starter resources; and canonical contribution and security files route support and private reports.",
       "path": "specs/memory/product/onboarding/documentation.md",
       "tags": [
         "docs",
@@ -154,7 +154,7 @@
         "agent-skill",
         "readme"
       ],
-      "token_estimate": 622,
+      "token_estimate": 959,
       "depends_on": [
         "public-api",
         "writers-and-streaming",
@@ -170,7 +170,8 @@
         "llms.txt",
         "README.md",
         "skills/**",
-        ".github/workflows/docs.yml"
+        ".github/workflows/docs.yml",
+        "scripts/docs_site.py"
       ]
     },
     {
@@ -178,8 +179,8 @@
       "slug": "get-started-cli",
       "title": "Get-started CLI",
       "area": "onboarding",
-      "tldr": "The rand-engine console script lists five adoption cases and writes any of them as a runnable example file.",
-      "summary": "rand-engine list prints the five case slugs with what each teaches; rand-engine get-started <slug> [--out DIR] copies the packaged scaffold to DIR/<slug>-example.py without overwriting. Each scaffold is a Databricks-format source file that also runs under plain python.",
+      "tldr": "The rand-engine console script lists six starters: five runnable Python examples and one opt-in AGENTS.md project context.",
+      "summary": "rand-engine list prints six starter slugs; one Case descriptor owns each description, packaged resource, output filename and kind. get-started copies the chosen resource without overwriting: five starters produce runnable <slug>-example.py files, while agent produces AGENTS.md package-use guidance.",
       "path": "specs/memory/product/onboarding/get-started-cli.md",
       "tags": [
         "cli",
@@ -187,7 +188,7 @@
         "scaffolds",
         "examples"
       ],
-      "token_estimate": 452,
+      "token_estimate": 587,
       "depends_on": [
         "public-api",
         "generation-methods",

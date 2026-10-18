@@ -4,10 +4,8 @@ from itertools import islice
 
 import numpy as np
 import pandas as pd
-import pyarrow as pa
 import pytest
 
-import rand_engine.main.data_generator as data_generator_module
 import rand_engine.utils.stream_handler as stream_handler_module
 from rand_engine.main.data_generator import DataGenerator
 from tests.fixtures.f1_data_generator_specs_right import rand_spec_with_args
@@ -82,21 +80,6 @@ def test_stream_dict_normalizes_missing_values_to_none():
   ]
 
 
-def _record_arrow_boundary(monkeypatch, action):
-  """Record conversion at the external Arrow boundary without replacing its result."""
-  table = data_generator_module.pa.Table
-  calls = []
-
-  class RecordedTable:
-    @staticmethod
-    def from_pandas(frame, preserve_index):
-      calls.append((frame.copy(), preserve_index))
-      return action(table, frame, preserve_index)
-
-  monkeypatch.setattr(data_generator_module.pa, "Table", RecordedTable)
-  return calls
-
-
 def _safe_stream_frame(frame):
   """Return normalized-safe values that pass through a global transformer."""
   return pd.DataFrame(
@@ -123,19 +106,11 @@ def _stream_for_frame(transformer, size=2):
   )
 
 
-def test_stream_dict_uses_arrow_after_normalization_for_lossless_records(monkeypatch):
-  """Normalized scalar records take Arrow and keep their exact public values."""
-  calls = _record_arrow_boundary(
-    monkeypatch,
-    lambda table, frame, preserve_index: table.from_pandas(frame, preserve_index=preserve_index),
-  )
-
+def test_stream_dict_preserves_normalized_record_values_and_types():
+  """Normalized scalar records retain their exact public values and types."""
   records = list(islice(_stream_for_frame(_safe_stream_frame), 2))
   timestamps = [record.pop("timestamp_created") for record in records]
 
-  assert [(list(frame.columns), preserve_index) for frame, preserve_index in calls] == [
-    (["integer", "nullable_integer", "boolean", "floating", "datetime", "text", "date", "transformed"], False)
-  ]
   assert all(type(timestamp) is float for timestamp in timestamps)
   assert records == [
     {
@@ -190,32 +165,20 @@ class _TaggedText(str):
   ],
   ids=["tuple", "numpy-array", "string-subclass", "custom-object"],
 )
-def test_stream_dict_keeps_unproved_object_values_on_pandas_path(monkeypatch, value, assert_value):
-  """Containers and custom values never enter Arrow's lossy representation."""
-  calls = _record_arrow_boundary(
-    monkeypatch,
-    lambda table, frame, preserve_index: pytest.fail("unproved object values must not enter Arrow"),
-  )
-
+def test_stream_dict_preserves_object_values(value, assert_value):
+  """Containers and custom values retain their representation."""
   records = list(islice(_stream_for_frame(lambda frame: pd.DataFrame({"value": [value]}, index=frame.index[:1]), 1), 1))
 
-  assert calls == []
   assert assert_value(records[0]["value"])
 
 
-def test_stream_dict_keeps_mixed_object_column_on_pandas_path(monkeypatch):
+def test_stream_dict_preserves_mixed_object_values():
   """One nested value keeps the complete mixed object column lossless."""
-  calls = _record_arrow_boundary(
-    monkeypatch,
-    lambda table, frame, preserve_index: pytest.fail("mixed object columns must not enter Arrow"),
-  )
-
   records = list(islice(
     _stream_for_frame(lambda frame: pd.DataFrame({"value": ["safe", (1, 2)]}, index=frame.index)),
     2,
   ))
 
-  assert calls == []
   assert records[0]["value"] == "safe"
   assert type(records[1]["value"]) is tuple
   assert records[1]["value"] == (1, 2)
@@ -284,21 +247,13 @@ def test_stream_dict_keeps_mixed_object_column_on_pandas_path(monkeypatch):
     "non-string-label",
   ],
 )
-def test_stream_dict_keeps_unproved_scalar_and_label_partitions_on_pandas_path(
-  monkeypatch, frame_factory, expected_records
-):
-  """Lossy scalar or label partitions retain the existing pandas records."""
-  calls = _record_arrow_boundary(
-    monkeypatch,
-    lambda table, frame, preserve_index: pytest.fail("unproved stream records must not enter Arrow"),
-  )
-
+def test_stream_dict_preserves_scalar_and_label_partitions(frame_factory, expected_records):
+  """Scalar and label partitions retain their existing records."""
   stream = _stream_for_frame(lambda frame: frame_factory(frame.index))
   records = list(islice(stream, 2))
   for record in records:
     record.pop("timestamp_created")
 
-  assert calls == []
   assert records == expected_records
   for record, expected in zip(records, expected_records):
     assert {key: type(value) for key, value in record.items()} == {
@@ -306,43 +261,8 @@ def test_stream_dict_keeps_unproved_scalar_and_label_partitions_on_pandas_path(
     }
 
 
-def test_stream_dict_falls_back_only_for_arrow_representation_error(monkeypatch):
-  """An Arrow representation failure retains pandas records unchanged."""
-  calls = _record_arrow_boundary(
-    monkeypatch,
-    lambda table, frame, preserve_index: (_ for _ in ()).throw(pa.ArrowInvalid("cannot represent value")),
-  )
-
-  records = list(islice(_stream_for_frame(_safe_stream_frame), 2))
-  for record in records:
-    record.pop("timestamp_created")
-
-  assert len(calls) == 1
-  assert records[0]["integer"] == 7
-  assert records[1]["integer"] is None
-  assert records[0]["date"] == date(2025, 1, 2)
-
-
-def test_stream_dict_propagates_non_representation_arrow_failure(monkeypatch):
-  """Unrelated conversion failures remain visible to the caller."""
-  calls = _record_arrow_boundary(
-    monkeypatch,
-    lambda table, frame, preserve_index: (_ for _ in ()).throw(RuntimeError("unexpected Arrow failure")),
-  )
-
-  stream = _stream_for_frame(_safe_stream_frame)
-
-  with pytest.raises(RuntimeError, match="unexpected Arrow failure"):
-    next(stream)
-  assert len(calls) == 1
-
-
-def test_stream_dict_arrow_batches_keep_order_and_cadence(monkeypatch):
-  """Arrow conversion stays one conversion per ordered stream microbatch."""
-  calls = _record_arrow_boundary(
-    monkeypatch,
-    lambda table, frame, preserve_index: table.from_pandas(frame, preserve_index=preserve_index),
-  )
+def test_stream_dict_batches_keep_order_and_cadence(monkeypatch):
+  """Ordered stream microbatches retain continuous keys and cadence."""
   sleeps = []
   monkeypatch.setattr(stream_handler_module.time, "sleep", sleeps.append)
   spec = {"id": {"method": "pk", "kwargs": {"style": "sequence", "start": 1, "step": 1}}}
@@ -351,6 +271,5 @@ def test_stream_dict_arrow_batches_keep_order_and_cadence(monkeypatch):
 
   assert [record["id"] for record in records] == [1, 2, 3, 4, 5]
   assert all(type(record["timestamp_created"]) is float for record in records)
-  assert [(len(frame), preserve_index) for frame, preserve_index in calls] == [(2, False)] * 3
   assert len(sleeps) == 4
   assert all(1 / 100 <= duration <= 1 / 50 for duration in sleeps)

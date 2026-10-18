@@ -6,8 +6,9 @@
 
 <!-- derived-from: public-api sha256:55069f519242 -->
 
-- [README](https://github.com/marcoaureliomenezes/rand_engine/blob/master/README.md): landing page with install, a 30-second example, when to use it, the five get-started cases and the docs links
+- [README](https://github.com/marcoaureliomenezes/rand_engine/blob/master/README.md): landing page with install, a 30-second example, five runnable starters, the Agent context starter and docs links
 - [Getting started](https://marcoaureliomenezes.github.io/rand_engine/getting-started/): install and the first spec
+- [Compatibility and migration](https://marcoaureliomenezes.github.io/rand_engine/compatibility/): Python and Spark boundaries, 0.7-to-0.8 actions and recovery paths
 - [DataGenerator](https://marcoaureliomenezes.github.io/rand_engine/1_DATA_GENERATOR/): every method and its kwargs, float rules, `null_rate` / `anomaly_rate`, seeds, `stream_dict`
 - [SparkGenerator](https://marcoaureliomenezes.github.io/rand_engine/2_SPARK_GENERATOR/): the same spec on Spark
 - [Writing files](https://marcoaureliomenezes.github.io/rand_engine/3_WRITING_FILES/): `write`, `writeStream`, formats and accepted options
@@ -16,6 +17,8 @@
 - [Reference](https://marcoaureliomenezes.github.io/rand_engine/reference/): the public API, one canonical entry per object
 - [Explanation](https://marcoaureliomenezes.github.io/rand_engine/explanation/): the RandSpec model and the NumPy core
 - [Comparison](https://marcoaureliomenezes.github.io/rand_engine/comparison/): factual scope comparison with Faker and dbldatagen
+- [Contributing](https://github.com/marcoaureliomenezes/rand_engine/blob/master/CONTRIBUTING.md): setup, checks and useful issue reports
+- [Security](https://github.com/marcoaureliomenezes/rand_engine/blob/master/SECURITY.md): private vulnerability reporting and safe report contents
 
 ## Tutorials
 
@@ -34,6 +37,7 @@
 ## Agent skill and case files
 
 - [rand-engine skill](https://github.com/marcoaureliomenezes/rand_engine/blob/master/skills/rand-engine/SKILL.md): when to use RandSpec and how to write one
+- [Agent context starter](https://github.com/marcoaureliomenezes/rand_engine/blob/master/rand_engine/cases/agent.md.txt): `rand-engine get-started agent --out PROJECT` writes an opt-in `PROJECT/AGENTS.md` in 0.8.0; review and merge it with existing project instructions
 - [test-data case](https://github.com/marcoaureliomenezes/rand_engine/blob/master/rand_engine/cases/test-data.py.txt): the test-data example, runnable as-is
 - [lake case](https://github.com/marcoaureliomenezes/rand_engine/blob/master/rand_engine/cases/lake.py.txt): pk/fk tables written to a Parquet lake
 - [kafka case](https://github.com/marcoaureliomenezes/rand_engine/blob/master/rand_engine/cases/kafka.py.txt): the Kafka event-stream example

@@ -2,7 +2,7 @@
 slug: QUALITY
 title: Quality Assurance
 tldr: QA principles, test architecture and the gates every change passes.
-summary: Principles change only with an accepted ADR; Test architecture and Gates state how rand-engine is verified — a light numbered pytest suite with executable docs and docstrings, a docstring lint in the verify line, CI-only stress and same-runner benchmarks, and the GitHub Actions matrix, security, docs and publish workflows.
+summary: Principles change only with an accepted ADR; Test architecture and Gates state how rand-engine is verified — a light numbered pytest suite with executable docs and docstrings, a docstring lint in the verify line, CI-only stress and same-runner benchmarks, and the GitHub Actions matrix, security, isolated docs and publish workflows.
 tags:
   - quality-assurance
   - testing
@@ -17,12 +17,13 @@ tags:
 
 ## Test architecture
 
-- One pytest suite under `tests/`: numbered files `test_<n>_<area>.py` ordered by layer — 0 core methods, 1 validators, 2 `DataGenerator`, 3 Spark (including partition-independent keys) and advanced specs, 4 example specs and the `RandSpecs` builders, 5 file and SQLite batch/stream writers, 6 lossless Arrow-or-pandas `stream_dict` records, 7 templates, 8 PK/FK consistency, 9 the get-started CLI and its scaffolds — plus the public-import and wheel contract, benchmark-script contract and executable documentation contract (Markdown pages, the agent skill, README landing rules, public docstrings and their examples).
-- CLI scaffolds execute in-process in a temporary directory, sharing the suite's Spark session; one runs as a plain-python subprocess.
+- One pytest suite under `tests/`: numbered files `test_<n>_<area>.py` ordered by layer — 0 core methods, 1 validators, 2 `DataGenerator`, 3 Spark (including partition-independent keys) and advanced specs, 4 example specs and the `RandSpecs` builders, 5 file and SQLite batch/stream writers, 6 normalized pandas `stream_dict` record contracts, 7 templates, 8 PK/FK consistency, 9 the get-started CLI and its scaffolds — plus the public-import and wheel contract, benchmark-script contract and executable documentation contract (Markdown pages, the agent skill, README landing rules, public docstrings and their examples).
+- The five runnable CLI scaffolds execute in-process in a temporary directory, sharing the suite's Spark session; one runs as a plain-python subprocess. The sixth Agent resource is checked as Markdown bytes and project-context content and is never executed as Python.
 - Specs under test live as fixtures in `tests/fixtures/f<n>_*.py`; `conftest.py` loads the Spark fixtures as a plugin.
 - Spark tests start a local `SparkSession` and skip when PySpark is absent or on Windows with Python 3.12+.
 - The default selector excludes `stress`; default tests generate at most 10^4 rows, while large-volume tests and benchmarks run in the CI benchmark job.
 - Writer and documentation tests write through pytest temporary paths.
+- Documentation contracts exercise stable and preview preparation through the standard-library interface: isolated input, raw resources, canonical-skill mirroring, exact-SHA source routes and core/Faker-extra installs, stable PyPI guidance, deploy eligibility and explained skips. Preparation remains usable on Python 3.10 without a TOML parser; preview eligibility then fails closed, while the `master` path bypasses preview metadata reads.
 - Local runs keep caches out of the repo: `PYTHONDONTWRITEBYTECODE=1 poetry run pytest tests/ -q -p no:cacheprovider`.
 
 ## Gates
@@ -35,7 +36,8 @@ tags:
 - Merge to `master`: tests (Ubuntu, Python 3.10–3.13), build of the `pyproject.toml` version (no RC suffix), the tag, PyPI publish, a GitHub release.
 - The repo `verify:` line (the local job gate) runs `ruff check --select D` (numpy convention) on the six public-surface modules before the suite. No type checker is configured, and CI runs no lint.
 - Inside every pytest run: an `inspect` check that each public callable of `DataGenerator`, `SparkGenerator`, `RandSpecs` and the writer objects carries a numpydoc docstring (it covers the `_`-prefixed writer modules ruff skips), and the doctest examples of those modules. A full suite run takes 45–93 s on each Ubuntu and macOS leg of Tests on Push run 38973485937.
-- Docs workflow, on PRs to `development` and `master` and pushes to `feature/**` and `master`: the strict Zensical build, aborting on a broken internal link (1.13 s in Docs run 38973485919); on `master` it deploys the site to GitHub Pages.
+- Docs workflow, on PRs to `development` and `master` and pushes to `feature/**` and `master`: Python 3.12 prepares an isolated stable or preview tree and runs the strict Zensical build, aborting on a broken internal link. Only push events on the exact `PREVIEW_REF` and `MASTER_REF` configured by the deployment guard upload and enter deployment; workflow cancellation is disabled for those two deployable refs and retained for other work.
+- Deployable docs jobs share the bounded `pages-public-site` queue with `queue: max` and no in-progress cancellation. After acquiring it, `master` deploys through the stable bypass; the preview re-reads the remote version pair and feature SHA, deploys only on the exact expected state, and otherwise records an explained successful skip before `deploy-pages`.
 
 <!-- dadaia:fixed slop-tests -->
 ### Slop — tests (fixed)

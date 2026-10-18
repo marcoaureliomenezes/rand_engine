@@ -32,8 +32,7 @@ rand-engine list
 rand-engine get-started lake
 ```
 
-`list` prints the slugs; `get-started <slug>` writes a runnable script into the current directory.
-Run the written file from that directory. `--out DIR` writes it to a directory of your choice.
+`list` prints six starters. Five write runnable scripts into the current directory; run the written file from that directory. `--out DIR` writes to a directory of your choice.
 
 | Use case | Command | File | Run | Prerequisite | Outcome | Guide |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -43,5 +42,16 @@ Run the written file from that directory. `--out DIR` writes it to a directory o
 | Spark or Databricks (`databricks`) | `rand-engine get-started databricks` | `databricks-example.py` | `python databricks-example.py` | A Databricks runtime, or PySpark and Java | A native Spark DataFrame is shown with its schema | [Tutorial](tutorials/databricks.md) |
 | Faker pools (`faker`) | `rand-engine get-started faker` | `faker-example.py` | `python faker-example.py` | `rand-engine[faker]` | A 10,000-row DataFrame sampled from reproducible name, email and city pools | [Tutorial](tutorials/faker.md) |
 
+## Agent context
+
+The sixth starter is an optional project context for an agent that uses rand-engine. It is not a runnable tutorial:
+
+```bash
+rand-engine get-started agent --out PROJECT
+```
+
+It writes only `PROJECT/AGENTS.md`. This starter begins in 0.8.0; it is not in the published 0.8.0rc4 wheel. Existing project instructions are preserved: review both files and merge the package-use context into the project's own rules.
+
 Choose [Writing files](3_WRITING_FILES.md) for a direct file writer, [Keys](4_CONSTRAINTS.md) for
 related tables, and [Recipes](5_RECIPES.md) for the runnable Kafka-or-queue and Parquet patterns.
+For Python, Spark, migration and recovery boundaries, read [Compatibility](compatibility.md).

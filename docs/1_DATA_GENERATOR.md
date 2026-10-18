@@ -18,7 +18,7 @@ assert df["age"].between(18, 80).all()
 
 ## API
 
-<!-- derived-from: data-generator sha256:763625cc8287 -->
+<!-- derived-from: data-generator sha256:511ff7f3a370 -->
 
 | Call | Does |
 |---|---|
@@ -33,7 +33,7 @@ Calling `get_df` without `.size` raises `RandEngineError`.
 
 ## Seeds
 
-<!-- derived-from: data-generator sha256:763625cc8287 -->
+<!-- derived-from: data-generator sha256:511ff7f3a370 -->
 
 A seed fixes the output: the same spec, seed and size give the same frame. Each generator owns
 its own `numpy.random.Generator` (PCG64), so generators never share or reset NumPy's global state.
@@ -225,7 +225,7 @@ for key in ("args", "splitable", "sep", "pk"):
 
 ## Transformers
 
-<!-- derived-from: data-generator sha256:763625cc8287 -->
+<!-- derived-from: data-generator sha256:511ff7f3a370 -->
 
 A column may carry `"transformers"`: functions applied value by value. `.transformers([...])` takes
 whole-frame functions, run after the column ones.
@@ -264,14 +264,13 @@ else:
 
 ## Streaming dicts
 
-<!-- derived-from: data-generator sha256:763625cc8287 -->
+<!-- derived-from: data-generator sha256:511ff7f3a370 -->
 
 `stream_dict` never ends: it generates `size` rows per microbatch, converts datetime columns to
 strings and adds `timestamp_created` (epoch seconds) to each record. Stop it yourself.
 
-After that unchanged normalization, a strictly lossless scalar frame uses Arrow to form records.
-Object columns containing nested containers, mixed values, custom values, unproved extension
-types, or non-string labels keep the pandas record path, preserving their public Python values.
+After that unchanged normalization, every microbatch uses pandas records, preserving public
+Python values for scalar, nested, mixed, custom and extension values, and non-string labels.
 
 ```python
 from itertools import islice
@@ -281,13 +280,13 @@ stream = DataGenerator(spec, seed=1).size(10).stream_dict(min_throughput=500, ma
 records = list(islice(stream, 25))
 assert len(records) == 25 and set(records[0]) == {"user_id", "timestamp_created"}
 
-arrow_records = list(islice(
+scalar_records = list(islice(
     DataGenerator({"value": {"method": "integers", "kwargs": {"min": 1, "max": 3}}}, seed=3)
     .size(2).stream_dict(500, 1000), 2
 ))
-fallback_records = list(islice(
+nested_records = list(islice(
     DataGenerator({"value": {"method": "distincts", "kwargs": {"distincts": [{"nested": [1, 2]}]}}}, seed=3)
     .size(1).stream_dict(500, 1000), 1
 ))
-assert isinstance(fallback_records[0]["value"], dict)
+assert isinstance(nested_records[0]["value"], dict)
 ```

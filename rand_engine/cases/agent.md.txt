@@ -1,0 +1,28 @@
+# rand-engine in this project
+
+Use this context when the project needs synthetic data for tests, demos, pipelines, files, streams, related tables, or Spark DataFrames.
+
+## Install and import
+
+For installation, version compatibility, and the current first result, use the live
+[Getting started](https://marcoaureliomenezes.github.io/rand_engine/getting-started/) guide.
+
+```python
+from rand_engine import DataGenerator, RandSpecs, SparkGenerator
+
+spec = {
+    "user_id": {"method": "int_zfilled", "kwargs": {"length": 8}},
+    "age": {"method": "integers", "kwargs": {"min": 18, "max": 80}},
+}
+users = DataGenerator(spec, seed=42).size(1_000).get_df()
+```
+
+Use `DataGenerator` for pandas DataFrames, record streams, and file output. Use `SparkGenerator` when the project already supplies a Spark session and Spark functions; PySpark is not installed by rand-engine.
+
+## Find the right detail
+
+- Docs and API reference: https://marcoaureliomenezes.github.io/rand_engine/
+- Machine-readable guide: https://marcoaureliomenezes.github.io/rand_engine/llms.txt
+- Agent skill and fuller patterns: https://marcoaureliomenezes.github.io/rand_engine/skills/rand-engine/SKILL.md
+
+Generate synthetic data only. Keep credentials, personal data, production data, and secrets out of specifications and examples. If this project already has `AGENTS.md` instructions, review both files and merge this package-use context into the project rules; keep the existing project rules authoritative.

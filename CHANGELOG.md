@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.8.0] - 2026-10-16
+## [0.8.0] - Unreleased
 
 ### Added
 
@@ -29,6 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Output-only SQLite batch writing with quoted identifiers, bound values, atomic selected-table overwrite and transactional append; stream writers refuse SQLite before output.
 - Lossless Arrow conversion for compatible `stream_dict` batches, with pandas fallback for mixed or unproved Python representations.
 - A primary-source capability comparison for rand-engine, Faker and dbldatagen, without competitor performance claims.
+- An optional `agent` starter: `rand-engine get-started agent --out PROJECT` writes package-use context to `PROJECT/AGENTS.md` without overwriting existing project instructions; the five runnable starters remain unchanged.
+- A canonical compatibility, migration and recovery guide covering Python, Faker, Spark, Java and platform boundaries.
+- Public contribution and support guidance through GitHub Issues, plus private vulnerability reporting through GitHub Security Advisories.
 
 ### Fixed
 

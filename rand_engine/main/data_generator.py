@@ -1,7 +1,6 @@
 """Generate pandas DataFrames, dict streams and files from one RandSpec and one seed."""
 from functools import cache, partial
 import time
-from datetime import date
 import pandas as pd
 import numpy as np
 import pyarrow as pa
@@ -15,58 +14,11 @@ from rand_engine.validators.exceptions import RandEngineError
 from rand_engine.validators.method_specs import METHOD_CATALOG
 
 
-def _stream_records_are_arrow_compatible(dataframe: pd.DataFrame) -> bool:
-  """Return whether Arrow preserves this frame's public record representation."""
-  if any(type(column) is not str for column in dataframe.columns):
-    return False
-
-  lossless_object_types = {str, int, float, bool, date}
-  lossless_extension_types = (
-    pd.BooleanDtype,
-    pd.Int8Dtype,
-    pd.Int16Dtype,
-    pd.Int32Dtype,
-    pd.Int64Dtype,
-    pd.UInt8Dtype,
-    pd.UInt16Dtype,
-    pd.UInt32Dtype,
-    pd.UInt64Dtype,
-    pd.Float32Dtype,
-    pd.Float64Dtype,
-  )
-  for column in dataframe.columns:
-    values = dataframe[column]
-    if values.dtype == object:
-      object_type = None
-      for value in values.to_numpy(copy=False):
-        if value is None:
-          continue
-        value_type = type(value)
-        if value_type not in lossless_object_types:
-          return False
-        if object_type is None:
-          object_type = value_type
-        elif object_type is not value_type:
-          return False
-        if value_type is int and not -(2 ** 63) <= value < 2 ** 63:
-          return False
-    elif isinstance(values.dtype, lossless_extension_types):
-      continue
-    elif isinstance(values.dtype, np.dtype) and values.dtype.kind in {"b", "i", "u"}:
-      continue
-    elif isinstance(values.dtype, np.dtype) and values.dtype.kind == "f" and values.dtype.itemsize <= 8:
-      continue
-    else:
-      return False
-  return True
-
-
 class DataGenerator:
   """
   Generate pandas DataFrames, dict streams or files from a RandSpec.
 
-  ``stream_dict`` uses Arrow only when it preserves the normalized record representation;
-  unsupported values retain the pandas record path.
+  ``stream_dict`` converts normalized microbatches to pandas records.
 
   Parameters
   ----------
@@ -324,13 +276,7 @@ class DataGenerator:
       df_data_microbatch = self.wrapped_df_generator(size, offset)()
       offset += size
       df_data_parsed = StreamHandler.convert_dt_to_str(df_data_microbatch)
-      if _stream_records_are_arrow_compatible(df_data_parsed):
-        try:
-          list_of_records = pa.Table.from_pandas(df_data_parsed, preserve_index=False).to_pylist()
-        except (pa.ArrowInvalid, pa.ArrowTypeError):
-          list_of_records = df_data_parsed.to_dict('records')
-      else:
-        list_of_records = df_data_parsed.to_dict('records')
+      list_of_records = df_data_parsed.to_dict('records')
       for record in list_of_records:
         record["timestamp_created"] = round(time.time(), 3)
         yield record
