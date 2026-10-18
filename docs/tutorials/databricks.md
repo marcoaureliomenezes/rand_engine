@@ -29,7 +29,7 @@ The file is in Databricks notebook source format: its first line is `# Databrick
 
 ## DataGenerator-only features
 
-`SparkGenerator` refuses `pk`, `fk`, the distributions (`exponential`, `lognormal`, `poisson`, `zipf`), `constant`, `null_rate` and `anomaly_rate`. For those, or for a small volume, generate with `DataGenerator` and wrap the pandas frame with `spark.createDataFrame`. The file's last cell does that for 100 rows.
+`SparkGenerator` accepts stateless `pk` and `fk` through the same key definitions as `DataGenerator`; an explicit seed applies to those key columns only. It still refuses the distributions (`exponential`, `lognormal`, `poisson`, `zipf`), `constant`, `null_rate` and `anomaly_rate`. For those, or for a small volume, generate with `DataGenerator` and wrap the pandas frame with `spark.createDataFrame`. The file's last cell does that for 100 rows.
 
 ## What it shows
 

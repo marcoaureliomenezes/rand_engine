@@ -2,7 +2,7 @@
 slug: documentation
 title: Documentation site, llms.txt and agent skill
 tldr: "Strict-built docs, README, llms.txt and an Agent Skill cover APIs, examples and use cases with executable code."
-summary: "Zensical builds the repository's documentation from Markdown and public docstrings for the GitHub Pages target; README becomes the site home; rendered references cover the public API, returned writers and caller-facing errors; llms.txt indexes rendered guides, the skill and direct case files; and the suite checks semantic inventories, links and runnable Python blocks."
+summary: "Zensical builds the repository's documentation from Markdown and public docstrings for the GitHub Pages target; README becomes the site home; rendered references cover the public API, returned writers and caller-facing errors; a sourced comparison describes product capabilities; llms.txt indexes rendered guides, the skill and direct case files; and the suite checks semantic inventories, links and runnable Python blocks."
 tags: [docs, site, llms-txt, agent-skill, readme]
 sources:
   - docs/**
@@ -16,7 +16,8 @@ sources:
 ## Site
 
 - Zensical builds `mkdocs.yml` for the `https://marcoaureliomenezes.github.io/rand_engine/` GitHub Pages target. Mkdocstrings renders numpy-style docstrings; the main reference follows `rand_engine.__all__`, and separate destinations render the returned writer classes and the caller-facing exception family ([[public-api]], [[writers-and-streaming]]).
-- Navigation: Home (the README, copied at build), Getting started, five Tutorials, How-to guides, a Reference group for the main API, returned writers and errors, Explanation and Benchmarks ([[benchmarks]]).
+- Navigation: Home (the README, copied at build), Getting started, five Tutorials, How-to guides, a Reference group for the main API, returned writers and errors, Explanation, a factual Comparison and Benchmarks ([[benchmarks]]).
+- The comparison page uses primary sources to distinguish rand-engine, Faker and dbldatagen by execution model, output, relationship support and deployment fit. It links the internal same-runner benchmark methodology and results without making competitor speed, score or winner claims.
 - Getting started maps all five packaged scaffolds to their command, filename, run command, prerequisite, observable outcome and tutorial. Each tutorial includes its case file verbatim, the same bytes `rand-engine get-started <slug>` writes ([[get-started-cli]]).
 - The workflow copies `llms.txt` to the site root and the source Markdown tree beside rendered HTML in the Pages artifact.
 - The docs workflow runs the strict build, which fails on a broken internal link, on pull requests to `development` and `master` and on pushes to `feature/**` and `master`; only a push to `master` uploads and deploys the Pages artifact. `site/`, `.cache/` and the generated `docs/index.md` are ignored build products.
@@ -29,7 +30,7 @@ sources:
 ## llms.txt and the agent skill
 
 - The root `llms.txt` links rendered guides and references, the agent skill and all five direct case files on the principal branch. Its site routes correspond to navigation destinations and its repository links resolve to existing files.
-- `skills/rand-engine/SKILL.md` carries Agent Skills front matter (`name: rand-engine`, a `description` saying when to use it) and covers the complete catalog-backed method inventory, engine outcomes, the RandSpec grammar, builders, `pk`/`fk`, sinks, Spark, `rand-engine get-started` and errors ([[generation-methods]], [[rand-spec-grammar]], [[templates-and-examples]]). It lives in the repo, never in the wheel.
+- `skills/rand-engine/SKILL.md` carries Agent Skills front matter (`name: rand-engine`, a `description` saying when to use it) and covers the complete catalog-backed method inventory, engine outcomes, the RandSpec grammar, builders, event-time `pk`/`fk`, file and SQLite sinks, Spark key parity, record-stream fallback, `rand-engine get-started` and errors ([[generation-methods]], [[rand-spec-grammar]], [[templates-and-examples]]). It lives in the repo, never in the wheel.
 
 ## Executed docs
 

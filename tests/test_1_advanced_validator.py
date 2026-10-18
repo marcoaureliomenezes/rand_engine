@@ -5,7 +5,10 @@ Covers common methods (integers, floats, etc.) + advanced methods (distincts_map
 
 import functools
 import inspect
+from decimal import Decimal
+from fractions import Fraction
 
+import numpy as np
 import pytest
 from rand_engine.main._rand_generator import RandGenerator
 from rand_engine.main.data_generator import DataGenerator
@@ -448,6 +451,52 @@ def test_fk_spec_is_refused(kwargs, match):
 
 def test_fk_with_domain_sized_parent_and_skew_is_accepted():
   AdvancedValidator.validate_and_raise({"pid": {"method": "fk", "kwargs": {"parent": FK_PARENT, "parent_size": 100, "skew": 1}}})
+
+
+EVENT_TIME_FK = {
+  "parent": {"method": "pk", "kwargs": {"start": 1}},
+  "parent_size": 10,
+  "born_before": {
+    "parent_start": -3,
+    "parent_rate": 2.5,
+    "child_start": 0.25,
+    "child_rate": 4,
+  },
+}
+
+
+def test_fk_event_time_grammar_accepts_exact_builtin_numeric_mapping():
+  assert AdvancedValidator.validate({"pid": {"method": "fk", "kwargs": EVENT_TIME_FK}}) == []
+
+
+@pytest.mark.parametrize("born_before, field", [
+  (None, "born_before"),
+  ({}, "parent_start"),
+  ({**EVENT_TIME_FK["born_before"], "extra": 1}, "extra"),
+  ({**EVENT_TIME_FK["born_before"], "parent_start": True}, "parent_start"),
+  ({**EVENT_TIME_FK["born_before"], "parent_start": Decimal("1")}, "parent_start"),
+  ({**EVENT_TIME_FK["born_before"], "parent_start": Fraction(1, 2)}, "parent_start"),
+  ({**EVENT_TIME_FK["born_before"], "parent_start": np.int64(1)}, "parent_start"),
+  ({**EVENT_TIME_FK["born_before"], "parent_start": float("nan")}, "parent_start"),
+  ({**EVENT_TIME_FK["born_before"], "parent_start": float("inf")}, "parent_start"),
+  ({**EVENT_TIME_FK["born_before"], "parent_rate": 0}, "parent_rate"),
+  ({**EVENT_TIME_FK["born_before"], "child_rate": -1.0}, "child_rate"),
+])
+def test_fk_event_time_grammar_collects_only_the_four_required_finite_builtin_values(born_before, field):
+  kwargs = {**EVENT_TIME_FK, "born_before": born_before}
+  errors = AdvancedValidator.validate({"pid": {"method": "fk", "kwargs": kwargs}})
+  assert all("Unknown parameter" not in error for error in errors)
+  assert any("born_before" in error and field in error for error in errors)
+
+
+def test_fk_event_time_grammar_collects_heterogeneous_extra_mapping_keys():
+  """Event-time validation reports every extra field without ordering unlike keys."""
+  born_before = {**EVENT_TIME_FK["born_before"], 7: 1, "extra": 1}
+  errors = AdvancedValidator.validate({"pid": {"method": "fk", "kwargs": {**EVENT_TIME_FK, "born_before": born_before}}})
+  assert len(errors) == 2
+  assert all("Column 'pid'" in error and "born_before" in error for error in errors)
+  assert any("7" in error for error in errors)
+  assert any("extra" in error for error in errors)
 
 
 if __name__ == "__main__":

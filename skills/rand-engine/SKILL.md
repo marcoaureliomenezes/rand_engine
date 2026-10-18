@@ -5,7 +5,7 @@ description: Generates synthetic data fast from a declarative RandSpec (a dict o
 
 # rand-engine
 
-Python + NumPy library: one spec dict yields a seeded pandas DataFrame, an infinite dict stream, csv/json/parquet files or a Spark DataFrame. Full docs: https://marcoaureliomenezes.github.io/rand_engine/ (machine-readable index: `llms.txt`; per-class API: the Reference page).
+Python + NumPy library: one spec dict yields a seeded pandas DataFrame, an infinite dict stream, csv/json/parquet files, a bounded SQLite table, or a Spark DataFrame. Full docs: https://marcoaureliomenezes.github.io/rand_engine/ (machine-readable index: `llms.txt`; per-class API: the Reference page).
 
 ## Install
 
@@ -79,8 +79,8 @@ Every method below runs on `DataGenerator` (NumPy). The last column says whether
 | `distincts_map_prop` | `distincts` | — | `cols` | weighted correlated pair | NULL + warning |
 | `distincts_multi_map` | `distincts` | — | `cols` | correlated columns, one per level | NULL + warning |
 | `complex_distincts` | `pattern`, `replacement`, `templates` | — | — | strings built from templates | NULL + warning |
-| `pk` | — | `style`, `start`, `step`, `domain`, `key`, `format` | — | unique keys | refused |
-| `fk` | `parent`, `parent_size` | `skew` | — | references to parent keys | refused |
+| `pk` | — | `style`, `start`, `step`, `domain`, `key`, `format` | — | unique keys | yes |
+| `fk` | `parent`, `parent_size` | `skew`, `born_before` | — | references to parent keys | yes |
 
 **Column fields** are required keys outside `kwargs`. Only the three map methods require `cols`;
 `null_rate`, `anomaly_rate`, and `anomaly_values` are global NumPy-only modifiers.
@@ -108,11 +108,46 @@ assert customers["customer_id"].is_unique
 assert orders["customer_id"].isin(customers["customer_id"]).all()
 ```
 
-Hand keyed tables to Spark with `spark.createDataFrame(df)`; `SparkGenerator` refuses `pk` and `fk`.
+`SparkGenerator` accepts the same stateless key definitions. Its `seed` applies only to `pk` and
+`fk`; ordinary Spark methods remain unseeded. It computes key columns with a key-only
+`mapInPandas` adapter over source row indexes and keeps ordinary columns native to Spark.
+
+For event-time foreign keys, `born_before` has exactly `parent_start`, `parent_rate`,
+`child_start`, and `child_rate`. They are finite built-in `int` or `float` values (not `bool`),
+and rates are positive. Eligibility is inclusive: a parent born at the child's event time can be
+selected. A child with zero eligible parents raises `RandEngineError` naming the FK column.
+
+```python
+from rand_engine.validators.exceptions import RandEngineError
+
+event_time_born_before = {
+    "parent_start": 0,
+    "parent_rate": 1.0,
+    "child_start": 2,
+    "child_rate": 1.0,
+}
+event_time_parent = {"method": "pk", "kwargs": {"start": 1}}
+event_time_parents = DataGenerator({"customer_id": event_time_parent}, seed=1).size(4).get_df()
+event_time_orders = DataGenerator({
+    "customer_id": {"method": "fk", "kwargs": {
+        "parent": event_time_parent, "parent_size": 4, "born_before": event_time_born_before,
+    }},
+}, seed=2).size(4).get_df()
+try:
+    DataGenerator({"customer_id": {"method": "fk", "kwargs": {
+        "parent": event_time_parent, "parent_size": 4,
+        "born_before": {"parent_start": 10, "parent_rate": 1, "child_start": 0, "child_rate": 1},
+    }}}, seed=2).size(1).get_df()
+except RandEngineError as error:
+    event_time_zero_eligible = "customer_id" in str(error)
+else:
+    event_time_zero_eligible = False
+assert event_time_orders["customer_id"].isin(event_time_parents["customer_id"]).all()
+```
 
 ## Sinks
 
-`gen.write` is a batch writer: `.format("csv" | "parquet" | "json")`, `.mode("overwrite" | "append")`, `.option(k, v)` / `.options(k=v, ...)`, then `.save(path)`. Only documented options are accepted; anything else raises `RandEngineError` naming the accepted ones. Common options: `compression`, `sep` (csv), `numFiles` (a folder of `part_<id>` files), `maxRowsPerBatch` (bounded memory). `gen.writeStream` adds `.trigger(frequency=seconds)` and the `timeout` option, writes a microbatch per trigger, and `.start(path)` blocks until the timeout.
+`gen.write` is a batch writer: `.format("csv" | "parquet" | "json" | "sqlite")`, `.mode("overwrite" | "append")`, `.option(k, v)` / `.options(k=v, ...)`, then `.save(path)`. SQLite requires its single `table` option, is batch-only, quotes identifiers and binds values; it does not accept file batching/options. Its overwrite replaces only the named table atomically and append is transactional. Other formats accept documented options only; anything else raises `RandEngineError` naming the accepted ones. Common file options: `compression`, `sep` (csv), `numFiles` (a folder of `part_<id>` files), `maxRowsPerBatch` (bounded memory). `gen.writeStream` adds `.trigger(frequency=seconds)` and the `timeout` option, writes a microbatch per trigger, and `.start(path)` blocks until the timeout.
 
 ```python
 gen = DataGenerator({
@@ -128,6 +163,8 @@ assert os.path.exists("out/clients.parquet") and len(os.listdir("out/clients")) 
 ```
 
 For Kafka or any queue, iterate `.stream_dict(min_throughput=..., max_throughput=...)`: each record is a dict with `timestamp_created` added; send it with your own client. It never ends, so stop it yourself.
+After unchanged normalization it uses Arrow only for strict lossless scalar representations; nested,
+mixed, custom, or otherwise unproved values retain the pandas record representation.
 
 ```python
 from itertools import islice
@@ -139,7 +176,11 @@ assert [r["event_id"] for r in records] == list(range(1, 26))
 
 ## Spark
 
-`SparkGenerator(spark, F, spec).size(n).get_df()` returns a Spark DataFrame built from native expressions. It has no seed, no `.transformers` and no `.write`: use Spark's `df.write`. It refuses the methods marked "refused" above with a `SpecValidationError` that points at `DataGenerator`.
+`SparkGenerator(spark, F, spec, seed=None).size(n).get_df()` returns a Spark DataFrame. Ordinary
+columns use native expressions; `pk` and `fk` use a key-only `mapInPandas` adapter over source row
+indexes, and `seed` affects only those key columns. It has no `.transformers` or `.write`: use
+Spark's `df.write`. It refuses the methods marked "refused" above with a `SpecValidationError` that
+points at `DataGenerator`.
 
 ```python no-run
 from pyspark.sql import SparkSession, functions as F

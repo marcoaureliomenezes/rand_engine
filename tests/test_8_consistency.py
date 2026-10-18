@@ -6,7 +6,7 @@ import pytest
 
 from rand_engine.core._keys import Keys
 from rand_engine.main.data_generator import DataGenerator
-from rand_engine.validators.exceptions import RandEngineError
+from rand_engine.validators.exceptions import RandEngineError, SpecValidationError
 
 PK = {"method": "pk", "kwargs": {"style": "sequence", "start": 1, "step": 1}}
 
@@ -131,11 +131,159 @@ SEQ, PERM = {"start": 1}, {"style": "permuted", "domain": 10**5, "key": 9}
 FMT = {"start": 1, "format": "C-{:08d}"}
 
 
-def _fk(parent_kwargs, parent_size, size, seed=2, skew=None, col="parent_id"):
+def _fk(parent_kwargs, parent_size, size, seed=2, skew=None, col="parent_id", born_before=None):
   kw = {"parent": {"method": "pk", "kwargs": parent_kwargs}, "parent_size": parent_size}
   if skew is not None:
     kw["skew"] = skew
+  if born_before is not None:
+    kw["born_before"] = born_before
   return DataGenerator({col: {"method": "fk", "kwargs": kw}}, seed=seed).size(size).get_df()[col]
+
+
+EVENT_TIME = {
+  "parent_start": 0,
+  "parent_rate": 2,
+  "child_start": 0.5,
+  "child_rate": 1,
+}
+
+
+@pytest.mark.parametrize("parent_kwargs, skew, expected", [
+  ({"start": 10}, None, [10, 10, 11]),
+  ({"style": "permuted", "domain": 10, "key": 7}, None, [3, 6, 1]),
+  ({"start": 10, "format": "P-{:03d}"}, None, ["P-010", "P-012", "P-013"]),
+  ({"start": 10}, 1.2, [11, 12, 10]),
+  ({"style": "permuted", "domain": 10, "key": 7}, 1.2, [3, 6, 6]),
+  ({"start": 10, "format": "P-{:03d}"}, 1.2, ["P-011", "P-013", "P-015"]),
+])
+def test_event_time_fk_only_selects_parents_born_by_each_child(parent_kwargs, skew, expected):
+  """An exactly coincident parent is eligible; later parent keys are not."""
+  parent = _pk(parent_kwargs, 10)
+  child = _fk(parent_kwargs, 10, 3, skew=skew, born_before=EVENT_TIME)
+  assert all(value in parent.iloc[:limit].tolist() for value, limit in zip(child, [2, 4, 6]))
+  assert child.tolist() == expected
+
+
+def test_event_time_fk_accepts_the_first_parent_at_an_exactly_coincident_birth_time():
+  first_parent_only = {
+    "parent_start": 0,
+    "parent_rate": 2,
+    "child_start": 0,
+    "child_rate": 1,
+  }
+  assert _fk({"start": 10}, 10, 1, born_before=first_parent_only).tolist() == [10]
+
+
+@pytest.mark.parametrize("skew", [None, 1.2])
+def test_event_time_fk_clamp_to_all_parents_preserves_the_ordinary_fk_vector(skew):
+  all_parents_born = {
+    "parent_start": 0,
+    "parent_rate": 1,
+    "child_start": 100,
+    "child_rate": 1,
+  }
+  assert _fk(SEQ, 10, 6, skew=skew, born_before=all_parents_born).equals(_fk(SEQ, 10, 6, skew=skew))
+
+
+def test_event_time_fk_refuses_a_child_with_no_eligible_parent_by_output_column():
+  born_after_child = {
+    "parent_start": 10,
+    "parent_rate": 1,
+    "child_start": 0,
+    "child_rate": 1,
+  }
+  with pytest.raises(RandEngineError, match="parent_id") as error:
+    _fk(SEQ, 10, 1, born_before=born_after_child)
+  assert not isinstance(error.value, SpecValidationError)
+
+
+@pytest.mark.parametrize("parent_kwargs, skew", [(SEQ, None), (FMT, 1.2)])
+def test_event_time_fk_empty_frame_keeps_the_ordinary_fk_schema(parent_kwargs, skew):
+  ordinary = DataGenerator({
+    "parent_id": {
+      "method": "fk",
+      "kwargs": {
+        "parent": {"method": "pk", "kwargs": parent_kwargs},
+        "parent_size": 10,
+        **({"skew": skew} if skew is not None else {}),
+      },
+    },
+  }, seed=2).size(0).get_df()
+  event_time = DataGenerator({
+    "parent_id": {
+      "method": "fk",
+      "kwargs": {
+        "parent": {"method": "pk", "kwargs": parent_kwargs},
+        "parent_size": 10,
+        "born_before": EVENT_TIME,
+        **({"skew": skew} if skew is not None else {}),
+      },
+    },
+  }, seed=2).size(0).get_df()
+  assert event_time.shape == (0, 1)
+  assert event_time.equals(ordinary)
+
+
+def test_event_time_fk_is_seeded_and_continuous_through_parts_and_streams(tmp_path):
+  """Uneven files and stream microbatches use the same source row indexes as one frame."""
+  spec = {
+    "id": PK,
+    "parent_id": {
+      "method": "fk",
+      "kwargs": {
+        "parent": PK,
+        "parent_size": 10,
+        "born_before": EVENT_TIME,
+      },
+    },
+  }
+  expected = DataGenerator(spec, seed=31).size(7).get_df()
+  assert expected.equals(DataGenerator(spec, seed=31).size(7).get_df())
+
+  path = tmp_path / "event-time-parts"
+  DataGenerator(spec, seed=31).size(7).write.format("parquet").option("numFiles", 3).save(str(path))
+  _, written = _read_dir(path)
+  assert written.equals(expected)
+
+  stream = DataGenerator(spec, seed=31).size(2).stream_dict(10**6, 10**6)
+  records = [next(stream) for _ in range(7)]
+  assert [record["id"] for record in records] == expected["id"].tolist()
+  assert [record["parent_id"] for record in records] == expected["parent_id"].tolist()
+
+
+def test_event_time_fk_handles_huge_finite_inputs_and_row_indexes_without_overflow():
+  """Finite public values remain valid when a far-offset child has every parent eligible."""
+  huge_but_finite = {
+    "parent_start": 0.0,
+    "parent_rate": 1e-308,
+    "child_start": 0.0,
+    "child_rate": 1e-308,
+  }
+  parent = _pk({"start": 1}, 3)
+  frame = DataGenerator({
+    "parent_id": {
+      "method": "fk",
+      "kwargs": {"parent": PK, "parent_size": 3, "born_before": huge_but_finite},
+    },
+  }, seed=17).wrapped_df_generator(1, 2**62)()
+  assert frame["parent_id"].iloc[0] in parent.tolist()
+
+
+def test_event_time_fk_accepts_arbitrarily_large_builtin_integer_times():
+  """A finite builtin integer time stays valid through validation and generation."""
+  huge_integer = 10**400
+  born_before = {
+    "parent_start": -huge_integer,
+    "parent_rate": 1,
+    "child_start": 0,
+    "child_rate": 1,
+  }
+  values = _fk({"start": 1}, 3, 4, born_before=born_before)
+  assert set(values) <= {1, 2, 3}
+
+
+def test_fk_without_event_time_keeps_its_pinned_values():
+  assert _fk({"start": 0}, 1000, 6, seed=5, col="c").tolist() == [694, 724, 271, 36, 653, 152]
 
 
 @pytest.mark.parametrize("parent_kwargs, parent_size, child_size", [

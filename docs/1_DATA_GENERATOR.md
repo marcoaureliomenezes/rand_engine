@@ -1,7 +1,7 @@
 # DataGenerator — pandas DataFrames from a RandSpec
 
 `DataGenerator` turns a RandSpec (a dict, or a callable returning one) into a pandas DataFrame,
-an infinite stream of dicts, or files. Every Python block in this guide runs in CI, in order.
+an infinite stream of dicts, files, or one SQLite output table. Every Python block in this guide runs in CI, in order.
 
 ```python
 from rand_engine import DataGenerator
@@ -18,7 +18,7 @@ assert df["age"].between(18, 80).all()
 
 ## API
 
-<!-- derived-from: data-generator sha256:8af2e4c55309 -->
+<!-- derived-from: data-generator sha256:763625cc8287 -->
 
 | Call | Does |
 |---|---|
@@ -33,7 +33,7 @@ Calling `get_df` without `.size` raises `RandEngineError`.
 
 ## Seeds
 
-<!-- derived-from: data-generator sha256:8af2e4c55309 -->
+<!-- derived-from: data-generator sha256:763625cc8287 -->
 
 A seed fixes the output: the same spec, seed and size give the same frame. Each generator owns
 its own `numpy.random.Generator` (PCG64), so generators never share or reset NumPy's global state.
@@ -50,7 +50,7 @@ assert not gen.get_df().equals(gen.get_df())
 
 ## Methods
 
-<!-- derived-from: generation-methods sha256:4ee6c20c444a -->
+<!-- derived-from: generation-methods sha256:1552dc309621 -->
 
 Each column is `{"method": <name>, "kwargs": {...}}`. Bounds of `integers` are inclusive.
 
@@ -76,7 +76,7 @@ Each column is `{"method": <name>, "kwargs": {...}}`. Bounds of `integers` are i
 | `distincts_multi_map` | `distincts` (dict key → one list per level) | — | `cols` (levels + 1 names) |
 | `complex_distincts` | `pattern`, `replacement`, `templates` | — | — |
 | `pk` | — | `style`, `start`, `step`, `domain`, `key`, `format`; see [4_CONSTRAINTS.md](4_CONSTRAINTS.md) | — |
-| `fk` | `parent`, `parent_size` | `skew`; see [4_CONSTRAINTS.md](4_CONSTRAINTS.md) | — |
+| `fk` | `parent`, `parent_size` | `skew`, `born_before`; see [4_CONSTRAINTS.md](4_CONSTRAINTS.md) | — |
 
 **Column fields** are required keys beside `kwargs`, not optional kwargs. Only the three map
 methods require `cols`; the global optional modifiers are documented separately below.
@@ -225,7 +225,7 @@ for key in ("args", "splitable", "sep", "pk"):
 
 ## Transformers
 
-<!-- derived-from: data-generator sha256:8af2e4c55309 -->
+<!-- derived-from: data-generator sha256:763625cc8287 -->
 
 A column may carry `"transformers"`: functions applied value by value. `.transformers([...])` takes
 whole-frame functions, run after the column ones.
@@ -248,7 +248,7 @@ assert (df["adult"] == (df["age"] >= 18)).all()
 
 ## Validation
 
-<!-- derived-from: rand-spec-grammar sha256:907ff5270b23 -->
+<!-- derived-from: rand-spec-grammar sha256:ecbce4973b7e -->
 
 An invalid spec raises `SpecValidationError` (a `RandEngineError`) on construction, listing every
 error with a corrected example.
@@ -264,10 +264,14 @@ else:
 
 ## Streaming dicts
 
-<!-- derived-from: data-generator sha256:8af2e4c55309 -->
+<!-- derived-from: data-generator sha256:763625cc8287 -->
 
 `stream_dict` never ends: it generates `size` rows per microbatch, converts datetime columns to
 strings and adds `timestamp_created` (epoch seconds) to each record. Stop it yourself.
+
+After that unchanged normalization, a strictly lossless scalar frame uses Arrow to form records.
+Object columns containing nested containers, mixed values, custom values, unproved extension
+types, or non-string labels keep the pandas record path, preserving their public Python values.
 
 ```python
 from itertools import islice
@@ -276,4 +280,14 @@ spec = {"user_id": {"method": "int_zfilled", "kwargs": {"length": 8}}}
 stream = DataGenerator(spec, seed=1).size(10).stream_dict(min_throughput=500, max_throughput=1000)
 records = list(islice(stream, 25))
 assert len(records) == 25 and set(records[0]) == {"user_id", "timestamp_created"}
+
+arrow_records = list(islice(
+    DataGenerator({"value": {"method": "integers", "kwargs": {"min": 1, "max": 3}}}, seed=3)
+    .size(2).stream_dict(500, 1000), 2
+))
+fallback_records = list(islice(
+    DataGenerator({"value": {"method": "distincts", "kwargs": {"distincts": [{"nested": [1, 2]}]}}}, seed=3)
+    .size(1).stream_dict(500, 1000), 1
+))
+assert isinstance(fallback_records[0]["value"], dict)
 ```
