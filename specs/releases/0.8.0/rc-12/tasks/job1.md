@@ -24,4 +24,5 @@ canonical job branch for the one real Actions observation. This checkpoint is
 not an additional code-review merge verdict: the one job review happens after
 J1.T6, before the official Job 1 merge removes the job branch. J1.T6 cannot
 open from local-pilot values or an unvalidated run. The final job review and
-unchanged official verify are the only full candidate gate.
+unchanged official verify run once for this job; the separate candidate review
+and official rc merge checks still apply.
