@@ -6,6 +6,8 @@ docs_dir: docs
 nav:
   - Home: index.md
   - Getting started: getting-started.md
+  - Agent context: getting-started.md#agent-context
+  - Compatibility and migration: compatibility.md
   - Tutorials:
       - Test data: tutorials/test-data.md
       - Lake: tutorials/lake.md
@@ -25,6 +27,8 @@ nav:
       - Errors: errors.md
   - Explanation: explanation.md
   - Benchmarks: BENCHMARKS.md
+  - Contributing: https://github.com/marcoaureliomenezes/rand_engine/blob/master/CONTRIBUTING.md
+  - Security: https://github.com/marcoaureliomenezes/rand_engine/blob/master/SECURITY.md
 
 plugins:
   - search

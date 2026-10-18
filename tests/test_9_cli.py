@@ -15,21 +15,27 @@ except ModuleNotFoundError:
 
 import pytest
 
-SLUGS = ["test-data", "lake", "kafka", "databricks", "faker"]
-OWNER = {"test-data": "J6.T4", "lake": "J6.T5", "kafka": "J6.T6", "databricks": "J6.T7", "faker": "J6.T8"}
-SEAM = {
-  "test-data": "module-level `df`: a pandas DataFrame with nulls and anomalous values",
-  "lake": "module-level `tables` {name: Path of its Parquet} and `relations` [(child, fk_col, parent, pk_col)]",
-  "kafka": "JSON lines on stdout, nothing else; no `kafka` import at module level",
-  "databricks": "module-level `df`: a Spark DataFrame of 1..10^4 rows",
-  "faker": "module-level `df`: a non-empty pandas DataFrame",
+from rand_engine.cli import CASES
+
+RUNNABLE_SLUGS = ["test-data", "lake", "kafka", "databricks", "faker"]
+ALL_SLUGS = [*RUNNABLE_SLUGS, "agent"]
+RESOURCES = {
+  "test-data": "test-data.py.txt",
+  "lake": "lake.py.txt",
+  "kafka": "kafka.py.txt",
+  "databricks": "databricks.py.txt",
+  "faker": "faker.py.txt",
+  "agent": "agent.md.txt",
+}
+TARGETS = {
+  "test-data": "test-data-example.py",
+  "lake": "lake-example.py",
+  "kafka": "kafka-example.py",
+  "databricks": "databricks-example.py",
+  "faker": "faker-example.py",
+  "agent": "AGENTS.md",
 }
 ROOT = Path(__file__).resolve().parent.parent
-
-
-def owned(slug, what):
-  reason = f"{OWNER[slug]} adds rand_engine/cases/{slug}.py.txt; {what}"
-  return pytest.param(slug, marks=pytest.mark.xfail(strict=True, reason=reason), id=slug)
 
 
 def run(argv):
@@ -42,7 +48,15 @@ def run(argv):
 
 
 def case_bytes(slug):
-  return (resources.files("rand_engine") / "cases" / f"{slug}.py.txt").read_bytes()
+  return (resources.files("rand_engine") / "cases" / CASES[slug].resource).read_bytes()
+
+
+def test_case_descriptor_matches_the_literal_starter_contract():
+  assert list(CASES) == ALL_SLUGS
+  assert {slug: case.resource for slug, case in CASES.items()} == RESOURCES
+  assert {slug: case.filename for slug, case in CASES.items()} == TARGETS
+  assert [slug for slug, case in CASES.items() if case.kind == "runnable"] == RUNNABLE_SLUGS
+  assert [slug for slug, case in CASES.items() if case.kind == "agent"] == ["agent"]
 
 
 class NoStdin:
@@ -53,11 +67,18 @@ class NoStdin:
   def __iter__(self): raise AssertionError("stdin read")
 
 
-def test_list_prints_five_slugs_in_order_with_descriptions(capsys):
+def test_list_prints_six_slugs_in_order_with_descriptions(capsys):
   assert run(["list"]) == 0
   lines = capsys.readouterr().out.splitlines()
-  assert len(lines) == 5
-  for line, slug in zip(lines, SLUGS):
+  assert len(lines) == 6
+  assert lines[:5] == [
+    "test-data  a DataFrame for pipeline tests with null_rate and anomaly_rate",
+    "lake  pk/fk related tables written to a Parquet lake",
+    "kafka  an event stream for Kafka: JSON lines to stdout by default, a producer block ready",
+    "databricks  a Spark/Databricks notebook on native SparkGenerator",
+    "faker  Faker pools sampled at NumPy speed through RandSpecs.faker_pool",
+  ]
+  for line, slug in zip(lines, ALL_SLUGS):
     assert line.startswith(slug)
     assert line[len(slug):].strip() != ""
 
@@ -69,13 +90,22 @@ def test_list_is_byte_identical_across_runs(capsys):
   assert capsys.readouterr().out == first != ""
 
 
-@pytest.mark.parametrize("slug", [s if s in ("test-data", "lake", "kafka", "databricks", "faker") else owned(s, "file bytes") for s in SLUGS])
+@pytest.mark.parametrize("slug", RUNNABLE_SLUGS)
 def test_get_started_writes_exact_file_and_creates_dir(slug, tmp_path, capsys):
   out = tmp_path / "new" / "deeper"
   assert run(["get-started", slug, "--out", str(out)]) == 0
   assert [p.name for p in out.iterdir()] == [f"{slug}-example.py"]
   assert (out / f"{slug}-example.py").read_bytes() == case_bytes(slug)
   assert str(out / f"{slug}-example.py") in capsys.readouterr().out
+
+
+def test_get_started_agent_writes_only_agents_context_bytes(tmp_path, capsys):
+  out = tmp_path / "project"
+  target = out / "AGENTS.md"
+  assert run(["get-started", "agent", "--out", str(out)]) == 0
+  assert [path.name for path in out.iterdir()] == ["AGENTS.md"]
+  assert target.read_bytes() == case_bytes("agent")
+  assert capsys.readouterr().out == f"{target}\n"
 
 
 def test_get_started_default_out_is_current_directory(tmp_path, monkeypatch):
@@ -131,7 +161,7 @@ def check_faker(ns, out, tmp_path):
 CHECKS = {"test-data": check_test_data, "lake": check_lake, "kafka": check_kafka, "databricks": check_databricks, "faker": check_faker}
 
 
-@pytest.mark.parametrize("slug", [s if s in ("test-data", "lake", "kafka", "databricks", "faker") else owned(s, "the written file runs and leaves: " + SEAM[s]) for s in SLUGS])
+@pytest.mark.parametrize("slug", RUNNABLE_SLUGS)
 def test_scaffold_is_databricks_source_and_runs_producing_its_promise(slug, tmp_path, monkeypatch, capsys, request):
   if slug == "databricks":
     request.getfixturevalue("spark_session")
@@ -160,7 +190,7 @@ def test_bad_slug_or_missing_argument_exits_2_with_slugs_on_stderr(tail, tmp_pat
   assert run(argv) == 2
   captured = capsys.readouterr()
   assert captured.out == ""
-  for slug in SLUGS:
+  for slug in ALL_SLUGS:
     assert slug in captured.err
   assert not (tmp_path / "x").exists()
 
@@ -174,8 +204,19 @@ def test_existing_target_is_left_unchanged_and_exit_1_names_it(tmp_path, capsys)
   assert str(target) in captured.out + captured.err
 
 
-def test_get_started_preserves_target_created_at_write_boundary(tmp_path, monkeypatch, capsys):
-  target = tmp_path / "faker-example.py"
+def test_existing_agent_context_is_left_unchanged_with_no_stdout(tmp_path, capsys):
+  target = tmp_path / "AGENTS.md"
+  target.write_bytes(b"project rules\r\n")
+  assert run(["get-started", "agent", "--out", str(tmp_path)]) == 1
+  assert target.read_bytes() == b"project rules\r\n"
+  captured = capsys.readouterr()
+  assert captured.out == ""
+  assert captured.err == f"error: {target} already exists, not overwriting\n"
+
+
+@pytest.mark.parametrize("slug", ALL_SLUGS)
+def test_get_started_preserves_target_created_at_write_boundary(slug, tmp_path, monkeypatch, capsys):
+  target = tmp_path / TARGETS[slug]
   original_open = Path.open
   raced = False
 
@@ -188,7 +229,7 @@ def test_get_started_preserves_target_created_at_write_boundary(tmp_path, monkey
     return original_open(path, mode, *args, **kwargs)
 
   monkeypatch.setattr(Path, "open", open_with_competitor)
-  assert run(["get-started", "faker", "--out", str(tmp_path)]) == 1
+  assert run(["get-started", slug, "--out", str(tmp_path)]) == 1
   assert target.read_bytes() == b"competitor"
   captured = capsys.readouterr()
   assert captured.out == ""
@@ -200,6 +241,7 @@ def test_cli_never_reads_stdin(tmp_path, monkeypatch):
   assert run(["list"]) == 0
   assert run(["get-started", "lake", "--out", str(tmp_path)]) == 0
   assert run(["get-started", "lake", "--out", str(tmp_path)]) == 1
+  assert run(["get-started", "agent", "--out", str(tmp_path)]) == 0
   assert run(["get-started", "nope"]) == 2
 
 
@@ -207,7 +249,7 @@ def test_top_level_help_describes_commands_and_lists_slugs(capsys):
   assert run(["--help"]) == 0
   out = capsys.readouterr().out
   assert "list" in out and "get-started" in out
-  for slug in SLUGS:
+  for slug in ALL_SLUGS:
     assert slug in out
 
 
@@ -215,7 +257,7 @@ def test_get_started_help_describes_every_argument_and_lists_slugs(capsys):
   assert run(["get-started", "--help"]) == 0
   out = capsys.readouterr().out
   assert "--out" in out and "slug" in out.lower()
-  for slug in SLUGS:
+  for slug in ALL_SLUGS:
     assert slug in out
 
 
@@ -227,6 +269,16 @@ def test_python_dash_m_runs_main(monkeypatch, capsys):
     runpy.run_module("rand_engine", run_name="__main__")
   assert (e.value.code or 0) == 0
   assert capsys.readouterr().out == expected != ""
+
+
+def test_python_dash_m_writes_agent_context(tmp_path, monkeypatch, capsys):
+  target = tmp_path / "AGENTS.md"
+  monkeypatch.setattr(sys, "argv", ["rand_engine", "get-started", "agent", "--out", str(tmp_path)])
+  with pytest.raises(SystemExit) as exit_code:
+    runpy.run_module("rand_engine", run_name="__main__")
+  assert (exit_code.value.code or 0) == 0
+  assert target.read_bytes() == case_bytes("agent")
+  assert capsys.readouterr().out == f"{target}\n"
 
 
 def test_cli_imports_only_stdlib_and_rand_engine():

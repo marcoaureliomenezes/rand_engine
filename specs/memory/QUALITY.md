@@ -18,7 +18,7 @@ tags:
 ## Test architecture
 
 - One pytest suite under `tests/`: numbered files `test_<n>_<area>.py` ordered by layer — 0 core methods, 1 validators, 2 `DataGenerator`, 3 Spark (including partition-independent keys) and advanced specs, 4 example specs and the `RandSpecs` builders, 5 file and SQLite batch/stream writers, 6 lossless Arrow-or-pandas `stream_dict` records, 7 templates, 8 PK/FK consistency, 9 the get-started CLI and its scaffolds — plus the public-import and wheel contract, benchmark-script contract and executable documentation contract (Markdown pages, the agent skill, README landing rules, public docstrings and their examples).
-- CLI scaffolds execute in-process in a temporary directory, sharing the suite's Spark session; one runs as a plain-python subprocess.
+- The five runnable CLI scaffolds execute in-process in a temporary directory, sharing the suite's Spark session; one runs as a plain-python subprocess. The sixth Agent resource is checked as Markdown bytes and project-context content and is never executed as Python.
 - Specs under test live as fixtures in `tests/fixtures/f<n>_*.py`; `conftest.py` loads the Spark fixtures as a plugin.
 - Spark tests start a local `SparkSession` and skip when PySpark is absent or on Windows with Python 3.12+.
 - The default selector excludes `stress`; default tests generate at most 10^4 rows, while large-volume tests and benchmarks run in the CI benchmark job.

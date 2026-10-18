@@ -3,12 +3,12 @@
   "release": "0.8.0",
   "phase": "CLOSURE",
   "defined": {
-    "sha": "891d96a",
-    "ts": "2026-10-18T02:03:40Z"
+    "sha": "1c16ec3",
+    "ts": "2026-10-18T04:08:34Z"
   },
   "implemented": {
-    "sha": "beb281b913b21ea11b19353def140d89e1abfd2f",
-    "ts": "2026-10-18T02:38:51Z"
+    "sha": "2be1798337080aa4fb16006bb2c21f3e6c54d4bb",
+    "ts": "2026-10-18T04:55:15Z"
   },
   "shipped": null,
   "log": [
@@ -421,6 +421,55 @@
         "benchmarks"
       ],
       "changed": []
+    },
+    {
+      "ts": "2026-10-18T03:58:03Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.8.0 (prior candidate closed at beb281b913b21ea11b19353def140d89e1abfd2f)"
+    },
+    {
+      "ts": "2026-10-18T04:08:34Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-8",
+      "milestone": "defined",
+      "sha": "1c16ec3",
+      "text": "Candidate defined at 1c16ec3; phase IMPLEMENTATION."
+    },
+    {
+      "ts": "2026-10-18T04:55:15Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-8",
+      "milestone": "implemented",
+      "sha": "2be1798337080aa4fb16006bb2c21f3e6c54d4bb",
+      "text": "Candidate implemented at 2be1798337080aa4fb16006bb2c21f3e6c54d4bb; phase CLOSURE."
+    },
+    {
+      "ts": "2026-10-18T04:57:40Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 36b703d63a6ef19c2f1b9a2f7bffcec41ccf07fb..166b81ae107e: 0 reviewed, 2 changed.",
+      "since": "36b703d63a6ef19c2f1b9a2f7bffcec41ccf07fb",
+      "until": "166b81ae107eb0c7295928bdc335826402f0b6ec",
+      "reviewed": [],
+      "changed": [
+        "documentation",
+        "get-started-cli"
+      ]
+    },
+    {
+      "ts": "2026-10-18T05:00:38Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-8 adds one six-entry Case descriptor whose five runnable starters retain their resources, filenames and behavior while the sixth writes an opt-in AGENTS.md package-use context through the same exclusive writer; one canonical compatibility, migration and recovery guide; public contribution and Issues guidance; verified GitHub private vulnerability reporting and security guidance; README, navigation, llms.txt and the Agent Skill route humans and agents to those authorities; the official gates report 1249 passed, 8 deselected and 10 known warnings in 70.72 s for Job 1 and 1250 passed, 8 deselected and 10 known warnings in 63.44 s with Ruff green for Job 2; a final wheel built from 66135d7 has SHA-256 6f2a9de1e15c4d016be5e07df789fd8d0b3b16a9fef71b15fa1935b3688a8d2d and passed a ten-step installed journey plus the generated Agent example on CPython 3.12.3/Linux; verdict.py stats 0.8.0-rc8 reports 2 sequences, 5 verdicts, 3 rejected and first-pass rejected 2/2; frozen adoption evidence is candidate readiness 95/100, with onboarding 100%, guides 100%, API 100%, agents 100% and trust 100%, but discoverability 75%; memory: documentation and get-started-cli changed, Architecture and Quality now distinguish five executable resources from the Markdown Agent resource, catalog/index regenerated, public-api and templates-and-examples reviewed unchanged, and CHANGELOG records the adoption routes; release, memory, backlog and bug checks exit 0 with 0 open bugs, while dry doctor retains seven nonblocking TREE-5 warnings and global foreign/TTL findings outside this candidate; carried: stable publication remains held because Pages root, llms.txt and sitemap return 404, all eight separate need-oriented search samples returned no first-party URL, PR #48's required stream_dict benchmark remains failed at ratio 1.345696313 above 1.3 pending the operator-reserved Arrow contract ruling, and outreach remains active for the public-discovery sequence; backlog exits: none."
+    },
+    {
+      "ts": "2026-10-18T05:15:24Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-8 closure verification now includes the literal public-list oracle for all five preserved starter descriptions at f849371 while retaining the six-line order and non-empty assertions, with the correct product green and a non-empty lake-description mutation red; runtime, documentation and packaging inputs are unchanged from 66135d7, so the final-wheel SHA-256 6f2a9de1e15c4d016be5e07df789fd8d0b3b16a9fef71b15fa1935b3688a8d2d and ten-step installed journey remain the applicable artifact evidence; verdict.py stats 0.8.0-rc8 reports 3 sequences, 6 verdicts, 4 rejected and first-pass rejected 3/3; release.py drift from the latest memory entry reports no changed atom, so no second memory record or derived-doc edit is warranted; the frozen score remains candidate readiness 95/100, public stable 42.5/100 and discoverability 75%; carried: stable publication remains held for public documentation and discovery evidence above 90 in every field, PR #48 remains blocked by the stream_dict ratio 1.345696313 above 1.3 pending the operator-reserved Arrow contract ruling, and outreach remains active; backlog exits: none."
     }
   ]
 }

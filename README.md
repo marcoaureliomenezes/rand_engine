@@ -38,9 +38,9 @@ assert df.shape == (1_000, 4) and df["age"].between(18, 80).all()
 - Related tables whose `pk` and `fk` keys stay consistent across batches, streams and files.
 - Event streams and files for queues, lakes, databases or Spark, at NumPy speed.
 
-## Get-started cases
+## Get-started starters
 
-Each case is a runnable example. `rand-engine list` prints them; `rand-engine get-started <slug>` writes `<slug>-example.py` (also `python -m rand_engine get-started <slug>`, with `--out DIR` to choose the folder).
+`rand-engine list` prints six starters. Five are runnable examples: `rand-engine get-started <slug>` writes `<slug>-example.py` (also `python -m rand_engine get-started <slug>`, with `--out DIR` to choose the folder).
 
 - `test-data`: a DataFrame for pipeline tests with `null_rate` and `anomaly_rate`.
 - `lake`: `pk`/`fk` related tables written to a Parquet lake.
@@ -48,6 +48,16 @@ Each case is a runnable example. `rand-engine list` prints them; `rand-engine ge
 - `databricks`: a Spark/Databricks notebook on native `SparkGenerator`.
 - `faker`: Faker pools sampled at NumPy speed through `RandSpecs.faker_pool`.
 
-## Documentation
+The optional `agent` starter writes `AGENTS.md` with package-use context for an existing project:
 
-Full guides and the method reference live on the [docs site](https://marcoaureliomenezes.github.io/rand_engine/). AI agents: see the [rand-engine skill](https://github.com/marcoaureliomenezes/rand_engine/blob/master/skills/rand-engine/SKILL.md).
+```bash
+rand-engine get-started agent --out PROJECT
+```
+
+It begins in 0.8.0 and does not overwrite an existing `PROJECT/AGENTS.md`; review and merge it with the project's own instructions.
+
+## Documentation and support
+
+Full guides and the method reference live on the [docs site](https://marcoaureliomenezes.github.io/rand_engine/). Start with [compatibility, migration and recovery](https://marcoaureliomenezes.github.io/rand_engine/compatibility/) when choosing Python or Spark, and use the [rand-engine skill](https://github.com/marcoaureliomenezes/rand_engine/blob/master/skills/rand-engine/SKILL.md) or the Agent context starter for an AI agent.
+
+Contributions use [CONTRIBUTING.md](https://github.com/marcoaureliomenezes/rand_engine/blob/master/CONTRIBUTING.md); questions and ordinary bugs belong in [GitHub Issues](https://github.com/marcoaureliomenezes/rand_engine/issues). Potential vulnerabilities use the private route in [SECURITY.md](https://github.com/marcoaureliomenezes/rand_engine/blob/master/SECURITY.md).

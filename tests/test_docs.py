@@ -44,6 +44,17 @@ def run_python_blocks(doc: Path, tmp_path, monkeypatch) -> dict:
 
 
 SKILL = ROOT / "skills" / "rand-engine" / "SKILL.md"
+RUNNABLE_SLUGS = {"test-data", "lake", "kafka", "databricks", "faker"}
+
+
+def runnable_cases():
+  return {slug: case for slug, case in CASES.items() if case.kind == "runnable"}
+
+
+def agent_case():
+  cases = [case for case in CASES.values() if case.kind == "agent"]
+  assert len(cases) == 1
+  return cases[0]
 
 
 @pytest.mark.parametrize("doc", [*(pytest.param(p, id=p.relative_to(DOCS).as_posix()) for p in sorted(DOCS.glob("**/*.md"))),
@@ -132,13 +143,15 @@ def _include_of(body: str):
   return match.group(1) if match else None
 
 
-@pytest.mark.parametrize("slug", CASES)
+@pytest.mark.parametrize("slug", runnable_cases())
 def test_tutorial_includes_its_case_file(slug):
   """Each tutorial holds one `python no-run` fence whose body is the snippet include of its own case file, which exists."""
+  case = CASES[slug]
+  assert case.resource == f"{slug}.py.txt"
   blocks = python_blocks(DOCS / "tutorials" / f"{slug}.md")
   assert [(info, _include_of(body)) for info, body in blocks if info == "python no-run"] == [
-    ("python no-run", f"rand_engine/cases/{slug}.py.txt")]
-  assert (ROOT / f"rand_engine/cases/{slug}.py.txt").is_file()
+    ("python no-run", f"rand_engine/cases/{case.resource}")]
+  assert (ROOT / f"rand_engine/cases/{case.resource}").is_file()
 
 
 def test_tutorial_no_run_fences_are_only_case_includes():
@@ -151,7 +164,9 @@ def test_getting_started_maps_each_packaged_scaffold():
   """Getting started puts each CLI scaffold's command, file, run command, prerequisite, outcome and guide in one map."""
   rows = _table_rows(DOCS / "getting-started.md", ("Use case", "Command", "File", "Run", "Prerequisite", "Outcome", "Guide"))
   by_slug = {re.search(r"`([^`]+)`", row[0]).group(1): row for row in rows}
-  assert set(by_slug) == set(CASES)
+  cases = runnable_cases()
+  assert set(cases) == RUNNABLE_SLUGS
+  assert set(by_slug) == set(cases)
   prerequisites = {
       "test-data": "rand-engine",
       "lake": "rand-engine",
@@ -160,14 +175,32 @@ def test_getting_started_maps_each_packaged_scaffold():
       "faker": "rand-engine[faker]",
   }
   for slug, row in by_slug.items():
+    case = cases[slug]
     use_case, command, filename, run, prerequisite, outcome, guide = row
     assert f"`{slug}`" in use_case
     assert command == f"`rand-engine get-started {slug}`"
-    assert filename == f"`{slug}-example.py`"
-    assert run == f"`python {slug}-example.py`"
+    assert case.filename == f"{slug}-example.py"
+    assert filename == f"`{case.filename}`"
+    assert run == f"`python {case.filename}`"
     assert prerequisites[slug] in prerequisite
     assert outcome
     assert LINK.findall(guide) == [f"tutorials/{slug}.md"]
+
+
+def test_agent_context_is_linked_from_every_agent_onboarding_authority():
+  """The optional context scaffold is discoverable separately from the five runnable tutorials."""
+  case = agent_case()
+  assert set(runnable_cases()) == RUNNABLE_SLUGS
+  assert case.resource == "agent.md.txt"
+  assert case.filename == "AGENTS.md"
+  authorities = [README, DOCS / "getting-started.md", ROOT / "llms.txt", SKILL]
+  for authority in authorities:
+    text = _text(authority)
+    assert "rand-engine get-started agent" in text
+    assert "AGENTS.md" in text
+  links = set(LINK.findall(_text(ROOT / "llms.txt")))
+  assert f"{REPO_BLOB}{PRINCIPAL}/rand_engine/cases/{case.resource}" in links
+  assert set(CASES) == RUNNABLE_SLUGS | {"agent"}
 
 
 def test_readme_python_blocks_execute_in_order(tmp_path, monkeypatch):
@@ -860,7 +893,11 @@ def _llms():
   assert pages and [u for u in links if u.startswith(REPO_BLOB) and "/docs/" in u] == []
   assert [p for p in pages if not (DOCS / (p.removesuffix("/").removesuffix(".md") or "index")).with_suffix(".md").is_file()] == []
   assert f"{REPO_BLOB}{PRINCIPAL}/skills/rand-engine/SKILL.md" in links
-  assert [s for s in CASES if f"{REPO_BLOB}{PRINCIPAL}/rand_engine/cases/{s}.py.txt" not in links] == []
+  cases = runnable_cases()
+  assert set(cases) == RUNNABLE_SLUGS
+  assert [slug for slug, case in cases.items()
+          if f"{REPO_BLOB}{PRINCIPAL}/rand_engine/cases/{case.resource}" not in links] == []
+  assert f"{REPO_BLOB}{PRINCIPAL}/rand_engine/cases/{agent_case().resource}" in links
 
 
 def test_llms_points_agents_at_the_api_writer_error_builder_domain_and_case_destinations():
@@ -874,7 +911,10 @@ def test_llms_points_agents_at_the_api_writer_error_builder_domain_and_case_dest
       f"{SITE}1_DATA_GENERATOR/",
       f"{SITE}2_SPARK_GENERATOR/",
   } <= links
-  assert {f"{REPO_BLOB}{PRINCIPAL}/rand_engine/cases/{slug}.py.txt" for slug in CASES} <= links
+  cases = runnable_cases()
+  assert set(cases) == RUNNABLE_SLUGS
+  assert {f"{REPO_BLOB}{PRINCIPAL}/rand_engine/cases/{case.resource}" for case in cases.values()} <= links
+  assert f"{REPO_BLOB}{PRINCIPAL}/rand_engine/cases/{agent_case().resource}" in links
 
 
 @pytest.mark.parametrize("check", [

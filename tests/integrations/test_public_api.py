@@ -563,14 +563,63 @@ def test_wheel_declares_the_rand_engine_console_script(built_wheel):
     assert dict(parser["console_scripts"]) == {"rand-engine": "rand_engine.cli:main"}
 
 
-def test_wheel_ships_the_five_case_files_byte_for_byte(built_wheel):
+def test_wheel_ships_each_declared_case_resource_byte_for_byte(built_wheel):
     from rand_engine.cli import CASES
 
-    assert set(CASES) == {"test-data", "lake", "kafka", "databricks", "faker"}
+    resources = {
+        "test-data": "test-data.py.txt",
+        "lake": "lake.py.txt",
+        "kafka": "kafka.py.txt",
+        "databricks": "databricks.py.txt",
+        "faker": "faker.py.txt",
+        "agent": "agent.md.txt",
+    }
+    targets = {
+        "test-data": "test-data-example.py",
+        "lake": "lake-example.py",
+        "kafka": "kafka-example.py",
+        "databricks": "databricks-example.py",
+        "faker": "faker-example.py",
+        "agent": "AGENTS.md",
+    }
+    assert set(CASES) == set(resources)
+    assert {slug: case.resource for slug, case in CASES.items()} == resources
+    assert {slug: case.filename for slug, case in CASES.items()} == targets
+    assert [slug for slug, case in CASES.items() if case.kind == "runnable"] == [
+        "test-data", "lake", "kafka", "databricks", "faker",
+    ]
+    assert [slug for slug, case in CASES.items() if case.kind == "agent"] == ["agent"]
     cases_dir = Path(__file__).parents[2] / "rand_engine" / "cases"
     with ZipFile(built_wheel) as wheel:
-        for slug in CASES:
-            assert wheel.read(f"rand_engine/cases/{slug}.py.txt") == (cases_dir / f"{slug}.py.txt").read_bytes()
+        for case in CASES.values():
+            assert wheel.read(f"rand_engine/cases/{case.resource}") == (cases_dir / case.resource).read_bytes()
+
+
+def test_extracted_wheel_module_cli_writes_agent_context(built_wheel, tmp_path):
+    from rand_engine.cli import CASES
+
+    case = CASES["agent"]
+    assert case.kind == "agent"
+    assert case.resource == "agent.md.txt"
+    assert case.filename == "AGENTS.md"
+    extracted = tmp_path / "wheel"
+    output = tmp_path / "project"
+    with ZipFile(built_wheel) as wheel:
+        wheel.extractall(extracted)
+    env = {k: v for k, v in os.environ.items() if not k.startswith("COV_CORE_")}
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    env["PYTHONPATH"] = str(extracted)
+    result = subprocess.run(
+        [sys.executable, "-m", "rand_engine", "get-started", "agent", "--out", str(output)],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    target = output / case.filename
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == f"{target}\n"
+    assert target.read_bytes() == (extracted / "rand_engine" / "cases" / case.resource).read_bytes()
 
 
 if __name__ == "__main__":

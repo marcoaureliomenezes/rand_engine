@@ -36,7 +36,7 @@ rand_engine/
   __init__.py        public surface: DataGenerator, SparkGenerator, RandSpecs; __version__ from installed metadata
   __main__.py        python -m rand_engine -> cli.main
   cli.py             the rand-engine console script: list, get-started
-  cases/             <slug>.py.txt — the five get-started scaffolds, shipped as package data
+  cases/             declared Python or Markdown resources for six get-started starters, shipped as package data
   py.typed           typing marker
   main/              composition roots
     data_generator.py      DataGenerator — pandas pipeline, writers, lossless Arrow-or-pandas stream_dict records

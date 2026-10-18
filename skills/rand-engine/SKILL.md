@@ -14,7 +14,18 @@ pip install rand-engine
 pip install "rand-engine[faker]"   # only for Faker pools
 ```
 
-PySpark is not a dependency: bring your own session.
+PySpark is not a dependency: bring your own session. For tested Python/Spark/Java boundaries,
+migration and recovery, read the [Compatibility guide](https://marcoaureliomenezes.github.io/rand_engine/compatibility/).
+
+## Project context starter
+
+For a project that wants a small package-use context, run:
+
+```bash
+rand-engine get-started agent --out PROJECT
+```
+
+It writes `PROJECT/AGENTS.md` for rand-engine use only. The starter begins in 0.8.0 and is not in the published 0.8.0rc4 wheel. If the project already has `AGENTS.md`, preserve it and review both files before merging the package-use guidance into its existing instructions.
 
 ## The RandSpec grammar
 
@@ -220,3 +231,7 @@ else:
 - Generate synthetic data only; never put real or personal data in a spec.
 - Keep examples small (at most 10^4 rows) and write to relative paths.
 - Quote no speed numbers; point to the Benchmarks page instead.
+- For contribution, support or a potential vulnerability, use the canonical
+  [CONTRIBUTING.md](https://github.com/marcoaureliomenezes/rand_engine/blob/master/CONTRIBUTING.md)
+  and [SECURITY.md](https://github.com/marcoaureliomenezes/rand_engine/blob/master/SECURITY.md)
+  routes rather than duplicating their intake details.
