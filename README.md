@@ -1,26 +1,22 @@
 # rand-engine
 
-Synthetic data, very fast, from a declarative spec — for batch and streaming, on any platform.
+Synthetic data, very fast, from a declarative `RandSpec` — for batch and streaming, on any platform. The core is Python + NumPy; Spark is supported, never required, and Faker composes on top.
 
-- **Sink-agnostic:** feed Kafka and other queues, data lakes and object storage, files, databases or Spark.
-- **NumPy-fast:** the core is Python + NumPy (`DataGenerator`); Spark is supported (`SparkGenerator`), never required.
-- **Faker composes on top:** build a small realistic pool with Faker, sample millions of rows from it at NumPy speed.
-- **Related tables:** `pk` and `fk` columns keep keys consistent across tables, batches, streams and files.
+[![PyPI](https://img.shields.io/pypi/v/rand-engine)](https://pypi.org/project/rand-engine/)
+[![Python](https://img.shields.io/pypi/pyversions/rand-engine)](https://pypi.org/project/rand-engine/)
+[![License](https://img.shields.io/pypi/l/rand-engine)](https://github.com/marcoaureliomenezes/rand_engine/blob/master/LICENSE)
+[![Tests](https://img.shields.io/github/actions/workflow/status/marcoaureliomenezes/rand_engine/test_on_push.yml)](https://github.com/marcoaureliomenezes/rand_engine/actions)
 
 ## Install
 
-<!-- derived-from: public-api sha256:889c68fd0f20 -->
-
 ```bash
 pip install rand-engine
+pip install "rand-engine[faker]"  # optional: Faker pools
 ```
 
-## Quickstart
+## 30-second example
 
-<!-- derived-from: data-generator sha256:8af2e4c55309 -->
-<!-- derived-from: rand-spec-grammar sha256:77ed429317a3 -->
-
-A spec maps each column to a `method` and its `kwargs`.
+A spec maps each column to a `method` and its `kwargs`; the seed makes it reproducible.
 
 ```python
 from rand_engine import DataGenerator
@@ -36,92 +32,32 @@ df = DataGenerator(spec, seed=42).size(1_000).get_df()
 assert df.shape == (1_000, 4) and df["age"].between(18, 80).all()
 ```
 
-## Seeded reproducibility
+## When to use it
 
-<!-- derived-from: data-generator sha256:8af2e4c55309 -->
+- Test data for pipelines, with nulls and anomalies on demand.
+- Related tables whose `pk` and `fk` keys stay consistent across batches, streams and files.
+- Event streams and files for queues, lakes, databases or Spark, at NumPy speed.
 
-The seed is per generator: each `DataGenerator` owns its own NumPy `Generator` (PCG64), so the
-caller's NumPy global state is never read or reset. The same spec, seed and size give the same
-frame. Values differ from 0.6.x, which drew from the global NumPy seed.
+## Get-started starters
 
-```python
-import numpy as np
+`rand-engine list` prints six starters. Five are runnable examples: `rand-engine get-started <slug>` writes `<slug>-example.py` (also `python -m rand_engine get-started <slug>`, with `--out DIR` to choose the folder).
 
-np.random.seed(0)
-state = np.random.get_state()[1].copy()
-a = DataGenerator(spec, seed=7).size(100).get_df()
-b = DataGenerator(spec, seed=7).size(100).get_df()
-assert a.equals(b)
-assert (np.random.get_state()[1] == state).all()
+- `test-data`: a DataFrame for pipeline tests with `null_rate` and `anomaly_rate`.
+- `lake`: `pk`/`fk` related tables written to a Parquet lake.
+- `kafka`: an event stream for Kafka, JSON lines to stdout by default.
+- `databricks`: a Spark/Databricks notebook on native `SparkGenerator`.
+- `faker`: Faker pools sampled at NumPy speed through `RandSpecs.faker_pool`.
+
+The optional `agent` starter writes `AGENTS.md` with package-use context for an existing project:
+
+```bash
+rand-engine get-started agent --out PROJECT
 ```
 
-## Faker pools at scale
+It begins in 0.8.0 and does not overwrite an existing `PROJECT/AGENTS.md`; review and merge it with the project's own instructions.
 
-<!-- derived-from: generation-methods sha256:739e81e44532 -->
+## Documentation and support
 
-Install the optional Faker dependency with `pip install faker` before running this example.
-Faker is slow per value; draw a pool once and let rand-engine sample it.
+Full guides and the method reference live on the [docs site](https://marcoaureliomenezes.github.io/rand_engine/). Start with [compatibility, migration and recovery](https://marcoaureliomenezes.github.io/rand_engine/compatibility/) when choosing Python or Spark, and use the [rand-engine skill](https://github.com/marcoaureliomenezes/rand_engine/blob/master/skills/rand-engine/SKILL.md) or the Agent context starter for an AI agent.
 
-```python
-from faker import Faker
-
-fake = Faker()
-Faker.seed(0)
-names = [fake.name() for _ in range(200)]
-
-people = DataGenerator({"name": {"method": "distincts", "kwargs": {"distincts": names}}}, seed=1).size(10_000).get_df()
-assert people["name"].isin(names).all()
-```
-
-## Related tables
-
-<!-- derived-from: pk-fk-constraints sha256:87a6776da0b0 -->
-
-Give the child's `fk` the parent's `pk` spec and size: every child key exists in the parent.
-
-```python
-customer_pk = {"method": "pk", "kwargs": {"start": 1, "format": "C{:05d}"}}
-
-customers = DataGenerator({"customer_id": customer_pk}, seed=1).size(500).get_df()
-orders = DataGenerator({
-    "order_id": {"method": "pk", "kwargs": {"start": 1}},
-    "customer_id": {"method": "fk", "kwargs": {"parent": customer_pk, "parent_size": 500}},
-}, seed=2).size(2_000).get_df()
-
-assert customers["customer_id"].is_unique
-assert set(orders["customer_id"]) <= set(customers["customer_id"])
-```
-
-## Streams and files
-
-<!-- derived-from: data-generator sha256:8af2e4c55309 -->
-<!-- derived-from: writers-and-streaming sha256:21b53d28967c -->
-
-`stream_dict` yields records forever at a bounded rate; `write` writes csv, json or parquet.
-
-```python
-from itertools import islice
-import pandas as pd
-
-events = DataGenerator({"event_id": {"method": "pk", "kwargs": {"start": 1}}}, seed=1).size(10)
-records = list(islice(events.stream_dict(min_throughput=500, max_throughput=1000), 5))
-assert [r["event_id"] for r in records] == [1, 2, 3, 4, 5]
-
-orders_gen = DataGenerator({"order_id": {"method": "pk", "kwargs": {"start": 1}}}, seed=1).size(1_000)
-orders_gen.write.format("parquet").save("out/orders.parquet")
-assert len(pd.read_parquet("out/orders.parquet")) == 1_000
-```
-
-## Learn more
-
-<!-- derived-from: public-api sha256:889c68fd0f20 -->
-<!-- derived-from: benchmarks sha256:005825e85875 -->
-
-- [DataGenerator](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/1_DATA_GENERATOR.md): methods, seeds, streams.
-- [SparkGenerator](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/2_SPARK_GENERATOR.md): the same spec as a Spark DataFrame.
-- [Writing files](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/3_WRITING_FILES.md): `write` and `writeStream`, formats and options.
-- [Keys](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/4_CONSTRAINTS.md): `pk` and `fk` in depth.
-- [Recipes](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/5_RECIPES.md): Faker pools, queues, parquet lakes, related tables.
-- [Benchmarks](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/BENCHMARKS.md): rows/µs per method, measured in CI.
-- [Changelog](https://github.com/marcoaureliomenezes/rand_engine/blob/master/CHANGELOG.md): the 0.7.0 breaking changes.
-- [License](https://github.com/marcoaureliomenezes/rand_engine/blob/master/LICENSE): MIT.
+Contributions use [CONTRIBUTING.md](https://github.com/marcoaureliomenezes/rand_engine/blob/master/CONTRIBUTING.md); questions and ordinary bugs belong in [GitHub Issues](https://github.com/marcoaureliomenezes/rand_engine/issues). Potential vulnerabilities use the private route in [SECURITY.md](https://github.com/marcoaureliomenezes/rand_engine/blob/master/SECURITY.md).

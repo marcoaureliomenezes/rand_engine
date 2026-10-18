@@ -1,0 +1,26 @@
+# Databricks notebook source
+# Test data: a DataFrame with nulls and anomalies for pipeline tests. Runs as-is with plain python.
+
+# COMMAND ----------
+# Describe the data: order rows, with nulls and extreme values on amount.
+
+from rand_engine import DataGenerator
+
+spec = {
+  "order_id": {"method": "pk", "kwargs": {"start": 1}},
+  "amount": {"method": "floats", "kwargs": {"min": 5, "max": 200, "decimals": 2},
+             "null_rate": 0.05, "anomaly_rate": 0.02, "anomaly_values": [-1.0, 9999.0]},
+  "category": {"method": "distincts", "kwargs": {"distincts": ["books", "games", "food"]}},
+}
+
+# COMMAND ----------
+# Generate 1 000 rows into df. The seed makes every run produce the same rows.
+
+df = DataGenerator(spec, seed=42).size(1_000).get_df()
+
+# COMMAND ----------
+# Look at the first rows, then count the nulls and list the anomalous rows.
+
+print(df.head())
+print("nulls in amount:", df["amount"].isna().sum())
+print(df[df["amount"].isin([-1.0, 9999.0])])

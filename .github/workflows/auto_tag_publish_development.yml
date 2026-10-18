@@ -10,6 +10,9 @@ env:
   PYTHON_VERSION: "3.12"
   PACKAGE_NAME: "rand-engine"
 
+permissions:
+  contents: read
+
 jobs:
   # Job 1: Extract version and determine RC tag
   prepare:
@@ -80,7 +83,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.10', '3.11', '3.12']
+        python-version: ['3.10', '3.11', '3.12', '3.13']
       fail-fast: false
     
     steps:
@@ -91,11 +94,15 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+
+      - name: Set up Temurin Java 17
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '17'
       
       - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+        run: python -m pip install poetry==2.5.1
       
       - name: Cache Poetry dependencies
         uses: actions/cache@v4
@@ -116,7 +123,7 @@ jobs:
       - name: Upload coverage
         continue-on-error: true
         if: matrix.python-version == '3.12'
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4.6.0
         with:
           file: ./coverage.xml
           fail_ci_if_error: false
@@ -138,9 +145,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       
       - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+        run: python -m pip install poetry==2.5.1
       
       - name: Update version to RC
         run: |
@@ -257,7 +262,7 @@ jobs:
           path: dist/
       
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
           packages-dir: dist/
           verbose: true

@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
+from collections.abc import Mapping as MappingABC
 import re
 import sys
 from types import MappingProxyType
@@ -152,6 +153,12 @@ def _integers(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
         if kwargs["min"] < low or kwargs["max"] > high:
             issues.append(("min/max", f"must stay within the {int_type} range [{low}, {high}]"))
     return tuple(issues)
+
+
+def _int_zfilled(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
+    if 1 <= kwargs["length"] <= 18:
+        return ()
+    return (("length", "must be an integer within 1..18"),)
 
 
 def _normal(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
@@ -324,6 +331,7 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
             required={"length": int},
             arrow_types=_fixed_arrow_types(pa.string()),
             example={"method": "int_zfilled", "kwargs": {"length": 8}},
+            semantic=_int_zfilled,
         ),
         "floats": _spec(
             required={"min": (int, float), "max": (int, float)},
@@ -502,7 +510,7 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
                 "key": int,
                 "format": str,
             },
-            engines=(NUMPY,),
+            engines=(NUMPY, SPARK),
             kind=KEY,
             arrow_types=_pk_arrow_type,
             example={
@@ -512,8 +520,8 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
         ),
         "fk": _spec(
             required={"parent": dict, "parent_size": int},
-            optional={"skew": (int, float)},
-            engines=(NUMPY,),
+            optional={"skew": (int, float), "born_before": MappingABC},
+            engines=(NUMPY, SPARK),
             kind=KEY,
             arrow_types=_fk_arrow_type,
             example={

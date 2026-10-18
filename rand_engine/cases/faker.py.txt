@@ -1,0 +1,25 @@
+# Databricks notebook source
+# Faker: small realistic value pools drawn once, then sampled at NumPy speed into many rows. Needs the faker extra; install it through the [Getting started](https://marcoaureliomenezes.github.io/rand_engine/getting-started/) guide.
+
+# COMMAND ----------
+
+from rand_engine import DataGenerator, RandSpecs
+
+# COMMAND ----------
+# Build the pools. Faker runs once per pool value, not per row; seed fixes each pool.
+# name uses the pt_BR locale; the others use the default en_US.
+
+spec = {
+  "user_id": {"method": "pk", "kwargs": {"start": 1}},
+  "name": RandSpecs.faker_pool("name", locale="pt_BR", pool_size=200, seed=0),
+  "email": RandSpecs.faker_pool("email", pool_size=200, seed=1),
+  "city": RandSpecs.faker_pool("city", pool_size=50, seed=2),
+  "age": {"method": "integers", "kwargs": {"min": 18, "max": 80}},
+}
+
+# COMMAND ----------
+# Sample 10 000 rows into df from the pools and the native columns, then look at them.
+
+df = DataGenerator(spec, seed=7).size(10_000).get_df()
+print(df.head())
+print("distinct names:", df["name"].nunique(), "from a pool of", len(spec["name"]["kwargs"]["distincts"]))

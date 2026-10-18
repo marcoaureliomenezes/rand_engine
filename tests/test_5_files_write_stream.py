@@ -3,11 +3,13 @@ import os
 import pandas as pd
 import glob
 import time
+import typing
 import threading
 import pytest
 from types import SimpleNamespace
 from rand_engine.file_handlers import _writer_stream
 
+from rand_engine.file_handlers._writer_stream import FileStreamWriter
 from rand_engine.main.data_generator import DataGenerator
 from rand_engine.validators.exceptions import RandEngineError
 from tests.fixtures.f1_data_generator_specs_right import (
@@ -154,3 +156,27 @@ def test_undocumented_option_fails_before_overwrite_deletes(rand_spec_with_kwarg
   with pytest.raises(RandEngineError, match="'engine'.*accepted: index, sep, compression, timeout$"):
     DataGenerator(rand_spec_with_kwargs).size(2).writeStream.option("engine", "x").mode("overwrite").start(path)
   assert os.listdir(path) == ["keep.csv"]
+
+
+def test_trigger_frequency_is_annotated_float():
+  assert typing.get_type_hints(FileStreamWriter.trigger)["frequency"] is float
+
+
+def test_sqlite_stream_refusal_happens_before_creating_output(tmp_path):
+  path = tmp_path / "sqlite-stream"
+  path.mkdir()
+  sentinel = path / "keep.txt"
+  sentinel.write_text("keep", encoding="utf-8")
+
+  with pytest.raises(RandEngineError):
+    (
+      DataGenerator({"row": {"method": "integers", "kwargs": {"min": 0, "max": 9}}})
+      .size(2)
+      .writeStream
+      .format("sqlite")
+      .option("table", "events")
+      .start(str(path))
+    )
+
+  assert sentinel.read_text(encoding="utf-8") == "keep"
+  assert sorted(file.name for file in path.iterdir()) == ["keep.txt"]

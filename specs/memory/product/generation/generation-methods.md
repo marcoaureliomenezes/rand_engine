@@ -1,12 +1,13 @@
 ---
 slug: generation-methods
 title: Generation methods
-tldr: "Ten common methods run on pandas and Spark; distributions, constant, correlated methods, pk, fk and null/anomaly modifiers run on pandas."
-summary: "NPCore and PyCore provide the NumPy generator's single method map, including bounded floats, alias-sampled poisson and zipf, constants and deterministic keys; SparkCore supplies native Spark expressions for the ten common methods and refuses everything else."
+tldr: "Ten common methods run on pandas and Spark; stateless pk/fk share one indexed authority; extra distributions, constants and modifiers are pandas-only."
+summary: "NPCore and PyCore provide the NumPy generator's method map; SparkCore supplies native expressions for the ten common methods and NULL string columns with warnings for four correlated methods. Pandas and Spark both call Keys for deterministic pk/fk values, while extra distributions, constants and modifiers remain pandas-only."
 tags: [methods, numpy, spark, correlation, distributions, modifiers]
 sources:
   - rand_engine/core/**
   - rand_engine/main/_rand_generator.py
+  - rand_engine/validators/method_specs.py
 ---
 
 ## Common methods
@@ -14,7 +15,7 @@ sources:
 | method | main kwargs | produces |
 |---|---|---|
 | `integers` | `min`, `max`, `int_type` | inclusive random integers |
-| `int_zfilled` | `length` | zero-padded numeric strings |
+| `int_zfilled` | `length` (1 to 18; at most 15 on Spark) | zero-padded numeric strings of `length` digits |
 | `floats` | `min`, `max`, `decimals` | uniform values on the decimal grid, inside `[min, max]` |
 | `floats_normal` | `mean`, `std`, `decimals` | rounded normal values |
 | `booleans` | `true_prob` | booleans at the requested probability |
@@ -25,7 +26,7 @@ sources:
 | `uuid4` | none | RFC 4122 version-4 UUID strings |
 
 - On pandas these methods draw from the `numpy.random.Generator` owned by [[data-generator]]. Date rendering is vectorized, and UUID bytes come from that same generator.
-- On Spark they are native `SparkCore` expressions; Spark has no seed in this interface ([[spark-generator]]).
+- On Spark they are native `SparkCore` expressions; an explicit Spark seed affects key columns only, not these ordinary methods ([[spark-generator]]).
 - `integers` defaults to `int32` on pandas and `long` on Spark; its bounds must fit `int_type`.
 
 ## Float rules
@@ -36,7 +37,7 @@ sources:
 - Rounding never turns a finite draw into infinity; a draw that is infinite itself, at a distribution's float64 limit, is returned as drawn.
 - Spark float methods compute on the float form of their kwargs, so Python ints beyond `int64` never reach a Spark expression.
 
-## Pandas-only methods
+## NumPy-only methods
 
 - `exponential(scale=1.0, decimals=2)` and `lognormal(mean=0.0, std=1.0, decimals=2)` return rounded `float64`; `scale` is finite and positive, `std` finite and non-negative.
 - `poisson(lam=1.0)` and `zipf(a=2.0)` return `int64` from alias-table samplers; `lam` lies in `[0, 10^6]` and `a` is finite and greater than 1. Zipf values beyond the table are drawn exactly from the tail, up to `int64`.
@@ -44,7 +45,10 @@ sources:
 - `distincts_map` and `distincts_map_prop` return `(category, value)` pairs; every pool must be non-empty.
 - `distincts_multi_map` returns the category followed by one selected value from each declared level; `cols` therefore has exactly levels plus one names.
 - `complex_distincts` fills a pattern from templates that use ordinary methods in the NumPy engine's method map.
-- `pk` emits unique sequence or permuted keys; `fk` rebuilds a parent key selected from the child seed, column, definition and row index ([[pk-fk-constraints]]).
+
+## Key methods
+
+- `pk` emits unique sequence or permuted keys; `fk` rebuilds a parent key selected from the child seed, column, definition and row index. Both run through the same indexed `Keys` authority on pandas and Spark; `fk.born_before` can restrict each child to parents whose derived event time is not later ([[pk-fk-constraints]]).
 
 ## Modifiers
 

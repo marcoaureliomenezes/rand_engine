@@ -2,7 +2,7 @@
 slug: QUALITY
 title: Quality Assurance
 tldr: QA principles, test architecture and the gates every change passes.
-summary: Principles change only with an accepted ADR; Test architecture and Gates state how rand-engine is verified — a light numbered pytest suite, CI-only stress and same-runner benchmarks, and the GitHub Actions matrix, security and publish workflows.
+summary: Principles change only with an accepted ADR; Test architecture and Gates state how rand-engine is verified — a light numbered pytest suite with executable docs and docstrings, a docstring lint in the verify line, CI-only stress and same-runner benchmarks, and the GitHub Actions matrix, security, isolated docs and publish workflows.
 tags:
   - quality-assurance
   - testing
@@ -17,27 +17,31 @@ tags:
 
 ## Test architecture
 
-- One pytest suite under `tests/`: numbered files `test_<n>_<area>.py` ordered by layer — 0 core methods, 1 validators, 2 `DataGenerator`, 3 Spark and advanced specs, 4 example specs and the `RandSpecs` builders, 5 batch and stream writers, 6 `stream_dict`, 7 templates, 8 PK/FK consistency — plus the public-import contract, benchmark-script contract and executable documentation contract.
+- One pytest suite under `tests/`: numbered files `test_<n>_<area>.py` ordered by layer — 0 core methods, 1 validators, 2 `DataGenerator`, 3 Spark (including partition-independent keys) and advanced specs, 4 example specs and the `RandSpecs` builders, 5 file and SQLite batch/stream writers, 6 normalized pandas `stream_dict` record contracts, 7 templates, 8 PK/FK consistency, 9 the get-started CLI and its scaffolds — plus the public-import and wheel contract, benchmark-script contract and executable documentation contract (Markdown pages, the agent skill, README landing rules, public docstrings and their examples).
+- The five runnable CLI scaffolds execute in-process in a temporary directory, sharing the suite's Spark session; one runs as a plain-python subprocess. The sixth Agent resource is checked as Markdown bytes and project-context content and is never executed as Python.
 - Specs under test live as fixtures in `tests/fixtures/f<n>_*.py`; `conftest.py` loads the Spark fixtures as a plugin.
 - Spark tests start a local `SparkSession` and skip when PySpark is absent or on Windows with Python 3.12+.
 - The default selector excludes `stress`; default tests generate at most 10^4 rows, while large-volume tests and benchmarks run in the CI benchmark job.
 - Writer and documentation tests write through pytest temporary paths.
+- Documentation contracts exercise stable and preview preparation through the standard-library interface: isolated input, raw resources, canonical-skill mirroring, exact-SHA source routes and core/Faker-extra installs, stable PyPI guidance, deploy eligibility and explained skips. Preparation remains usable on Python 3.10 without a TOML parser; preview eligibility then fails closed, while the `master` path bypasses preview metadata reads.
 - Local runs keep caches out of the repo: `PYTHONDONTWRITEBYTECODE=1 poetry run pytest tests/ -q -p no:cacheprovider`.
 
 ## Gates
 
-- Push to any branch but `master`/`development` with no open PR: the pytest matrix (Ubuntu, Windows, macOS × Python 3.10-3.12) with coverage reported.
+- Push to any branch but `master`/`development` with no open PR: the pytest matrix (Ubuntu, Windows, macOS × Python 3.10–3.13) with coverage reported.
 - PR to `development`: source must not be `master`; the matrix with `--cov-fail-under=60`; Bandit, Semgrep, Safety and Trivy run advisory (they never fail the job); CodeQL analyzes.
 - PR to `master`: source must be `development`; the matrix with coverage.
 - PR to `master` or `development`: the benchmark workflow runs stress tests and a same-runner A/B speed comparison, publishes its summary/comment/artifact and fails a comparable row above the base ratio, a distribution method above its sibling or a modifier above its overhead limit.
-- Merge to `development`: tests (Ubuntu, Python 3.10-3.12), build with the next `rcN` version, `twine check`, a wheel install smoke, the RC tag, PyPI publish.
-- Merge to `master`: tests, build of the `pyproject.toml` version (no RC suffix), the tag, PyPI publish, a GitHub release.
-- No lint or type checker is configured.
+- Merge to `development`: tests (Ubuntu, Python 3.10–3.13), build with the next `rcN` version, `twine check`, a wheel install smoke, the RC tag, PyPI publish.
+- Merge to `master`: tests (Ubuntu, Python 3.10–3.13), build of the `pyproject.toml` version (no RC suffix), the tag, PyPI publish, a GitHub release.
+- The repo `verify:` line (the local job gate) runs `ruff check --select D` (numpy convention) on the six public-surface modules before the suite. No type checker is configured, and CI runs no lint.
+- Inside every pytest run: an `inspect` check that each public callable of `DataGenerator`, `SparkGenerator`, `RandSpecs` and the writer objects carries a numpydoc docstring (it covers the `_`-prefixed writer modules ruff skips), and the doctest examples of those modules. A full suite run takes 45–93 s on each Ubuntu and macOS leg of Tests on Push run 38973485937.
+- Docs workflow, on PRs to `development` and `master` and pushes to `feature/**` and `master`: Python 3.12 prepares an isolated stable or preview tree and runs the strict Zensical build, aborting on a broken internal link. Only push events on the exact `PREVIEW_REF` and `MASTER_REF` configured by the deployment guard upload and enter deployment; workflow cancellation is disabled for those two deployable refs and retained for other work.
+- Deployable docs jobs share the bounded `pages-public-site` queue with `queue: max` and no in-progress cancellation. After acquiring it, `master` deploys through the stable bypass; the preview re-reads the remote version pair and feature SHA, deploys only on the exact expected state, and otherwise records an explained successful skip before `deploy-pages`.
 
 <!-- dadaia:fixed slop-tests -->
 ### Slop — tests (fixed)
 - A test follows the root `AGENTS.md` map §1 test basics; an own module is tested through its interface.
-- A test name states current behavior; a tombstone (a test of an absence) dies with its target.
-- Pruning is a `dd-code-reviewer` verdict executed by `dd-sw-engineer-sr`; a deletion cites its criterion and its replacement `file:line`.
+- A test name states current behavior; a tombstone is a test of an absence (removal: root map §1).
 - Detection: `dd-code-review` SLOP.md S3.
 <!-- /dadaia:fixed slop-tests -->

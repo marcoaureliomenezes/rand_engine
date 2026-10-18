@@ -1,0 +1,671 @@
+{
+  "schema": "release-state-v1",
+  "release": "0.8.0",
+  "phase": "CLOSURE",
+  "defined": {
+    "sha": "fe8cb1c3da259c8b5a50ab7be0e22663780fea25",
+    "ts": "2026-10-18T16:11:44Z"
+  },
+  "implemented": {
+    "sha": "325b3e2aa14c519a507cd0ae390605eaa4db4af1",
+    "ts": "2026-10-18T16:17:18Z"
+  },
+  "shipped": null,
+  "log": [
+    {
+      "ts": "2026-10-14T18:51:30Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Release 0.8.0 born"
+    },
+    {
+      "ts": "2026-10-15T00:40:31Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-1",
+      "milestone": "defined",
+      "sha": "8bd8e3f941eaab7b46ed0bf8847a08437bd630c2",
+      "text": "Candidate defined at 8bd8e3f941eaab7b46ed0bf8847a08437bd630c2; phase IMPLEMENTATION."
+    },
+    {
+      "ts": "2026-10-16T13:50:50Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-1",
+      "milestone": "implemented",
+      "sha": "de0c4efc3740aa214508f37976fa5a009b1af4e8",
+      "text": "Candidate implemented at de0c4efc3740aa214508f37976fa5a009b1af4e8; phase CLOSURE."
+    },
+    {
+      "ts": "2026-10-16T13:56:33Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 8bd8e3f941eaab7b46ed0bf8847a08437bd630c2..a064f982fbf6: 4 reviewed, 5 changed.",
+      "since": "8bd8e3f941eaab7b46ed0bf8847a08437bd630c2",
+      "until": "a064f982fbf601dc0c92d68ac6a5d486fc9fc10e",
+      "reviewed": [
+        "templates-and-examples",
+        "data-generator",
+        "generation-methods",
+        "writers-and-streaming"
+      ],
+      "changed": [
+        "public-api",
+        "spark-generator",
+        "rand-spec-grammar",
+        "documentation",
+        "get-started-cli"
+      ]
+    },
+    {
+      "ts": "2026-10-16T14:01:07Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-1 implemented at de0c4ef (Jobs 1-11 plus hotfix get-started-scaffold-shadows-package): one Spark integer-width predicate width_beyond_double shared by CommonValidator, SparkCore.gen_ints and float_lattice_bounds (max - min + 1 == 2**53 validates and generates, 2**53 + 1 refused at validation); numpydoc docstrings on DataGenerator, SparkGenerator, RandSpecs and the writer objects with ruff D in verify: and an inspect check plus doctests in the suite; rand_engine.__version__ (installed metadata, placeholder 0.0.0+unknown), py.typed, four regular-package __init__.py; console script rand-engine list / get-started <slug> [--out DIR] and python -m rand_engine writing DIR/<slug>-example.py from five packaged cases (test-data, lake, kafka, databricks, faker); Zensical strict-built docs site with API reference, five tutorials, /llms.txt, docs.yml build on PRs and Pages deploy on master; landing README; skills/rand-engine/SKILL.md outside the wheel; validator error footer and pyproject documentation on https://marcoaureliomenezes.github.io/rand_engine/; workflows with top-level contents: read and six third-party actions pinned to SHAs; pyspark 3.5.8 and setuptools 83 in the lock; dated CHANGELOG headers; 9 bugs resolved, 0 open (13 live records, 36 archived by bug-window maturity): spark-integers-width-2pow53-validates-then-raises, workflow-actions-mutable-refs, workflow-missing-top-level-permissions, workflow-summary-text-stale, changelog-070-header-says-unreleased, faker-extra-undocumented-unpinned-install, dependabot-pyspark-357-ghsa-9437, dependabot-setuptools-781-ghsa-h35f, get-started-scaffold-shadows-package; independent measurement on the reconcile tree: verify: exit 0, 1129 passed and 8 deselected in 81.4 s, ruff D 0 findings, 56 CLI/docstring/landing/skill/tutorial tests passed, python -m rand_engine list prints the five slugs, [tool.poetry.dependencies] unchanged; CI on de0c4ef green (Tests on Push 38910934954, Docs 38910934774); size 8bd8e3f..de0c4ef: rand_engine +985/-39, tests +651/-19, docs +241, .github +95/-1527, skills +177, README/llms.txt/CHANGELOG/mkdocs.yml +119/-103; verdict.py stats 0.8.0-rc1: 14 sequences, 20 verdicts, 6 rejected, first-pass rejected 5/14; memory: 5 atoms changed (public-api, spark-generator, rand-spec-grammar, new get-started-cli and documentation), 4 reviewed, ARCHITECTURE Tech Stack and Structure, QUALITY test layers and Gates; carried: no open bug; non-blocking for the next candidate: llms.txt:7 public-api derived-from marker stale (outside the reconcile write set, prose true), tests/test_9_cli.py test_python_dash_m_runs_main emits a runpy RuntimeWarning, TREE-5 template refresh warnings on seven specs AGENTS.md files, empty unregistered worktree dir worktrees/rand-engine/0.7.0-rc1 left for the operator; backlog exits: docstrings, readme-landing, docs-site, get-started-cli, agent-skill delivered by 0.8.0."
+    },
+    {
+      "ts": "2026-10-16T14:06:12Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over a064f982fbf601dc0c92d68ac6a5d486fc9fc10e..150573773658: 1 reviewed, 0 changed.",
+      "since": "a064f982fbf601dc0c92d68ac6a5d486fc9fc10e",
+      "until": "150573773658225b6b25f8c89ac3f236ba2f456a",
+      "reviewed": [
+        "documentation"
+      ],
+      "changed": []
+    },
+    {
+      "ts": "2026-10-16T14:53:01Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.8.0 (prior candidate closed at de0c4efc3740aa214508f37976fa5a009b1af4e8)"
+    },
+    {
+      "ts": "2026-10-16T17:31:28Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-2",
+      "milestone": "defined",
+      "sha": "454c46e3fbd96fa37254731ed367c2b5ca222f55",
+      "text": "Candidate defined at 454c46e3fbd96fa37254731ed367c2b5ca222f55; phase IMPLEMENTATION."
+    },
+    {
+      "ts": "2026-10-16T22:53:02Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-2",
+      "milestone": "implemented",
+      "sha": "d482e716b04d11bcb93e6260f6fee3f4f6c57bff",
+      "text": "Candidate implemented at d482e716b04d11bcb93e6260f6fee3f4f6c57bff; phase CLOSURE."
+    },
+    {
+      "ts": "2026-10-16T23:13:28Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 150573773658225b6b25f8c89ac3f236ba2f456a..528b9109d1cf: 0 reviewed, 7 changed.",
+      "since": "150573773658225b6b25f8c89ac3f236ba2f456a",
+      "until": "528b9109d1cf8f1fd9bf56f4dbf9b5b1231c23e0",
+      "reviewed": [],
+      "changed": [
+        "public-api",
+        "generation-methods",
+        "spark-generator",
+        "documentation",
+        "writers-and-streaming",
+        "benchmarks",
+        "rand-spec-grammar"
+      ]
+    },
+    {
+      "ts": "2026-10-16T23:15:38Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-2 implemented at d482e71 (Jobs 1-7 plus hotfix pipeline-doc-matrix-stale): static PEP 621 [project] metadata with requires-python >=3.10, Python classifiers 3.10-3.13, 14 keywords, Typing :: Typed, License-Expression MIT and [project.scripts] (wheel METADATA read on the reconcile tree); pandas 2.2.3 in the lock; the five CI test matrices run Python 3.10-3.13 and the workflow summaries drop version lists; Spark tests run on Linux and macOS 3.10-3.13 and Windows 3.10-3.11 behind one skip predicate; int_zfilled length refused outside 1..18 at validation (Spark <= 15, the min(...,16) clamp deleted); the package docstring first line equals the PyPI Summary; trigger(frequency: float); the reference test reads rand_engine.__all__; benchmark record docs/benchmarks.json and docs/BENCHMARKS.md byte-identical to the artifact of Benchmarks run 38973497848 (head bbc9847, base 5920630; git diff bbc9847..d482e71 on rand_engine, benchmarks, pyproject.toml, poetry.lock empty); CHANGELOG 0.8.0 gains rc-2 lines; 6 bugs resolved, 0 open (10 live records, 12 archived by bug-window maturity): int-zfilled-nonpositive-length-validates-then-raises, int-zfilled-length-above-18-validates-then-raises, package-docstring-contradicts-pitch, stream-trigger-frequency-annotated-int, reference-test-self-referential, pipeline-doc-matrix-stale; independent measurement on the reconcile tree: verify: exit 0, 1141 passed and 8 deselected, pytest 424.78 s and 481.35 s wall at load average 22 on 8 cores (concurrent sessions; CI legs of Tests on Push 38973485937 at bbc9847 took 45.28-92.51 s on Ubuntu and macOS, 30.77-328.99 s on Windows, all green), ruff D 0 findings in 0.03-0.06 s, Docs 38973485919 strict build 1.13 s; size ffeb645..d482e71: rand_engine +10/-3, tests +84/-27, .github +8/-592, docs +295/-289, pyproject.toml +20/-15, poetry.lock +47/-47, CHANGELOG +5; verdict.py stats 0.8.0-rc2: 1 sequence, 1 verdict, 0 rejected, first-pass rejected 0/1 (it matches only the wt/0.8.0/rc-2/ branch scheme; with the wt/0.8.0-rc2/ records of define and Jobs 1-6: 9 sequences, 11 verdicts, 2 rejected, first-pass rejected 2/9); memory: 7 worklist atoms changed (public-api, generation-methods, spark-generator, documentation, writers-and-streaming, benchmarks, rand-spec-grammar) plus get-started-cli, pk-fk-constraints, templates-and-examples and the index Known limits, ARCHITECTURE Tech Stack, QUALITY Gates, the derived-from markers of 8 atoms refreshed on 22 lines of llms.txt and docs; the rc-1 summary item llms.txt:7 public-api derived-from marker stale was fixed by 1505737; carried: no open bug; non-blocking for the next candidate: verdict.py stats misses a candidate's records under the former branch scheme, docs/1_DATA_GENERATOR.md method table omits the int_zfilled length domain, tests/test_9_cli.py test_python_dash_m_runs_main still emits a runpy RuntimeWarning, TREE-5 template refresh warnings on seven specs AGENTS.md files, repos/rand-engine reference-transaction hook absent (HOOKS-DRIFT-1); backlog exits: pypi-metadata delivered by 0.8.0."
+    },
+    {
+      "ts": "2026-10-16T23:45:59Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 528b9109d1cf8f1fd9bf56f4dbf9b5b1231c23e0..1175e6b3d8cb: 1 reviewed, 0 changed.",
+      "since": "528b9109d1cf8f1fd9bf56f4dbf9b5b1231c23e0",
+      "until": "1175e6b3d8cbbf932b6386b10f1c5626c3264373",
+      "reviewed": [
+        "documentation"
+      ],
+      "changed": []
+    },
+    {
+      "ts": "2026-10-16T23:52:02Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 1175e6b3d8cbbf932b6386b10f1c5626c3264373..f2abac427d89: 1 reviewed, 0 changed.",
+      "since": "1175e6b3d8cbbf932b6386b10f1c5626c3264373",
+      "until": "f2abac427d89fa58167669905fad014bf0664c6d",
+      "reviewed": [
+        "documentation"
+      ],
+      "changed": []
+    },
+    {
+      "ts": "2026-10-17T16:08:56Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.8.0 (prior candidate closed at d482e716b04d11bcb93e6260f6fee3f4f6c57bff)"
+    },
+    {
+      "ts": "2026-10-17T17:17:20Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-3",
+      "milestone": "defined",
+      "sha": "c713b02",
+      "text": "Candidate defined at c713b02; phase IMPLEMENTATION."
+    },
+    {
+      "ts": "2026-10-17T18:36:16Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-3",
+      "milestone": "implemented",
+      "sha": "2e2cfd742418a5830dca6e390b24f9f331c0303b",
+      "text": "Candidate implemented at 2e2cfd742418a5830dca6e390b24f9f331c0303b; phase CLOSURE."
+    },
+    {
+      "ts": "2026-10-17T18:37:34Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over f2abac427d89fa58167669905fad014bf0664c6d..3537209ade45: 0 reviewed, 1 changed.",
+      "since": "f2abac427d89fa58167669905fad014bf0664c6d",
+      "until": "3537209ade45c3ef26a43c191b433fbdc047066c",
+      "reviewed": [],
+      "changed": [
+        "documentation"
+      ]
+    },
+    {
+      "ts": "2026-10-17T18:38:47Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-3 implemented at 2e2cfd7 (Jobs 1-3): separate rendered references for the returned writer classes and the five-class caller-facing error family; exact catalog-backed required/optional/column-field method inventories for humans and agents with executable pandas/Spark boundaries, including int_zfilled 1..18 on pandas and at most 15 on Spark, Spark uint64 and widths above 2**53 refused, and four correlated methods producing NULL string columns with warnings; complete Faker and Arrow-schema builder guidance plus ten common and ten advanced ready-made spec factories; a five-scaffold onboarding map and tutorials with commands, filenames, prerequisites and observable outcomes; llms.txt links rendered destinations and all five direct case files; CHANGELOG rc-3 additions; independent measurement from the Job 3 merge gate at 2e2cfd7: verify exit 0, 1155 passed, 8 deselected and 9 warnings in 57.66 s, documentation tests 77 passed, reviewer strict Zensical build exit 0 in 1.48 s over 29 files; size c713b02..ef3b291: 22 files, +838/-132; verdict.py stats 0.8.0-rc3: 4 sequences, 8 verdicts, 4 rejected, first-pass rejected 4/4; memory: authoritative drift named documentation, changed and catalog-regenerated, while public-api, templates-and-examples, generation-methods, get-started-cli, writers-and-streaming and rand-spec-grammar plus ARCHITECTURE and QUALITY were reviewed and remain current; three deferred generation-methods markers refreshed and every planned marker matches its atom hash; goal readout documentation-excellence delivered, 0 open bugs; carried: stable Pages publication waits for the master promotion; doctor dry remains nonzero on operator-held library/workspace state: 14 HOOKS-DRIFT-1 errors across seven repos, seven TREE-5 template warnings in this specs tree, and unrelated orphan/foreign worktree and expired handoff/tmp warnings; no repair, reprojection or bypass was attempted; backlog exits: documentation-excellence delivered by 0.8.0."
+    },
+    {
+      "ts": "2026-10-17T20:26:57Z",
+      "agent": "dd-product-engineer",
+      "kind": "note",
+      "text": "Operator authorization verbatim: we have defined a new way of managing worktrees inside dadaia-workspace. what you see is the new way. we need to do a workaround here. e must not change the new evolved feature of dadaia-workspace. we must adapt here in rand-engine. pelase, understand it, do the workaround you need here inside rand-engine and its child worktrees. Plea, work till you finish the complete work for rand-engine. at the end nothing, any backlog or release or release candidate must remain. we must do all the opened work."
+    },
+    {
+      "ts": "2026-10-17T20:27:39Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 3537209ade45c3ef26a43c191b433fbdc047066c..03016995c373: 1 reviewed, 0 changed.",
+      "since": "3537209ade45c3ef26a43c191b433fbdc047066c",
+      "until": "03016995c373d3370e7f460fae93d9c3fe05f075",
+      "reviewed": [
+        "documentation"
+      ],
+      "changed": []
+    },
+    {
+      "ts": "2026-10-17T20:29:56Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-3 implemented at 2e2cfd7 (Jobs 1-3), with the operator-authorized final-review correction at d864b3a: separate rendered references for the returned writer classes and the five-class caller-facing error family, with stale derived descriptions, examples and source panels suppressed for the four derived exceptions while all five anchors, the accurate handwritten taxonomy and runnable catches remain; exact catalog-backed required/optional/column-field method inventories for humans and agents with executable pandas/Spark boundaries, including int_zfilled 1..18 on pandas and at most 15 on Spark, Spark uint64 and widths above 2**53 refused, and four correlated methods producing NULL string columns with warnings; complete Faker and Arrow-schema builder guidance plus ten common and ten advanced ready-made spec factories; a five-scaffold onboarding map and tutorials with commands, filenames, prerequisites and observable outcomes; llms.txt links rendered destinations and all five direct case files; CHANGELOG rc-3 additions; independent measurement from the Job 3 merge gate at 2e2cfd7: verify exit 0, 1155 passed, 8 deselected and 9 warnings in 57.66 s, documentation tests 77 passed, reviewer strict Zensical build exit 0 in 1.48 s over 29 files; the final correction's strict build exited 0 in 1.33 s with five exception anchors and zero stale rendered calls; size c713b02..d864b3a: 23 files, +861/-135; verdict.py stats 0.8.0-rc3 before final re-review: 5 sequences, 9 verdicts, 5 rejected, first-pass rejected 5/5; memory: authoritative drift originally named documentation, changed and catalog-regenerated, while public-api, templates-and-examples, generation-methods, get-started-cli, writers-and-streaming and rand-spec-grammar plus ARCHITECTURE and QUALITY were reviewed and remain current; the final error-panel correction named documentation again and release.py recorded its already-accurate atom as reviewed unchanged; three deferred generation-methods markers refreshed and every planned marker matches its atom hash; goal readout documentation-excellence delivered, 0 open bugs; carried: stable Pages publication waits for the master promotion; rand-engine's current hooks no longer report drift, while the global doctor remains nonzero only for other contexts' hooks/worktrees/TTL state and seven superseded template warnings in this specs tree, which this candidate does not reproject; backlog exits: documentation-excellence delivered by 0.8.0."
+    },
+    {
+      "ts": "2026-10-17T20:35:35Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.8.0 (prior candidate closed at 2e2cfd742418a5830dca6e390b24f9f331c0303b)"
+    },
+    {
+      "ts": "2026-10-17T21:21:14Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-4",
+      "milestone": "defined",
+      "sha": "da18f0da082da242c40cf37ae6594d388ab31f0b",
+      "text": "Candidate defined at da18f0da082da242c40cf37ae6594d388ab31f0b; phase IMPLEMENTATION."
+    },
+    {
+      "ts": "2026-10-17T22:56:09Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-4",
+      "milestone": "implemented",
+      "sha": "864535d0c4ece6c833a04bb5932bc5d0bd144bf2",
+      "text": "Candidate implemented at 864535d0c4ece6c833a04bb5932bc5d0bd144bf2; phase CLOSURE."
+    },
+    {
+      "ts": "2026-10-17T23:00:51Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 03016995c373d3370e7f460fae93d9c3fe05f075..af952b531345: 0 reviewed, 7 changed.",
+      "since": "03016995c373d3370e7f460fae93d9c3fe05f075",
+      "until": "af952b5313458c52a54f82a6d718dc021487e675",
+      "reviewed": [],
+      "changed": [
+        "data-generator",
+        "generation-methods",
+        "spark-generator",
+        "documentation",
+        "writers-and-streaming",
+        "pk-fk-constraints",
+        "rand-spec-grammar"
+      ]
+    },
+    {
+      "ts": "2026-10-17T23:01:28Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-4 implemented at 864535d: exact event-time fk.born_before eligibility across DataFrames, files, streams and Spark; Spark pk/fk parity through the shared indexed Keys authority with key-only explicit seeding and native ordinary columns; output-only stdlib SQLite batch persistence with quoted identifiers, bound values, atomic selected-table overwrite and transactional append; lossless eligible stream_dict conversion through Arrow with narrow pandas fallback; public docstrings, guides, Agent Skill and primary-source capability comparison; exact constitution invariant 8 output-SQL boundary; independent measurement from the final Job 5 official merge gate at 864535d: verify exit 0, 1237 passed, 8 deselected and 9 warnings in 68.80 s; candidate size 0301699..864535d: 35 files, +2383/-67; verdict.py stats 0.8.0-rc4: 7 sequences, 13 verdicts, 6 rejected, first-pass rejected 4/7; memory: authoritative drift changed data-generator, generation-methods, spark-generator, documentation, writers-and-streaming, pk-fk-constraints and rand-spec-grammar, catalog regenerated, every derived marker matches, public-api reviewed unchanged, and the unlisted benchmarks atom corrected its sink-coverage wording while the sourced rc-2 artifact remains byte-for-byte unchanged; release drift, memory, backlog, bug and release checks exit 0; doctor reports no rand-engine spec or hook error, with its global nonzero exit limited to workspace TTL artifacts across three other contexts and prior rand-engine coordination; goal readout: the four technical Origin demands delivered, 0 open bugs, outreach the only active backlog item; carried: candidate-head benchmark and full PR checks must pass after closure, stable PyPI and Pages publication wait for promotion, and outreach remains active for post-stable execution; backlog exits: spark-pk-fk-parity, db-key-sink-writer, event-time-ordered-fk and stream-dict-via-arrow delivered by 0.8.0."
+    },
+    {
+      "ts": "2026-10-17T23:11:12Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over af952b5313458c52a54f82a6d718dc021487e675..161a6c8cde94: 1 reviewed, 0 changed.",
+      "since": "af952b5313458c52a54f82a6d718dc021487e675",
+      "until": "161a6c8cde9408a1bd576f056f2e6f214c509c4c",
+      "reviewed": [
+        "documentation"
+      ],
+      "changed": []
+    },
+    {
+      "ts": "2026-10-17T23:12:10Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-4 closure metadata correction at 161a6c8 shortened the benchmark tldr to the 160-character schema without losing method, modifier, sink, publication or regression-limit truth, regenerated catalog/index and refreshed the benchmark-derived llms marker; all 13 memory frontmatters were swept, maximum tldr length 152, and release.py recorded documentation reviewed unchanged through 161a6c8; actual redacted doctor JSON on the resulting release state reports 0 LINT-1, 0 specs errors, 7 nonblocking TREE-5 warnings and 0 ledger findings, superseding the earlier closure summary's incomplete doctor sentence; carried: the global doctor exit remains 1 for six HOOKS-DRIFT-1 errors across three repository paths, 66 expired handoffs, 10 expired temporary entries, 19 worktree information/warnings and 11 retained reaped entries, with no projection, library, foreign repository or broad fix attempted; candidate-head benchmark and full PR checks still must pass before promotion, stable PyPI and Pages publication wait for promotion, and outreach remains active for post-stable execution; backlog exits: spark-pk-fk-parity, db-key-sink-writer, event-time-ordered-fk and stream-dict-via-arrow delivered by 0.8.0."
+    },
+    {
+      "ts": "2026-10-18T00:14:08Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.8.0 (prior candidate closed at 864535d0c4ece6c833a04bb5932bc5d0bd144bf2)"
+    },
+    {
+      "ts": "2026-10-18T01:24:39Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-5",
+      "milestone": "defined",
+      "sha": "2dc5278",
+      "text": "Candidate defined at 2dc5278; phase IMPLEMENTATION."
+    },
+    {
+      "ts": "2026-10-18T01:33:19Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-5",
+      "milestone": "implemented",
+      "sha": "851a3b58f4e2873df7948bf3a4013201d1b027c1",
+      "text": "Candidate implemented at 851a3b58f4e2873df7948bf3a4013201d1b027c1; phase CLOSURE."
+    },
+    {
+      "ts": "2026-10-18T01:34:14Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 161a6c8cde9408a1bd576f056f2e6f214c509c4c..b528031a9d00: 0 reviewed, 0 changed.",
+      "since": "161a6c8cde9408a1bd576f056f2e6f214c509c4c",
+      "until": "b528031a9d008aafb024c55513ceb2d349001b05",
+      "reviewed": [],
+      "changed": []
+    },
+    {
+      "ts": "2026-10-18T01:34:46Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-5 restored the declared platform gate without changing product behavior: five full-suite workflows select pinned Temurin Java 17 before dependency installation and the two SQLite overwrite fixtures close their setup connections after commit and before atomic replacement; the official Job 1 merge gate exited 0 with 1237 passed, 8 deselected and 9 warnings in 86.83 s, and verdict.py stats 0.8.0-rc5 reports 1 sequence, 1 verdict, 0 rejected and first-pass rejected 0/1; memory: release.py drift reports no worklist entry over 161a6c8..b528031, so product atoms, canonical memory, generated catalog and derived docs remain unchanged, while release, memory, backlog and bug checks exit 0 and the bug ledger has 0 open records; doctor reports no rand-engine spec error and retains seven nonblocking TREE-5 warnings, while its nonzero global findings belong to foreign hooks/worktrees and workspace TTL state that this candidate does not modify; carried: PR #47's fresh cross-platform matrix and benchmark still must pass before merge, and the old-head benchmark run 39081652038 remains failed because stream_dict measured 8.478 s against base 6.484 s, ratio 1.31, which this platform-only candidate does not claim to fix; stable PyPI and Pages publication wait for promotion, and outreach remains the only active backlog item for post-stable execution; backlog exits: none."
+    },
+    {
+      "ts": "2026-10-18T01:39:04Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.8.0 (prior candidate closed at 851a3b58f4e2873df7948bf3a4013201d1b027c1)"
+    },
+    {
+      "ts": "2026-10-18T01:41:58Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-6",
+      "milestone": "defined",
+      "sha": "7141670",
+      "text": "Candidate defined at 7141670; phase IMPLEMENTATION."
+    },
+    {
+      "ts": "2026-10-18T01:50:11Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-6",
+      "milestone": "implemented",
+      "sha": "77d9e551fca8a75f1612052867f74fcc7e7c7aed",
+      "text": "Candidate implemented at 77d9e551fca8a75f1612052867f74fcc7e7c7aed; phase CLOSURE."
+    },
+    {
+      "ts": "2026-10-18T01:50:59Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over b528031a9d008aafb024c55513ceb2d349001b05..59fe7fbc4ae7: 1 reviewed, 0 changed.",
+      "since": "b528031a9d008aafb024c55513ceb2d349001b05",
+      "until": "59fe7fbc4ae713fd5622cd2b0ccaf00d3414c790",
+      "reviewed": [
+        "data-generator"
+      ],
+      "changed": []
+    },
+    {
+      "ts": "2026-10-18T01:51:16Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-6 replaces the stream_dict Arrow object's present-value list, type-set construction and separate integer rescan with one pass over the existing NumPy view, without changing product behavior; independent review found 0 mismatches across 2,959 semantic frames and 22 unchanged stream-object contract tests passed, while the benchmark-shaped 200,000-row helper probe improved from a 0.086322 s old median to a 0.053290 s new median; the official Job 1 merge gate exited 0 with Ruff green, 1237 passed, 8 deselected and 9 warnings in 114.46 s, and verdict.py stats 0.8.0-rc6 reports 1 sequence, 1 verdict, 0 rejected and first-pass rejected 0/1; memory: data-generator was reviewed unchanged because eligibility, normalization, Arrow conversion, fallback and returned records remain identical, and release.py drift now reports nothing drifted; release, memory, backlog and bug checks exit 0 with 0 open bugs; doctor reports the expected active rc-6 worktree plus workspace-expired artifacts and onboarding information, with no rand-engine spec or hook error and no broad fix attempted; carried: AC1.2 remains unclaimed until the fresh final-head PR same-runner benchmark passes, while old-head run 39081652038 remains failed at ratio 1.31; stable PyPI and Pages publication wait for promotion, and outreach remains the only active backlog item for post-stable execution; backlog exits: none."
+    },
+    {
+      "ts": "2026-10-18T01:57:07Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.8.0 (prior candidate closed at 77d9e551fca8a75f1612052867f74fcc7e7c7aed)"
+    },
+    {
+      "ts": "2026-10-18T02:03:40Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-7",
+      "milestone": "defined",
+      "sha": "891d96a",
+      "text": "Candidate defined at 891d96a; phase IMPLEMENTATION."
+    },
+    {
+      "ts": "2026-10-18T02:38:51Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-7",
+      "milestone": "implemented",
+      "sha": "beb281b913b21ea11b19353def140d89e1abfd2f",
+      "text": "Candidate implemented at beb281b913b21ea11b19353def140d89e1abfd2f; phase CLOSURE."
+    },
+    {
+      "ts": "2026-10-18T02:39:32Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 59fe7fbc4ae713fd5622cd2b0ccaf00d3414c790..905ad92d42ee: 4 reviewed, 0 changed.",
+      "since": "59fe7fbc4ae713fd5622cd2b0ccaf00d3414c790",
+      "until": "905ad92d42eeb7cf46ac6e40acf0968c5bc52224",
+      "reviewed": [
+        "public-api",
+        "documentation",
+        "get-started-cli",
+        "benchmarks"
+      ],
+      "changed": []
+    },
+    {
+      "ts": "2026-10-18T02:40:32Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-7 makes get-started target creation exclusive so a competing file is preserved, declares the metadata-preserving poetry-core>=2.2.0 backend floor, pins all fourteen workflow installers to poetry==2.5.1 through the selected Python, and makes the existing public-reference assertion multiplicity-safe; the exact-floor and normal package builds passed, the independent Job 1 review approved beb281b, and the official Job 1 merge gate exited 0 with 1238 passed, 8 deselected and 9 warnings in 155.60 s; verdict.py stats 0.8.0-rc7 reports 1 sequence, 1 verdict, 0 rejected and first-pass rejected 0/1; memory: CHANGELOG and Architecture state the maintenance result and exact tool constraints, QUALITY was reviewed unchanged, and release.py's authoritative source worklist required public-api, documentation, get-started-cli and benchmarks to be reviewed unchanged; catalog/index regeneration and llms.txt required no byte change, and release.py drift reports nothing drifted; the resolved CLI race is archived, release, memory, backlog and bug checks exit 0 with 0 open bugs, and context doctor reports no rand-engine spec error beyond seven nonblocking TREE-5 template warnings while global errors belong to foreign hooks and workspace state outside this candidate; carried: PR #47 still needs fresh final-head CI and same-runner benchmark evidence before merge, stable PyPI and Pages publication wait for promotion, and outreach remains the only active backlog item for post-stable execution; backlog exits: none."
+    },
+    {
+      "ts": "2026-10-18T02:47:40Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 161a6c8cde9408a1bd576f056f2e6f214c509c4c..36b703d63a6e: 5 reviewed, 0 changed.",
+      "since": "161a6c8cde9408a1bd576f056f2e6f214c509c4c",
+      "until": "36b703d63a6ef19c2f1b9a2f7bffcec41ccf07fb",
+      "reviewed": [
+        "public-api",
+        "data-generator",
+        "documentation",
+        "get-started-cli",
+        "benchmarks"
+      ],
+      "changed": []
+    },
+    {
+      "ts": "2026-10-18T03:58:03Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.8.0 (prior candidate closed at beb281b913b21ea11b19353def140d89e1abfd2f)"
+    },
+    {
+      "ts": "2026-10-18T04:08:34Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-8",
+      "milestone": "defined",
+      "sha": "1c16ec3",
+      "text": "Candidate defined at 1c16ec3; phase IMPLEMENTATION."
+    },
+    {
+      "ts": "2026-10-18T04:55:15Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-8",
+      "milestone": "implemented",
+      "sha": "2be1798337080aa4fb16006bb2c21f3e6c54d4bb",
+      "text": "Candidate implemented at 2be1798337080aa4fb16006bb2c21f3e6c54d4bb; phase CLOSURE."
+    },
+    {
+      "ts": "2026-10-18T04:57:40Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 36b703d63a6ef19c2f1b9a2f7bffcec41ccf07fb..166b81ae107e: 0 reviewed, 2 changed.",
+      "since": "36b703d63a6ef19c2f1b9a2f7bffcec41ccf07fb",
+      "until": "166b81ae107eb0c7295928bdc335826402f0b6ec",
+      "reviewed": [],
+      "changed": [
+        "documentation",
+        "get-started-cli"
+      ]
+    },
+    {
+      "ts": "2026-10-18T05:00:38Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-8 adds one six-entry Case descriptor whose five runnable starters retain their resources, filenames and behavior while the sixth writes an opt-in AGENTS.md package-use context through the same exclusive writer; one canonical compatibility, migration and recovery guide; public contribution and Issues guidance; verified GitHub private vulnerability reporting and security guidance; README, navigation, llms.txt and the Agent Skill route humans and agents to those authorities; the official gates report 1249 passed, 8 deselected and 10 known warnings in 70.72 s for Job 1 and 1250 passed, 8 deselected and 10 known warnings in 63.44 s with Ruff green for Job 2; a final wheel built from 66135d7 has SHA-256 6f2a9de1e15c4d016be5e07df789fd8d0b3b16a9fef71b15fa1935b3688a8d2d and passed a ten-step installed journey plus the generated Agent example on CPython 3.12.3/Linux; verdict.py stats 0.8.0-rc8 reports 2 sequences, 5 verdicts, 3 rejected and first-pass rejected 2/2; frozen adoption evidence is candidate readiness 95/100, with onboarding 100%, guides 100%, API 100%, agents 100% and trust 100%, but discoverability 75%; memory: documentation and get-started-cli changed, Architecture and Quality now distinguish five executable resources from the Markdown Agent resource, catalog/index regenerated, public-api and templates-and-examples reviewed unchanged, and CHANGELOG records the adoption routes; release, memory, backlog and bug checks exit 0 with 0 open bugs, while dry doctor retains seven nonblocking TREE-5 warnings and global foreign/TTL findings outside this candidate; carried: stable publication remains held because Pages root, llms.txt and sitemap return 404, all eight separate need-oriented search samples returned no first-party URL, PR #48's required stream_dict benchmark remains failed at ratio 1.345696313 above 1.3 pending the operator-reserved Arrow contract ruling, and outreach remains active for the public-discovery sequence; backlog exits: none."
+    },
+    {
+      "ts": "2026-10-18T05:15:24Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-8 closure verification now includes the literal public-list oracle for all five preserved starter descriptions at f849371 while retaining the six-line order and non-empty assertions, with the correct product green and a non-empty lake-description mutation red; runtime, documentation and packaging inputs are unchanged from 66135d7, so the final-wheel SHA-256 6f2a9de1e15c4d016be5e07df789fd8d0b3b16a9fef71b15fa1935b3688a8d2d and ten-step installed journey remain the applicable artifact evidence; verdict.py stats 0.8.0-rc8 reports 3 sequences, 6 verdicts, 4 rejected and first-pass rejected 3/3; release.py drift from the latest memory entry reports no changed atom, so no second memory record or derived-doc edit is warranted; the frozen score remains candidate readiness 95/100, public stable 42.5/100 and discoverability 75%; carried: stable publication remains held for public documentation and discovery evidence above 90 in every field, PR #48 remains blocked by the stream_dict ratio 1.345696313 above 1.3 pending the operator-reserved Arrow contract ruling, and outreach remains active; backlog exits: none."
+    },
+    {
+      "ts": "2026-10-18T05:37:34Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 36b703d63a6ef19c2f1b9a2f7bffcec41ccf07fb..ff103d4335d2: 2 reviewed, 0 changed.",
+      "since": "36b703d63a6ef19c2f1b9a2f7bffcec41ccf07fb",
+      "until": "ff103d4335d2479fd600844d8856ccfaf190014e",
+      "reviewed": [
+        "documentation",
+        "get-started-cli"
+      ],
+      "changed": []
+    },
+    {
+      "ts": "2026-10-18T05:37:42Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.8.0 (prior candidate closed at 2be1798337080aa4fb16006bb2c21f3e6c54d4bb)"
+    },
+    {
+      "ts": "2026-10-18T12:15:37Z",
+      "agent": "dd-product-engineer",
+      "kind": "note",
+      "text": "Operator authorization verbatim: aprovado — authorizes both rc-9 decisions: the clearly labelled exact-SHA unreleased preview on the one public Pages root with only the temporary feature/0.8.0 github-pages policy until verified stable master deployment removes it, and the exact changelog assertion replacement requiring live 0.8.0 to be Unreleased while every published numeric release remains ISO-dated with all 0.8 content and the fixed 0.7 date retained. It does not authorize the separate Arrow or stream conversion/test decision, alter the 1.3 regression limit, or lift the stable-release hold."
+    },
+    {
+      "ts": "2026-10-18T12:15:49Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-9",
+      "milestone": "defined",
+      "sha": "49948f18fac871a138033b59756c10ce16cfe71f",
+      "text": "Candidate defined at 49948f18fac871a138033b59756c10ce16cfe71f; phase IMPLEMENTATION."
+    },
+    {
+      "ts": "2026-10-18T13:41:56Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-9",
+      "milestone": "implemented",
+      "sha": "d0a1ff79a9704d86526c93eb5d0cb708b5420c30",
+      "text": "Candidate implemented at d0a1ff79a9704d86526c93eb5d0cb708b5420c30; phase CLOSURE."
+    },
+    {
+      "ts": "2026-10-18T13:43:01Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over ff103d4335d2479fd600844d8856ccfaf190014e..6263ae2a071c: 0 reviewed, 2 changed.",
+      "since": "ff103d4335d2479fd600844d8856ccfaf190014e",
+      "until": "6263ae2a071ce8531081ab6ad6cb8d20e6fbe133",
+      "reviewed": [],
+      "changed": [
+        "documentation",
+        "get-started-cli"
+      ]
+    },
+    {
+      "ts": "2026-10-18T13:43:49Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 6263ae2a071ce8531081ab6ad6cb8d20e6fbe133..ab4929994f76: 0 reviewed, 0 changed.",
+      "since": "6263ae2a071ce8531081ab6ad6cb8d20e6fbe133",
+      "until": "ab4929994f76fcf994b589a9297d69cc4e4e34e9",
+      "reviewed": [],
+      "changed": []
+    },
+    {
+      "ts": "2026-10-18T13:44:37Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-9 implemented at d0a1ff79: isolated stable and immutable-source preview preparation; exact-SHA preview notices, core and Faker-extra source-ZIP installs and own-project routes; raw Markdown, llms.txt, starter resources and a generated canonical-skill mirror beside rendered HTML; static Agent context routed to the live Getting started and durable skill mirror; exact-ref Pages upload, bounded shared deploy queue, fresh fail-closed preview guard with explained successful skips and stable master bypass; truthful need-oriented site description and an Unreleased changelog header under the operator-authorized assertion; local Python 3.12 official job gates passed Ruff and the full suite with Job 1 at 1252 passed, 8 deselected and 10 known warnings in 75.68 s, Job 2 at 1285 passed, 8 deselected and 10 known warnings in 76.11 s, and Job 3 at 1285 passed, 8 deselected and 10 known warnings in 96.73 s; bounded artifact evidence includes final preview and stable strict builds in 1.43 s and 1.50 s, with public HTTP deliberately uncredited; implementation size 82ac28e..d0a1ff7 is 6 files, +701/-25; memory: authoritative drift changed documentation and get-started-cli, scripts/docs_site.py now belongs to documentation source coverage, canonical Architecture and Quality state isolated preparation, raw resources, preview transforms, parser boundaries, queue and guard behavior without release snapshots, catalog/index regenerated, no derived document cites either changed atom, final drift is 0, and memory, release, backlog and bug checks exit 0; verdict.py stats 0.8.0-rc9: fix-induced bugs n/a against <=20%, first-pass approval 1/3 (33%) against >=70%, closure duration n/a before integration against <=4 h, non-block commits after closure 0 against 0, memory drift 0 against 0, rebuild-due patches 0 against 0, oldest record read 2026-10-10T22:35:19Z; goal readout remains source candidate 95/100 and discovery 15/20 (75%) until public observations, with 0 open bugs; scoped doctor has 0 LINT, ledger or memory findings and exits 1 only with seven superseded-template warnings plus workspace state (8 worktree information rows, 5 foreign-worktree warnings, 10 expired handoffs and 11 retained reaped entries), with no fix, reprojection or foreign cleanup attempted; carried: public F3 evidence remains pending the exact temporary Pages policy addition, official feature push, public HTTP/raw-route verification and fresh source-ZIP human and agent journeys; the stable release remains held until the frozen score is strictly above 90 overall and in every field, external discovery and outreach remain active, temporary policy removal waits for verified stable master deployment, and the separate Arrow decision and 1.3 benchmark limit remain unchanged; backlog exits: none."
+    },
+    {
+      "ts": "2026-10-18T13:46:48Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over ab4929994f76fcf994b589a9297d69cc4e4e34e9..9ff37b0140e9: 0 reviewed, 0 changed.",
+      "since": "ab4929994f76fcf994b589a9297d69cc4e4e34e9",
+      "until": "9ff37b0140e9f05b9bd2f3c44ea899d2e90e4c19",
+      "reviewed": [],
+      "changed": []
+    },
+    {
+      "ts": "2026-10-18T13:57:47Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over ff103d4335d2479fd600844d8856ccfaf190014e..22f1d66ea7e6: 2 reviewed, 0 changed.",
+      "since": "ff103d4335d2479fd600844d8856ccfaf190014e",
+      "until": "22f1d66ea7e6aa64a00685b6f37b98cfe4a7f583",
+      "reviewed": [
+        "documentation",
+        "get-started-cli"
+      ],
+      "changed": []
+    },
+    {
+      "ts": "2026-10-18T14:32:31Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.8.0 (prior candidate closed at d0a1ff79a9704d86526c93eb5d0cb708b5420c30)"
+    },
+    {
+      "ts": "2026-10-18T14:34:31Z",
+      "agent": "dd-product-engineer",
+      "kind": "note",
+      "text": "Operator authorization verbatim: Aprovar a troca e os ajustes de testes descritos"
+    },
+    {
+      "ts": "2026-10-18T14:41:52Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-10",
+      "milestone": "defined",
+      "sha": "7e655f8d540ee8c21de79b755bd7141043f83189",
+      "text": "Candidate defined at 7e655f8d540ee8c21de79b755bd7141043f83189; phase IMPLEMENTATION."
+    },
+    {
+      "ts": "2026-10-18T15:13:56Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-10",
+      "milestone": "implemented",
+      "sha": "9ee80e3c2f3190871aaaa51e0fa7ff1b4ff6a868",
+      "text": "Candidate implemented at 9ee80e3c2f3190871aaaa51e0fa7ff1b4ff6a868; phase CLOSURE."
+    },
+    {
+      "ts": "2026-10-18T15:15:54Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 22f1d66ea7e6aa64a00685b6f37b98cfe4a7f583..75b6e9f802e1: 1 reviewed, 2 changed.",
+      "since": "22f1d66ea7e6aa64a00685b6f37b98cfe4a7f583",
+      "until": "75b6e9f802e1383d8c6ca4f36c7a6aab03facb60",
+      "reviewed": [
+        "get-started-cli"
+      ],
+      "changed": [
+        "data-generator",
+        "documentation"
+      ]
+    },
+    {
+      "ts": "2026-10-18T15:16:52Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-10 implemented at 9ee80e3 (Jobs 1-2): DataGenerator.stream_dict now performs one normalized pandas DataFrame.to_dict(records) conversion after deletion of the Arrow eligibility helper, conditional conversion, fallback and date-only helper import; the operator-authorized test adjustment removed two exact Arrow-only tests and Arrow mechanics while 20 public stream contract tests retain values, exact Python types, key order, None, datetime strings, continuous offsets, timestamps and cadence; five docs and skill consumers use truthful pandas wording and neutral executable names; preview-faker-install-guidance resolved at 41df169 by scanning every copied public case resource and routing the canonical Faker case and tutorial to Getting started, with 0 open bugs; official merge gates: Job 1 Ruff passed with 1283 passed, 8 deselected and 10 known warnings in 65.29 s, and Job 2 passed with 1285 passed, 8 deselected and 10 known warnings in 64.37 s; documentation verification passed 119 tests with 8 known warnings in 15.34 s, and stable and preview prepare-plus-strict-build both exited 0 in 1.711 s and 1.708 s; implementation size 7e655f8..9ee80e3: 14 files, +71/-191; memory: data-generator and documentation changed, get-started-cli reviewed, ARCHITECTURE and QUALITY reconciled, catalog regenerated and data-generator markers refreshed in docs/1_DATA_GENERATOR.md and docs/5_RECIPES.md; verdict.py stats 0.8.0-rc10: fix-induced bugs 1/1 (100%) against <=20%, first-pass approval 2/2 (100%) against >=70%, closure duration n/a against <=4 h, non-block commits after closure 0 against 0, memory drift 0 against 0, rebuild-due patches 0 against 0, oldest record read 2026-10-10T22:35:19Z; carried: post-merge CI, the required unchanged-base and unchanged-workload benchmark at the 1.3 limit, public preview retrieval, source-ZIP consumer journey and independent frozen rescore remain pending after the official feature push, so the old public preview at 6f9807a and score 92.5/100 overall, 75% discovery and 87.5% onboarding receive no new credit; stable remains held above 90 overall and in every category; both authorized outreach PRs remain open, while broad outreach, Context7 manual authorization, on-demand conda-forge, acceptance and indexing remain incomplete; the temporary feature Pages policy remains until verified stable master deployment removes only that rule; backlog exits: none."
+    },
+    {
+      "ts": "2026-10-18T15:18:46Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 75b6e9f802e1383d8c6ca4f36c7a6aab03facb60..5059eb0eefaa: 0 reviewed, 0 changed.",
+      "since": "75b6e9f802e1383d8c6ca4f36c7a6aab03facb60",
+      "until": "5059eb0eefaa9213db1eec16ff84ebf1d2e4c610",
+      "reviewed": [],
+      "changed": []
+    },
+    {
+      "ts": "2026-10-18T16:07:25Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.8.0 (prior candidate closed at 9ee80e3c2f3190871aaaa51e0fa7ff1b4ff6a868)"
+    },
+    {
+      "ts": "2026-10-18T16:11:44Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-11",
+      "milestone": "defined",
+      "sha": "fe8cb1c3da259c8b5a50ab7be0e22663780fea25",
+      "text": "Candidate defined at fe8cb1c3da259c8b5a50ab7be0e22663780fea25; phase IMPLEMENTATION."
+    },
+    {
+      "ts": "2026-10-18T16:17:18Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-11",
+      "milestone": "implemented",
+      "sha": "325b3e2aa14c519a507cd0ae390605eaa4db4af1",
+      "text": "Candidate implemented at 325b3e2aa14c519a507cd0ae390605eaa4db4af1; phase CLOSURE."
+    },
+    {
+      "ts": "2026-10-18T16:18:05Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-11 implemented at 325b3e2: CHANGELOG's current 0.8.0 stream bullet now states normalized pandas to_dict(records) conversion, while the Unreleased header and every other byte remain unchanged; no runtime, test, gate, benchmark, dependency, workspace or publication-date behavior changed; the official Job 1 merge gate passed Ruff with 1283 passed, 8 deselected and 10 known warnings in 67.16 s, with no task-local suite; implementation size 5579970..325b3e2 is 1 file, +1/-1; 0 open bugs; data-generator and documentation product truth were reviewed unchanged, release.py drift from 5059eb0..e0cb294 found no memory worklist, and no atom, generated catalog, derived marker or source coverage changed; verdict.py stats 0.8.0-rc11: fix-induced bugs n/a against <=20%, first-pass approval 1/2 (50%) against >=70%, closure duration n/a against <=4 h, non-block commits after closure 0 against 0, memory drift 0 against 0, rebuild-due patches 0 against 0, oldest record read 2026-10-10T22:35:19Z; carried: the future official rc merge gate, post-merge CI, corrected public-source proof and unchanged independent frozen rescore remain pending, so the last completed frozen result stays 95/100 overall, Guides 87.5% and Trust 75%, the prior 100 is superseded and no point is pre-awarded; stable promotion remains held until the score is strictly above 90 overall and in every category; outreach remains active with no exit, and stable 0.7 publication-date bookkeeping stays outside rc-11; backlog exits: none."
+    },
+    {
+      "ts": "2026-10-18T16:18:29Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 5059eb0eefaa9213db1eec16ff84ebf1d2e4c610..a920a7c1262d: 0 reviewed, 0 changed.",
+      "since": "5059eb0eefaa9213db1eec16ff84ebf1d2e4c610",
+      "until": "a920a7c1262da0d51cdce06ed8efde7fedd6d6b1",
+      "reviewed": [],
+      "changed": []
+    }
+  ]
+}

@@ -16,7 +16,9 @@ RandSpec: the NumPy core ([[data-generator]]) yields pandas DataFrames, record s
 ([[writers-and-streaming]]) the user forwards to any queue, lake, database or file; Spark is
 supported through the same spec ([[spark-generator]]). Correlated columns and pattern strings
 ([[generation-methods]]), stateless PK/FK relations ([[pk-fk-constraints]]) and
-ready-made specs ([[templates-and-examples]]) sit on a vectorized NumPy core.
+ready-made specs ([[templates-and-examples]]) sit on a vectorized NumPy core. A new user starts from
+a scaffolded example ([[get-started-cli]]) and the docs site, `llms.txt` and agent skill
+([[documentation]]).
 
 ## Users
 
@@ -32,7 +34,7 @@ ready-made specs ([[templates-and-examples]]) sit on a vectorized NumPy core.
 
 | slug | title | tldr |
 |------|-------|------|
-| `public-api` | Public API | rand_engine exports DataGenerator, SparkGenerator and RandSpecs; every other module is internal. |
+| `public-api` | Public API | rand_engine exports DataGenerator, SparkGenerator, RandSpecs and __version__, is typed and ships the rand-engine CLI; every other module is internal. |
 
 ### content
 
@@ -44,27 +46,34 @@ ready-made specs ([[templates-and-examples]]) sit on a vectorized NumPy core.
 
 | slug | title | tldr |
 |------|-------|------|
-| `data-generator` | DataGenerator | The pandas generator validates a RandSpec, owns its random generator, and returns DataFrames, files, file streams or an endless record stream. |
-| `generation-methods` | Generation methods | Ten common methods run on pandas and Spark; distributions, constant, correlated methods, pk, fk and null/anomaly modifiers run on pandas. |
-| `spark-generator` | SparkGenerator | The Spark generator builds a Spark DataFrame from the ten common RandSpec methods with native expressions, no Python UDF, and refuses NumPy-only features. |
+| `data-generator` | DataGenerator | The pandas generator validates a RandSpec, owns its random generator, and returns DataFrames, files, file streams or an endless lossless record stream. |
+| `generation-methods` | Generation methods | Ten common methods run on pandas and Spark; stateless pk/fk share one indexed authority; extra distributions, constants and modifiers are pandas-only. |
+| `spark-generator` | SparkGenerator | The Spark generator builds ordinary columns with native expressions and stateless pk/fk columns through the shared indexed key authority. |
+
+### onboarding
+
+| slug | title | tldr |
+|------|-------|------|
+| `documentation` | Documentation site, llms.txt and agent skill | Strict-built stable or preview docs, README, llms.txt and Agent guidance cover APIs, tutorials, compatibility, migration, support and security routes. |
+| `get-started-cli` | Get-started CLI | The rand-engine console script lists six starters: five runnable Python examples and one opt-in AGENTS.md project context. |
 
 ### output
 
 | slug | title | tldr |
 |------|-------|------|
-| `writers-and-streaming` | Writers and streaming | DataGenerator writes CSV, JSON lines and Parquet batches, bounded by rows when asked, or repeated file-stream microbatches through a Spark-style builder. |
+| `writers-and-streaming` | Writers and streaming | DataGenerator writes CSV, JSON lines, Parquet or an output-only SQLite table through a Spark-style builder; file streams support the three file formats. |
 
 ### quality
 
 | slug | title | tldr |
 |------|-------|------|
-| `benchmarks` | Performance benchmarks | A CI-only same-runner A/B benchmark times every method, modifier and built-in sink, publishes its table and enforces base, sibling and modifier limits. |
+| `benchmarks` | Performance benchmarks | CI compares every generation method, two modifiers and four sinks on the same runner, publishes results and enforces regression limits. |
 
 ### relations
 
 | slug | title | tldr |
 |------|-------|------|
-| `pk-fk-constraints` | PK/FK key columns | Stateless pk and fk column methods create related tables from definitions, seeds and row indexes without a checkpoint store. |
+| `pk-fk-constraints` | PK/FK key columns | Stateless pk and fk column methods create related tables from definitions, seeds and row indexes on pandas and Spark, without a checkpoint store. |
 
 ### spec
 
@@ -81,7 +90,8 @@ graph TD
   V --> SG[SparkGenerator]
   DG --> NP[NPCore / PyCore methods]
   SG --> SC[SparkCore expressions]
-  DG --> C[pk / fk key columns]
+  DG --> C[shared pk / fk key authority]
+  SG --> C
   DG --> W[write / writeStream]
   DG --> SD[stream_dict]
   E[RandSpecs / templates] --> S
@@ -91,12 +101,13 @@ graph TD
   DF --> U[user-forwarded sinks: queues, lakes, databases]
   SD --> U
   W --> F[(csv / json / parquet files)]
+  W --> DB[(output-only SQLite table)]
 ```
 
 ## Known limits
 
-- Distributions, constants, null and anomaly modifiers, correlated methods, transformers and pk/fk run on pandas only; Spark runs the ten common methods and refuses the rest.
-- Seeds reach the pandas path only; Spark output is unseeded.
-- PK/FK relations are stateless: parent and child link through definitions, seeds and row indexes, with no stored keys.
-- Built-in sinks are files only; queues, object storage and databases are reached by forwarding DataFrames or `stream_dict` records.
+- The `exponential`, `lognormal`, `poisson` and `zipf` distributions, constants, null and anomaly modifiers and transformers run on pandas only. Spark runs the ten common methods, warns and produces a NULL string column for the four correlated methods, accepts `pk` and `fk`, and refuses the other NumPy-only methods.
+- A seed controls pandas values and keys. On Spark, ordinary columns remain unseeded and an explicit seed controls only `pk` and `fk`.
+- PK/FK relations are stateless: parent and child link through definitions, seeds and row indexes, including optional event-time eligibility, with no stored keys or database lookup.
+- Built-in sinks are CSV, JSON-lines and Parquet files plus an output-only SQLite batch table. Queues, object storage and other databases are reached by forwarding DataFrames or `stream_dict` records.
 - pandas generation runs in one process and holds one frame in memory: the whole size for `get_df`, one row batch at a time per file when `maxRowsPerBatch` is set.

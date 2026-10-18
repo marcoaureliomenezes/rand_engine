@@ -303,8 +303,8 @@ def test_worker_hung_past_the_cap_is_killed_at_the_cap(tmp_path, monkeypatch):
   assert time.monotonic() - t < 10
 
 
-TERMINAL_HEAD = "5920630f665757799a09250323446f439704a6cc"
-TERMINAL_BASE = "959f8909b402b37558382a2c3088aa6265d0729e"
+TERMINAL_HEAD = "bbc984762cafa04cde46ba72c55e23405f9249f8"
+TERMINAL_BASE = "5920630f665757799a09250323446f439704a6cc"
 
 
 @pytest.fixture(scope="module")

@@ -7,7 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.7.0] - Unreleased
+## [0.8.0] - Unreleased
+
+### Added
+
+- Docs site built by Zensical (strict) from the repo Markdown: Getting started, five tutorials, the API reference generated from the numpydoc docstrings, and Explanation.
+- `rand-engine` CLI: `rand-engine list` and `rand-engine get-started <slug>` scaffold five runnable cases (`test-data`, `lake`, `kafka`, `databricks`, `faker`); `python -m rand_engine` runs the same CLI.
+- `rand_engine.__version__` and a `py.typed` marker.
+- numpydoc docstrings with runnable examples on `DataGenerator`, `SparkGenerator`, `RandSpecs` and the writers.
+- Agent Skill `skills/rand-engine/SKILL.md` in the repository (not in the wheel).
+- `llms.txt` at the docs-site root, linking the site pages and the skill.
+- README rebuilt as a landing page: pitch, badges, install, a 30-second example, the five cases and the docs-site link. Install Faker through the declared extra: `pip install "rand-engine[faker]"`.
+- The validation error footer links the docs site.
+- Python 3.13 tested in CI and advertised (classifiers 3.10–3.13).
+- Package keywords (14) and the `Typing :: Typed` classifier.
+- Rendered references for the returned batch/stream writers and the caller-facing error family, including executable catch examples.
+- Catalog-backed pandas/Spark method tables, engine boundaries, Arrow-schema and Faker builder guidance, and inventories of the ready-made specifications.
+- A five-case onboarding map with prerequisites, run commands and observable outcomes; tutorials and `llms.txt` now route humans and agents to rendered guides or direct runnable case files.
+- Event-time `fk.born_before` eligibility, computed statelessly from parent and child starts/rates with exact inclusive boundaries across DataFrames, files and streams.
+- `SparkGenerator` support for `pk` and `fk`, using the shared indexed key authority so an explicit seed produces the same keys across pandas and Spark partition layouts.
+- Output-only SQLite batch writing with quoted identifiers, bound values, atomic selected-table overwrite and transactional append; stream writers refuse SQLite before output.
+- Normalized pandas `to_dict("records")` conversion for `stream_dict` batches.
+- A primary-source capability comparison for rand-engine, Faker and dbldatagen, without competitor performance claims.
+- An optional `agent` starter: `rand-engine get-started agent --out PROJECT` writes package-use context to `PROJECT/AGENTS.md` without overwriting existing project instructions; the five runnable starters remain unchanged.
+- A canonical compatibility, migration and recovery guide covering Python, Faker, Spark, Java and platform boundaries.
+- Public contribution and support guidance through GitHub Issues, plus private vulnerability reporting through GitHub Security Advisories.
+
+### Fixed
+
+- Spark `integers` with `max - min == 2**53` passed validation and then raised a raw `ValueError` in `get_df`; validation now refuses it with the same width rule as generation.
+- Workflows declare least-privilege top-level `permissions`, and third-party actions are pinned to commit SHAs.
+- Publish summaries no longer state `0.5.6`; the stale `.github/workflow_info.md` is removed.
+- Test-group `pyspark` 3.5.8 and `setuptools` 83.0.0 are locked to patched versions (GHSA-9437-39hj-3c93, GHSA-h35f-9h28-mq5c).
+- The `0.7.0` header is dated `2026-10-14` (it read `Unreleased`).
+- README no longer installs Faker unpinned with `pip install faker`.
+- `int_zfilled` `length` outside 1..18 is refused at validation on both engines (it used to validate, then raise in `get_df`).
+- The package docstring states the library's purpose.
+- `FileStreamWriter.trigger(frequency)` is annotated `float`.
+- `rand-engine get-started` creates its target exclusively, so a file created concurrently is preserved and receives the existing no-overwrite error.
+- Package builds require `poetry-core>=2.2.0`, and every GitHub Actions installer uses Poetry 2.5.1 through the selected Python.
+
+## [0.7.0] - 2026-10-14
 
 ### Breaking changes
 

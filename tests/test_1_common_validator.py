@@ -214,6 +214,13 @@ class TestValidateAndRaise:
         assert "SPARKGENERATOR SPEC VALIDATION ERROR" in str(exc_info.value)
         assert "does not exist" in str(exc_info.value)
 
+    def test_error_footer_names_the_docs_site(self):
+        with pytest.raises(SpecValidationError) as exc_info:
+            CommonValidator.validate_spark_and_raise({"age": {"method": "invalid_method", "kwargs": {}}})
+
+        footer = str(exc_info.value).splitlines()[-2]
+        assert footer == "📚 Documentation: https://marcoaureliomenezes.github.io/rand_engine/"
+
     def test_validate_and_raise_advanced_method_only_warns(self):
         """Advanced methods are allowed in SparkGenerator with a warning (docs/2_SPARK_GENERATOR.md)."""
         spec = {"device_os": {"method": "distincts_map", "cols": ["device", "os"],
@@ -225,13 +232,28 @@ class TestValidateAndRaise:
         ({"method": "distincts_external", "kwargs": {}}, "does not exist"),
         ({"method": "integers", "kwargs": {"min": 1, "max": 5, "dtype": "int"}}, "unknown parameters: 'dtype'"),
         ({"method": "uuid4", "args": []}, "does not support 'args'"),
-        ({"method": "pk", "kwargs": {"style": "sequence"}}, "(?s)^(?!.*does not exist).*'pk'.*NumPy engine only in 0.7.0.*DataGenerator"),
-        ({"method": "fk", "kwargs": {}}, "(?s)^(?!.*does not exist).*'fk'.*NumPy engine only in 0.7.0.*DataGenerator"),
     ])
     def test_validate_and_raise_unsupported_advanced_spec(self, config, message):
         """Specs Spark cannot run raise at validation, not in get_df."""
         with pytest.raises(SpecValidationError, match=message):
             CommonValidator.validate_spark_and_raise({"c": config})
+
+
+def test_spark_catalog_admits_valid_key_columns():
+    """Spark accepts the catalog's key entries before key generation runs."""
+    spec = {
+        "account_id": {"method": "pk", "kwargs": {"style": "sequence", "start": 100, "step": 3}},
+        "parent_id": {
+            "method": "fk",
+            "kwargs": {
+                "parent": {"method": "pk", "kwargs": {"style": "permuted", "domain": 9, "key": 4}},
+                "parent_size": 9,
+                "skew": 1.2,
+            },
+        },
+    }
+
+    assert CommonValidator.validate_spark_spec(spec) == []
 
 
 def test_validated_spec_without_kwargs_generates(spark_session, spark_functions):
@@ -548,13 +570,24 @@ class TestSparkExactDomainRefusals:
         assert len(errors) == 1
         assert "2^53" in errors[0] or "2**53" in errors[0]
 
-    def test_integer_width_2_53_is_accepted(self):
-        assert self._validate("integers", min=0, max=2**53) == []
-
-    def test_int_zfilled_length_16_is_refused(self):
-        errors = self._validate("int_zfilled", length=16)
+    def test_integer_max_2_53_is_refused(self):
+        errors = self._validate("integers", min=0, max=2**53)
         assert len(errors) == 1
-        assert "length" in errors[0]
+        assert "'c'" in errors[0]
+        assert "2**53" in errors[0]
+
+    def test_integer_width_exactly_2_53_is_accepted(self):
+        assert self._validate("integers", min=0, max=2**53 - 1) == []
+        assert self._validate("integers", min=-2**53, max=-1) == []
+        assert self._validate("integers", min=0, max=2**53 - 2) == []
+
+    @pytest.mark.parametrize("length", [16])
+    def test_int_zfilled_length_above_15_is_one_collected_error(self, length):
+        errors = self._validate("int_zfilled", length=length)
+        assert len(errors) == 1
+        assert "Column 'c'" in errors[0]
+        assert "'length'" in errors[0]
+        assert "15" in errors[0]
 
     def test_int_zfilled_length_15_is_accepted(self):
         assert self._validate("int_zfilled", length=15) == []
@@ -586,3 +619,30 @@ def test_spark_float_int_bound_beyond_float64_is_one_issue():
 def test_spark_float_span_finite_is_accepted():
     spec = {"v": {"method": "floats", "kwargs": {"min": -1e307, "max": 1e307, "decimals": 0}}}
     assert CommonValidator.validate_spark_spec(spec) == []
+
+
+_ZFILLED_REFUSED = [0, -1, 19, 5000, 10**7]
+
+
+def _zfilled(length):
+    return {"z": {"method": "int_zfilled", "kwargs": {"length": length}}}
+
+
+@pytest.mark.parametrize("length", _ZFILLED_REFUSED)
+def test_int_zfilled_length_outside_1_18_is_one_issue_from_both_validators(length):
+    spec = _zfilled(length)
+    expected = ["❌ Column 'z': method 'int_zfilled' parameter 'length' must be an integer within 1..18"]
+    assert CommonValidator.validate_column("z", spec["z"]) == expected
+    assert CommonValidator.validate_spark_spec(spec) == expected
+
+
+@pytest.mark.parametrize("length", [0, -1, 19])
+def test_int_zfilled_length_outside_1_18_is_refused_at_construction(length):
+    with pytest.raises(SpecValidationError):
+        DataGenerator(_zfilled(length))
+
+
+@pytest.mark.parametrize("length", [1, 8, 18])
+def test_int_zfilled_length_within_1_18_validates_and_constructs(length):
+    assert CommonValidator.validate_column("z", _zfilled(length)["z"]) == []
+    DataGenerator(_zfilled(length))

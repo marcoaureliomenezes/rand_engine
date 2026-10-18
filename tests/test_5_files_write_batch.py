@@ -3,12 +3,15 @@ import pytest
 import gc
 import os
 import pandas as pd
+import sqlite3
+import datetime as dt
+import numpy as np
 import glob
 import time
 import threading
 import weakref
 import gzip, bz2, lzma, zipfile
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 import pyarrow.parquet as pq
 from rand_engine.file_handlers.file_handler import FileHandler
 
@@ -725,3 +728,384 @@ def test_any_mode_but_append_replaces_the_multi_file_destination(tmp_path, mode)
 
   new = set(os.listdir(path))
   assert len(new) == 2 and not new & old
+
+
+SQLITE_SPEC = PK_SPEC
+
+
+def _sqlite_tables(path):
+  with sqlite3.connect(path) as database:
+    return database.execute(
+      "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name"
+    ).fetchall()
+
+
+def _sqlite_rows(path, table):
+  with sqlite3.connect(path) as database:
+    return database.execute(f'SELECT * FROM "{table.replace(chr(34), chr(34) * 2)}"').fetchall()
+
+
+def _sqlite_values_and_types(path, table, column):
+  quoted_table = table.replace(chr(34), chr(34) * 2)
+  quoted_column = column.replace(chr(34), chr(34) * 2)
+  with sqlite3.connect(path) as database:
+    return database.execute(
+      f'SELECT "{quoted_column}", typeof("{quoted_column}") FROM "{quoted_table}"'
+    ).fetchall()
+
+
+@pytest.mark.parametrize("table", [None, "", "bad\x00name"])
+def test_sqlite_requires_a_nonempty_nul_free_table_before_creating_output(tmp_path, table):
+  path = tmp_path / "required-table.sqlite"
+  writer = DataGenerator(SQLITE_SPEC).size(2).write.format("sqlite")
+  if table is not None:
+    writer.option("table", table)
+
+  with pytest.raises(RandEngineError):
+    writer.save(str(path))
+
+  assert not path.exists()
+
+
+@pytest.mark.parametrize(
+  "columns",
+  [[7], ["duplicate", "duplicate"], ["bad\x00label"]],
+)
+def test_sqlite_refuses_invalid_transformed_column_labels_before_touching_destination(tmp_path, columns):
+  path = tmp_path / "invalid-columns.sqlite"
+  with sqlite3.connect(path) as database:
+    database.execute('CREATE TABLE "keep" (value INTEGER)')
+    database.execute('INSERT INTO "keep" VALUES (91)')
+    database.execute('CREATE TABLE "target" (value INTEGER)')
+    database.execute('INSERT INTO "target" VALUES (17)')
+
+  def relabel(frame):
+    if len(columns) == 2:
+      return pd.DataFrame([[1, 2]], columns=columns)
+    return frame.set_axis(columns, axis="columns")
+
+  with pytest.raises(RandEngineError):
+    (
+      DataGenerator(SQLITE_SPEC)
+      .size(1)
+      .transformers([relabel])
+      .write
+      .format("sqlite")
+      .option("table", "target")
+      .save(str(path))
+    )
+
+  assert _sqlite_tables(path) == [("keep",), ("target",)]
+  assert _sqlite_rows(path, "keep") == [(91,)]
+  assert _sqlite_rows(path, "target") == [(17,)]
+  assert not list(tmp_path.glob(".invalid-columns.sqlite.*.staging"))
+
+
+def test_sqlite_quotes_hostile_names_binds_values_and_round_trips_supported_types(tmp_path):
+  path = tmp_path / "hostile.sqlite"
+  table = 'target"; DROP TABLE keep; --'
+  columns = ["integer", "boolean", "real", "text", "blob", "missing", "day", "moment"]
+
+  def typed_values(frame):
+    return pd.DataFrame({
+      "integer": [np.int64(7), np.int32(-2)],
+      "boolean": [np.bool_(True), False],
+      "real": [np.float64(1.25), 2.5],
+      "text": ['value"; DROP TABLE keep; --', "plain"],
+      "blob": [b"\x00bytes", b"two"],
+      "missing": [None, pd.NA],
+      "day": [dt.date(2024, 1, 2), dt.date(2024, 1, 3)],
+      "moment": [dt.datetime(2024, 1, 2, 3, 4, 5), dt.datetime(2024, 1, 3, 4, 5, 6)],
+    })
+
+  assert list(typed_values(pd.DataFrame({"id": [1, 2]})).columns) == columns
+
+  with closing(sqlite3.connect(path)) as database, database:
+    database.execute('CREATE TABLE "keep" (value TEXT)')
+    database.execute('INSERT INTO "keep" VALUES (?)', ("unchanged",))
+
+  (
+    DataGenerator(SQLITE_SPEC)
+    .size(2)
+    .transformers([typed_values])
+    .write
+    .format("sqlite")
+    .option("table", table)
+    .save(str(path))
+  )
+
+  assert _sqlite_rows(path, "keep") == [("unchanged",)]
+  assert _sqlite_rows(path, table) == [
+    (7, 1, 1.25, 'value"; DROP TABLE keep; --', b"\x00bytes", None, "2024-01-02", "2024-01-02T03:04:05"),
+    (-2, 0, 2.5, "plain", b"two", None, "2024-01-03", "2024-01-03T04:05:06"),
+  ]
+  with sqlite3.connect(path) as database:
+    assert [row[1] for row in database.execute(f'PRAGMA table_info("{table.replace(chr(34), chr(34) * 2)}")')] == columns
+
+
+@pytest.mark.parametrize(
+  "values, expected",
+  [
+    ([1, "2", 3.5], [(1, "integer"), ("2", "text"), (3.5, "real")]),
+    (["2", 1, 3.5], [("2", "text"), (1, "integer"), (3.5, "real")]),
+  ],
+)
+def test_sqlite_mixed_object_column_preserves_each_supported_value_and_storage_class(tmp_path, values, expected):
+  path = tmp_path / "mixed.sqlite"
+
+  def mixed_values(_frame):
+    return pd.DataFrame({"value": pd.Series(values, dtype=object)})
+
+  (
+    DataGenerator(SQLITE_SPEC)
+    .size(3)
+    .transformers([mixed_values])
+    .write
+    .format("sqlite")
+    .option("table", "events")
+    .save(str(path))
+  )
+
+  assert _sqlite_values_and_types(path, "events", "value") == expected
+
+
+def test_sqlite_overwrite_replaces_only_selected_table_and_preserves_unrelated_tables(tmp_path):
+  path = tmp_path / "overwrite.sqlite"
+  with closing(sqlite3.connect(path)) as database, database:
+    database.execute('CREATE TABLE "target" (old TEXT)')
+    database.execute('INSERT INTO "target" VALUES ("old value")')
+    database.execute('CREATE TABLE "other" (value INTEGER)')
+    database.execute('INSERT INTO "other" VALUES (42)')
+
+  DataGenerator(SQLITE_SPEC).size(3).write.format("sqlite").option("table", "target").save(str(path))
+
+  assert _sqlite_tables(path) == [("other",), ("target",)]
+  assert _sqlite_rows(path, "other") == [(42,)]
+  assert _sqlite_rows(path, "target") == [(1,), (2,), (3,)]
+
+
+def test_sqlite_overwrite_failure_keeps_prior_database_and_removes_staging(tmp_path):
+  path = tmp_path / "atomic.sqlite"
+  with sqlite3.connect(path) as database:
+    database.execute('CREATE TABLE "target" (value INTEGER)')
+    database.execute('INSERT INTO "target" VALUES (99)')
+    database.execute('CREATE TABLE "other" (value INTEGER)')
+    database.execute('INSERT INTO "other" VALUES (42)')
+
+  def fail(_frame):
+    raise RuntimeError("transformation failed")
+
+  with pytest.raises(RuntimeError, match="transformation failed"):
+    (
+      DataGenerator(SQLITE_SPEC)
+      .size(2)
+      .transformers([fail])
+      .write
+      .format("sqlite")
+      .option("table", "target")
+      .save(str(path))
+    )
+
+  assert _sqlite_rows(path, "target") == [(99,)]
+  assert _sqlite_rows(path, "other") == [(42,)]
+  assert not list(tmp_path.glob(".atomic.sqlite.*.staging"))
+
+
+def test_sqlite_overwrite_write_failure_keeps_prior_database_and_removes_staging(tmp_path, monkeypatch):
+  path = tmp_path / "atomic-write.sqlite"
+  with sqlite3.connect(path) as database:
+    database.execute('CREATE TABLE "target" (value INTEGER)')
+    database.execute('INSERT INTO "target" VALUES (99)')
+    database.execute('CREATE TABLE "other" (value INTEGER)')
+    database.execute('INSERT INTO "other" VALUES (42)')
+
+  class FailAfterFirstInsertCursor(sqlite3.Cursor):
+    def execute(self, sql, parameters=()):
+      result = super().execute(sql, parameters)
+      self.connection._fail_after_insert(sql)
+      return result
+
+    def executemany(self, sql, rows):
+      for row in rows:
+        self.execute(sql, row)
+
+  class FailAfterFirstInsert(sqlite3.Connection):
+    def __init__(self, *args, **kwargs):
+      super().__init__(*args, **kwargs)
+      self.failed = False
+
+    def execute(self, sql, parameters=()):
+      result = super().execute(sql, parameters)
+      self._fail_after_insert(sql)
+      return result
+
+    def executemany(self, sql, rows):
+      for row in rows:
+        self.execute(sql, row)
+
+    def cursor(self, factory=FailAfterFirstInsertCursor):
+      return super().cursor(factory=factory)
+
+    def _fail_after_insert(self, sql):
+      if sql.lstrip().upper().startswith("INSERT INTO") and not self.failed:
+        self.failed = True
+        raise sqlite3.OperationalError("injected write failure")
+
+  real_connect = sqlite3.connect
+
+  def connect_then_fail(*args, **kwargs):
+    kwargs["factory"] = FailAfterFirstInsert
+    return real_connect(*args, **kwargs)
+
+  monkeypatch.setattr(sqlite3, "connect", connect_then_fail)
+  with pytest.raises(RandEngineError):
+    DataGenerator(SQLITE_SPEC).size(2).write.format("sqlite").option("table", "target").save(str(path))
+
+  assert _sqlite_rows(path, "target") == [(99,)]
+  assert _sqlite_rows(path, "other") == [(42,)]
+  assert not list(tmp_path.glob(".atomic-write.sqlite.*.staging"))
+
+
+def test_sqlite_append_creates_then_requires_the_existing_ordered_schema(tmp_path):
+  path = tmp_path / "append.sqlite"
+  writer = DataGenerator(SQLITE_SPEC).size(2).write.format("sqlite").option("table", "events")
+  writer.mode("append").save(str(path))
+  writer.mode("append").save(str(path))
+
+  assert _sqlite_rows(path, "events") == [(1,), (2,), (1,), (2,)]
+
+  def reordered(frame):
+    return frame.assign(extra="x")[["extra", "id"]]
+
+  assert list(reordered(pd.DataFrame({"id": [1]})).columns) == ["extra", "id"]
+
+  with pytest.raises(RandEngineError):
+    (
+      DataGenerator(SQLITE_SPEC)
+      .size(1)
+      .transformers([reordered])
+      .write
+      .format("sqlite")
+      .mode("append")
+      .option("table", "events")
+      .save(str(path))
+    )
+
+  assert _sqlite_rows(path, "events") == [(1,), (2,), (1,), (2,)]
+
+
+def test_sqlite_append_all_null_column_does_not_freeze_later_integer_storage(tmp_path):
+  path = tmp_path / "null-then-integer.sqlite"
+
+  def missing(_frame):
+    return pd.DataFrame({"value": [None, pd.NA]})
+
+  def integers(_frame):
+    return pd.DataFrame({"value": [7, -2]})
+
+  (
+    DataGenerator(SQLITE_SPEC)
+    .size(2)
+    .transformers([missing])
+    .write
+    .format("sqlite")
+    .mode("append")
+    .option("table", "events")
+    .save(str(path))
+  )
+  (
+    DataGenerator(SQLITE_SPEC)
+    .size(2)
+    .transformers([integers])
+    .write
+    .format("sqlite")
+    .mode("append")
+    .option("table", "events")
+    .save(str(path))
+  )
+
+  assert _sqlite_values_and_types(path, "events", "value") == [
+    (None, "null"),
+    (None, "null"),
+    (7, "integer"),
+    (-2, "integer"),
+  ]
+
+
+def test_sqlite_append_rolls_back_every_row_when_a_real_constraint_rejects_one(tmp_path):
+  path = tmp_path / "append-rollback.sqlite"
+  with sqlite3.connect(path) as database:
+    database.execute('CREATE TABLE "events" ("id" INTEGER CHECK ("id" < 5))')
+    database.execute('INSERT INTO "events" VALUES (1)')
+
+  def valid_then_invalid(_frame):
+    return pd.DataFrame({"id": [2, 7]})
+
+  assert valid_then_invalid(pd.DataFrame({"id": [1, 2]})).to_dict("list") == {"id": [2, 7]}
+
+  with pytest.raises(RandEngineError):
+    (
+      DataGenerator(SQLITE_SPEC)
+      .size(2)
+      .transformers([valid_then_invalid])
+      .write
+      .format("sqlite")
+      .mode("append")
+      .option("table", "events")
+      .save(str(path))
+    )
+
+  assert _sqlite_rows(path, "events") == [(1,)]
+
+
+def test_sqlite_refuses_unsupported_values_options_and_modes_before_output(tmp_path):
+  path = tmp_path / "refusals.sqlite"
+
+  class Unsupported:
+    pass
+
+  def unsupported_value(_frame):
+    return pd.DataFrame({"value": [Unsupported()]})
+
+  attempts = [
+    DataGenerator(SQLITE_SPEC).size(1).write.format("sqlite").option("table", "events").option("numFiles", 2),
+    DataGenerator(SQLITE_SPEC).size(1).write.format("sqlite").option("table", "events").option("maxRowsPerBatch", 1),
+    DataGenerator(SQLITE_SPEC).size(1).write.format("sqlite").option("table", "events").option("compression", "gzip"),
+    DataGenerator(SQLITE_SPEC).size(1).write.format("sqlite").mode("replace").option("table", "events"),
+    DataGenerator(SQLITE_SPEC).size(1).transformers([unsupported_value]).write.format("sqlite").option("table", "events"),
+  ]
+
+  for writer in attempts:
+    with pytest.raises(RandEngineError):
+      writer.save(str(path))
+    assert not path.exists()
+
+
+@pytest.mark.parametrize("value", [2 ** 63, np.uint64(2 ** 63)])
+@pytest.mark.parametrize("existing", [False, True])
+def test_sqlite_refuses_out_of_signed_64_bit_integer_before_changing_destination(tmp_path, value, existing):
+  path = tmp_path / "integer-range.sqlite"
+  if existing:
+    with sqlite3.connect(path) as database:
+      database.execute('CREATE TABLE "keep" (value INTEGER)')
+      database.execute('INSERT INTO "keep" VALUES (91)')
+
+  def out_of_range(_frame):
+    return pd.DataFrame({"value": pd.Series([value], dtype=object)})
+
+  with pytest.raises(RandEngineError):
+    (
+      DataGenerator(SQLITE_SPEC)
+      .size(1)
+      .transformers([out_of_range])
+      .write
+      .format("sqlite")
+      .option("table", "events")
+      .save(str(path))
+    )
+
+  if existing:
+    assert _sqlite_tables(path) == [("keep",)]
+    assert _sqlite_rows(path, "keep") == [(91,)]
+  else:
+    assert not path.exists()

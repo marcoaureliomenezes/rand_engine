@@ -1,0 +1,41 @@
+# Databricks notebook source
+# Kafka: an event stream as JSON lines on stdout. Runs as-is with plain python; no broker or client needed.
+
+# COMMAND ----------
+# Describe the events and the switches. The producer stays off until you turn it on.
+
+import json
+from itertools import islice
+
+from rand_engine import DataGenerator
+
+SEND_TO_KAFKA = False  # pip install kafka-python, then set True
+BOOTSTRAP_SERVERS = "localhost:9092"
+EVENT_SPEC = {
+  "event_id": {"method": "pk", "kwargs": {"start": 1}},
+  "kind": {"method": "distincts", "kwargs": {"distincts": ["click", "view", "buy"]}},
+  "user": {"method": "int_zfilled", "kwargs": {"length": 6}},
+  "amount": {"method": "floats", "kwargs": {"min": 1, "max": 300, "decimals": 2}},
+  "ts": {"method": "unix_timestamps", "kwargs": {"start": "2024-01-01", "end": "2024-12-31"}},
+}
+
+# COMMAND ----------
+# Print 100 events, one JSON line each. stream_dict adds a wall-clock timestamp_created that
+# would change on every run, so it is dropped; ts is the seeded event time.
+
+events = DataGenerator(EVENT_SPEC, seed=7).size(100)
+for event in islice(events.stream_dict(min_throughput=500, max_throughput=1000), 100):
+  event.pop("timestamp_created")
+  print(json.dumps(event))
+
+# COMMAND ----------
+# Producer, off by default. Set SEND_TO_KAFKA = True and BOOTSTRAP_SERVERS first.
+
+if SEND_TO_KAFKA:
+  from kafka import KafkaProducer
+
+  producer = KafkaProducer(bootstrap_servers=BOOTSTRAP_SERVERS)
+  for event in islice(events.stream_dict(min_throughput=500, max_throughput=1000), 100):
+    event.pop("timestamp_created")
+    producer.send("events", json.dumps(event).encode())
+  producer.flush()

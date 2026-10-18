@@ -389,7 +389,9 @@ assert not any(name == "faker" or name.startswith("faker.") for name in sys.modu
     assert result.returncode == 0, result.stderr
 
 
-def test_wheel_exposes_faker_only_as_the_approved_optional_extra(tmp_path):
+@pytest.fixture(scope="module")
+def built_wheel(tmp_path_factory):
+    tmp_path = tmp_path_factory.mktemp("wheel")
     project_root = Path(__file__).parents[2]
     output = tmp_path / "dist"
     env = os.environ.copy()
@@ -408,10 +410,13 @@ def test_wheel_exposes_faker_only_as_the_approved_optional_extra(tmp_path):
         text=True,
     )
     assert result.returncode == 0, result.stderr
-
     wheels = list(output.glob("*.whl"))
     assert len(wheels) == 1
-    with ZipFile(wheels[0]) as wheel:
+    return wheels[0]
+
+
+def test_wheel_exposes_faker_only_as_the_approved_optional_extra(built_wheel):
+    with ZipFile(built_wheel) as wheel:
         metadata_path = next(name for name in wheel.namelist() if name.endswith(".dist-info/METADATA"))
         metadata = BytesParser().parsebytes(wheel.read(metadata_path))
 
@@ -422,6 +427,55 @@ def test_wheel_exposes_faker_only_as_the_approved_optional_extra(tmp_path):
     ]
     assert metadata.get_all("Provides-Extra", []).count("faker") == 1
     assert faker_requirements == ['faker (>=28.4.1,<29.0.0) ; extra == "faker"']
+
+
+def test_wheel_documentation_url_is_the_docs_site_named_by_the_error_footer(built_wheel):
+    from rand_engine.validators.common_validator import CommonValidator
+    from rand_engine.validators.exceptions import SpecValidationError
+
+    with ZipFile(built_wheel) as wheel:
+        metadata_path = next(name for name in wheel.namelist() if name.endswith(".dist-info/METADATA"))
+        metadata = BytesParser().parsebytes(wheel.read(metadata_path))
+    with pytest.raises(SpecValidationError) as exc_info:
+        CommonValidator.validate_spark_and_raise({"age": {"method": "invalid_method", "kwargs": {}}})
+
+    docs = "https://marcoaureliomenezes.github.io/rand_engine/"
+    assert "Documentation, " + docs in metadata.get_all("Project-URL", [])
+    assert "Documentation: " + docs in str(exc_info.value)
+
+
+def _wheel_metadata(wheel_path):
+    with ZipFile(wheel_path) as wheel:
+        metadata_path = next(name for name in wheel.namelist() if name.endswith(".dist-info/METADATA"))
+        return BytesParser().parsebytes(wheel.read(metadata_path))
+
+
+def test_package_docstring_first_line_is_the_wheel_summary(built_wheel):
+    import rand_engine
+
+    assert rand_engine.__doc__.splitlines()[0] == _wheel_metadata(built_wheel)["Summary"]
+
+
+def test_wheel_keywords_are_the_fourteen_search_terms(built_wheel):
+    keywords = _wheel_metadata(built_wheel)["Keywords"].split(",")
+
+    assert sorted(keywords) == [
+        "data-engineering", "data-generator", "fake-data", "faker", "kafka", "mock-data",
+        "numpy", "pandas", "parquet", "pyspark", "random-data", "spark", "synthetic-data",
+        "test-data",
+    ]
+
+
+def test_wheel_advertises_typed_and_exactly_the_tested_python_set(built_wheel):
+    metadata = _wheel_metadata(built_wheel)
+    classifiers = metadata.get_all("Classifier", [])
+    prefix = "Programming Language :: Python :: 3."
+
+    assert "Typing :: Typed" in classifiers
+    assert sorted(c for c in classifiers if c.startswith(prefix)) == [
+        prefix + "10", prefix + "11", prefix + "12", prefix + "13",
+    ]
+    assert metadata["Requires-Python"] == ">=3.10"
 
 
 @pytest.mark.parametrize("legacy", [{"args": [0, 3]}, {"splitable": True}, {"sep": ","}, {"pk": 1}])
@@ -444,6 +498,128 @@ def test_spark_refuses_new_methods_and_modifiers_naming_datagenerator(column, re
     with pytest.raises(SpecValidationError) as error:
         SparkGenerator(None, None, {"x": column})
     assert remedy in str(error.value) and "Use DataGenerator" in str(error.value)
+
+
+def test_version_falls_back_when_distribution_is_not_installed(monkeypatch):
+    import importlib
+    import importlib.metadata
+
+    import rand_engine
+
+    def missing(name):
+        raise importlib.metadata.PackageNotFoundError(name)
+
+    monkeypatch.setattr(importlib.metadata, "version", missing)
+    try:
+        reloaded = importlib.reload(rand_engine)
+        assert reloaded.__version__ == "0.0.0+unknown"
+    finally:
+        monkeypatch.undo()
+        importlib.reload(rand_engine)
+
+
+def test_wheel_ships_py_typed(built_wheel):
+    with ZipFile(built_wheel) as wheel:
+        assert "rand_engine/py.typed" in wheel.namelist()
+
+
+def test_wheel_holds_only_the_rand_engine_package(built_wheel):
+    with ZipFile(built_wheel) as wheel:
+        names = [n for n in wheel.namelist() if ".dist-info/" not in n]
+    assert [n for n in names if not n.startswith("rand_engine/")] == []
+    assert [n for n in names if "skills/" in n] == []
+
+
+@pytest.mark.parametrize("sub", ["main", "file_handlers", "core", "utils"])
+def test_wheel_holds_subpackage_init(built_wheel, sub):
+    with ZipFile(built_wheel) as wheel:
+        assert f"rand_engine/{sub}/__init__.py" in wheel.namelist()
+
+
+def test_extracted_wheel_reports_the_pyproject_version(built_wheel, tmp_path):
+    with ZipFile(built_wheel) as wheel:
+        wheel.extractall(tmp_path)
+    env = {k: v for k, v in os.environ.items() if not k.startswith("COV_CORE_")}
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    result = subprocess.run(
+        [sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import rand_engine; print(rand_engine.__version__)", str(tmp_path)],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "0.8.0"
+
+
+def test_wheel_declares_the_rand_engine_console_script(built_wheel):
+    from configparser import ConfigParser
+
+    with ZipFile(built_wheel) as wheel:
+        path = next((n for n in wheel.namelist() if n.endswith(".dist-info/entry_points.txt")), None)
+        assert path, "wheel has no entry_points.txt: the console script is not declared"
+        parser = ConfigParser()
+        parser.read_string(wheel.read(path).decode())
+    assert dict(parser["console_scripts"]) == {"rand-engine": "rand_engine.cli:main"}
+
+
+def test_wheel_ships_each_declared_case_resource_byte_for_byte(built_wheel):
+    from rand_engine.cli import CASES
+
+    resources = {
+        "test-data": "test-data.py.txt",
+        "lake": "lake.py.txt",
+        "kafka": "kafka.py.txt",
+        "databricks": "databricks.py.txt",
+        "faker": "faker.py.txt",
+        "agent": "agent.md.txt",
+    }
+    targets = {
+        "test-data": "test-data-example.py",
+        "lake": "lake-example.py",
+        "kafka": "kafka-example.py",
+        "databricks": "databricks-example.py",
+        "faker": "faker-example.py",
+        "agent": "AGENTS.md",
+    }
+    assert set(CASES) == set(resources)
+    assert {slug: case.resource for slug, case in CASES.items()} == resources
+    assert {slug: case.filename for slug, case in CASES.items()} == targets
+    assert [slug for slug, case in CASES.items() if case.kind == "runnable"] == [
+        "test-data", "lake", "kafka", "databricks", "faker",
+    ]
+    assert [slug for slug, case in CASES.items() if case.kind == "agent"] == ["agent"]
+    cases_dir = Path(__file__).parents[2] / "rand_engine" / "cases"
+    with ZipFile(built_wheel) as wheel:
+        for case in CASES.values():
+            assert wheel.read(f"rand_engine/cases/{case.resource}") == (cases_dir / case.resource).read_bytes()
+
+
+def test_extracted_wheel_module_cli_writes_agent_context(built_wheel, tmp_path):
+    from rand_engine.cli import CASES
+
+    case = CASES["agent"]
+    assert case.kind == "agent"
+    assert case.resource == "agent.md.txt"
+    assert case.filename == "AGENTS.md"
+    extracted = tmp_path / "wheel"
+    output = tmp_path / "project"
+    with ZipFile(built_wheel) as wheel:
+        wheel.extractall(extracted)
+    env = {k: v for k, v in os.environ.items() if not k.startswith("COV_CORE_")}
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    env["PYTHONPATH"] = str(extracted)
+    result = subprocess.run(
+        [sys.executable, "-m", "rand_engine", "get-started", "agent", "--out", str(output)],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    target = output / case.filename
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == f"{target}\n"
+    assert target.read_bytes() == (extracted / "rand_engine" / "cases" / case.resource).read_bytes()
 
 
 if __name__ == "__main__":

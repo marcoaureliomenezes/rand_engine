@@ -1,43 +1,65 @@
-[tool.poetry]
+[project]
 name = "rand-engine"
-version = "0.7.0"
+version = "0.8.0"
 description = "Sink-agnostic synthetic data at NumPy speed from declarative specs, with related tables through pk/fk key columns; Faker composes on top."
-authors = ["marcoaureliomenezes <marcoaurelioreislima@gmail.com>"]
+authors = [{name = "marcoaureliomenezes", email = "marcoaurelioreislima@gmail.com"}]
 license = "MIT"
 readme = "README.md"
-homepage = "https://github.com/marcoaureliomenezes/rand_engine"
-repository = "https://github.com/marcoaureliomenezes/rand_engine"
-documentation = "https://github.com/marcoaureliomenezes/rand_engine/tree/master/docs"
-keywords = ["synthetic-data", "random-data", "mock-data", "test-data", "numpy", "data-engineering"]
+requires-python = ">=3.10"
+keywords = ["synthetic-data", "random-data", "mock-data", "test-data", "numpy", "data-engineering", "faker", "fake-data", "pyspark", "spark", "pandas", "kafka", "parquet", "data-generator"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Testing",
     "Topic :: Scientific/Engineering",
+    "Typing :: Typed",
 ]
+dynamic = ["dependencies"]
 
-[tool.poetry.urls]
+[project.scripts]
+rand-engine = "rand_engine.cli:main"
+
+[project.optional-dependencies]
+faker = ["faker>=28.4.1,<29.0.0"]
+
+[project.urls]
+Homepage = "https://github.com/marcoaureliomenezes/rand_engine"
+Repository = "https://github.com/marcoaureliomenezes/rand_engine"
+Documentation = "https://marcoaureliomenezes.github.io/rand_engine/"
 Issues = "https://github.com/marcoaureliomenezes/rand_engine/issues"
 Changelog = "https://github.com/marcoaureliomenezes/rand_engine/blob/master/CHANGELOG.md"
 
 [tool.poetry.dependencies]
-python = "^3.10"
 numpy = "^2.1.1"
 pandas = "^2.2.2"
 pyarrow = "^23.0.1"
 faker = {version = ">=28.4.1,<29.0.0", optional = true}
-
-[tool.poetry.extras]
-faker = ["faker"]
 
 [tool.poetry.group.test.dependencies]
 pytest = "^9.0.3"
 pytest-cov = "^6.0.0"
 faker = "^28.4.1"
 pyspark = "^3.5.0"
-setuptools = "^78.1.1"  # Required for PySpark on Python 3.12+ (distutils replacement) - Fixed CVE path traversal
+setuptools = "^83.0.0"
+ruff = ">=0.17.1"
+
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
+zensical = {version = "==0.0.70", python = ">=3.11"}
+mkdocstrings-python = {version = "==2.0.9", python = ">=3.11"}
+
+[tool.ruff.lint]
+select = ["D"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
 
 [tool.pytest.ini_options]
 addopts = "-m 'not stress'"
@@ -50,5 +72,5 @@ filterwarnings = [
 ]
 
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=2.2.0"]
 build-backend = "poetry.core.masonry.api"

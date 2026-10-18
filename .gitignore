@@ -163,3 +163,9 @@ trivy-results.sarif
 *.log
 logs/
 *.out
+# ================================
+# Docs site build
+# ================================
+site/
+.cache/
+docs/index.md

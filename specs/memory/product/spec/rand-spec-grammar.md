@@ -2,7 +2,7 @@
 slug: rand-spec-grammar
 title: RandSpec grammar
 tldr: "A RandSpec maps output columns to a method, named kwargs and optional cols, transformers or modifiers, validated through one method catalog."
-summary: "METHOD_CATALOG is the one authority for method names, parameters, types, engines and Arrow output types; AdvancedValidator validates every DataGenerator method and CommonValidator the Spark subset. Structure is checked before semantics, unknown column keys, positional args and top-level constraints are refused, and every issue is collected into one SpecValidationError."
+summary: "METHOD_CATALOG is the one authority for method names, parameters, types, engines and Arrow output types; AdvancedValidator validates every DataGenerator method and the Spark key subset, while CommonValidator owns ordinary Spark intake. Structure is checked before semantics, unknown column keys, positional args and top-level constraints are refused, and every issue is collected into one SpecValidationError."
 tags: [spec, grammar, validation]
 sources:
   - rand_engine/validators/**
@@ -19,14 +19,14 @@ sources:
 ## Validation
 
 - `METHOD_CATALOG` lists, per method, required and optional kwargs with types, the engines that run it, its kind (ordinary, correlated or key), its semantic rules and its Arrow output types. Validators, generation and the empty-file schema read it; no second registry exists.
-- `AdvancedValidator` validates the fifteen ordinary methods, four correlated methods and two key methods for `DataGenerator`.
-- `CommonValidator` validates the ten common methods for `SparkGenerator`; it refuses keys, positional args, NumPy-only ordinary methods and modifiers with guidance to use `DataGenerator`, and warns for correlated methods that Spark represents as null columns ([[spark-generator]]).
+- `AdvancedValidator` validates the fifteen ordinary methods, four correlated methods and two key methods for `DataGenerator`; `SparkGenerator` sends its extracted key subset through the same key semantics.
+- `CommonValidator` validates ordinary columns for `SparkGenerator`; it refuses positional args, NumPy-only ordinary methods and modifiers with guidance to use `DataGenerator`, and warns for correlated methods that Spark represents as null columns. The Spark facade combines those errors with the advanced key errors before generation ([[spark-generator]]).
 - A wrong type (a bool in a numeric slot included), a missing required kwarg or an unknown kwarg suppresses that column's semantic rules, so a bad type is reported as a validation issue and never as a raw `TypeError`.
-- Semantic rules include: integer bounds inside `int_type`; a non-empty float grid with a finite span and `decimals` within the float limit; `true_prob` in `[0, 1]`; non-empty `distincts` pools and integer weights; supported date directives; positive `scale` and `a` greater than 1; `lam` within `[0, 10^6]`; immutable scalar `constant` values; non-empty map pools and levels, and `cols` equal to levels plus one for `distincts_multi_map`.
-- On Spark, an `integers` width above 2^53, `uint64` and an `int_zfilled` length above 15 are refused.
-- Every issue is collected into one `SpecValidationError`; warning-style helpers print the same issues and return a boolean.
+- Semantic rules include: integer bounds inside `int_type`; an `int_zfilled` `length` within 1..18; a non-empty float grid with a finite span and `decimals` within the float limit; `true_prob` in `[0, 1]`; non-empty `distincts` pools and integer weights; supported date directives; positive `scale` and `a` greater than 1; `lam` within `[0, 10^6]`; immutable scalar `constant` values; non-empty map pools and levels, and `cols` equal to levels plus one for `distincts_multi_map`.
+- On Spark, `uint64`, an `integers` width `max - min + 1` above 2^53 and an `int_zfilled` length above 15 are refused; the width test is the same predicate the Spark engine applies, so a Spark spec that validates never fails generation on width.
+- Every issue is collected into one `SpecValidationError` whose message ends with a footer linking the docs site; warning-style helpers print the same issues and return a boolean.
 
 ## Key grammar
 
 - A `pk` accepts only kwargs sufficient for another process to rebuild it: style, integer range inputs, optional permutation key and a constrained integer format.
-- An `fk` embeds that parent `pk` spec and declares `parent_size` plus optional skew; parent transformers, extra parent keys and out-of-domain sizes are invalid.
+- An `fk` embeds that parent `pk` spec and declares `parent_size` plus optional skew and `born_before`; parent transformers, extra parent keys and out-of-domain sizes are invalid. `born_before` has exactly the four event-time fields, finite builtin numeric starts and finite positive builtin numeric rates ([[pk-fk-constraints]]).

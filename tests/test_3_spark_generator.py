@@ -7,8 +7,10 @@ These tests validate end-to-end workflow: metadata → DataFrame generation.
 Note: PySpark is a test-only dependency.
 """
 import pytest
+from rand_engine import DataGenerator
 from rand_engine.main.spark_generator import SparkGenerator
-from rand_engine.validators.exceptions import RandEngineError
+from rand_engine.validators.advanced_validator import AdvancedValidator
+from rand_engine.validators.exceptions import RandEngineError, SpecValidationError
 
 
 class TestSparkGeneratorBasic:
@@ -412,3 +414,210 @@ class TestSparkGeneratorDataQuality:
             assert len(row["code"]) == 6
             # All should be numeric strings
             assert row["code"].isdigit()
+
+
+class TestSparkIntegerWidthRefusedAtConstruction:
+    def test_max_2_53_raises_collected_spec_error(self, spark_session, spark_functions):
+        from rand_engine.validators.exceptions import SpecValidationError
+
+        metadata = {"value": {"method": "integers", "kwargs": {"min": 0, "max": 2**53}}}
+        with pytest.raises(SpecValidationError) as exc_info:
+            SparkGenerator(spark_session, spark_functions, metadata)
+        assert "'value'" in str(exc_info.value)
+        assert "2**53" in str(exc_info.value)
+
+
+class TestSparkIntegerWidthExactly2Pow53:
+    def test_values_stay_within_bounds(self, spark_session, spark_functions):
+        metadata = {"value": {"method": "integers", "kwargs": {"min": 0, "max": 2**53 - 1}}}
+        df = SparkGenerator(spark_session, spark_functions, metadata).size(200).get_df()
+        values = [row["value"] for row in df.collect()]
+        assert (len(values), min(values) >= 0, max(values) <= 2**53 - 1) == (200, True, True)
+
+
+def _key_parity_spec():
+    return {
+        "id": {"method": "pk", "kwargs": {"style": "sequence", "start": 41, "step": 3}},
+        "kind": {"method": "distincts", "kwargs": {"distincts": ["account"]}},
+        "__rand_engine_source_index": {
+            "method": "pk",
+            "kwargs": {"style": "sequence", "start": -20, "step": 2},
+        },
+        "permuted_id": {
+            "method": "pk",
+            "kwargs": {"style": "permuted", "domain": 64, "start": 1000, "key": 9},
+        },
+        "formatted_id": {
+            "method": "pk",
+            "kwargs": {"style": "sequence", "start": 12, "step": 2, "format": "ORD-{:04d}"},
+        },
+        "uniform_parent": {
+            "method": "fk",
+            "kwargs": {
+                "parent": {"method": "pk", "kwargs": {"style": "sequence", "start": 700, "step": 5}},
+                "parent_size": 9,
+            },
+        },
+        "skewed_parent": {
+            "method": "fk",
+            "kwargs": {
+                "parent": {
+                    "method": "pk",
+                    "kwargs": {"style": "permuted", "domain": 9, "start": 900, "key": 2, "format": "P-{:04d}"},
+                },
+                "parent_size": 9,
+                "skew": 1.2,
+            },
+        },
+        "eligible_parent": {
+            "method": "fk",
+            "kwargs": {
+                "parent": {"method": "pk", "kwargs": {"style": "sequence", "start": 4, "step": 2}},
+                "parent_size": 9,
+                "born_before": {
+                    "parent_start": 0,
+                    "parent_rate": 1,
+                    "child_start": 0,
+                    "child_rate": 2,
+                },
+            },
+        },
+    }
+
+
+@pytest.mark.parametrize("partitions", [2, 3])
+def test_spark_key_vectors_match_pandas_across_noncontiguous_partition_batches(
+    spark_session, spark_functions, monkeypatch, partitions
+):
+    """Keys use source indexes rather than a partition-local Arrow batch offset."""
+    spec = _key_parity_spec()
+    expected = DataGenerator(spec, seed=123).size(12).get_df().to_dict("records")
+    range_ = spark_session.range
+
+    def repartitioned_range(size):
+        return range_(size).repartition(
+            partitions,
+            spark_functions.pmod(spark_functions.col("id"), spark_functions.lit(partitions)),
+        )
+
+    monkeypatch.setattr(spark_session, "range", repartitioned_range)
+    dataframe = SparkGenerator(spark_session, spark_functions, spec, seed=123).size(12).get_df()
+
+    assert dataframe.columns == list(spec)
+    assert "__rand_engine_source_index" in dataframe.columns
+    assert dataframe.orderBy("id").toPandas().to_dict("records") == expected
+
+
+@pytest.mark.parametrize(
+    ("ordinary_column", "ordinary_messages"),
+    [
+        (None, ()),
+        (
+            {"method": "integers", "kwargs": {"min": 1}},
+            ("method 'integers' requires parameter 'max'",),
+        ),
+    ],
+)
+def test_spark_key_validation_reuses_the_pandas_key_semantics(
+    spark_session, spark_functions, ordinary_column, ordinary_messages
+):
+    """Malformed key and ordinary columns report every issue before Spark runs."""
+    spec = {
+        "parent_id": {
+            "method": "fk",
+            "kwargs": {
+                "parent": {"method": "pk", "kwargs": {"style": "not-a-style"}},
+                "parent_size": 0,
+                "born_before": {
+                    "parent_start": 0,
+                    "parent_rate": 1,
+                    "child_start": 0,
+                    "child_rate": False,
+                },
+            },
+        },
+    }
+    if ordinary_column is not None:
+        spec["age"] = ordinary_column
+    pandas_errors = AdvancedValidator.validate(spec)
+
+    assert pandas_errors
+    with pytest.raises(SpecValidationError) as exc_info:
+        SparkGenerator(spark_session, spark_functions, spec, seed=123)
+
+    error_text = str(exc_info.value)
+    assert "SPARKGENERATOR SPEC VALIDATION ERROR" in error_text
+    for message in (
+        "pk 'style' is unknown",
+        "'parent_size' must be an integer >= 1",
+        "born_before.child_rate",
+        *ordinary_messages,
+    ):
+        assert message in error_text
+        assert any(message in error for error in pandas_errors)
+
+
+def test_spark_key_validation_keeps_the_existing_top_level_shape_error(spark_session, spark_functions):
+    """Selecting key columns never bypasses full Spark RandSpec intake validation."""
+    with pytest.raises(SpecValidationError, match="Spec must be a dictionary"):
+        SparkGenerator(spark_session, spark_functions, ["not", "a", "RandSpec"], seed=123)
+
+
+@pytest.mark.parametrize(
+    ("column", "problem"),
+    [
+        ({"method": "pk", "args": [1], "kwargs": {}}, "args"),
+        ({"method": "pk", "kwargs": {}, "null_rate": 0.25}, "null_rate"),
+    ],
+)
+def test_spark_key_validation_reports_each_generic_key_problem_once(
+    spark_session, spark_functions, column, problem
+):
+    """A generic key error has one column diagnostic from Spark validation."""
+    with pytest.raises(SpecValidationError) as exc_info:
+        SparkGenerator(spark_session, spark_functions, {"account_id": column}, seed=123)
+
+    error_text = str(exc_info.value)
+    assert error_text.count("❌ Column 'account_id'") == 1
+    assert problem in error_text
+
+
+def test_spark_key_zero_size_keeps_the_requested_schema(spark_session, spark_functions):
+    """A zero-row key frame is valid and does not expose an implementation index."""
+    spec = {"account_id": {"method": "pk", "kwargs": {"start": 9, "step": 4}}}
+
+    dataframe = SparkGenerator(spark_session, spark_functions, spec, seed=123).size(0).get_df()
+
+    assert dataframe.columns == ["account_id"]
+    assert dataframe.count() == 0
+
+
+def test_spark_zero_eligible_foreign_key_raises_the_declared_driver_error(spark_session, spark_functions):
+    """A known empty eligibility range fails with its FK column before executor wrapping."""
+    spec = {
+        "parent_id": {
+            "method": "fk",
+            "kwargs": {
+                "parent": {"method": "pk", "kwargs": {"start": 1}},
+                "parent_size": 3,
+                "born_before": {
+                    "parent_start": 10,
+                    "parent_rate": 1,
+                    "child_start": 0,
+                    "child_rate": 1,
+                },
+            },
+        },
+    }
+
+    with pytest.raises(RandEngineError, match="parent_id"):
+        SparkGenerator(spark_session, spark_functions, spec, seed=123).size(1).get_df()
+
+
+def test_spark_seed_only_extends_key_generation(spark_session, spark_functions):
+    """An explicit key seed leaves the existing native ordinary path usable."""
+    spec = {"age": {"method": "integers", "kwargs": {"min": 18, "max": 80}}}
+
+    values = SparkGenerator(spark_session, spark_functions, spec, seed=123).size(20).get_df().toPandas()["age"]
+
+    assert values.between(18, 80).all()

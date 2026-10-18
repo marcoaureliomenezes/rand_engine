@@ -1,0 +1,57 @@
+site_name: rand-engine
+site_description: Fast Python synthetic test data for pandas, related tables, files and streams, with optional Spark.
+site_url: https://marcoaureliomenezes.github.io/rand_engine/
+repo_url: https://github.com/marcoaureliomenezes/rand_engine
+docs_dir: docs
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Agent context: getting-started.md#agent-context
+  - Compatibility and migration: compatibility.md
+  - Tutorials:
+      - Test data: tutorials/test-data.md
+      - Lake: tutorials/lake.md
+      - Kafka: tutorials/kafka.md
+      - Databricks: tutorials/databricks.md
+      - Faker: tutorials/faker.md
+  - How-to:
+      - Data generator: 1_DATA_GENERATOR.md
+      - Spark generator: 2_SPARK_GENERATOR.md
+      - Writing files: 3_WRITING_FILES.md
+      - Constraints: 4_CONSTRAINTS.md
+      - Recipes: 5_RECIPES.md
+      - Comparison: comparison.md
+  - Reference:
+      - Main API: reference.md
+      - Returned writers: 3_WRITING_FILES.md
+      - Errors: errors.md
+  - Explanation: explanation.md
+  - Benchmarks: BENCHMARKS.md
+  - Contributing: https://github.com/marcoaureliomenezes/rand_engine/blob/master/CONTRIBUTING.md
+  - Security: https://github.com/marcoaureliomenezes/rand_engine/blob/master/SECURITY.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [.]
+          options:
+            docstring_style: numpy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.superfences:
+      relaxed_headers: true  # renders the test-skipped `python no-run` fences
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
+  - toc:
+      permalink: true
+
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn

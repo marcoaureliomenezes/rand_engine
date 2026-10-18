@@ -1,7 +1,7 @@
 # DataGenerator — pandas DataFrames from a RandSpec
 
 `DataGenerator` turns a RandSpec (a dict, or a callable returning one) into a pandas DataFrame,
-an infinite stream of dicts, or files. Every Python block in this guide runs in CI, in order.
+an infinite stream of dicts, files, or one SQLite output table. Every Python block in this guide runs in CI, in order.
 
 ```python
 from rand_engine import DataGenerator
@@ -18,7 +18,7 @@ assert df["age"].between(18, 80).all()
 
 ## API
 
-<!-- derived-from: data-generator sha256:8af2e4c55309 -->
+<!-- derived-from: data-generator sha256:511ff7f3a370 -->
 
 | Call | Does |
 |---|---|
@@ -33,7 +33,7 @@ Calling `get_df` without `.size` raises `RandEngineError`.
 
 ## Seeds
 
-<!-- derived-from: data-generator sha256:8af2e4c55309 -->
+<!-- derived-from: data-generator sha256:511ff7f3a370 -->
 
 A seed fixes the output: the same spec, seed and size give the same frame. Each generator owns
 its own `numpy.random.Generator` (PCG64), so generators never share or reset NumPy's global state.
@@ -50,28 +50,36 @@ assert not gen.get_df().equals(gen.get_df())
 
 ## Methods
 
-<!-- derived-from: generation-methods sha256:739e81e44532 -->
+<!-- derived-from: generation-methods sha256:1552dc309621 -->
 
 Each column is `{"method": <name>, "kwargs": {...}}`. Bounds of `integers` are inclusive.
 
-| Method | Required kwargs | Optional kwargs |
-|---|---|---|
-| `integers` | `min`, `max` | `int_type` (`int8`…`int64`, `uint8`…`uint64`; default `int32`) |
-| `int_zfilled` | `length` | — |
-| `floats` | `min`, `max` | `decimals` (default 2) |
-| `floats_normal` | `mean`, `std` | `decimals` (default 2) |
-| `exponential` | — | `scale` (> 0, default 1.0), `decimals` (default 2) |
-| `lognormal` | — | `mean` (default 0.0), `std` (≥ 0, default 1.0), `decimals` (default 2) |
-| `poisson` | — | `lam` (0 to 10^6, default 1.0); int64 column |
-| `zipf` | — | `a` (> 1, default 2.0); int64 column |
-| `constant` | `value` (a scalar) | — |
-| `booleans` | — | `true_prob` (default 0.5) |
-| `distincts` | `distincts` (list) | — |
-| `distincts_prop` | `distincts` (dict value → integer weight) | — |
-| `uuid4` | — | — |
-| `unix_timestamps` | `start`, `end` | `date_format` (default `%Y-%m-%d`) |
-| `dates` | `start`, `end` | `date_format` (default `%Y-%m-%d`) |
-| `pk`, `fk` | see [4_CONSTRAINTS.md](4_CONSTRAINTS.md) | |
+| Method | Required kwargs | Optional kwargs | Column fields |
+|---|---|---|---|
+| `integers` | `min`, `max` | `int_type` (default `int32`) | — |
+| `int_zfilled` | `length` (integer 1…18) | — | — |
+| `floats` | `min`, `max` | `decimals` (default 2) | — |
+| `floats_normal` | `mean`, `std` | `decimals` (default 2) | — |
+| `booleans` | — | `true_prob` (default 0.5) | — |
+| `distincts` | `distincts` (list) | — | — |
+| `distincts_prop` | `distincts` (dict value → integer weight) | — | — |
+| `unix_timestamps` | `start`, `end` | `date_format` (default `%Y-%m-%d`) | — |
+| `dates` | `start`, `end` | `date_format` (default `%Y-%m-%d`) | — |
+| `uuid4` | — | — | — |
+| `exponential` | — | `scale` (default 1.0), `decimals` (default 2) | — |
+| `lognormal` | — | `mean` (default 0.0), `std` (default 1.0), `decimals` (default 2) | — |
+| `poisson` | — | `lam` (default 1.0) | — |
+| `zipf` | — | `a` (default 2.0) | — |
+| `constant` | `value` (a scalar) | — | — |
+| `distincts_map` | `distincts` (dict key → list of values) | — | `cols` (exactly 2 names) |
+| `distincts_map_prop` | `distincts` (dict key → `[[value, weight], ...]`) | — | `cols` (exactly 2 names) |
+| `distincts_multi_map` | `distincts` (dict key → one list per level) | — | `cols` (levels + 1 names) |
+| `complex_distincts` | `pattern`, `replacement`, `templates` | — | — |
+| `pk` | — | `style`, `start`, `step`, `domain`, `key`, `format`; see [4_CONSTRAINTS.md](4_CONSTRAINTS.md) | — |
+| `fk` | `parent`, `parent_size` | `skew`, `born_before`; see [4_CONSTRAINTS.md](4_CONSTRAINTS.md) | — |
+
+**Column fields** are required keys beside `kwargs`, not optional kwargs. Only the three map
+methods require `cols`; the global optional modifiers are documented separately below.
 
 `dates` and `unix_timestamps` parse `start` and `end` with `date_format`. A `dates` value is a
 string drawn at whole-second resolution in UTC; its `date_format` may use only the directives
@@ -79,6 +87,19 @@ string drawn at whole-second resolution in UTC; its `date_format` may use only t
 engines, naming the supported set.
 
 ```python
+from rand_engine.validators.exceptions import SpecValidationError
+
+for length in (1, 18):
+    DataGenerator({"id": {"method": "int_zfilled", "kwargs": {"length": length}}})
+
+for length in (0, 19):
+    try:
+        DataGenerator({"id": {"method": "int_zfilled", "kwargs": {"length": length}}})
+    except SpecValidationError:
+        pass
+    else:
+        raise AssertionError("expected int_zfilled length refusal")
+
 spec = {
     "price": {"method": "floats", "kwargs": {"min": 1, "max": 100, "decimals": 2}},
     "status": {"method": "distincts_prop", "kwargs": {"distincts": {"paid": 9, "refunded": 1}}},
@@ -204,7 +225,7 @@ for key in ("args", "splitable", "sep", "pk"):
 
 ## Transformers
 
-<!-- derived-from: data-generator sha256:8af2e4c55309 -->
+<!-- derived-from: data-generator sha256:511ff7f3a370 -->
 
 A column may carry `"transformers"`: functions applied value by value. `.transformers([...])` takes
 whole-frame functions, run after the column ones.
@@ -227,7 +248,7 @@ assert (df["adult"] == (df["age"] >= 18)).all()
 
 ## Validation
 
-<!-- derived-from: rand-spec-grammar sha256:77ed429317a3 -->
+<!-- derived-from: rand-spec-grammar sha256:ecbce4973b7e -->
 
 An invalid spec raises `SpecValidationError` (a `RandEngineError`) on construction, listing every
 error with a corrected example.
@@ -243,10 +264,13 @@ else:
 
 ## Streaming dicts
 
-<!-- derived-from: data-generator sha256:8af2e4c55309 -->
+<!-- derived-from: data-generator sha256:511ff7f3a370 -->
 
 `stream_dict` never ends: it generates `size` rows per microbatch, converts datetime columns to
 strings and adds `timestamp_created` (epoch seconds) to each record. Stop it yourself.
+
+After that unchanged normalization, every microbatch uses pandas records, preserving public
+Python values for scalar, nested, mixed, custom and extension values, and non-string labels.
 
 ```python
 from itertools import islice
@@ -255,4 +279,14 @@ spec = {"user_id": {"method": "int_zfilled", "kwargs": {"length": 8}}}
 stream = DataGenerator(spec, seed=1).size(10).stream_dict(min_throughput=500, max_throughput=1000)
 records = list(islice(stream, 25))
 assert len(records) == 25 and set(records[0]) == {"user_id", "timestamp_created"}
+
+scalar_records = list(islice(
+    DataGenerator({"value": {"method": "integers", "kwargs": {"min": 1, "max": 3}}}, seed=3)
+    .size(2).stream_dict(500, 1000), 2
+))
+nested_records = list(islice(
+    DataGenerator({"value": {"method": "distincts", "kwargs": {"distincts": [{"nested": [1, 2]}]}}}, seed=3)
+    .size(1).stream_dict(500, 1000), 1
+))
+assert isinstance(nested_records[0]["value"], dict)
 ```

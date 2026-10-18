@@ -1,16 +1,16 @@
 ---
 slug: writers-and-streaming
 title: Writers and streaming
-tldr: "DataGenerator writes CSV, JSON lines and Parquet batches, bounded by rows when asked, or repeated file-stream microbatches through a Spark-style builder."
-summary: "The batch writer distributes one requested total row count across numFiles, generating each final file in row batches of at most maxRowsPerBatch when set, and commits staged output only on success; the stream writer emits size rows per microbatch. CSV and Parquet use PyArrow, JSON uses pandas, and each format accepts only documented options."
-tags: [writers, streaming, files, csv, json, parquet]
+tldr: "DataGenerator writes CSV, JSON lines, Parquet or an output-only SQLite table through a Spark-style builder; file streams support the three file formats."
+summary: "The batch writer distributes file output across numFiles with optional row batching, or atomically persists one generated frame to a selected SQLite table. CSV and Parquet use PyArrow, JSON uses pandas, SQLite uses the standard library, and every format accepts only documented options."
+tags: [writers, streaming, files, csv, json, parquet, sqlite]
 sources:
   - rand_engine/file_handlers/**
 ---
 
 ## Scope
 
-- Built-in sinks are local or mounted CSV, JSON-lines and Parquet files; callers forward DataFrames or records to every other sink ([[data-generator]]).
+- Built-in sinks are local or mounted CSV, JSON-lines and Parquet files plus an output-only SQLite batch table. Callers forward DataFrames or records to every other sink ([[data-generator]]).
 - Both writers expose `format`, `mode`, `option` and `options`; an unsupported or malformed option raises `RandEngineError` before any output is touched.
 
 ## Batch writer
@@ -22,11 +22,15 @@ sources:
 - The spec is evaluated once per final file; one schema holds across a final file's batches, and a batch whose columns or types differ raises `RandEngineError` before the destination changes. Typed nulls take the type of the file's schema, else of the method catalog.
 - Output is staged beside the destination and committed only after every file closes, so a failure in a transformer, modifier, schema check or option leaves any existing output intact.
 - `mode("append")` adds rows: a single file is rebuilt from its existing content plus the new rows, and a multi-file save adds only new part files beside the existing ones, which are never copied or rewritten. Any other mode overwrites, replacing a part directory as a whole.
+- `format("sqlite").option("table", name).mode("overwrite" | "append").save(path)` writes the configured size in one generated frame. `table` is the only option and must be a non-empty NUL-free string; generated labels must be unique NUL-free strings, integers must fit signed 64 bits and unsupported values or modes fail before publication.
+- SQLite identifiers are quoted and every value is parameter-bound. Homogeneous scalar columns declare their SQLite type; mixed or all-null columns have no affinity so bound storage classes are preserved. Booleans and integers use INTEGER, floats REAL, strings and ISO dates/datetimes TEXT, bytes BLOB and missing values NULL.
+- Overwrite copies an existing database to an adjacent staging file, replaces only the selected table, retains unrelated tables and atomically replaces the destination after commit. Append creates a missing database/table or checks the existing ordered schema, then inserts in one transaction; a mismatch or database failure rolls back.
 
 ## Stream writer
 
-- `generator.writeStream.trigger(seconds).option("timeout", seconds).start(path)` writes repeated `size`-row microbatches to `part-<uuid>` files; overwrite mode empties the directory first, and `maxRowsPerBatch` is not an accepted stream option.
-- Each microbatch advances the row offset; `start` blocks until the timeout expires.
+- `generator.writeStream.trigger(frequency).option("timeout", seconds).start(path)` writes repeated `size`-row microbatches, sleeping `frequency` seconds (a float, default 1) after each write, to `part-<uuid>` files; overwrite mode empties the directory first, and `maxRowsPerBatch` is not an accepted stream option.
+- Each microbatch advances the row offset; `start` blocks until the timeout (default 20 seconds) expires.
+- SQLite is batch-only: `writeStream.format("sqlite").start(...)` raises before touching its path.
 
 ## Formats
 
