@@ -640,13 +640,13 @@ def test_key_guides_execute_the_event_time_fk_mapping_and_zero_eligible_refusal(
     assert namespace["event_time_zero_eligible"] is True
 
 
-def test_stream_guidance_executes_compatible_and_fallback_records(tmp_path, monkeypatch):
-  """The stream guide exposes real compatible and nested-value fallback records from its examples."""
+def test_stream_guidance_executes_scalar_and_nested_records(tmp_path, monkeypatch):
+  """The stream guide exposes real scalar and nested-value records from its examples."""
   namespace = run_python_blocks(DOCS / "1_DATA_GENERATOR.md", tmp_path, monkeypatch)
-  assert namespace["arrow_records"] and namespace["fallback_records"]
-  assert all(isinstance(record, dict) for record in namespace["arrow_records"])
+  assert namespace["scalar_records"] and namespace["nested_records"]
+  assert all(isinstance(record, dict) for record in namespace["scalar_records"])
   assert any(any(isinstance(value, (dict, list, tuple)) for value in record.values())
-             for record in namespace["fallback_records"])
+             for record in namespace["nested_records"])
 
 
 def test_comparison_route_is_sourced_and_marks_benchmarks_as_internal_only():
