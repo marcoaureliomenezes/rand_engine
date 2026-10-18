@@ -165,6 +165,7 @@ jobs:
 
       - name: Run bounded observation
         id: compare
+        working-directory: ${{ runner.temp }}
         env:
           HARNESS_SHA: ${{ github.sha }}
           RUNNER_ID: ${{ runner.name }}
