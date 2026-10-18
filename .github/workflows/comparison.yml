@@ -102,48 +102,48 @@ jobs:
           if [ "$result" -eq 0 ]; then
             set +e
             "$COMPARISON_PYTHON" -I - "$COMPARISON_DIR/workflow.json" "$started" "$finished" <<'PY'
-            import importlib.metadata
-            import json
-            import os
-            import pathlib
-            import rand_engine
-            import sys
+          import importlib.metadata
+          import json
+          import os
+          import pathlib
+          import rand_engine
+          import sys
 
-            path = pathlib.Path(sys.argv[1])
-            record = json.loads(path.read_text(encoding="utf-8"))
-            record["durations_seconds"]["install"] = float(sys.argv[3]) - float(sys.argv[2])
-            record["install_exit_code"] = 0
-            version = importlib.metadata.version("rand-engine")
-            module_file = pathlib.Path(rand_engine.__file__).resolve()
-            if version != "0.8.0" or module_file.is_relative_to(pathlib.Path(os.environ["GITHUB_WORKSPACE"]).resolve()):
-                raise RuntimeError("comparison must import the published rand-engine 0.8.0 wheel")
-            record["installed_rand_engine"] = {
-                "metadata_version": version,
-                "module_file": str(module_file),
-            }
-            record["installed_distribution_exit_code"] = 0
-            path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-            PY
+          path = pathlib.Path(sys.argv[1])
+          record = json.loads(path.read_text(encoding="utf-8"))
+          record["durations_seconds"]["install"] = float(sys.argv[3]) - float(sys.argv[2])
+          record["install_exit_code"] = 0
+          version = importlib.metadata.version("rand-engine")
+          module_file = pathlib.Path(rand_engine.__file__).resolve()
+          if version != "0.8.0" or module_file.is_relative_to(pathlib.Path(os.environ["GITHUB_WORKSPACE"]).resolve()):
+              raise RuntimeError("comparison must import the published rand-engine 0.8.0 wheel")
+          record["installed_rand_engine"] = {
+              "metadata_version": version,
+              "module_file": str(module_file),
+          }
+          record["installed_distribution_exit_code"] = 0
+          path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
             verification=$?
             set -e
             if [ "$verification" -eq 0 ]; then
               exit 0
             fi
             python - "$COMPARISON_DIR/workflow.json" "$started" "$finished" "$verification" <<'PY'
-            import json
-            import sys
+          import json
+          import sys
 
-            path, started, finished, verification = sys.argv[1:]
-            with open(path, encoding="utf-8") as handle:
-                record = json.load(handle)
-            record["durations_seconds"]["install"] = float(finished) - float(started)
-            record["install_exit_code"] = 0
-            record["installed_distribution_exit_code"] = int(verification)
-            record["status"] = "install_validation_failure"
-            with open(path, "w", encoding="utf-8") as handle:
-                json.dump(record, handle, indent=2, sort_keys=True)
-                handle.write("\n")
-            PY
+          path, started, finished, verification = sys.argv[1:]
+          with open(path, encoding="utf-8") as handle:
+              record = json.load(handle)
+          record["durations_seconds"]["install"] = float(finished) - float(started)
+          record["install_exit_code"] = 0
+          record["installed_distribution_exit_code"] = int(verification)
+          record["status"] = "install_validation_failure"
+          with open(path, "w", encoding="utf-8") as handle:
+              json.dump(record, handle, indent=2, sort_keys=True)
+              handle.write("\n")
+          PY
             exit "$verification"
           fi
           python - "$COMPARISON_DIR/workflow.json" "$started" "$finished" "$result" <<'PY'
@@ -207,13 +207,13 @@ jobs:
           if [ ! -f "$COMPARISON_DIR/workflow.json" ]; then
             mkdir -p "$COMPARISON_DIR"
             python - "$COMPARISON_DIR/workflow.json" <<'PY'
-            import json
-            import sys
+          import json
+          import sys
 
-            with open(sys.argv[1], "w", encoding="utf-8") as handle:
-                json.dump({"status": "initialization_failure", "durations_seconds": {}}, handle, indent=2, sort_keys=True)
-                handle.write("\n")
-            PY
+          with open(sys.argv[1], "w", encoding="utf-8") as handle:
+              json.dump({"status": "initialization_failure", "durations_seconds": {}}, handle, indent=2, sort_keys=True)
+              handle.write("\n")
+          PY
           fi
           python - "$COMPARISON_DIR/workflow.json" "$GITHUB_STEP_SUMMARY" <<'PY'
           import json
