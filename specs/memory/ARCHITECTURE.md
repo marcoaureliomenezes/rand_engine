@@ -2,7 +2,7 @@
 slug: ARCHITECTURE
 title: Architecture
 tldr: The system's principles, technology stack and structure.
-summary: Principles change only with an accepted ADR; Tech Stack and Structure state what rand-engine's code is — a NumPy-first synthetic-data library with pandas and Spark generators, validators, Arrow-backed files and record conversion, stateless PK/FK key columns, an output-only SQLite sink, a get-started CLI and an isolated stable-or-preview docs pipeline.
+summary: Principles change only with an accepted ADR; Tech Stack and Structure state what rand-engine's code is — a NumPy-first synthetic-data library with pandas and Spark generators, validators, Arrow-backed files and schema construction, normalized pandas record conversion, stateless PK/FK key columns, an output-only SQLite sink, a get-started CLI and an isolated stable-or-preview docs pipeline.
 tags:
   - architecture
   - layers
@@ -19,8 +19,8 @@ commit that carries its accepted ADR.
 
 - Python `>=3.10` library `rand_engine` (`requires-python`, CI-tested on 3.10–3.13), built in CI with `poetry==2.5.1` and the `poetry-core>=2.2.0` backend from a static PEP 621 `[project]` table, then published to PyPI as `rand-engine`; `pyproject.toml` holds the one version.
 - NumPy `^2.1` — the vectorized column engine (`NPCore`); each `DataGenerator` owns one `np.random.default_rng(seed)` passed to generation methods; keys are computed from definitions, the key seed, column name and row index.
-- pandas `^2.2` — DataFrame assembly, transformers, JSON-lines output and the compatibility-preserving fallback for streamed records.
-- PyArrow `^23.0` — CSV and Parquet conversion/output plus lossless streamed-record conversion for eligible normalized frames.
+- pandas `^2.2` — DataFrame assembly, transformers, JSON-lines output and normalized streamed-record conversion.
+- PyArrow `^23.0` — CSV and Parquet conversion/output plus Arrow-schema RandSpec construction.
 - Python `sqlite3` — the output-only batch-table sink; generation never reads destination state or performs lookup SQL.
 - PySpark `^3.5` (test group only) — `SparkGenerator` runs on the caller's `SparkSession` and functions module; its key adapter imports Spark SQL types lazily, while PySpark remains outside runtime dependencies.
 - Faker `>=28.4.1,<29` (optional extra `faker`, also in the test group) — backs `RandSpecs.faker_pool` only; generation never calls it.
@@ -39,7 +39,7 @@ rand_engine/
   cases/             declared Python or Markdown resources for six get-started starters, shipped as package data
   py.typed           typing marker
   main/              composition roots
-    data_generator.py      DataGenerator — pandas pipeline, writers, lossless Arrow-or-pandas stream_dict records
+    data_generator.py      DataGenerator — pandas pipeline, writers, normalized pandas stream_dict records
     _rand_generator.py     RandGenerator — method dispatch, column assembly, transformers, null/anomaly modifiers
     spark_generator.py     SparkGenerator — native ordinary columns and indexed PK/FK adapter over spark.range(size)
   core/              stateless generation primitives

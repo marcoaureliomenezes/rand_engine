@@ -18,7 +18,7 @@ assert df["age"].between(18, 80).all()
 
 ## API
 
-<!-- derived-from: data-generator sha256:763625cc8287 -->
+<!-- derived-from: data-generator sha256:511ff7f3a370 -->
 
 | Call | Does |
 |---|---|
@@ -33,7 +33,7 @@ Calling `get_df` without `.size` raises `RandEngineError`.
 
 ## Seeds
 
-<!-- derived-from: data-generator sha256:763625cc8287 -->
+<!-- derived-from: data-generator sha256:511ff7f3a370 -->
 
 A seed fixes the output: the same spec, seed and size give the same frame. Each generator owns
 its own `numpy.random.Generator` (PCG64), so generators never share or reset NumPy's global state.
@@ -225,7 +225,7 @@ for key in ("args", "splitable", "sep", "pk"):
 
 ## Transformers
 
-<!-- derived-from: data-generator sha256:763625cc8287 -->
+<!-- derived-from: data-generator sha256:511ff7f3a370 -->
 
 A column may carry `"transformers"`: functions applied value by value. `.transformers([...])` takes
 whole-frame functions, run after the column ones.
@@ -264,7 +264,7 @@ else:
 
 ## Streaming dicts
 
-<!-- derived-from: data-generator sha256:763625cc8287 -->
+<!-- derived-from: data-generator sha256:511ff7f3a370 -->
 
 `stream_dict` never ends: it generates `size` rows per microbatch, converts datetime columns to
 strings and adds `timestamp_created` (epoch seconds) to each record. Stop it yourself.

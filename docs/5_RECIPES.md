@@ -96,7 +96,7 @@ then run a returned spec with the generator that family supports.
 
 ## Kafka or any queue
 
-<!-- derived-from: data-generator sha256:763625cc8287 -->
+<!-- derived-from: data-generator sha256:511ff7f3a370 -->
 
 `stream_dict` yields Python record dicts at a bounded rate; send them with your client.
 After normalization, every microbatch uses pandas records so its public Python representation is

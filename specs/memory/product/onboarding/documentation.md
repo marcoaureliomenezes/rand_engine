@@ -28,7 +28,7 @@ sources:
 ## Landing README
 
 - In order: the pitch, PyPI, Python, license and CI badges, install, a 30-second example, when to use it, five runnable starters plus the optional Agent context, and documentation and support routes; it links the skill and holds no method reference table.
-- Faker is installed only as `pip install "rand-engine[faker]"`, here and in every docs page.
+- Stable source guidance installs Faker as `pip install "rand-engine[faker]"`; preview preparation rewrites the extra to the reviewed source archive. The copied Faker case carries no install command and points readers to Getting started.
 
 ## llms.txt and the agent skill
 

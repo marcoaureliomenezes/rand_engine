@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-18T13:46:41Z",
+  "generated_at": "2026-10-18T15:15:16Z",
   "features": [
     {
       "rank": 1,
@@ -64,7 +64,7 @@
       "title": "DataGenerator",
       "area": "generation",
       "tldr": "The pandas generator validates a RandSpec, owns its random generator, and returns DataFrames, files, file streams or an endless lossless record stream.",
-      "summary": "DataGenerator(spec, seed) is the pandas composition root; size and transformers feed get_df, stream_dict, write and writeStream, with one owned NumPy generator, a fixed column-to-modifier order, continuous key offsets and an Arrow record path used only when it preserves public Python values.",
+      "summary": "DataGenerator(spec, seed) is the pandas composition root; size and transformers feed get_df, stream_dict, write and writeStream, with one owned NumPy generator, a fixed column-to-modifier order, continuous key offsets and one normalized pandas record path that preserves public Python values.",
       "path": "specs/memory/product/generation/data-generator.md",
       "tags": [
         "pandas",
@@ -72,7 +72,7 @@
         "generator",
         "dataframe"
       ],
-      "token_estimate": 531,
+      "token_estimate": 495,
       "depends_on": [
         "writers-and-streaming",
         "templates-and-examples",
@@ -154,7 +154,7 @@
         "agent-skill",
         "readme"
       ],
-      "token_estimate": 932,
+      "token_estimate": 957,
       "depends_on": [
         "public-api",
         "writers-and-streaming",
