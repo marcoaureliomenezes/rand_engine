@@ -127,9 +127,10 @@ class TestComparisonArtifact(unittest.TestCase):
     )
 
     expected_python = [("python", side) for side in ["rand-engine", "faker"] + SAMPLE_ORDER]
-    expected_spark = [("spark", side) for side in ["rand-engine", "dbldatagen", "dbldatagen", "rand-engine", "rand-engine", "dbldatagen"]]
+    expected_spark = [("spark", side) for side in ["rand-engine", "dbldatagen", "rand-engine", "dbldatagen", "dbldatagen", "rand-engine", "rand-engine", "dbldatagen"]]
     self.assertEqual(calls, expected_python + expected_spark)
     self.assertEqual(artifact["workloads"]["python"]["warmups"], ["rand-engine", "faker"])
+    self.assertEqual(artifact["workloads"]["spark"]["warmups"], ["rand-engine", "dbldatagen"])
     self.assertEqual(artifact["workloads"]["python"]["sample_order"], SAMPLE_ORDER)
     self.assertEqual(artifact["workloads"]["spark"]["sample_order"], ["rand-engine", "dbldatagen", "dbldatagen", "rand-engine", "rand-engine", "dbldatagen"])
     self.assertEqual(artifact["workloads"]["python"]["samples"], {"rand-engine": [1.0, 1.0, 1.0], "faker": [1.0, 1.0, 1.0]})
