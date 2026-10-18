@@ -67,7 +67,7 @@ a scaffolded example ([[get-started-cli]]) and the docs site, `llms.txt` and age
 
 | slug | title | tldr |
 |------|-------|------|
-| `benchmarks` | Performance benchmarks | CI compares every generation method, two modifiers and four sinks on the same runner, publishes results and enforces regression limits. |
+| `benchmarks` | Performance benchmarks | CI enforces same-runner rand-engine regression limits and separately records bounded, validated observations against Faker and dbldatagen. |
 
 ### relations
 

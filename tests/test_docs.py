@@ -883,10 +883,10 @@ def _pip_installs():
 def _changelog():
   text = _text(ROOT / "CHANGELOG.md")
   headers = re.findall(r"^## \[(\d+\.\d+\.\d+)\](.*)$", text, re.M)
-  assert [rest for v, rest in headers if v == "0.8.0"] == [" - Unreleased"]
+  assert [rest for v, rest in headers if v == "0.8.0"] == [" - 2026-10-18"]
   assert [v for v, rest in headers if v != "0.8.0" and not re.fullmatch(rf" - {ISO}", rest)] == []
   assert "## [0.7.0] - 2026-10-14" in text
-  section = re.search(r"^## \[0\.8\.0\] - Unreleased\n(.*?)(?=^## \[)", text, re.M | re.S).group(1)
+  section = re.search(r"^## \[0\.8\.0\] - 2026-10-18\n(.*?)(?=^## \[)", text, re.M | re.S).group(1)
   added, fixed = (re.search(rf"^### {h}\n(.*?)(?=^###|\Z)", section, re.M | re.S) for h in ("Added", "Fixed"))
   assert fixed is not None
   assert 'pip install "rand-engine[faker]"' in added.group(1)
