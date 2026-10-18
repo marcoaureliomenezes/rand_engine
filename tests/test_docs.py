@@ -978,6 +978,9 @@ def test_docs_preparation_preview_binds_every_public_entry_to_one_reviewed_sourc
   assert {path: path.read_bytes() for path in source_paths} == before
 
   texts = _prepared_texts(input_root, public_root)
+  raw_cases = public_root / "rand_engine" / "cases"
+  assert {path.name for path in raw_cases.glob("*")} == {case.resource for case in CASES.values()}
+  case_texts = {path.relative_to(public_root).as_posix(): _text(path) for path in raw_cases.glob("*")}
   expected_zip = f"{SOURCE_ZIP}{PREVIEW_SHA}.zip"
   preview_targets = {
       f'"{expected_zip}"',
@@ -985,7 +988,7 @@ def test_docs_preparation_preview_binds_every_public_entry_to_one_reviewed_sourc
   }
   installs = [
       target
-      for text in texts.values()
+      for text in [*texts.values(), *case_texts.values()]
       for target in re.findall(r"pip install\s+(\"[^\"]+\"|'[^']+'|[^\s`.,;)]+)", text)
   ]
   project_installs = [target for target in installs if "rand-engine" in target or SOURCE_ZIP in target]
@@ -999,8 +1002,6 @@ def test_docs_preparation_preview_binds_every_public_entry_to_one_reviewed_sourc
   assert all(REPO_MASTER not in text for text in texts.values())
   assert all(f"{REPO_BLOB}{PREVIEW_SHA}/" in text for text in texts.values() if REPO_BLOB in text)
 
-  raw_cases = public_root / "rand_engine" / "cases"
-  assert {path.name for path in raw_cases.glob("*")} == {case.resource for case in CASES.values()}
   agent = (raw_cases / agent_case().resource).read_text(encoding="utf-8")
   assert f"{SITE}getting-started/" in agent
   assert f"{SITE}skills/rand-engine/SKILL.md" in agent
