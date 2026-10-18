@@ -3,12 +3,12 @@
   "release": "0.8.0",
   "phase": "CLOSURE",
   "defined": {
-    "sha": "fe8cb1c3da259c8b5a50ab7be0e22663780fea25",
-    "ts": "2026-10-18T16:11:44Z"
+    "sha": "e2a1a1d",
+    "ts": "2026-10-18T19:05:26Z"
   },
   "implemented": {
-    "sha": "325b3e2aa14c519a507cd0ae390605eaa4db4af1",
-    "ts": "2026-10-18T16:17:18Z"
+    "sha": "91161f4b667d127bd3c8a43a0ac757ee1c3e0056",
+    "ts": "2026-10-18T19:15:06Z"
   },
   "shipped": null,
   "log": [
@@ -665,6 +665,122 @@
       "since": "5059eb0eefaa9213db1eec16ff84ebf1d2e4c610",
       "until": "a920a7c1262da0d51cdce06ed8efde7fedd6d6b1",
       "reviewed": [],
+      "changed": []
+    },
+    {
+      "ts": "2026-10-18T16:47:29Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.8.0 (prior candidate closed at 325b3e2aa14c519a507cd0ae390605eaa4db4af1)"
+    },
+    {
+      "ts": "2026-10-18T17:13:03Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-12",
+      "milestone": "defined",
+      "sha": "f209003df2164bbc7a08d9bd5c89468218d0a519",
+      "text": "Candidate defined at f209003df2164bbc7a08d9bd5c89468218d0a519; phase IMPLEMENTATION."
+    },
+    {
+      "ts": "2026-10-18T18:37:39Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-12",
+      "milestone": "implemented",
+      "sha": "3d7763ad1ea469022bb500f71fc6615b83a7f1c3",
+      "text": "Candidate implemented at 3d7763ad1ea469022bb500f71fc6615b83a7f1c3; phase CLOSURE."
+    },
+    {
+      "ts": "2026-10-18T18:39:31Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over a920a7c1262da0d51cdce06ed8efde7fedd6d6b1..17dee08bd84c: 0 reviewed, 2 changed.",
+      "since": "a920a7c1262da0d51cdce06ed8efde7fedd6d6b1",
+      "until": "17dee08bd84c8e205b5bf9b36f6a8caa77de0966",
+      "reviewed": [],
+      "changed": [
+        "benchmarks",
+        "documentation"
+      ]
+    },
+    {
+      "ts": "2026-10-18T18:39:59Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-12 implemented at 3d7763a: the 0.8.0 CHANGELOG header now carries the independently observed 2026-10-18 publication date; a standard-library-importable observational harness and ten-pin CI-only environment compare exactly 100,000 materialized Python dictionaries for rand-engine and Faker and 1,000,000 fully evaluated Spark rows at eight partitions for rand-engine and dbldatagen, with one warm-up per side, AB/BA/AB samples, validation outside the clocks, installed public wheel identity, schemas, physical plans and no winner, score or threshold; the non-required, unscheduled workflow retains JSON, Markdown and pip evidence even for a controlled failure and leaves the internal benchmark workflow, base, artifacts and 1.3 limit byte-identical; Actions run 39153239357 succeeded in 103 s with 12 validated samples, artifact 12146450195 at 74,765 bytes and Python medians 0.158779939 s versus 0.768750219 s and Spark medians 1.340617298 s versus 0.516280276 s, bounded to the named contracts and environment; docs/comparison.md records the raw samples, setup costs, pins, validation and limitations without a ranking claim; the official Job 1 merge gate completed in 186.19 s with Ruff clean, 1293 passed, 8 deselected, 10 known warnings and 21 comparison subtests; implementation and reconcile size f209003..17dee08 is 15 files, +1080/-21; 0 open bugs; benchmarks and documentation atoms changed, ARCHITECTURE and QUALITY state the isolated observational path, the generated catalog/index and llms.txt benchmark marker were refreshed, and release.py memory covers a920a7c..17dee08 with zero drift; verdict.py stats 0.8.0-rc12: fix-induced bugs n/a against <=20%, first-pass approval 1/1 (100%) against >=70%, closure duration n/a against <=4 h, non-block commits after closure 0 against 0, memory drift 0 against 0, rebuild-due patches 0 against 0, oldest record read 2026-10-10T22:35:19Z; carried: the official candidate merge gate and work-to-integration PR remain for the main thread, while outreach stays active for its separately approved next candidate and no rc-12 scope or claim includes external acceptance, indexing or a universal performance conclusion; backlog exits: none."
+    },
+    {
+      "ts": "2026-10-18T18:41:27Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 17dee08bd84c8e205b5bf9b36f6a8caa77de0966..d3d394d6f014: 1 reviewed, 0 changed.",
+      "since": "17dee08bd84c8e205b5bf9b36f6a8caa77de0966",
+      "until": "d3d394d6f014043c0bb4351bee1d148d7795d685",
+      "reviewed": [
+        "documentation"
+      ],
+      "changed": []
+    },
+    {
+      "ts": "2026-10-18T18:41:50Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-12 implemented at 3d7763a: the 0.8.0 CHANGELOG header now carries the independently observed 2026-10-18 publication date; a standard-library-importable observational harness and ten-pin CI-only environment compare exactly 100,000 materialized Python dictionaries for rand-engine and Faker and 1,000,000 fully evaluated Spark rows at eight partitions for rand-engine and dbldatagen, with one warm-up per side, AB/BA/AB samples, validation outside the clocks, installed public wheel identity, schemas, physical plans and no winner, score or threshold; the dedicated comparison requirements leave the existing package dependency declarations and project lock unchanged; the non-required, unscheduled workflow retains JSON, Markdown and pip evidence even for a controlled failure and leaves the internal benchmark workflow, base, artifacts and 1.3 limit byte-identical; Actions run 39153239357 succeeded in 103 s with 12 validated samples, artifact 12146450195 at 74,765 bytes and Python medians 0.158779939 s versus 0.768750219 s and Spark medians 1.340617298 s versus 0.516280276 s, bounded to the named contracts and environment; docs/comparison.md records the raw samples, setup costs, pins, validation and limitations without a ranking claim; the official Job 1 merge gate completed in 186.19 s with Ruff clean, 1293 passed, 8 deselected, 10 known warnings and 21 comparison subtests; implementation and reconcile size f209003..d3d394d is 15 files, +1099/-21; 0 open bugs; benchmarks and documentation atoms changed, ARCHITECTURE and QUALITY state the isolated observational path, the generated catalog/index and llms.txt benchmark marker were refreshed, and release.py memory covers the source worklist through d3d394d in two passes with zero drift; verdict.py stats 0.8.0-rc12: fix-induced bugs n/a against <=20%, first-pass approval 1/1 (100%) against >=70%, closure duration n/a against <=4 h, non-block commits after closure 0 against 0, memory drift 0 against 0, rebuild-due patches 0 against 0, oldest record read 2026-10-10T22:35:19Z; carried: the official candidate merge gate and work-to-integration PR remain for the main thread, while outreach stays active for its separately approved next candidate and no rc-12 scope or claim includes external acceptance, indexing or a universal performance conclusion; backlog exits: none."
+    },
+    {
+      "ts": "2026-10-18T18:57:33Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.8.0 (prior candidate closed at 3d7763ad1ea469022bb500f71fc6615b83a7f1c3)"
+    },
+    {
+      "ts": "2026-10-18T19:05:26Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-13",
+      "milestone": "defined",
+      "sha": "e2a1a1d",
+      "text": "Candidate defined at e2a1a1d; phase IMPLEMENTATION."
+    },
+    {
+      "ts": "2026-10-18T19:15:06Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-13",
+      "milestone": "implemented",
+      "sha": "91161f4b667d127bd3c8a43a0ac757ee1c3e0056",
+      "text": "Candidate implemented at 91161f4b667d127bd3c8a43a0ac757ee1c3e0056; phase CLOSURE."
+    },
+    {
+      "ts": "2026-10-18T19:17:06Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over d3d394d6f014043c0bb4351bee1d148d7795d685..aee6b5498913: 1 reviewed, 0 changed.",
+      "since": "d3d394d6f014043c0bb4351bee1d148d7795d685",
+      "until": "aee6b5498913a9faf0e80f1ba805b06d6965850e",
+      "reviewed": [
+        "documentation"
+      ],
+      "changed": []
+    },
+    {
+      "ts": "2026-10-18T19:17:36Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-13 implemented at 91161f4 with exactly five actions/setup-java pin-and-comment replacements to v5.7.0, two historical Agent Skill clauses pruned while current starter safety and pandas-record guidance remain, and the observed Java value rendered as four opaque version components; source review found no runtime, dependency, lock, benchmark-authority, gate or test change; the official Job 1 merge gate completed in 158.03 s with Ruff clean, 1293 passed, 8 deselected, 10 known warnings and 21 comparison subtests, while the strict site build and hosted native v5 matrix remain post-push CI evidence and are not claimed here; GitHub Discussion #51 is the one public factual announcement, curated-list pull requests statice/awesome-synthetic-data #18 and igorbarinov/awesome-data-engineering #393 were submitted and remained open when observed, and bounded observational Actions run 39153239357 succeeded with its comparison guide; outreach exited once as delivered without acceptance, indexing, adoption, ranking, universal-performance or production-throughput credit, other channels, vinta and conda-forge are outside this delivery, and Context7 remains a manual account act; implementation and reconciliation size 716c661..6c0c1c9 is 10 files, +22/-25; 0 open bugs and 0 active backlog entries; documentation was reviewed unchanged, generated catalog and index remained current, and release.py memory covers d3d394d..aee6b54 with zero drift; verdict.py stats 0.8.0-rc13: fix-induced bugs n/a against <=20%, first-pass approval 1/1 (100%) against >=70%, closure duration n/a against <=4 h, non-block commits after closure 0 against 0, memory drift 0 against 0, rebuild-due patches 0 against 0, oldest record read 2026-10-10T22:35:19Z; carried: the official candidate merge, unpublished-suffix publication remedy preserving public bff8526, exact-head review, push, work-to-integration PR, strict docs CI and native hosted v5 matrix remain for the main thread, while external pull-request acceptance and indexing remain outside the delivery condition; backlog exits: outreach delivered."
+    },
+    {
+      "ts": "2026-10-18T19:28:33Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over a920a7c1262da0d51cdce06ed8efde7fedd6d6b1..6ee543b33647: 2 reviewed, 0 changed.",
+      "since": "a920a7c1262da0d51cdce06ed8efde7fedd6d6b1",
+      "until": "6ee543b33647ec174b49aaa3357166649d8bf8e0",
+      "reviewed": [
+        "documentation",
+        "benchmarks"
+      ],
       "changed": []
     }
   ]

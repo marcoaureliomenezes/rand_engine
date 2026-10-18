@@ -1,0 +1,255 @@
+name: Observational comparison
+
+on:
+  push:
+    branches:
+      - 'wt/**'
+    paths:
+      - 'benchmarks/comparison.py'
+      - 'benchmarks/comparison-requirements.txt'
+      - 'tests/test_comparison.py'
+      - '.github/workflows/comparison.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    name: Bounded cross-library observation
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      WHEEL_SHA256: db4422a43a20605babb369ac223d526e5607f6539f5056c5d277ead22ad173ba
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+
+      - name: Set up Temurin Java 17
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Initialize observation record
+        env:
+          HARNESS_SHA: ${{ github.sha }}
+          RUNNER_ID: ${{ runner.name }}
+        run: |
+          comparison_dir="$RUNNER_TEMP/rand-engine-comparison"
+          echo "COMPARISON_DIR=$comparison_dir" >> "$GITHUB_ENV"
+          echo "COMPARISON_PYTHON=$comparison_dir/venv/bin/python" >> "$GITHUB_ENV"
+          echo "PYSPARK_PYTHON=$comparison_dir/venv/bin/python" >> "$GITHUB_ENV"
+          export COMPARISON_DIR="$comparison_dir"
+          export COMPARISON_PYTHON="$comparison_dir/venv/bin/python"
+          mkdir -p "$COMPARISON_DIR/output"
+          python - "$COMPARISON_DIR/workflow.json" <<'PY'
+          import json
+          import os
+          import sys
+
+          path = sys.argv[1]
+          json.dump(
+              {
+                  "status": "pending",
+                  "harness_sha": os.environ["HARNESS_SHA"],
+                  "runner": os.environ["RUNNER_ID"],
+                  "durations_seconds": {},
+              },
+              open(path, "w", encoding="utf-8"),
+              indent=2,
+              sort_keys=True,
+          )
+          open(path, "a", encoding="utf-8").write("\n")
+          PY
+          started=$(python -c 'import time; print(time.perf_counter())')
+          set +e
+          python -m venv "$COMPARISON_DIR/venv"
+          result=$?
+          set -e
+          finished=$(python -c 'import time; print(time.perf_counter())')
+          python - "$COMPARISON_DIR/workflow.json" "$started" "$finished" "$result" <<'PY'
+          import json
+          import sys
+
+          path, started, finished, result = sys.argv[1:]
+          with open(path, encoding="utf-8") as handle:
+              record = json.load(handle)
+          record["durations_seconds"]["environment"] = float(finished) - float(started)
+          record["environment_exit_code"] = int(result)
+          if int(result):
+              record["status"] = "environment_failure"
+          with open(path, "w", encoding="utf-8") as handle:
+              json.dump(record, handle, indent=2, sort_keys=True)
+              handle.write("\n")
+          PY
+          exit "$result"
+
+      - name: Install isolated comparison harness
+        id: install
+        run: |
+          started=$(python -c 'import time; print(time.perf_counter())')
+          set +e
+          "$COMPARISON_PYTHON" -m pip install --isolated --report "$COMPARISON_DIR/pip-report.json" \
+            -r benchmarks/comparison-requirements.txt
+          result=$?
+          set -e
+          finished=$(python -c 'import time; print(time.perf_counter())')
+          if [ "$result" -eq 0 ]; then
+            set +e
+            "$COMPARISON_PYTHON" -I - "$COMPARISON_DIR/workflow.json" "$started" "$finished" <<'PY'
+          import importlib.metadata
+          import json
+          import os
+          import pathlib
+          import rand_engine
+          import sys
+
+          path = pathlib.Path(sys.argv[1])
+          record = json.loads(path.read_text(encoding="utf-8"))
+          record["durations_seconds"]["install"] = float(sys.argv[3]) - float(sys.argv[2])
+          record["install_exit_code"] = 0
+          version = importlib.metadata.version("rand-engine")
+          module_file = pathlib.Path(rand_engine.__file__).resolve()
+          if version != "0.8.0" or module_file.is_relative_to(pathlib.Path(os.environ["GITHUB_WORKSPACE"]).resolve()):
+              raise RuntimeError("comparison must import the published rand-engine 0.8.0 wheel")
+          record["installed_rand_engine"] = {
+              "metadata_version": version,
+              "module_file": str(module_file),
+          }
+          record["installed_distribution_exit_code"] = 0
+          path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
+            verification=$?
+            set -e
+            if [ "$verification" -eq 0 ]; then
+              exit 0
+            fi
+            python - "$COMPARISON_DIR/workflow.json" "$started" "$finished" "$verification" <<'PY'
+          import json
+          import sys
+
+          path, started, finished, verification = sys.argv[1:]
+          with open(path, encoding="utf-8") as handle:
+              record = json.load(handle)
+          record["durations_seconds"]["install"] = float(finished) - float(started)
+          record["install_exit_code"] = 0
+          record["installed_distribution_exit_code"] = int(verification)
+          record["status"] = "install_validation_failure"
+          with open(path, "w", encoding="utf-8") as handle:
+              json.dump(record, handle, indent=2, sort_keys=True)
+              handle.write("\n")
+          PY
+            exit "$verification"
+          fi
+          python - "$COMPARISON_DIR/workflow.json" "$started" "$finished" "$result" <<'PY'
+          import json
+          import sys
+
+          path, started, finished, result = sys.argv[1:]
+          with open(path, encoding="utf-8") as handle:
+              record = json.load(handle)
+          record["durations_seconds"]["install"] = float(finished) - float(started)
+          record["install_exit_code"] = int(result)
+          record["status"] = "install_failure"
+          with open(path, "w", encoding="utf-8") as handle:
+              json.dump(record, handle, indent=2, sort_keys=True)
+              handle.write("\n")
+          PY
+          exit "$result"
+
+      - name: Run bounded observation
+        id: compare
+        working-directory: ${{ runner.temp }}
+        env:
+          HARNESS_SHA: ${{ github.sha }}
+          RUNNER_ID: ${{ runner.name }}
+        run: |
+          started=$(python -c 'import time; print(time.perf_counter())')
+          set +e
+          "$COMPARISON_PYTHON" -I "$GITHUB_WORKSPACE/benchmarks/comparison.py" \
+            --output-dir "$COMPARISON_DIR/output" \
+            --pip-report "$COMPARISON_DIR/pip-report.json" \
+            --wheel-sha256 "$WHEEL_SHA256" \
+            --harness-sha "$HARNESS_SHA" \
+            --runner "$RUNNER_ID"
+          result=$?
+          set -e
+          finished=$(python -c 'import time; print(time.perf_counter())')
+          python - "$COMPARISON_DIR/workflow.json" "$COMPARISON_DIR/output" "$COMPARISON_DIR/pip-report.json" "$started" "$finished" "$result" <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          path, output, pip_report, started, finished, result = sys.argv[1:]
+          with open(path, encoding="utf-8") as handle:
+              record = json.load(handle)
+          output_path = pathlib.Path(output)
+          record["durations_seconds"]["execution"] = float(finished) - float(started)
+          record["execution_exit_code"] = int(result)
+          report_path = pathlib.Path(pip_report)
+          record["payload_bytes"] = sum(item.stat().st_size for item in output_path.glob("*") if item.is_file())
+          if report_path.is_file():
+              record["payload_bytes"] += report_path.stat().st_size
+          record["status"] = "success" if int(result) == 0 else "comparison_failure"
+          with open(path, "w", encoding="utf-8") as handle:
+              json.dump(record, handle, indent=2, sort_keys=True)
+              handle.write("\n")
+          PY
+          exit "$result"
+
+      - name: Publish observation summary
+        if: ${{ always() }}
+        run: |
+          if [ ! -f "$COMPARISON_DIR/workflow.json" ]; then
+            mkdir -p "$COMPARISON_DIR"
+            python - "$COMPARISON_DIR/workflow.json" <<'PY'
+          import json
+          import sys
+
+          with open(sys.argv[1], "w", encoding="utf-8") as handle:
+              json.dump({"status": "initialization_failure", "durations_seconds": {}}, handle, indent=2, sort_keys=True)
+              handle.write("\n")
+          PY
+          fi
+          python - "$COMPARISON_DIR/workflow.json" "$GITHUB_STEP_SUMMARY" <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          record_path, summary_path = map(pathlib.Path, sys.argv[1:])
+          record = json.loads(record_path.read_text(encoding="utf-8"))
+          lines = ["# Observational comparison", "", f"Workflow status: `{record['status']}`", ""]
+          lines.extend(["| measurement | seconds |", "|---|---:|"])
+          for name, seconds in record.get("durations_seconds", {}).items():
+              lines.append(f"| {name} | {seconds:.6f} |")
+          lines.extend(["", f"Payload bytes (excluding workflow metadata): `{record.get('payload_bytes', 0)}`", ""])
+          comparison_path = record_path.parent / "output" / "comparison.json"
+          if comparison_path.is_file():
+              comparison = json.loads(comparison_path.read_text(encoding="utf-8"))
+              lines.extend([f"Harness status: `{comparison.get('status', 'unknown')}`", ""])
+              for workload, entry in comparison.get("workloads", {}).items():
+                  lines.append(f"{workload} setup seconds: `{entry.get('setup_seconds')}`")
+              lines.append("")
+          summary_path.open("a", encoding="utf-8").write("\n".join(lines) + "\n")
+          PY
+          if [ -f "$COMPARISON_DIR/output/comparison.md" ]; then
+            cat "$COMPARISON_DIR/output/comparison.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload observation evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: observational-comparison-${{ github.run_id }}
+          path: |
+            ${{ env.COMPARISON_DIR }}/workflow.json
+            ${{ env.COMPARISON_DIR }}/pip-report.json
+            ${{ env.COMPARISON_DIR }}/output/comparison.json
+            ${{ env.COMPARISON_DIR }}/output/comparison.md
+          if-no-files-found: error

@@ -1,0 +1,10 @@
+rand-engine==0.8.0
+Faker==28.4.1
+dbldatagen==0.4.0.post1
+PySpark==3.5.8
+setuptools==83.0.0
+jmespath==1.0.1
+pyparsing==3.2.5
+numpy==2.1.1
+pandas==2.2.3
+pyarrow==23.0.1

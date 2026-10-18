@@ -27,7 +27,7 @@ commit that carries its accepted ADR.
 - pytest `^9.0`, pytest-cov (test group) — the suite and its fixture data.
 - ruff `>=0.17.1` (test group) — pydocstyle `D` rules with the numpy convention on the public-surface modules.
 - Zensical `==0.0.70` and mkdocstrings-python `==2.0.9` (optional `docs` group, Python `>=3.11`) — the strict docs-site build and its API reference from numpy-style docstrings, over `mkdocs.yml`.
-- GitHub Actions — test matrix, advisory security scans, same-runner A/B benchmarks, RC and stable publishing through PyPI Trusted Publishing, and an isolated docs build with a guarded GitHub Pages deploy.
+- GitHub Actions — test matrix, advisory security scans, same-runner A/B regression benchmarks, a non-gating isolated cross-library observation, RC and stable publishing through PyPI Trusted Publishing, and an isolated docs build with a guarded GitHub Pages deploy.
 
 ## Structure
 
@@ -58,6 +58,9 @@ rand_engine/
   utils/             StreamHandler
 scripts/
   docs_site.py       isolated stable/preview preparation plus fail-closed Pages eligibility
+benchmarks/
+  comparison.py      isolated observational runner for bounded Python and Spark contracts
+  comparison-requirements.txt  pinned CI-only environment for that runner
 ```
 
 - Dependency direction: `main` -> `core`, `validators`, `file_handlers`, `utils`; `validators.method_specs` -> `core._np_core` for date directives and float-domain predicates, and `validators.common_validator` -> `core._np_core` for `width_beyond_double`, the one Spark width predicate `SparkCore.gen_ints` and `float_lattice_bounds` also call, so grammar and engine decide each numeric rule once; `cli` imports only the standard library and reads `cases/` as package resources; `core._keys` and `file_handlers` import only `validators.exceptions`; `examples.common_rand_specs` runs `AdvancedValidator` on `from_schema` output; `core` imports no generator and `examples` import no engine.

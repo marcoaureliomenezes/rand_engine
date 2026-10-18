@@ -2,7 +2,7 @@
 slug: QUALITY
 title: Quality Assurance
 tldr: QA principles, test architecture and the gates every change passes.
-summary: Principles change only with an accepted ADR; Test architecture and Gates state how rand-engine is verified — a light numbered pytest suite with executable docs and docstrings, a docstring lint in the verify line, CI-only stress and same-runner benchmarks, and the GitHub Actions matrix, security, isolated docs and publish workflows.
+summary: Principles change only with an accepted ADR; Test architecture and Gates state how rand-engine is verified — a light numbered pytest suite with executable docs and docstrings, a docstring lint in the verify line, CI-only stress and same-runner benchmarks, a non-gating cross-library observation, and the GitHub Actions matrix, security, isolated docs and publish workflows.
 tags:
   - quality-assurance
   - testing
@@ -17,11 +17,12 @@ tags:
 
 ## Test architecture
 
-- One pytest suite under `tests/`: numbered files `test_<n>_<area>.py` ordered by layer — 0 core methods, 1 validators, 2 `DataGenerator`, 3 Spark (including partition-independent keys) and advanced specs, 4 example specs and the `RandSpecs` builders, 5 file and SQLite batch/stream writers, 6 normalized pandas `stream_dict` record contracts, 7 templates, 8 PK/FK consistency, 9 the get-started CLI and its scaffolds — plus the public-import and wheel contract, benchmark-script contract and executable documentation contract (Markdown pages, the agent skill, README landing rules, public docstrings and their examples).
+- One pytest suite under `tests/`: numbered files `test_<n>_<area>.py` ordered by layer — 0 core methods, 1 validators, 2 `DataGenerator`, 3 Spark (including partition-independent keys) and advanced specs, 4 example specs and the `RandSpecs` builders, 5 file and SQLite batch/stream writers, 6 normalized pandas `stream_dict` record contracts, 7 templates, 8 PK/FK consistency, 9 the get-started CLI and its scaffolds — plus the public-import and wheel contract, internal benchmark and observational-comparison contracts, and executable documentation contract (Markdown pages, the agent skill, README landing rules, public docstrings and their examples).
 - The five runnable CLI scaffolds execute in-process in a temporary directory, sharing the suite's Spark session; one runs as a plain-python subprocess. The sixth Agent resource is checked as Markdown bytes and project-context content and is never executed as Python.
 - Specs under test live as fixtures in `tests/fixtures/f<n>_*.py`; `conftest.py` loads the Spark fixtures as a plugin.
 - Spark tests start a local `SparkSession` and skip when PySpark is absent or on Windows with Python 3.12+.
 - The default selector excludes `stress`; default tests generate at most 10^4 rows, while large-volume tests and benchmarks run in the CI benchmark job.
+- The observational comparison tests use injected factories and clocks, so ordinary collection needs no comparator package and asserts the two workload shapes, alternating samples, complete output validation, provenance and artifact semantics without a timing target. A separate non-required workflow installs its pinned environment and the public non-editable wheel, runs the real Python and Spark contracts on canonical comparison-path pushes or manual dispatch, and always retains its status and evidence; its measurements never enter the internal regression gate.
 - Writer and documentation tests write through pytest temporary paths.
 - Documentation contracts exercise stable and preview preparation through the standard-library interface: isolated input, raw resources, canonical-skill mirroring, exact-SHA source routes and core/Faker-extra installs, stable PyPI guidance, deploy eligibility and explained skips. Preparation remains usable on Python 3.10 without a TOML parser; preview eligibility then fails closed, while the `master` path bypasses preview metadata reads.
 - Local runs keep caches out of the repo: `PYTHONDONTWRITEBYTECODE=1 poetry run pytest tests/ -q -p no:cacheprovider`.
