@@ -36,5 +36,5 @@ Each generator owns its NumPy `Generator`, so the same spec, seed and size give 
 
 The built-in batch writer handles CSV, JSON, Parquet and a bounded SQLite table sink. SQLite is
 output-only: it quotes spec-supplied identifiers and parameter-binds values; generation never
-uses database state or lookup SQL. `stream_dict` uses Arrow only when it can preserve the public
-record representation and otherwise keeps pandas conversion.
+uses database state or lookup SQL. `stream_dict` normalizes each microbatch and converts it to
+pandas records, preserving the public record representation.

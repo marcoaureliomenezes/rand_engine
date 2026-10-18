@@ -174,8 +174,7 @@ assert os.path.exists("out/clients.parquet") and len(os.listdir("out/clients")) 
 ```
 
 For Kafka or any queue, iterate `.stream_dict(min_throughput=..., max_throughput=...)`: each record is a dict with `timestamp_created` added; send it with your own client. It never ends, so stop it yourself.
-After unchanged normalization it uses Arrow only for strict lossless scalar representations; nested,
-mixed, custom, or otherwise unproved values retain the pandas record representation.
+After unchanged normalization, every microbatch converts to pandas records, preserving public Python values.
 
 ```python
 from itertools import islice

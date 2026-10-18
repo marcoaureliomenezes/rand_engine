@@ -55,7 +55,7 @@ For new work, use the CLI starters and rendered reference: `rand-engine list` sh
 starters, of which five are runnable Python tutorials; `rand-engine get-started agent --out
 PROJECT` writes an opt-in project context in 0.8.0. Spark `pk` and `fk` definitions now work
 through the shared stateless key path. SQLite output is available through the batch writer,
-and stream records retain their public Python values across the Arrow/pandas conversion choice.
+and normalized stream microbatches convert to pandas records that retain their public Python values.
 Read the [changelog](https://github.com/marcoaureliomenezes/rand_engine/blob/master/CHANGELOG.md)
 for the complete version history, including the distinct 0.7 migration changes.
 
