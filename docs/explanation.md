@@ -30,4 +30,11 @@ Each generator owns its NumPy `Generator`, so the same spec, seed and size give 
 
 ## Keys without state
 
-`pk` and `fk` are stateless key columns computed from the seed and the row index. A child `fk` rebuilds its parent's `pk` value, so related tables stay consistent across batches, streams and processes with no checkpoint store.
+`pk` and `fk` are stateless key columns computed from definitions, seed and row index. A child `fk` rebuilds its parent's `pk` value, so related tables stay consistent across batches, streams, processes and Spark key adapters with no checkpoint store. `born_before` can restrict an FK to parents whose event time is born on or before the child's event time.
+
+## Output choices
+
+The built-in batch writer handles CSV, JSON, Parquet and a bounded SQLite table sink. SQLite is
+output-only: it quotes spec-supplied identifiers and parameter-binds values; generation never
+uses database state or lookup SQL. `stream_dict` uses Arrow only when it can preserve the public
+record representation and otherwise keeps pandas conversion.

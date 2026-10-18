@@ -232,13 +232,28 @@ class TestValidateAndRaise:
         ({"method": "distincts_external", "kwargs": {}}, "does not exist"),
         ({"method": "integers", "kwargs": {"min": 1, "max": 5, "dtype": "int"}}, "unknown parameters: 'dtype'"),
         ({"method": "uuid4", "args": []}, "does not support 'args'"),
-        ({"method": "pk", "kwargs": {"style": "sequence"}}, "(?s)^(?!.*does not exist).*'pk'.*NumPy engine only in 0.7.0.*DataGenerator"),
-        ({"method": "fk", "kwargs": {}}, "(?s)^(?!.*does not exist).*'fk'.*NumPy engine only in 0.7.0.*DataGenerator"),
     ])
     def test_validate_and_raise_unsupported_advanced_spec(self, config, message):
         """Specs Spark cannot run raise at validation, not in get_df."""
         with pytest.raises(SpecValidationError, match=message):
             CommonValidator.validate_spark_and_raise({"c": config})
+
+
+def test_spark_catalog_admits_valid_key_columns():
+    """Spark accepts the catalog's key entries before key generation runs."""
+    spec = {
+        "account_id": {"method": "pk", "kwargs": {"style": "sequence", "start": 100, "step": 3}},
+        "parent_id": {
+            "method": "fk",
+            "kwargs": {
+                "parent": {"method": "pk", "kwargs": {"style": "permuted", "domain": 9, "key": 4}},
+                "parent_size": 9,
+                "skew": 1.2,
+            },
+        },
+    }
+
+    assert CommonValidator.validate_spark_spec(spec) == []
 
 
 def test_validated_spec_without_kwargs_generates(spark_session, spark_functions):

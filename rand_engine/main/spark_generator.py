@@ -1,13 +1,23 @@
 """Spark generation facade: one RandSpec, one SparkSession, one DataFrame."""
+import numpy as np
+import pandas as pd
+import pyarrow as pa
+
+from rand_engine.core._keys import Keys
 from rand_engine.core._spark_core import SparkCore
+from rand_engine.validators.advanced_validator import AdvancedValidator
 from rand_engine.validators.common_validator import CommonValidator
 from rand_engine.validators.exceptions import RandEngineError
+from rand_engine.validators.method_specs import METHOD_CATALOG
 
 
 
 class SparkGenerator:
   """
   Generate a PySpark DataFrame from a RandSpec.
+
+  Ordinary columns use native Spark expressions. Stateless ``pk`` and ``fk`` columns use
+  the shared key authority; an explicit seed applies to those key columns only.
 
   Parameters
   ----------
@@ -33,13 +43,36 @@ class SparkGenerator:
   100
   """
 
-  def __init__(self, spark, F, metadata):
+  def __init__(self, spark, F, metadata, seed=None):
     # Validação obrigatória - sempre executada
-    CommonValidator.validate_spark_and_raise(metadata)
+    key_metadata = {}
+    if isinstance(metadata, dict):
+      key_metadata = {
+        column: config for column, config in metadata.items()
+        if isinstance(config, dict) and config.get("method") in ("pk", "fk")
+      }
+    if key_metadata:
+      ordinary_metadata = {
+        column: config for column, config in metadata.items()
+        if column not in key_metadata
+      }
+      errors = (
+        CommonValidator.validate_spark_spec(ordinary_metadata)
+        if ordinary_metadata else []
+      )
+      errors.extend(AdvancedValidator.validate(key_metadata))
+    else:
+      errors = CommonValidator.validate_spark_spec(metadata)
+    if errors:
+      CommonValidator._raise(errors, "SPARKGENERATOR")
     
     self.spark = spark
     self.F = F
     self.metadata = metadata
+    self._key_metadata = key_metadata
+    if key_metadata:
+      seed_sequence = np.random.SeedSequence(seed)
+      self._key_seed = int(seed_sequence.generate_state(1)[0])
     self._size = None
 
   def map_methods(self):
@@ -49,7 +82,7 @@ class SparkGenerator:
     Returns
     -------
     dict
-        Method name to ``SparkCore`` generator function.
+        Method name to its Spark or stateless key generator function.
 
     Examples
     --------
@@ -75,6 +108,8 @@ class SparkGenerator:
       "distincts_multi_map": SparkCore.gen_distincts_multi_map,
       "distincts_map_prop": SparkCore.gen_distincts_map_prop,
       "complex_distincts": SparkCore.gen_complex_distincts,
+      "pk": Keys.gen_pk,
+      "fk": Keys.gen_fk,
     }
  
   def size(self, size):
@@ -130,10 +165,78 @@ class SparkGenerator:
       raise RandEngineError("size not set: call .size(n) before get_df()")
     mapped_methods = self.map_methods()
     dataframe = self.spark.range(self._size)
+    source_index = next(
+      f"__rand_engine_source_index_{index}"
+      for index in range(len(self.metadata) + 1)
+      if f"__rand_engine_source_index_{index}" not in self.metadata
+    )
+    if self._key_metadata:
+      dataframe = dataframe.withColumn(source_index, self.F.col("id"))
     for k, v in self.metadata.items():
+      if v["method"] in ("pk", "fk"):
+        continue
       generator_method = mapped_methods[v["method"]]
       dataframe = generator_method(self.spark, F=self.F, df=dataframe, col_name=k, **v.get("kwargs", {}))
+    if self._key_metadata:
+      if "id" in self._key_metadata:
+        dataframe = dataframe.drop("id")
+      dataframe = self._add_key_columns(dataframe, source_index)
+      return dataframe.select(*(
+        self.F.col(f"`{column.replace('`', '``')}`").alias(column)
+        for column in self.metadata
+      ))
     # Remove the technical 'id' column from spark.range() only if not in spec
     if "id" not in self.metadata:
       return dataframe.drop("id")
     return dataframe
+
+
+  def _add_key_columns(self, dataframe, source_index):
+    """Build stateless key columns from the source indexes carried by Spark."""
+    from pyspark.sql.types import LongType, StringType, StructField, StructType
+
+    key_metadata = self._key_metadata
+    key_seed = self._key_seed
+    for column, config in key_metadata.items():
+      if config["method"] != "fk" or self._size == 0:
+        continue
+      kwargs = config.get("kwargs", {})
+      born_before = kwargs.get("born_before")
+      if born_before is None:
+        continue
+      eligible = Keys._eligible_parent_counts(
+        np.asarray([0], dtype=np.int64), kwargs["parent_size"], born_before
+      )
+      if not eligible[0]:
+        raise RandEngineError(f"fk column '{column}' has a child with no eligible parent")
+
+    def key_field(column, config):
+      kwargs = config.get("kwargs", {})
+      arrow_type = METHOD_CATALOG[config["method"]].arrow_types(kwargs)[0]
+      return StructField(column, StringType() if pa.types.is_string(arrow_type) else LongType(), False)
+
+    schema = StructType([
+      StructField(source_index, LongType(), False),
+      *(key_field(column, config) for column, config in key_metadata.items()),
+    ])
+
+    def generate_keys(batches):
+      for batch in batches:
+        indexes = batch[source_index].to_numpy(dtype=np.int64)
+        values = {source_index: indexes}
+        for column, config in key_metadata.items():
+          kwargs = config.get("kwargs", {})
+          if config["method"] == "pk":
+            values[column] = Keys._pk_at(
+              indexes, int(indexes.min()) if indexes.size else 0,
+              int(indexes.max()) if indexes.size else -1, **kwargs
+            )
+          else:
+            values[column] = Keys._fk_at(
+              indexes, kwargs["parent"], kwargs["parent_size"], kwargs.get("skew", 0),
+              key_seed, column, kwargs.get("born_before")
+            )
+        yield pd.DataFrame(values)
+
+    keys = dataframe.select(source_index).mapInPandas(generate_keys, schema)
+    return dataframe.join(keys, source_index)

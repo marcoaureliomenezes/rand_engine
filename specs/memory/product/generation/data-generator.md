@@ -1,8 +1,8 @@
 ---
 slug: data-generator
 title: DataGenerator
-tldr: "The pandas generator validates a RandSpec, owns its random generator, and returns DataFrames, files, file streams or an endless record stream."
-summary: "DataGenerator(spec, seed) is the pandas composition root; size and transformers feed get_df, stream_dict, write and writeStream, with one owned NumPy generator, a fixed column-to-modifier order and row offsets that keep keys continuous across stream batches and file parts."
+tldr: "The pandas generator validates a RandSpec, owns its random generator, and returns DataFrames, files, file streams or an endless lossless record stream."
+summary: "DataGenerator(spec, seed) is the pandas composition root; size and transformers feed get_df, stream_dict, write and writeStream, with one owned NumPy generator, a fixed column-to-modifier order, continuous key offsets and an Arrow record path used only when it preserves public Python values."
 tags: [pandas, numpy, generator, dataframe]
 sources:
   - rand_engine/main/data_generator.py
@@ -36,4 +36,5 @@ sources:
 
 - `.get_df()` returns one DataFrame and begins key row indexes at zero on every call.
 - `.stream_dict(min_throughput, max_throughput)` yields records forever; each microbatch advances the key row offset, datetime columns become strings, nulls become Python `None` and each record gains `timestamp_created`.
+- After the existing datetime normalization, record batches with exact string labels and a closed set of lossless scalar, NumPy numeric or supported pandas nullable dtypes convert through Arrow. Mixed or unproved object representations, nested values, non-string labels and unsupported dtypes use pandas records; Arrow representation errors alone fall back, while unrelated errors propagate.
 - `.write` and `.writeStream` bind the same generator pipeline to the file writers; one batch save distributes its total size across file parts, while stream microbatches each use the configured size ([[writers-and-streaming]]).

@@ -5,6 +5,7 @@ from typing import Generator
 import uuid
 from rand_engine.file_handlers.file_handler import FileHandler
 from rand_engine.file_handlers.writer import FileWriter
+from rand_engine.validators.exceptions import RandEngineError
 
 
 class FileStreamWriter(FileWriter):
@@ -93,6 +94,8 @@ class FileStreamWriter(FileWriter):
     >>> bool(files) and all(len(pd.read_csv(os.path.join(target, name))) == 10 for name in files)
     True
     """
+    if self.write_format == "sqlite":
+      raise RandEngineError("sqlite is available only through write.save")
     base_path, file_name_cleaned, ext = FileHandler.handle_path(path, self.write_format, self.write_options)
     path = f"{base_path}/{file_name_cleaned}"
     size = self.size_def()
