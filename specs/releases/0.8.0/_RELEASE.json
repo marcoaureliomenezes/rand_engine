@@ -1,7 +1,7 @@
 {
   "schema": "release-state-v1",
   "release": "0.8.0",
-  "phase": "CLOSURE",
+  "phase": "DEFINITION",
   "defined": {
     "sha": "fe8cb1c3da259c8b5a50ab7be0e22663780fea25",
     "ts": "2026-10-18T16:11:44Z"
@@ -666,6 +666,12 @@
       "until": "a920a7c1262da0d51cdce06ed8efde7fedd6d6b1",
       "reviewed": [],
       "changed": []
+    },
+    {
+      "ts": "2026-10-18T16:47:29Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.8.0 (prior candidate closed at 325b3e2aa14c519a507cd0ae390605eaa4db4af1)"
     }
   ]
 }
