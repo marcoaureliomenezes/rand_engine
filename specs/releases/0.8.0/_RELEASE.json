@@ -3,12 +3,12 @@
   "release": "0.8.0",
   "phase": "CLOSURE",
   "defined": {
-    "sha": "7e655f8d540ee8c21de79b755bd7141043f83189",
-    "ts": "2026-10-18T14:41:52Z"
+    "sha": "fe8cb1c3da259c8b5a50ab7be0e22663780fea25",
+    "ts": "2026-10-18T16:11:44Z"
   },
   "implemented": {
-    "sha": "9ee80e3c2f3190871aaaa51e0fa7ff1b4ff6a868",
-    "ts": "2026-10-18T15:13:56Z"
+    "sha": "325b3e2aa14c519a507cd0ae390605eaa4db4af1",
+    "ts": "2026-10-18T16:17:18Z"
   },
   "shipped": null,
   "log": [
@@ -624,6 +624,46 @@
       "text": "Memory reconciled over 75b6e9f802e1383d8c6ca4f36c7a6aab03facb60..5059eb0eefaa: 0 reviewed, 0 changed.",
       "since": "75b6e9f802e1383d8c6ca4f36c7a6aab03facb60",
       "until": "5059eb0eefaa9213db1eec16ff84ebf1d2e4c610",
+      "reviewed": [],
+      "changed": []
+    },
+    {
+      "ts": "2026-10-18T16:07:25Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.8.0 (prior candidate closed at 9ee80e3c2f3190871aaaa51e0fa7ff1b4ff6a868)"
+    },
+    {
+      "ts": "2026-10-18T16:11:44Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-11",
+      "milestone": "defined",
+      "sha": "fe8cb1c3da259c8b5a50ab7be0e22663780fea25",
+      "text": "Candidate defined at fe8cb1c3da259c8b5a50ab7be0e22663780fea25; phase IMPLEMENTATION."
+    },
+    {
+      "ts": "2026-10-18T16:17:18Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-11",
+      "milestone": "implemented",
+      "sha": "325b3e2aa14c519a507cd0ae390605eaa4db4af1",
+      "text": "Candidate implemented at 325b3e2aa14c519a507cd0ae390605eaa4db4af1; phase CLOSURE."
+    },
+    {
+      "ts": "2026-10-18T16:18:05Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-11 implemented at 325b3e2: CHANGELOG's current 0.8.0 stream bullet now states normalized pandas to_dict(records) conversion, while the Unreleased header and every other byte remain unchanged; no runtime, test, gate, benchmark, dependency, workspace or publication-date behavior changed; the official Job 1 merge gate passed Ruff with 1283 passed, 8 deselected and 10 known warnings in 67.16 s, with no task-local suite; implementation size 5579970..325b3e2 is 1 file, +1/-1; 0 open bugs; data-generator and documentation product truth were reviewed unchanged, release.py drift from 5059eb0..e0cb294 found no memory worklist, and no atom, generated catalog, derived marker or source coverage changed; verdict.py stats 0.8.0-rc11: fix-induced bugs n/a against <=20%, first-pass approval 1/2 (50%) against >=70%, closure duration n/a against <=4 h, non-block commits after closure 0 against 0, memory drift 0 against 0, rebuild-due patches 0 against 0, oldest record read 2026-10-10T22:35:19Z; carried: the future official rc merge gate, post-merge CI, corrected public-source proof and unchanged independent frozen rescore remain pending, so the last completed frozen result stays 95/100 overall, Guides 87.5% and Trust 75%, the prior 100 is superseded and no point is pre-awarded; stable promotion remains held until the score is strictly above 90 overall and in every category; outreach remains active with no exit, and stable 0.7 publication-date bookkeeping stays outside rc-11; backlog exits: none."
+    },
+    {
+      "ts": "2026-10-18T16:18:29Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 5059eb0eefaa9213db1eec16ff84ebf1d2e4c610..a920a7c1262d: 0 reviewed, 0 changed.",
+      "since": "5059eb0eefaa9213db1eec16ff84ebf1d2e4c610",
+      "until": "a920a7c1262da0d51cdce06ed8efde7fedd6d6b1",
       "reviewed": [],
       "changed": []
     }

@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Event-time `fk.born_before` eligibility, computed statelessly from parent and child starts/rates with exact inclusive boundaries across DataFrames, files and streams.
 - `SparkGenerator` support for `pk` and `fk`, using the shared indexed key authority so an explicit seed produces the same keys across pandas and Spark partition layouts.
 - Output-only SQLite batch writing with quoted identifiers, bound values, atomic selected-table overwrite and transactional append; stream writers refuse SQLite before output.
-- Lossless Arrow conversion for compatible `stream_dict` batches, with pandas fallback for mixed or unproved Python representations.
+- Normalized pandas `to_dict("records")` conversion for `stream_dict` batches.
 - A primary-source capability comparison for rand-engine, Faker and dbldatagen, without competitor performance claims.
 - An optional `agent` starter: `rand-engine get-started agent --out PROJECT` writes package-use context to `PROJECT/AGENTS.md` without overwriting existing project instructions; the five runnable starters remain unchanged.
 - A canonical compatibility, migration and recovery guide covering Python, Faker, Spark, Java and platform boundaries.
