@@ -1,7 +1,7 @@
 {
   "schema": "release-state-v1",
   "release": "0.8.0",
-  "phase": "CLOSURE",
+  "phase": "DEFINITION",
   "defined": {
     "sha": "49948f18fac871a138033b59756c10ce16cfe71f",
     "ts": "2026-10-18T12:15:49Z"
@@ -565,6 +565,18 @@
         "get-started-cli"
       ],
       "changed": []
+    },
+    {
+      "ts": "2026-10-18T14:32:31Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.8.0 (prior candidate closed at d0a1ff79a9704d86526c93eb5d0cb708b5420c30)"
+    },
+    {
+      "ts": "2026-10-18T14:34:31Z",
+      "agent": "dd-product-engineer",
+      "kind": "note",
+      "text": "Operator authorization verbatim: Aprovar a troca e os ajustes de testes descritos"
     }
   ]
 }
