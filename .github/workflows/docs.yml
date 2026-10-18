@@ -16,7 +16,7 @@ permissions:
 
 concurrency:
   group: pages-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ !(github.event_name == 'push' && (github.ref == 'refs/heads/feature/0.8.0' || github.ref == 'refs/heads/master')) }}
 
 jobs:
   build:
@@ -38,33 +38,56 @@ jobs:
       - name: Install docs dependencies
         run: poetry install --only docs --no-root --no-interaction
 
-      - name: Home page from README
-        run: cp README.md docs/index.md
-
-      - name: Build site (strict)
-        run: poetry run zensical build --strict
-
-      - name: Serve llms.txt and Markdown sources
+      - name: Prepare and build isolated site (strict)
         run: |
-          cp llms.txt site/llms.txt
-          (cd docs && find . -name '*.md' -exec cp --parents {} ../site/ \;)
-          test -f site/llms.txt
+          if [ "${{ github.event_name }}" = push ] && [ "${{ github.ref }}" = refs/heads/feature/0.8.0 ]; then
+            mode=preview
+          else
+            mode=stable
+          fi
+          output="$RUNNER_TEMP/rand-engine-docs"
+          python scripts/docs_site.py prepare --mode "$mode" --sha "${{ github.sha }}" --output "$output"
+          poetry run zensical build --strict --config-file "$output/input/mkdocs.yml"
+          cp -a "$output/public/." "$output/input/site/"
+          test -f "$output/input/site/llms.txt"
+          test -f "$output/input/site/skills/rand-engine/SKILL.md"
 
       - name: Upload Pages artifact
-        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/feature/0.8.0' || github.ref == 'refs/heads/master')
         uses: actions/upload-pages-artifact@v4
         with:
-          path: site
+          path: ${{ runner.temp }}/rand-engine-docs/input/site
 
   deploy:
     name: Deploy Pages
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/feature/0.8.0' || github.ref == 'refs/heads/master')
     needs: build
     runs-on: ubuntu-latest
     environment: github-pages
+    concurrency:
+      group: pages-public-site
+      queue: max
+      cancel-in-progress: false
     permissions:
       pages: write
       id-token: write
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Recheck deployment eligibility
+        id: eligibility
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_REF: ${{ github.ref }}
+          EVENT_SHA: ${{ github.sha }}
+        run: python scripts/docs_site.py deployment-eligibility --event-name "$EVENT_NAME" --ref "$EVENT_REF" --sha "$EVENT_SHA" --github-output "$GITHUB_OUTPUT"
+
       - name: Deploy to GitHub Pages
+        if: steps.eligibility.outputs.mode != 'skip'
         uses: actions/deploy-pages@v4

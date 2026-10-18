@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-18T04:57:24Z",
+  "generated_at": "2026-10-18T13:46:41Z",
   "features": [
     {
       "rank": 1,
@@ -144,8 +144,8 @@
       "slug": "documentation",
       "title": "Documentation site, llms.txt and agent skill",
       "area": "onboarding",
-      "tldr": "Strict-built docs, README, llms.txt and Agent guidance cover APIs, tutorials, compatibility, migration, support and security routes.",
-      "summary": "Zensical builds the repository's documentation from Markdown and public docstrings for the GitHub Pages target; README becomes the site home; rendered references and five tutorials cover package use; one compatibility guide covers tested boundaries, migration and recovery; llms.txt indexes rendered guides, the skill and all six starter resources; and canonical contribution and security files route support and private reports.",
+      "tldr": "Strict-built stable or preview docs, README, llms.txt and Agent guidance cover APIs, tutorials, compatibility, migration, support and security routes.",
+      "summary": "Zensical builds an isolated stable or immutable-source preview from Markdown and public docstrings for the GitHub Pages target; README becomes the site home; rendered references and five tutorials cover package use; one compatibility guide covers tested boundaries, migration and recovery; llms.txt indexes rendered guides, the mirrored canonical skill and all six starter resources; and canonical contribution and security files route support and private reports.",
       "path": "specs/memory/product/onboarding/documentation.md",
       "tags": [
         "docs",
@@ -154,7 +154,7 @@
         "agent-skill",
         "readme"
       ],
-      "token_estimate": 794,
+      "token_estimate": 932,
       "depends_on": [
         "public-api",
         "writers-and-streaming",
@@ -170,7 +170,8 @@
         "llms.txt",
         "README.md",
         "skills/**",
-        ".github/workflows/docs.yml"
+        ".github/workflows/docs.yml",
+        "scripts/docs_site.py"
       ]
     },
     {
@@ -187,7 +188,7 @@
         "scaffolds",
         "examples"
       ],
-      "token_estimate": 562,
+      "token_estimate": 587,
       "depends_on": [
         "public-api",
         "generation-methods",

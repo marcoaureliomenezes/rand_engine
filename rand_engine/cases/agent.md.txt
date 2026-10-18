@@ -4,10 +4,8 @@ Use this context when the project needs synthetic data for tests, demos, pipelin
 
 ## Install and import
 
-```bash
-pip install rand-engine
-pip install "rand-engine[faker]"  # only for Faker pools
-```
+For installation, version compatibility, and the current first result, use the live
+[Getting started](https://marcoaureliomenezes.github.io/rand_engine/getting-started/) guide.
 
 ```python
 from rand_engine import DataGenerator, RandSpecs, SparkGenerator
@@ -25,6 +23,6 @@ Use `DataGenerator` for pandas DataFrames, record streams, and file output. Use 
 
 - Docs and API reference: https://marcoaureliomenezes.github.io/rand_engine/
 - Machine-readable guide: https://marcoaureliomenezes.github.io/rand_engine/llms.txt
-- Agent skill and fuller patterns: https://github.com/marcoaureliomenezes/rand_engine/blob/master/skills/rand-engine/SKILL.md
+- Agent skill and fuller patterns: https://marcoaureliomenezes.github.io/rand_engine/skills/rand-engine/SKILL.md
 
 Generate synthetic data only. Keep credentials, personal data, production data, and secrets out of specifications and examples. If this project already has `AGENTS.md` instructions, review both files and merge this package-use context into the project rules; keep the existing project rules authoritative.

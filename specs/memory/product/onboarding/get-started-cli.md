@@ -33,4 +33,4 @@ sources:
 
 - Each runnable scaffold starts with `# Databricks notebook source` and separates cells with `# COMMAND ----------`; both are comments, so the file imports into Databricks and runs with `python <file>`.
 - Runnable scaffolds use synthetic data only, generate at most 10^4 rows and write only beneath the directory they run in. Each docs-site tutorial includes its case file verbatim, so the page and the CLI output cannot diverge ([[documentation]]).
-- The Agent resource is Markdown. It gives core and Faker-extra installation, supported imports, a first `DataGenerator` path, the `SparkGenerator` boundary and links to fuller authorities. It tells a user to preserve and merge existing project instructions, and never executes as Python.
+- The Agent resource is Markdown. It routes installation, compatibility and the first result to the live Getting started guide; gives supported imports, a first `DataGenerator` path and the `SparkGenerator` boundary; and links the public machine guide and generated mirror of the canonical Agent Skill. It tells a user to preserve and merge existing project instructions, and never executes as Python.

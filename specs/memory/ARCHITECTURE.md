@@ -2,7 +2,7 @@
 slug: ARCHITECTURE
 title: Architecture
 tldr: The system's principles, technology stack and structure.
-summary: Principles change only with an accepted ADR; Tech Stack and Structure state what rand-engine's code is — a NumPy-first synthetic-data library with pandas and Spark generators, validators, Arrow-backed files and record conversion, stateless PK/FK key columns, an output-only SQLite sink, a get-started CLI and a docs site.
+summary: Principles change only with an accepted ADR; Tech Stack and Structure state what rand-engine's code is — a NumPy-first synthetic-data library with pandas and Spark generators, validators, Arrow-backed files and record conversion, stateless PK/FK key columns, an output-only SQLite sink, a get-started CLI and an isolated stable-or-preview docs pipeline.
 tags:
   - architecture
   - layers
@@ -27,7 +27,7 @@ commit that carries its accepted ADR.
 - pytest `^9.0`, pytest-cov (test group) — the suite and its fixture data.
 - ruff `>=0.17.1` (test group) — pydocstyle `D` rules with the numpy convention on the public-surface modules.
 - Zensical `==0.0.70` and mkdocstrings-python `==2.0.9` (optional `docs` group, Python `>=3.11`) — the strict docs-site build and its API reference from numpy-style docstrings, over `mkdocs.yml`.
-- GitHub Actions — test matrix, advisory security scans, same-runner A/B benchmarks, RC and stable publishing through PyPI Trusted Publishing, and the docs build with its GitHub Pages deploy.
+- GitHub Actions — test matrix, advisory security scans, same-runner A/B benchmarks, RC and stable publishing through PyPI Trusted Publishing, and an isolated docs build with a guarded GitHub Pages deploy.
 
 ## Structure
 
@@ -56,6 +56,8 @@ rand_engine/
   examples/          CommonRandSpecs (alias RandSpecs, with faker_pool and from_schema), AdvancedRandSpecs
   templates/         WebServerLogs template, IRandomSpec
   utils/             StreamHandler
+scripts/
+  docs_site.py       isolated stable/preview preparation plus fail-closed Pages eligibility
 ```
 
 - Dependency direction: `main` -> `core`, `validators`, `file_handlers`, `utils`; `validators.method_specs` -> `core._np_core` for date directives and float-domain predicates, and `validators.common_validator` -> `core._np_core` for `width_beyond_double`, the one Spark width predicate `SparkCore.gen_ints` and `float_lattice_bounds` also call, so grammar and engine decide each numeric rule once; `cli` imports only the standard library and reads `cases/` as package resources; `core._keys` and `file_handlers` import only `validators.exceptions`; `examples.common_rand_specs` runs `AdvancedValidator` on `from_schema` output; `core` imports no generator and `examples` import no engine.
@@ -64,6 +66,8 @@ rand_engine/
 - The Spark path builds ordinary columns as native expressions plus one broadcast join per `distincts` column; a key-only `mapInPandas` adapter applies the shared indexed `Keys` authority, with no row-wise Python UDF or Spark hash substitute.
 - Relations are stateless `pk` and `fk` column methods; no database read, lookup SQL, checkpoint or retained key state participates in generation. The SQLite integration persists generated rows only.
 - File writers stage output beside the destination and commit it only after every file closes; with `maxRowsPerBatch` a final file is generated one row batch at a time. SQLite overwrite stages an adjacent database and replaces only the selected table; append uses one transaction.
+- Documentation preparation copies tracked sources into a caller-owned isolated input and emits raw Markdown, `llms.txt`, all starter resources and a byte-derived mirror of the canonical Agent Skill. The workflow renders that isolated input with Zensical and combines its HTML with those prepared resources. Preview mode adds an unreleased notice, rewrites own-project routes and both core and Faker-extra installs to the event SHA's source ZIP while preserving external links and skill front matter; stable mode retains ordinary PyPI and principal-branch guidance.
+- The Pages deployment adapter reads remote refs without moving the checkout. Events on the configured `MASTER_REF` bypass preview-version reads; an event on the one configured `PREVIEW_REF` is eligible only when its local version and the fresh `MASTER_REF` version equal the guard's policy constants and the fresh remote preview SHA equals the event SHA. Missing, unreadable, stale or mismatched state produces an explained successful skip.
 
 <!-- dadaia:fixed slop-code -->
 ### Slop — code (fixed)

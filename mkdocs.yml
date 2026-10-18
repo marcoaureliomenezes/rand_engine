@@ -1,4 +1,5 @@
 site_name: rand-engine
+site_description: Fast Python synthetic test data for pandas, related tables, files and streams, with optional Spark.
 site_url: https://marcoaureliomenezes.github.io/rand_engine/
 repo_url: https://github.com/marcoaureliomenezes/rand_engine
 docs_dir: docs

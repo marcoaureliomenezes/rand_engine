@@ -3,12 +3,12 @@
   "release": "0.8.0",
   "phase": "CLOSURE",
   "defined": {
-    "sha": "1c16ec3",
-    "ts": "2026-10-18T04:08:34Z"
+    "sha": "49948f18fac871a138033b59756c10ce16cfe71f",
+    "ts": "2026-10-18T12:15:49Z"
   },
   "implemented": {
-    "sha": "2be1798337080aa4fb16006bb2c21f3e6c54d4bb",
-    "ts": "2026-10-18T04:55:15Z"
+    "sha": "d0a1ff79a9704d86526c93eb5d0cb708b5420c30",
+    "ts": "2026-10-18T13:41:56Z"
   },
   "shipped": null,
   "log": [
@@ -470,6 +470,88 @@
       "agent": "dd-product-engineer",
       "kind": "summary",
       "text": "delivered: rc-8 closure verification now includes the literal public-list oracle for all five preserved starter descriptions at f849371 while retaining the six-line order and non-empty assertions, with the correct product green and a non-empty lake-description mutation red; runtime, documentation and packaging inputs are unchanged from 66135d7, so the final-wheel SHA-256 6f2a9de1e15c4d016be5e07df789fd8d0b3b16a9fef71b15fa1935b3688a8d2d and ten-step installed journey remain the applicable artifact evidence; verdict.py stats 0.8.0-rc8 reports 3 sequences, 6 verdicts, 4 rejected and first-pass rejected 3/3; release.py drift from the latest memory entry reports no changed atom, so no second memory record or derived-doc edit is warranted; the frozen score remains candidate readiness 95/100, public stable 42.5/100 and discoverability 75%; carried: stable publication remains held for public documentation and discovery evidence above 90 in every field, PR #48 remains blocked by the stream_dict ratio 1.345696313 above 1.3 pending the operator-reserved Arrow contract ruling, and outreach remains active; backlog exits: none."
+    },
+    {
+      "ts": "2026-10-18T05:37:34Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 36b703d63a6ef19c2f1b9a2f7bffcec41ccf07fb..ff103d4335d2: 2 reviewed, 0 changed.",
+      "since": "36b703d63a6ef19c2f1b9a2f7bffcec41ccf07fb",
+      "until": "ff103d4335d2479fd600844d8856ccfaf190014e",
+      "reviewed": [
+        "documentation",
+        "get-started-cli"
+      ],
+      "changed": []
+    },
+    {
+      "ts": "2026-10-18T05:37:42Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.8.0 (prior candidate closed at 2be1798337080aa4fb16006bb2c21f3e6c54d4bb)"
+    },
+    {
+      "ts": "2026-10-18T12:15:37Z",
+      "agent": "dd-product-engineer",
+      "kind": "note",
+      "text": "Operator authorization verbatim: aprovado — authorizes both rc-9 decisions: the clearly labelled exact-SHA unreleased preview on the one public Pages root with only the temporary feature/0.8.0 github-pages policy until verified stable master deployment removes it, and the exact changelog assertion replacement requiring live 0.8.0 to be Unreleased while every published numeric release remains ISO-dated with all 0.8 content and the fixed 0.7 date retained. It does not authorize the separate Arrow or stream conversion/test decision, alter the 1.3 regression limit, or lift the stable-release hold."
+    },
+    {
+      "ts": "2026-10-18T12:15:49Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-9",
+      "milestone": "defined",
+      "sha": "49948f18fac871a138033b59756c10ce16cfe71f",
+      "text": "Candidate defined at 49948f18fac871a138033b59756c10ce16cfe71f; phase IMPLEMENTATION."
+    },
+    {
+      "ts": "2026-10-18T13:41:56Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-9",
+      "milestone": "implemented",
+      "sha": "d0a1ff79a9704d86526c93eb5d0cb708b5420c30",
+      "text": "Candidate implemented at d0a1ff79a9704d86526c93eb5d0cb708b5420c30; phase CLOSURE."
+    },
+    {
+      "ts": "2026-10-18T13:43:01Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over ff103d4335d2479fd600844d8856ccfaf190014e..6263ae2a071c: 0 reviewed, 2 changed.",
+      "since": "ff103d4335d2479fd600844d8856ccfaf190014e",
+      "until": "6263ae2a071ce8531081ab6ad6cb8d20e6fbe133",
+      "reviewed": [],
+      "changed": [
+        "documentation",
+        "get-started-cli"
+      ]
+    },
+    {
+      "ts": "2026-10-18T13:43:49Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 6263ae2a071ce8531081ab6ad6cb8d20e6fbe133..ab4929994f76: 0 reviewed, 0 changed.",
+      "since": "6263ae2a071ce8531081ab6ad6cb8d20e6fbe133",
+      "until": "ab4929994f76fcf994b589a9297d69cc4e4e34e9",
+      "reviewed": [],
+      "changed": []
+    },
+    {
+      "ts": "2026-10-18T13:44:37Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "text": "delivered: rc-9 implemented at d0a1ff79: isolated stable and immutable-source preview preparation; exact-SHA preview notices, core and Faker-extra source-ZIP installs and own-project routes; raw Markdown, llms.txt, starter resources and a generated canonical-skill mirror beside rendered HTML; static Agent context routed to the live Getting started and durable skill mirror; exact-ref Pages upload, bounded shared deploy queue, fresh fail-closed preview guard with explained successful skips and stable master bypass; truthful need-oriented site description and an Unreleased changelog header under the operator-authorized assertion; local Python 3.12 official job gates passed Ruff and the full suite with Job 1 at 1252 passed, 8 deselected and 10 known warnings in 75.68 s, Job 2 at 1285 passed, 8 deselected and 10 known warnings in 76.11 s, and Job 3 at 1285 passed, 8 deselected and 10 known warnings in 96.73 s; bounded artifact evidence includes final preview and stable strict builds in 1.43 s and 1.50 s, with public HTTP deliberately uncredited; implementation size 82ac28e..d0a1ff7 is 6 files, +701/-25; memory: authoritative drift changed documentation and get-started-cli, scripts/docs_site.py now belongs to documentation source coverage, canonical Architecture and Quality state isolated preparation, raw resources, preview transforms, parser boundaries, queue and guard behavior without release snapshots, catalog/index regenerated, no derived document cites either changed atom, final drift is 0, and memory, release, backlog and bug checks exit 0; verdict.py stats 0.8.0-rc9: fix-induced bugs n/a against <=20%, first-pass approval 1/3 (33%) against >=70%, closure duration n/a before integration against <=4 h, non-block commits after closure 0 against 0, memory drift 0 against 0, rebuild-due patches 0 against 0, oldest record read 2026-10-10T22:35:19Z; goal readout remains source candidate 95/100 and discovery 15/20 (75%) until public observations, with 0 open bugs; scoped doctor has 0 LINT, ledger or memory findings and exits 1 only with seven superseded-template warnings plus workspace state (8 worktree information rows, 5 foreign-worktree warnings, 10 expired handoffs and 11 retained reaped entries), with no fix, reprojection or foreign cleanup attempted; carried: public F3 evidence remains pending the exact temporary Pages policy addition, official feature push, public HTTP/raw-route verification and fresh source-ZIP human and agent journeys; the stable release remains held until the frozen score is strictly above 90 overall and in every field, external discovery and outreach remain active, temporary policy removal waits for verified stable master deployment, and the separate Arrow decision and 1.3 benchmark limit remain unchanged; backlog exits: none."
+    },
+    {
+      "ts": "2026-10-18T13:46:48Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over ab4929994f76fcf994b589a9297d69cc4e4e34e9..9ff37b0140e9: 0 reviewed, 0 changed.",
+      "since": "ab4929994f76fcf994b589a9297d69cc4e4e34e9",
+      "until": "9ff37b0140e9f05b9bd2f3c44ea899d2e90e4c19",
+      "reviewed": [],
+      "changed": []
     }
   ]
 }

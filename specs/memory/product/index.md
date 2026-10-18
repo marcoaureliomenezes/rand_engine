@@ -54,7 +54,7 @@ a scaffolded example ([[get-started-cli]]) and the docs site, `llms.txt` and age
 
 | slug | title | tldr |
 |------|-------|------|
-| `documentation` | Documentation site, llms.txt and agent skill | Strict-built docs, README, llms.txt and Agent guidance cover APIs, tutorials, compatibility, migration, support and security routes. |
+| `documentation` | Documentation site, llms.txt and agent skill | Strict-built stable or preview docs, README, llms.txt and Agent guidance cover APIs, tutorials, compatibility, migration, support and security routes. |
 | `get-started-cli` | Get-started CLI | The rand-engine console script lists six starters: five runnable Python examples and one opt-in AGENTS.md project context. |
 
 ### output
