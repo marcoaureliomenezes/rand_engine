@@ -1,5 +1,5 @@
 ---
-specs_pattern_version: 11
+specs_pattern_version: 13
 gitflow: {"principal": "master", "integration": "development", "work": "feature/"}
 ---
 # Constitution — rand-engine
