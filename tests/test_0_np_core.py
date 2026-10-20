@@ -164,6 +164,8 @@ def test_gen_unix_timestamps(default_size):
 
 def test_gen_dates(default_size):
   result = NPCore.gen_dates(default_size, '2020-01-01', '2024-12-31', date_format="%Y-%m-%d", rng=RNG)
+  assert isinstance(result, (pa.Array, pa.ChunkedArray))
+  assert result.type == pa.string()
   assert len(result) == default_size
 
 
@@ -329,7 +331,7 @@ def test_gen_unix_timestamps_and_dates_ignore_process_timezone(tz, monkeypatch):
   try:
     args = (3, "2024-01-01 00:00:00", "2024-01-01 00:00:01", "%Y-%m-%d %H:%M:%S")
     assert NPCore.gen_unix_timestamps(*args, rng=RNG).tolist() == [1704067200] * 3
-    assert NPCore.gen_dates(*args, rng=RNG).tolist() == ["2024-01-01 00:00:00"] * 3
+    assert NPCore.gen_dates(*args, rng=RNG).to_pylist() == ["2024-01-01 00:00:00"] * 3
   finally:
     monkeypatch.undo()
     time.tzset()
@@ -373,11 +375,31 @@ def test_gen_dates_equals_per_row_utc_strftime(fmt, start, end):
   from datetime import datetime, timedelta, timezone
   ts = NPCore.gen_unix_timestamps(10**4, start, end, fmt, rng=np.random.default_rng(7))
   expected = [(datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(seconds=int(t))).strftime(fmt) for t in ts]
-  assert NPCore.gen_dates(10**4, start, end, fmt, rng=np.random.default_rng(7)).tolist() == expected
+  assert NPCore.gen_dates(10**4, start, end, fmt, rng=np.random.default_rng(7)).to_pylist() == expected
 
 
 def test_gen_dates_zero_rows_returns_empty():
-  assert NPCore.gen_dates(0, "2020-01-01", "2024-12-31", "%Y-%m-%d", rng=RNG).tolist() == []
+  result = NPCore.gen_dates(0, "2020-01-01", "2024-12-31", "%Y-%m-%d", rng=RNG)
+  assert isinstance(result, (pa.Array, pa.ChunkedArray))
+  assert result.type == pa.string()
+  assert result.to_pylist() == []
+
+
+@pytest.mark.parametrize("fmt, start, end, expected", [
+  ("%Y-%m-%d", "2020-01-01", "2024-12-31", ['2020-06-11', '2023-11-14', '2023-04-10']),
+  ("%d/%m/%Y", "01/01/2020", "31/12/2024", ['11/06/2020', '14/11/2023', '10/04/2023']),
+  ("%Y-%m-%d %H:%M:%S", "2020-01-01 00:00:00", "2020-01-02 00:00:00",
+   ['2020-01-01 02:08:31', '2020-01-01 18:34:29', '2020-01-01 15:42:34']),
+  ("%Y%m%d %H%M%S.%f", "20200101 000000.000000", "20200102 000000.000000",
+   ['20200101 020831.000000', '20200101 183429.000000', '20200101 154234.000000']),
+  ("%Y年%m月%d日", "2020年01月01日", "2024年12月31日", ['2020年06月11日', '2023年11月14日', '2023年04月10日']),
+  ("%d·%m·%Y", "01·01·2020", "31·12·2024", ['11·06·2020', '14·11·2023', '10·04·2023']),
+])
+def test_gen_dates_is_arrow_text_with_the_same_values_as_before(fmt, start, end, expected):
+  result = NPCore.gen_dates(3, start, end, fmt, rng=np.random.default_rng(42))
+  assert isinstance(result, (pa.Array, pa.ChunkedArray))
+  assert result.type == pa.string()
+  assert result.to_pylist() == expected
 
 
 def test_date_only_iso_bounds_are_independent_from_timestamp_output_format():
@@ -388,7 +410,7 @@ def test_date_only_iso_bounds_are_independent_from_timestamp_output_format():
       "2026-02-05",
       "%Y-%m-%d %H:%M:%S",
       rng=np.random.default_rng(704),
-    ).tolist()
+    ).to_pylist()
   except ValueError as error:
     actual = error
 
@@ -407,7 +429,7 @@ def test_date_only_iso_bounds_are_independent_from_timestamp_output_format():
     "04/02/2026 00:00:00",
     "%d/%m/%Y %H:%M:%S",
     rng=np.random.default_rng(704),
-  ).tolist() == [
+  ).to_pylist() == [
     "03/02/2026 15:52:13",
     "03/02/2026 09:09:50",
     "03/02/2026 08:43:35",
