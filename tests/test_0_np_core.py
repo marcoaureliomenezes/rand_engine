@@ -750,3 +750,30 @@ def test_fixed_text_splits_into_chunks_without_changing_the_values():
   assert isinstance(chunked, pa.ChunkedArray) and chunked.num_chunks == 2
   assert chunked.type == pa.string()
   assert chunked.to_pylist() == whole.to_pylist() == ["01234", "56789", "abcde", "fghij"]
+
+
+@pytest.mark.parametrize("size", [3, 0])
+def test_gen_constant_text_is_arrow_text(size):
+  result = NPCore.gen_constant(size, "fixed", rng=np.random.default_rng(1))
+  assert isinstance(result, (pa.Array, pa.ChunkedArray)) and result.type == pa.string()
+  assert result.to_pylist() == ["fixed"] * size
+
+
+@pytest.mark.parametrize("value, dtype", [
+  (7, np.full(1, 7).dtype),
+  (1.5, np.dtype(np.float64)),
+  (True, np.dtype(np.bool_)),
+  (None, np.dtype(object)),
+])
+def test_gen_constant_non_text_stays_ndarray(value, dtype):
+  result = NPCore.gen_constant(3, value, rng=np.random.default_rng(1))
+  assert isinstance(result, np.ndarray) and result.dtype == dtype
+  assert result.tolist() == [value] * 3
+
+
+@pytest.mark.parametrize("value", ["fixed", 7])
+def test_gen_constant_draws_nothing(value):
+  rng = np.random.default_rng(1)
+  before = rng.bit_generator.state
+  NPCore.gen_constant(5, value, rng=rng)
+  assert rng.bit_generator.state == before
