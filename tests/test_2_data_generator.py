@@ -637,3 +637,31 @@ def test_non_text_columns_keep_their_dtype():
   df = DataGenerator(spec, seed=1).size(20).get_df()
   assert df.dtypes.astype(str).to_dict() == {
     "i": "int64", "f": "float64", "b": "bool", "k": "int64", "pk": "int64", "ts": "int64", "mixed": "object"}
+
+
+def test_text_null_rate_writes_pd_na_and_keeps_arrow():
+  spec = {"v": {"method": "constant", "kwargs": {"value": "fixed"}, "null_rate": 0.5}}
+
+  series = DataGenerator(spec, seed=2026).size(8).get_df()["v"]
+
+  assert [v is pd.NA for v in series] == [True, False, True, True, True, False, False, True]
+  assert [v for v in series if v is not pd.NA] == ["fixed", "fixed", "fixed"]
+  assert series.dtype == pd.ArrowDtype(pa.string())
+
+
+def test_text_anomaly_rate_keeps_arrow():
+  spec = {"v": {"method": "constant", "kwargs": {"value": "fixed"}, "anomaly_rate": 0.5, "anomaly_values": ["odd"]}}
+
+  series = DataGenerator(spec, seed=2026).size(8).get_df()["v"]
+
+  assert series.tolist() == ["odd", "fixed", "odd", "odd", "odd", "fixed", "fixed", "odd"]
+  assert series.dtype == pd.ArrowDtype(pa.string())
+
+
+def test_stream_dict_text_null_is_python_none():
+  from itertools import islice
+  spec = {"v": {"method": "constant", "kwargs": {"value": "fixed"}, "null_rate": 0.5}}
+
+  rows = list(islice(DataGenerator(spec, seed=2026).size(8).stream_dict(1000, 1000), 8))
+
+  assert [r["v"] for r in rows] == [None, "fixed", None, None, None, "fixed", "fixed", None]
