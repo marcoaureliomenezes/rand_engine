@@ -393,3 +393,9 @@ def test_gen_complex_distincts_arrow_text_matches_080(pattern, templates, expect
     assert isinstance(result, (pa.Array, pa.ChunkedArray))
     assert result.type == pa.string()
     assert result.to_pylist() == expected
+
+
+def test_gen_complex_distincts_templateless_pattern_repeats_literal():
+    result = PyCore.gen_complex_distincts(3, pattern="ABC", replacement="x", templates=[], rng=np.random.default_rng(7))
+    assert result.type == pa.string()
+    assert result.to_pylist() == ["ABC"] * 3
