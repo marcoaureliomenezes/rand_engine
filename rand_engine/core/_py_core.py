@@ -1,5 +1,4 @@
 import itertools
-import time
 from typing import Dict, List, Any
 import numpy as np
 import pyarrow as pa
@@ -43,11 +42,6 @@ class PyCore:
     if len(parts) == 1: return parts[0]
     return pc.binary_join_element_wise(*[_as_text(p) for p in parts], "")
 
-
-  @classmethod  
-  def gen_distincts_untyped(cls, size: int, distinct: List[Any], *, rng: np.random.Generator) -> List[Any]:
-    return list(map(lambda x: distinct[x], rng.integers(0, len(distinct), size)))
-  
 
   @classmethod
   def gen_distincts_map(cls, size: int, distincts: Dict[str, List[Any]], *, rng: np.random.Generator) -> list:
