@@ -35,9 +35,12 @@ df.printSchema()
 # anomaly_rate are DataGenerator-only; SparkGenerator refuses them. For a small volume, generate with
 # DataGenerator(...).get_df() and wrap the pandas frame in spark.createDataFrame(pdf).
 # The cell below does that for 100 rows; df above stays the native one.
+# A text column's nulls are pd.NA, so Spark's Arrow option is enabled before createDataFrame.
+# On a self-managed Spark on Java 17, start the JVM with -Dio.netty.tryReflectionSetAccessible=true.
 
 from rand_engine import DataGenerator
 
 pdf = DataGenerator(spec, seed=7).size(100).get_df()
+spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
 small = spark.createDataFrame(pdf)
 small.show(5)
