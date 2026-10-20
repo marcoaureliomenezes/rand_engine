@@ -100,11 +100,11 @@ def test_from_schema_maps_every_supported_arrow_type_and_generates_declared_outp
       "u64": "uint64",
       "f32": "float64",
       "f64": "float64",
-      "text": "object",
-      "large_text": "object",
-      "day32": "object",
-      "day64": "object",
-      "moment": "object",
+      "text": "string[pyarrow]",
+      "large_text": "string[pyarrow]",
+      "day32": "string[pyarrow]",
+      "day64": "string[pyarrow]",
+      "moment": "string[pyarrow]",
       "nothing": "object",
   }
   assert frame["nothing"].tolist() == [None] * 4
