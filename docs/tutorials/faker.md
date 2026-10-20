@@ -4,7 +4,7 @@ For anyone who needs realistic names, emails or cities at volume. It teaches `Ra
 
 ## Prerequisite and run
 
-Install the extra first. For preview builds, use the [Getting started](https://marcoaureliomenezes.github.io/rand_engine/getting-started/) guide for the generated command:
+Install the extra first:
 
 ```bash
 pip install "rand-engine[faker]"
