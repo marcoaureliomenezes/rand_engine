@@ -122,6 +122,11 @@ def test_gen_floats_normal(size, mean, std, decimals):
   assert abs(np.std(real_result) - std) < std * 0.5
 
 
+# Pinned from 0.8.0 (rng.choice over np.asarray(pool)), default_rng(1), size 8
+def _values(result):
+  return result.to_pylist() if isinstance(result, (pa.Array, pa.ChunkedArray)) else result.tolist()
+
+
 @pytest.mark.parametrize("size, distincts", [
     (10, ["A", "B", "C"]),
     (10, [1, 2, 3, 4, 5]),
@@ -298,11 +303,6 @@ def test_gen_distincts_prop_various_distributions(distincts):
   assert all(item in distincts.keys() for item in _values(result))
 
 
-# Pinned from 0.8.0 (rng.choice over np.asarray(pool)), default_rng(1), size 8; Approve both, 2026-10-20
-def _values(result):
-  return result.to_pylist() if isinstance(result, (pa.Array, pa.ChunkedArray)) else result.tolist()
-
-
 def _draw(method, pool):
   return getattr(NPCore, method)(rng=np.random.default_rng(1), size=8, distincts=pool)
 
@@ -417,6 +417,8 @@ def test_gen_ints_and_zfilled_reach_the_inclusive_max():
   ("%d/%m/%Y", "01/01/1970", "31/12/9999"),
   ("%Y-%m-%dT%H:%M:%S", "1970-01-01T00:00:00", "9999-12-31T23:59:59"),
   ("%Y%m%d %H%M%S.%f", "19700101 000000.000000", "99991231 235959.000000"),
+  ("%Y-%m-%d", "2024-01-01", "2024-12-31"),
+  ("%d·%m·%Y", "01·01·2024", "31·12·2024"),
 ])
 def test_gen_dates_equals_per_row_utc_strftime(fmt, start, end):
   """AC14.1: same strings as the per-row UTC strftime, for each documented date_format."""
@@ -760,7 +762,7 @@ def test_gen_constant_text_is_arrow_text(size):
 
 
 @pytest.mark.parametrize("value, dtype", [
-  (7, np.full(1, 7).dtype),
+  (7, np.dtype(np.int64)),
   (1.5, np.dtype(np.float64)),
   (True, np.dtype(np.bool_)),
   (None, np.dtype(object)),
