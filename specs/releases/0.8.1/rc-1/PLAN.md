@@ -122,17 +122,21 @@ Waves follow the SPEC ranking: 1 law and dev loop, 2 shared foundation, 3-4 feat
 | Job 2 | Job 1 | 2 | `tests/test_2_data_generator.py`, `tests/test_4_rand_specs_helpers.py`, `tests/test_5_file_batches_formats.py`, `rand_engine/main/_rand_generator.py`, `specs/constitution.md` |
 | Job 3 | Job 2 | 3 | `tests/test_0_np_core.py`, `rand_engine/core/_np_core.py`, `benchmarks/speed.py` |
 | Job 4 | Job 3 | 4 | `tests/test_0_py_core.py`, `rand_engine/core/_py_core.py`, `rand_engine/main/_rand_generator.py` |
-| Job 5 | Job 2 | 3 | `tests/test_3_spark_generator.py`, `rand_engine/cases/databricks.py.txt`, `docs/1_DATA_GENERATOR.md`, `rand_engine/main/data_generator.py`, `docs/3_WRITING_FILES.md`, `docs/5_RECIPES.md`, `README.md`, `llms.txt`, `skills/rand-engine/SKILL.md` |
-| Job 6 | Job 4, Job 5 | 5 | `pyproject.toml`, `CHANGELOG.md` |
+| Job 5 | Job 2 | 3 | `tests/test_3_spark_generator.py`, `tests/fixtures/f2_spark_generator_specs_right.py`, `rand_engine/cases/databricks.py.txt`, `docs/1_DATA_GENERATOR.md`, `rand_engine/main/data_generator.py`, `docs/3_WRITING_FILES.md`, `docs/5_RECIPES.md`, `README.md`, `llms.txt`, `skills/rand-engine/SKILL.md`, `docs/tutorials/databricks.md` |
+| Job 6 | Job 4, Job 5 | 5 | `pyproject.toml`, `tests/integrations/test_public_api.py`, `CHANGELOG.md` |
 | Reconciliation | Job 6 | 6 | `docs/benchmarks.json`, `docs/BENCHMARKS.md`, `tests/test_benchmarks.py`, `specs/memory/ARCHITECTURE.md`, `specs/memory/QUALITY.md`, `specs/memory/product/generation/generation-methods.md`, `specs/memory/product/quality/benchmarks.md`, `specs/memory/product/output/writers-and-streaming.md`, `specs/memory/product/onboarding/documentation.md` |
 
 ### Schedule and sizing
 
-- Task count: Job 1 six, Job 2 seven, Job 3 ten, Job 4 six, Job 5 five, Job 6 two (36). Each behaviour is a RED task then an implementation task, each its own `wt-task-<kkk>`; the RED task of a unit also carries that unit's pinned-test edits (`test(` commits citing the SPEC's operator approval, FR5). DELETE and REBUILD tasks precede ADD ones; `fixed_text` and `pool_draw` are added with their first caller.
+- Task count: Job 1 six, Job 2 seven, Job 3 ten, Job 4 six, Job 5 six, Job 6 two (37). Each behaviour is a RED task then an implementation task, each its own `wt-task-<kkk>`; the RED task of a unit also carries that unit's pinned-test edits (`test(` commits citing the SPEC's operator approval, FR5). DELETE and REBUILD tasks precede ADD ones; `fixed_text` and `pool_draw` are added with their first caller.
 - Net lines: deletions (the 412-line development workflow, the master rc blocks, the per-row bodies, `gen_distincts_untyped`, the row split) outweigh the additions, as the scratch prototype's +80/-53 over three files shows.
 - Job 3 holds ten tasks because every `NPCore` body shares `_np_core.py`; it cannot split across a wave.
 - Shared deciders stay as §1.1: `_column` is the one text-to-Arrow decider and `fixed_text`/`pool_draw` the two builders; `_spark_core.py` keeps its four imports from `_np_core`.
 - `.github/workflows/docs.yml` and `scripts/docs_site.py` are not written by any job: they belong to the hotfix lane of `docs-preview-deploy-fails-after-stable`, which lands on the work branch first; this `wt-rc` is synced onto it before its first job opens.
+
+- Local merges run `verify:` with `JAVA_HOME=<workspace>/.dadaia/tmp/jdk-cache/<the Temurin 17 JRE>` and its `bin/` first on `PATH`: Spark 3.5.8 cannot run on the system Java 21.
+- Serial order inside a job is stated in each job file; Jobs 2, 3 and 4 are serial because their tasks share files.
+- Memory (AC4.2, AC4.5) stays in Reconciliation step 2 (`pe`), as the amended SPEC says.
 
 ### Reconciliation (the rc's last commits, `RC-FLOW.md` step 4)
 
@@ -141,7 +145,7 @@ Memory and the CI-measured record cannot sit in a job file (`W:` refuses `specs/
 1. `dd-sw-engineer-sr`, after Job 6 is on `wt-rc` and the head has run `benchmarks.yml` on CI: record that artifact byte for byte in `docs/benchmarks.json` and `docs/BENCHMARKS.md`, and re-pin `tests/test_benchmarks.py:307-316` (`TERMINAL_HEAD`, `TERMINAL_BASE`) in the same commit, the final record commit. The record is the evidence of the AC1.x speed claims (each method at least 2x at 10M rows, faster at 1M, against base `0.8.0`) and of AC3.3 (the base resolves to `0.8.0`, the summary names its commit).
 2. `dd-product-engineer`, the closure memory pass (`MEMORY-UPDATE.md`): AC4.2 (the two Tech Stack lines of `specs/memory/ARCHITECTURE.md`), AC4.5 (`QUALITY.md:36-37`, and the atoms `generation-methods.md` including the constant sentence naming `string[pyarrow]`, `benchmarks.md`, `writers-and-streaming.md`, `documentation.md`).
 3. AC3.5 is observed when the work branch merges into `development`: no tag, no PyPI version, no GitHub release appears.
-4. Operator acts outside the repo (R5): remove the PyPI Trusted Publisher entry that names the deleted workflow; the main thread then deletes the GitHub environment `development`.
+4. Before the first master merge (not after Reconciliation), the operator removes the PyPI Trusted Publisher entry that names the deleted workflow (R5). The main thread deletes the GitHub environment `development` once Job 1 has deleted the workflow file (GitHub re-creates an environment a workflow references).
 
 ### Acceptance map
 
