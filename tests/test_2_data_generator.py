@@ -2,6 +2,7 @@ from random import randint
 import pickle
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 import time
 import pytest
 from rand_engine.main.data_generator import DataGenerator
@@ -605,3 +606,34 @@ def test_golden_multi_column_draw_order():
   from benchmarks.speed import SINK_SPEC
   df = DataGenerator(SINK_SPEC, seed=42).size(10**3).get_df()
   assert hashlib.sha256(json.dumps(df.to_dict("list")).encode()).hexdigest() == "3b0464af85f501117a2be790d55ac1bd856a004f6745f781d317dabcc9dcb10f"
+
+
+def test_every_generated_text_column_is_arrow():
+  from benchmarks.speed import COLS, SAMPLE_KWARGS
+  arrow = pd.ArrowDtype(pa.string())
+  text = ["int_zfilled", "distincts", "distincts_prop", "uuid4", "dates", "complex_distincts"]
+  spec = {m: {"method": m, "kwargs": SAMPLE_KWARGS[m]} for m in text}
+  spec["constant"] = {"method": "constant", "kwargs": {"value": "x"}}
+  for m, cols in COLS.items():
+    spec[m] = {"method": m, "cols": cols, "kwargs": SAMPLE_KWARGS[m]}
+  spec["pk"] = {"method": "pk", "kwargs": {"style": "sequence", "start": 1, "step": 1, "format": "id-{}"}}
+  spec["fk"] = {"method": "fk", "kwargs": {"parent": spec["pk"], "parent_size": 10}}
+  df = DataGenerator(spec, seed=1).size(20).get_df()
+  expected = {m: arrow for m in text + ["constant", "pk", "fk"]}
+  expected.update({c: arrow for cols in COLS.values() for c in cols})
+  assert df.dtypes.to_dict() == expected
+
+
+def test_non_text_columns_keep_their_dtype():
+  spec = {
+    "i": {"method": "integers", "kwargs": {"min": 0, "max": 9, "int_type": "int64"}},
+    "f": {"method": "floats", "kwargs": {"min": 0, "max": 9, "decimals": 2}},
+    "b": {"method": "booleans", "kwargs": {"true_prob": 0.5}},
+    "k": {"method": "constant", "kwargs": {"value": 1}},
+    "pk": {"method": "pk", "kwargs": {"style": "sequence", "start": 1, "step": 1}},
+    "ts": {"method": "unix_timestamps", "kwargs": {"start": "2020-01-01", "end": "2020-12-31", "date_format": "%Y-%m-%d"}},
+    "mixed": {"method": "distincts_prop", "kwargs": {"distincts": {"a": 1, 2: 1}}},
+  }
+  df = DataGenerator(spec, seed=1).size(20).get_df()
+  assert df.dtypes.astype(str).to_dict() == {
+    "i": "int64", "f": "float64", "b": "bool", "k": "int64", "pk": "int64", "ts": "int64", "mixed": "object"}
