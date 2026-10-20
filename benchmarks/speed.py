@@ -63,8 +63,8 @@ COLS = {"distincts_map": ["a", "b"], "distincts_map_prop": ["a", "b"], "distinct
 SINKS = ("csv", "parquet", "json", "stream_dict")
 RUNS, LIMIT, CAP_S = 3, 1.3, 15 * 60
 METHOD_SIBLINGS = {
-  "poisson": "distincts_prop",
-  "zipf": "distincts_prop",
+  "poisson": "floats_normal",
+  "zipf": "floats_normal",
   "exponential": "floats_normal",
   "lognormal": "floats_normal",
 }
