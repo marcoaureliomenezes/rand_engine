@@ -549,7 +549,7 @@ def test_extracted_wheel_reports_the_pyproject_version(built_wheel, tmp_path):
         text=True,
     )
     assert result.returncode == 0, result.stderr
-    assert result.stdout.strip() == "0.8.0"
+    assert result.stdout.strip() == "0.8.1"
 
 
 def test_wheel_declares_the_rand_engine_console_script(built_wheel):
