@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.8.1] - 2026-10-20
+
+### Changed
+
+- Generated text columns are `string[pyarrow]` (`pd.ArrowDtype(pa.string())`): `uuid4`, `int_zfilled`, `dates`, `constant` with a text value, `distincts`/`distincts_prop` with text values, `complex_distincts`, and the text levels of `distincts_map`, `distincts_multi_map` and `distincts_map_prop`. An embedded transformer's output dtype is whatever the transformer returns.
+- Text nulls from `null_rate` are `pd.NA` (were `None` in an `object` column). `stream_dict` records still hold `None`. On Spark, enable `spark.sql.execution.arrow.pyspark.enabled` before `spark.createDataFrame`; without it a frame with `pd.NA` text nulls raises `PySparkTypeError` (`[CANNOT_MERGE_TYPE]`).
+- Parquet: values and the String logical type are unchanged; the embedded pandas/Arrow schema metadata bytes differ, and under the default `pd.read_parquet` a text column reads back as `pd.StringDtype("pyarrow")`.
+- The text methods are faster with the same seeded values. At 10M rows locally, against 0.8.0: `uuid4` 20.7 s → 2.7 s, `int_zfilled` 2.0 s → 0.6 s, `dates` with a date-only format 4.8 s → 0.3 s, `complex_distincts` 11.4 s → 1.4 s, `distincts_map` family about 1.8–2.3 s → 0.3 s. These are local measurements; the CI benchmark record is `docs/BENCHMARKS.md`.
+
+### Removed
+
+- Release-candidate publication: no rc goes to PyPI, gets a git tag, or gets a GitHub pre-release. PyPI receives closed releases only, each publish approved by hand.
+
+---
+
 ## [0.8.0] - 2026-10-18
 
 ### Added
