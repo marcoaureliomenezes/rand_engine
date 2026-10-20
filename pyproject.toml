@@ -1,6 +1,6 @@
 [project]
 name = "rand-engine"
-version = "0.8.0"
+version = "0.8.1"
 description = "Sink-agnostic synthetic data at NumPy speed from declarative specs, with related tables through pk/fk key columns; Faker composes on top."
 authors = [{name = "marcoaureliomenezes", email = "marcoaurelioreislima@gmail.com"}]
 license = "MIT"
