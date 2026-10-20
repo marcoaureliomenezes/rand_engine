@@ -2,28 +2,37 @@ import itertools
 import time
 from typing import Dict, List, Any
 import numpy as np
-from functools import reduce
+import pyarrow as pa
+import pyarrow.compute as pc
 from rand_engine.core._np_core import NPCore
+
+def _as_text(a):
+  if isinstance(a, (pa.Array, pa.ChunkedArray, pa.Scalar)): return a
+  a = np.asarray(a)
+  if a.dtype.kind in "iu" and a.size and int(a.max()) - int(a.min()) < 10**6:
+    lo = int(a.min())
+    return pa.array([str(i) for i in range(lo, int(a.max()) + 1)]).take(pa.array(a - lo))
+  return pa.array(a.astype(str), pa.string())
+
 
 class PyCore:
 
 
   @classmethod
-  def gen_complex_distincts(cls, size: int, pattern="x.x.x-x", replacement="x", templates=None, *, rng: np.random.Generator):
-    if templates is None:
-      templates = []
+  def gen_complex_distincts(cls, size: int, pattern="x.x.x-x", replacement="x", templates=None, *, rng: np.random.Generator) -> pa.Array | pa.ChunkedArray | np.ndarray:
+    """Fills each `replacement` of `pattern` with its template's draw, in pattern order; returns Arrow text (a lone part is returned as drawn)."""
+    templates = templates or []
     assert pattern.count(replacement) == len(templates)
-    list_of_lists, counter = [], 0
-    for replacer_cursor in range(len(pattern)):
-      if pattern[replacer_cursor] == replacement:
-        method = templates[counter]["method"]
-        if isinstance(method, str):
-          method = METHODS[method]
-        list_of_lists.append(np.asarray(method(size, rng=rng, **templates[counter]["kwargs"])))
-        counter += 1
-      else:
-        list_of_lists.append(np.array([pattern[replacer_cursor] for i in range(size)]))
-    return reduce(lambda a, b: a.astype('str') + b.astype('str'), list_of_lists)
+    parts, lit, counter = [], "", 0
+    for ch in pattern:
+      if ch != replacement: lit += ch; continue
+      if lit: parts.append(pa.scalar(lit)); lit = ""
+      method = templates[counter]["method"]
+      parts.append((METHODS[method] if isinstance(method, str) else method)(size, rng=rng, **templates[counter]["kwargs"]))
+      counter += 1
+    if lit: parts.append(pa.scalar(lit))
+    if len(parts) == 1 and counter: return np.asarray(parts[0]) if not isinstance(parts[0], (pa.Array, pa.ChunkedArray)) else parts[0]
+    return pc.binary_join_element_wise(*[_as_text(p) for p in parts], "")
 
 
   @classmethod  
