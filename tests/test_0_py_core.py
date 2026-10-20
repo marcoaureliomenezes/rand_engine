@@ -9,8 +9,13 @@ import numpy as np
 import pyarrow as pa
 from rand_engine.core._py_core import PyCore
 from rand_engine.core._np_core import NPCore
+from rand_engine.main.data_generator import DataGenerator
 
 RNG = np.random.default_rng(0)
+
+
+def _levels(result):
+  return [c.to_pylist() if isinstance(c, (pa.Array, pa.ChunkedArray)) else list(c) for c in result]
 
 
 class TestPyCoreComplexDistincts:
@@ -170,15 +175,16 @@ class TestPyCoreDistinctsMap:
         }
         result = PyCore.gen_distincts_map(rng=RNG, size=size, distincts=distincts)
         
-        assert len(result) == size
-        assert isinstance(result, list)
+        category, value = _levels(result)
+        assert len(result) == 2
+        assert len(category) == len(value) == size
         
         # Check all results are valid category-value pairs
         expected_pairs = [
             ("Fruit", "apple"), ("Fruit", "banana"), ("Fruit", "orange"),
             ("Vegetable", "carrot"), ("Vegetable", "lettuce"), ("Vegetable", "tomato")
         ]
-        assert all(item in expected_pairs for item in result)
+        assert all(item in expected_pairs for item in zip(category, value))
     
     def test_gen_distincts_map_single_category(self):
         """Test mapping with single category."""
@@ -188,10 +194,11 @@ class TestPyCoreDistinctsMap:
         }
         result = PyCore.gen_distincts_map(rng=RNG, size=size, distincts=distincts)
         
-        assert len(result) == size
+        category, value = _levels(result)
+        assert len(category) == len(value) == size
         # All should be from Color category
         expected_pairs = [("Color", "red"), ("Color", "green"), ("Color", "blue")]
-        assert all(item in expected_pairs for item in result)
+        assert all(item in expected_pairs for item in zip(category, value))
 
 
 class TestPyCoreDistinctsMultiMap:
@@ -206,14 +213,9 @@ class TestPyCoreDistinctsMultiMap:
         }
         result = PyCore.gen_distincts_multi_map(rng=RNG, size=size, distincts=distincts)
         
-        assert len(result) == size
-        assert isinstance(result, list)
-        
-        # Each result should be a list with category + combinations
-        for item in result:
-            assert isinstance(item, list)
-            assert len(item) == 3  # category + 2 levels
-            assert item[0] in ["PF", "PJ"]
+        assert len(result) == 3  # category + 2 levels
+        assert all(len(col) == size for col in result)
+        assert set(_levels(result)[0]) <= {"PF", "PJ"}
     
     def test_gen_distincts_multi_map_simple(self):
         """Test multi-map with simple structure."""
@@ -224,12 +226,9 @@ class TestPyCoreDistinctsMultiMap:
         }
         result = PyCore.gen_distincts_multi_map(rng=RNG, size=size, distincts=distincts)
         
-        assert len(result) == size
-        
-        # Check structure
-        for item in result:
-            assert isinstance(item, list)
-            assert item[0] in ["Type1", "Type2"]
+        assert len(result) == 3
+        assert all(len(col) == size for col in result)
+        assert set(_levels(result)[0]) <= {"Type1", "Type2"}
 
 
 class TestPyCoreDistinctsMapProp:
@@ -244,8 +243,9 @@ class TestPyCoreDistinctsMapProp:
         }
         result = PyCore.gen_distincts_map_prop(rng=RNG, size=size, distincts=distincts)
         
-        assert len(result) == size
-        assert isinstance(result, list)
+        category, value = _levels(result)
+        assert len(result) == 2
+        assert len(category) == len(value) == size
         
         # Check all are valid tuples
         expected_values = [
@@ -254,7 +254,7 @@ class TestPyCoreDistinctsMapProp:
             ("Senior", "advanced"),
             ("Senior", "expert")
         ]
-        assert all(item in expected_values for item in result)
+        assert all(item in expected_values for item in zip(category, value))
     
     def test_gen_distincts_map_prop_distribution(self):
         """Test that proportional distribution is approximately correct."""
@@ -267,7 +267,7 @@ class TestPyCoreDistinctsMapProp:
         
         # Count occurrences
         from collections import Counter
-        counts = Counter(result)
+        counts = Counter(zip(*_levels(result)))
         
         # Check proportions exist
         assert ("A", "A1") in counts
@@ -283,12 +283,13 @@ class TestPyCoreDistinctsMapProp:
         }
         result = PyCore.gen_distincts_map_prop(rng=RNG, size=size, distincts=distincts)
         
-        assert len(result) == size
+        category, value = _levels(result)
+        assert len(category) == len(value) == size
         
         # All should be from Status category
-        for item in result:
-            assert item[0] == "Status"
-            assert item[1] in ["active", "inactive", "suspended"]
+        for cat, val in zip(category, value):
+            assert cat == "Status"
+            assert val in ["active", "inactive", "suspended"]
 
 
 class TestPyCoreEdgeCases:
@@ -367,7 +368,9 @@ class TestPyCoreIntegration:
 def test_gen_distincts_map_puts_category_first():
     """Operator ruling G9: (category, value), like distincts_map_prop."""
     result = PyCore.gen_distincts_map(rng=RNG, size=50, distincts={"smartphone": ["android", "ios"]})
-    assert set(result) == {("smartphone", "android"), ("smartphone", "ios")}
+    category, value = _levels(result)
+    assert category == ["smartphone"] * 50
+    assert set(value) == {"android", "ios"}
 
 
 def _int(**kw):
@@ -399,3 +402,38 @@ def test_gen_complex_distincts_templateless_pattern_repeats_literal():
     result = PyCore.gen_complex_distincts(3, pattern="ABC", replacement="x", templates=[], rng=np.random.default_rng(7))
     assert result.type == pa.string()
     assert result.to_pylist() == ["ABC"] * 3
+
+
+_MAP_080 = {
+    "map": ({"mobile": ["android", "ios"], "desktop": ["windows", "macos", "linux"]}, [
+        ["desktop", "mobile", "mobile", "mobile", "mobile", "desktop", "desktop", "desktop"],
+        ["linux", "android", "android", "ios", "android", "linux", "linux", "windows"]]),
+    "multi_map": ({"tech": [["software", "hardware"], ["small", "medium", "large"]]}, [
+        ["tech"] * 8,
+        ["hardware", "software", "software", "software", "software", "hardware", "hardware", "hardware"],
+        ["medium", "small", "medium", "medium", "medium", "medium", "large", "small"]]),
+    "map_prop": ({"EQUITY": [("BUY", 6), ("SELL", 4)], "FX": [("BUY", 5), ("SELL", 5)]}, [
+        ["FX", "EQUITY", "EQUITY", "EQUITY", "EQUITY", "FX", "FX", "FX"],
+        ["SELL", "BUY", "BUY", "BUY", "BUY", "SELL", "SELL", "BUY"]]),
+}
+
+
+@pytest.mark.parametrize("name", list(_MAP_080))
+def test_map_family_returns_one_arrow_text_column_per_level_as_080(name):
+    distincts, expected = _MAP_080[name]
+    result = getattr(PyCore, f"gen_distincts_{name}")(size=8, distincts=distincts, rng=np.random.default_rng(3))
+    assert len(result) == len(expected)
+    assert all(isinstance(c, (pa.Array, pa.ChunkedArray)) and c.type == pa.string() for c in result)
+    assert _levels(result) == expected
+
+
+@pytest.mark.parametrize("level, expected", [
+    ([1, "a"], ["a", 1, 1, 1, 1, "a", "a", "a"]),
+    (["a", None], [None, "a", "a", "a", "a", None, None, None]),
+], ids=["mixed_int_str", "str_and_none"])
+def test_distincts_map_non_text_level_keeps_object_dtype_and_values_as_080(level, expected):
+    spec = {"x": {"method": "distincts_map", "cols": ["k", "v"], "kwargs": {"distincts": {"x": level}}}}
+    df = DataGenerator(spec, seed=3).size(8).get_df()
+    assert df["v"].dtype == object
+    assert df["v"].tolist() == expected
+    assert df["k"].tolist() == ["x"] * 8
