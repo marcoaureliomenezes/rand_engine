@@ -48,8 +48,9 @@ class RandGenerator:
       generator_method = self.map_methods(rng, offset, key_seed, k)[v["method"]]
       try:
         values = generator_method(size , **v.get("kwargs", {}))
-        for i, col in enumerate(columns):
-          dict_data[col] = self._column(values if len(columns) == 1 else [val[i] for val in values])
+        if len(columns) == 1: dict_data[columns[0]] = self._column(values)
+        else:
+          for col, vals in zip(columns, values): dict_data[col] = self._column(vals)
       except Exception as e:
         raise ColumnGenerationError(
           f"Error generating column '{k}': {type(e).__name__}: {str(e)}"

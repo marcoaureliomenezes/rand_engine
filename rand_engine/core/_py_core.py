@@ -15,6 +15,15 @@ def _as_text(a):
   return pa.array(a.astype(str), pa.string())
 
 
+def _level_columns(rows, size, rng):
+  idx = rng.integers(0, len(rows), size)
+  cols = []
+  for pool in zip(*rows):
+    if all(isinstance(x, str) for x in pool): cols.append(pa.array(pool, pa.string()).take(pa.array(idx)))
+    else: cols.append(np.fromiter(pool, object, len(pool))[idx].tolist())
+  return cols
+
+
 class PyCore:
 
 
@@ -41,28 +50,26 @@ class PyCore:
   
 
   @classmethod
-  def gen_distincts_map(cls, size: int, distincts: Dict[str, List[Any]], *, rng: np.random.Generator) -> np.ndarray:
-    distincts_map = [(k, v) for k, values in distincts.items() for v in values]
+  def gen_distincts_map(cls, size: int, distincts: Dict[str, List[Any]], *, rng: np.random.Generator) -> list:
+    """Draws rows of (category, value); returns one column per level."""
     assert len(list(set([type(x) for x in distincts]))) == 1
-    return cls.gen_distincts_untyped(size, distincts_map, rng=rng)
+    return _level_columns([(k, v) for k, values in distincts.items() for v in values], size, rng)
 
 
   @classmethod
-  def gen_distincts_multi_map(cls, size: int, distincts: Dict[str, List[Any]], *, rng: np.random.Generator) -> np.ndarray:
-    combinations = [list(itertools.product([k], *v)) for k, v in distincts.items()]
-    combinations = [[[i for i in tupla] for tupla in sublist] for sublist in combinations]
-    distincts = [i for sublist in combinations for i in sublist]
-    return cls.gen_distincts_untyped(size, distincts, rng=rng)
+  def gen_distincts_multi_map(cls, size: int, distincts: Dict[str, List[Any]], *, rng: np.random.Generator) -> list:
+    """Draws rows of (category, *levels); returns one column per level."""
+    return _level_columns([t for k, v in distincts.items() for t in itertools.product([k], *v)], size, rng)
 
   @classmethod
-  def gen_distincts_map_prop(cls, size: int, distincts: Dict[str, List[Any]], *, rng: np.random.Generator) -> np.ndarray:
-    distincts_map_prop = [
+  def gen_distincts_map_prop(cls, size: int, distincts: Dict[str, List[Any]], *, rng: np.random.Generator) -> list:
+    """Draws (category, value) rows, each value repeated by its weight; returns one column per level."""
+    return _level_columns([
       (category, value)
       for category, value_weight_pairs in distincts.items()
       for value, weight in value_weight_pairs
       for _ in range(weight)
-    ]
-    return cls.gen_distincts_untyped(size, distincts_map_prop, rng=rng)
+    ], size, rng)
 
 
 
