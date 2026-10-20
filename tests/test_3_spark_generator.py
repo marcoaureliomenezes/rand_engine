@@ -651,7 +651,7 @@ def test_spark_arrow_on_converts_pd_na_text_to_sql_nulls(spark_session, arrow_co
 
 
 def test_spark_arrow_off_converts_text_without_nulls(spark_session, arrow_conf):
-    """Arrow off: a frame with no text nulls converts as in 0.8.0."""
+    """Arrow off: a frame with no text nulls converts as before Arrow text."""
     arrow_conf(False)
     spec = {"name": {"method": "distincts", "kwargs": {"distincts": ["a", "b"]}}}
     pdf = DataGenerator(spec, seed=1).size(50).get_df()
