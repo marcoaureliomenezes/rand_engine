@@ -41,7 +41,7 @@ assert len(os.listdir("out/clients_json")) == 4
 
 - A column holding mixed types (e.g. ints and strings in one object column) raises
   `RandEngineError` naming the column for `csv` and `parquet`.
-- Parquet reads back equal to the frame in values, tz-aware columns included, and in dtype for every non-text column. A text column keeps its `string[pyarrow]` dtype only when read with `pd.read_parquet(..., dtype_backend="pyarrow")`.
+- Parquet reads back equal to the frame in values, tz-aware columns included, and in dtype for every non-text column. A generated text column reads back as `pd.StringDtype("pyarrow")` under the default read and as the frame's `pd.ArrowDtype(pa.string())` with `pd.read_parquet(..., dtype_backend="pyarrow")`.
 
 ```python
 from rand_engine.validators.exceptions import RandEngineError
@@ -54,7 +54,7 @@ else:
     raise AssertionError("expected RandEngineError")
 ```
 
-Spark: a text column with nulls holds `pd.NA`. To convert such a frame with `spark.createDataFrame`, enable `spark.sql.execution.arrow.pyspark.enabled` first. Without it, `pd.NA` text nulls are refused.
+Spark: a text column with nulls holds `pd.NA`. To convert such a frame with `spark.createDataFrame`, enable `spark.sql.execution.arrow.pyspark.enabled` first. Without it, `spark.createDataFrame` raises `PySparkTypeError` (`[CANNOT_MERGE_TYPE]`).
 
 ## Batch: `write`
 

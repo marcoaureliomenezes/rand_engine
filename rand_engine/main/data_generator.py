@@ -19,7 +19,7 @@ class DataGenerator:
   Generate pandas DataFrames, dict streams or files from a RandSpec.
 
   ``stream_dict`` converts normalized microbatches to pandas records. Text columns of ``get_df``
-  are ``string[pyarrow]`` with ``pd.NA`` nulls; ``stream_dict`` records hold Python ``None`` for nulls.
+  are ``string[pyarrow]`` with ``pd.NA`` nulls; a transformer's output keeps the dtype it returns; ``stream_dict`` records hold Python ``None`` for nulls.
 
   Parameters
   ----------
