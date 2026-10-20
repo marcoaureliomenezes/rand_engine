@@ -51,10 +51,10 @@ The prior candidate, 0.8.0 rc-13, resolved no record. This table judges every re
 
 | wave | scope | FRs |
 |---|---|---|
-| 1 — law and dev loop | constitution and Tech Stack amendments; delete the rc path; rebuild the master workflow; A/B base = highest closed-release tag (the speed ACs measure against it) | FR3, FR4 |
+| 1 — law and dev loop | constitution amendments; delete the rc path; rebuild the master workflow; A/B base = highest closed-release tag (the speed ACs measure against it) | FR3, FR4 |
 | 2 — shared foundation | the one text-column decider, the fixed-width and pool builders, the nulls disjunct, the column-wise assembly of multi-column methods | FR2 |
 | 3 — features | the ten method bodies, the `gen_distincts_untyped` deletion, the approved test changes, the Spark test | FR1, FR2, FR5 |
-| 4 — promote-facing | docs, version, CHANGELOG, benchmark record | FR2, FR6 |
+| 4 — promote-facing | docs, version, CHANGELOG, benchmark record; the Tech Stack and memory text at the closure memory pass | FR2, FR6 |
 
 ## 3. Non-goals
 
@@ -99,8 +99,8 @@ Decision: `pd.ArrowDtype(pa.string())`, shown as `string[pyarrow]`. Evidence (PL
 - AC2.5 (integration): for one seeded spec covering every FR1 method, the CSV and JSON files hash to SHA-256 literals recorded from 0.8.0, so their bytes are unchanged.
 - AC2.6 (integration): Parquet values and the BYTE_ARRAY/String logical type are unchanged. The embedded pandas/Arrow schema metadata bytes differ (PLAN M2). Read back with `read_parquet(..., dtype_backend="pyarrow")`, a text column equals the frame in values and dtype. Under the default read, the values alone are equal. `docs/3_WRITING_FILES.md:44` is narrowed to that statement.
 - AC2.7 (no new test; the result is pandas' `Series.apply`, not a rand-engine contract): the docs state that an embedded transformer's output dtype is whatever the transformer returns.
-- AC2.8 (integration, on CI's Temurin 17 JVM; ruling R1, §6): `spark.createDataFrame` of a frame whose text column holds `pd.NA` yields a string column with SQL NULLs when Spark's Arrow option (`spark.sql.execution.arrow.pyspark.enabled`) is on. With it off, a frame without text nulls converts as in 0.8.0, and a frame with `pd.NA` text nulls raises the error the docs name. The docs (AC2.9) and the databricks starter `rand_engine/cases/databricks.py.txt` tell the user to enable Spark's Arrow option.
-- AC2.9 (integration, `tests/test_docs.py` executes every block): the docs state the type once, in the method table or the null-rate section. They cover `string[pyarrow]`, `pd.NA` nulls, Arrow booleans from `.str.*`, the Parquet read-back rule and the note to enable Spark's Arrow option before `spark.createDataFrame`, across `docs/1_DATA_GENERATOR.md`, `docs/3_WRITING_FILES.md`, `docs/5_RECIPES.md`, `README.md`, `llms.txt`, `skills/rand-engine/SKILL.md` and the `data_generator.py` docstrings PLAN §1 lists.
+- AC2.8 (integration, on CI's Temurin 17 JVM; ruling R1, §6): `spark.createDataFrame` of a frame whose text column holds `pd.NA` yields a string column with SQL NULLs when Spark's Arrow option (`spark.sql.execution.arrow.pyspark.enabled`) is on. With it off, a frame without text nulls converts as in 0.8.0, and a frame with `pd.NA` text nulls raises the error the docs name. The Arrow-path proof runs with the JVM options Spark 3.5.8 needs on Java 17: `-Dio.netty.tryReflectionSetAccessible=true` plus the `java.nio` `--add-opens`. They are set in the test session builder `tests/fixtures/f2_spark_generator_specs_right.py:36-55`. The docs (AC2.9) and the databricks starter `rand_engine/cases/databricks.py.txt` tell the user to enable Spark's Arrow option, and the starter documents the same JVM options.
+- AC2.9 (integration, `tests/test_docs.py` executes every block): the docs state the type once, in the method table or the null-rate section. They cover `string[pyarrow]`, `pd.NA` nulls, Arrow booleans from `.str.*`, the Parquet read-back rule and the note to enable Spark's Arrow option before `spark.createDataFrame`, across `docs/1_DATA_GENERATOR.md`, `docs/3_WRITING_FILES.md`, `docs/5_RECIPES.md`, `README.md`, `llms.txt`, `skills/rand-engine/SKILL.md`, `docs/tutorials/databricks.md:32,39` and the `data_generator.py` docstrings PLAN §1 lists. The tutorial's `DataGenerator` plus `spark.createDataFrame` route for `null_rate` gets the Arrow note; `tests/test_docs.py:61-73` runs its pyspark blocks on CI.
 
 ### FR3 — Only closed releases reach PyPI, each approved by the operator
 
@@ -109,16 +109,17 @@ Decision: `pd.ArrowDtype(pa.string())`, shown as `string[pyarrow]`. Evidence (PL
   - `find_rc`, the `latest_rc` outputs and every "Promoted from Release Candidate"/RC text are deleted.
   - The no-rc-suffix guard stays.
   - Jobs run in this order: build, then `publish_pypi` (environment `production`), then `create_tag`, then `create_github_release`.
+  - The workflow summary carries the R4 runbook line: "If the publish succeeded and the tag step failed, use GitHub's 'Re-run failed jobs' only, never 'Re-run all jobs'." No gate is added.
 - AC3.3 (E2E, CI): the `benchmarks.yml` A/B base is the highest bare `M.m.p` tag, which resolves to `0.8.0` today. The job summary names the base commit of `0.8.0`.
 - AC3.4 (integration, `tests/test_docs.py`): the rc-wheel clause of `docs/getting-started.md:53` is gone; the rest of that paragraph stays. No rc version string remains in `docs/`, `README.md`, `llms.txt` or `skills/`.
 - AC3.5 (E2E observation): merging this candidate into `development` creates no tag, no PyPI version and no GitHub release.
 
 ### FR4 — Constitution and memory amendments
 
-The text below lands verbatim, in the same change as the code it governs, as a `pe` task of that job.
+Each text below lands verbatim. The constitution text (AC4.1, AC4.3) lands in Jobs 1 and 2 with the code it governs. The memory text (AC4.2, AC4.5) lands in the closure memory pass (Reconciliation, `pe`): `release.py check` refuses `specs/memory` in a job's `W:`. Invariant 11's "same change" is the release.
 
 - AC4.1 (no test; law text) — invariant 10 reads: "The core generates data with Python, NumPy, pandas and PyArrow alone: Spark, Faker, a message broker or a database server is never required to generate data."
-- AC4.2 (no test; memory text) — per invariant 11, two lines of `specs/memory/ARCHITECTURE.md` `## Tech Stack` change:
+- AC4.2 (no test; closure memory pass) — per invariant 11, two lines of `specs/memory/ARCHITECTURE.md` `## Tech Stack` change:
   - PyArrow: "PyArrow `^23.0` — the generated text column type (`pd.ArrowDtype(pa.string())`) and its builders, CSV and Parquet conversion/output, and Arrow-schema RandSpec construction."
   - GitHub Actions: "GitHub Actions — test matrix, advisory security scans, same-runner A/B regression benchmarks against the latest closed release, a non-gating isolated cross-library observation, publishing of closed releases through PyPI Trusted Publishing after the operator approves the `production` environment, and an isolated docs build with a guarded GitHub Pages deploy."
 - AC4.3 (no test; law text) — new invariant 13: "PyPI receives only closed releases, each published after the operator approves it through the GitHub environment `production`; no release candidate is published to PyPI, tagged or released on GitHub, and a release's tag is created only after its approved publish. The required-reviewer setting lives outside the repo and is held by the operator."
@@ -136,8 +137,8 @@ The text below lands verbatim, in the same change as the code it governs, as a `
 ### FR6 — Version 0.8.1 and its changelog
 
 - The operator chose a patch knowingly. The question offered 0.9.0 as recommended, citing the visible column type change, and the operator answered verbatim: "0.8.1. And we need to delete these rc publications. We cannot deploy RCs."
-- AC6.1 (no test; a test of the literal would only mirror `pyproject.toml`): `pyproject.toml` version is `0.8.1`, and `poetry version -s` prints it.
-- AC6.2 (no test; prose): `CHANGELOG.md` gains `## [0.8.1]`.
+- AC6.1 (no test; a test of the literal would only mirror `pyproject.toml`): `pyproject.toml` version is `0.8.1`, and `poetry version -s` prints it. The built-wheel version literal in `tests/integrations/test_public_api.py:552` becomes `0.8.1`. That is a literal update under the operator's version ruling, not a weakened assert.
+- AC6.2 (integration, `tests/test_docs.py:884-887` requires an ISO date on every numeric header; the test is not narrowed): `CHANGELOG.md` gains `## [0.8.1] - <date of the closure commit>`. Agent default, unruled: J6.T2 writes that date, and if the approved publish lands on a later day, the promote step re-dates the header.
   - Under **Changed**: text columns are `string[pyarrow]`; text nulls are `pd.NA`; Parquet metadata bytes and the default read-back dtype differ; the text methods are faster with the same seeded values.
   - Under **Removed**: release-candidate publication to PyPI, tags and GitHub pre-releases.
   - No behaviour change is listed under Fixed. The 0.8.0 section is not edited.
@@ -161,13 +162,13 @@ The text below lands verbatim, in the same change as the code it governs, as a `
 |---|---|
 | R2 pandas 2.3.x and pyarrow range: `is_string_dtype(ArrowDtype(string))` differs across versions | after the `_assign_nulls` edit nothing depends on it; 2.2.3 and 2.3.3 were run |
 | R3 Arrow's 2 GiB offset limit on huge text columns | the fixed-width builder chunks below it; a RED test pins a multi-chunk case through a small chunk size |
-| R4 publish succeeds, then the tag push fails | agent default, unruled: recover with GitHub's "Re-run failed jobs", which reruns only the tag and release jobs; the publish job is never rerun |
+| R4 publish succeeds, then the tag push fails | agent default, accepted by the main thread on 2026-10-20: GitHub's "Re-run failed jobs" only, never "Re-run all jobs". It reruns only the tag and release jobs, and the runbook line sits in the workflow summary (AC3.2) |
 | the benchmark `constant` sample turns text | its numeric case is unchanged code; the A/B must measure the changed case (AC1.10) |
 | sequencing | the Docs hotfix lands in its own lane; the comparison pin moves only at the 0.8.1 publication (F1) |
 
 Operator acts outside the repo (R5), never done by an agent:
 
-- the operator removes the PyPI Trusted Publisher entry that names `auto_tag_publish_development.yml`;
+- before the first merge into `master`, not after Reconciliation, the operator removes the PyPI Trusted Publisher entry that names `auto_tag_publish_development.yml`;
 - once the file is gone, the main thread deletes the GitHub environment `development`.
 
 ## 6. Open questions
