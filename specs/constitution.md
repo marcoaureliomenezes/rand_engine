@@ -28,6 +28,7 @@ gitflow: {"principal": "master", "integration": "development", "work": "feature/
 10. The core generates data with Python, NumPy and pandas alone: Spark, Faker, a message broker or a database server is never required to generate data.
 11. A runtime dependency, build tool, supported Python range or release mechanism changes only through an approved SPEC, with `specs/memory/ARCHITECTURE.md` `## Tech Stack` updated in the same change.
 12. The function bodies released in v0.6.4 (the `gen_*` functions of `rand_engine/core/_np_core.py`, `_spark_core.py`, `_py_core.py`, and `StreamHandler`) are the operator's hand-written code: each changes only when the operator approves that function by name in the SPEC Origin, and the change keeps the operator's style (2-space indentation, one-line guards, terse NumPy). A SPEC REBUILD row alone never authorizes it; reviewers reject otherwise.
+13. PyPI receives only closed releases, each published after the operator approves it through the GitHub environment `production`; no release candidate is published to PyPI, tagged or released on GitHub, and a release's tag is created only after its approved publish. The required-reviewer setting lives outside the repo and is held by the operator.
 
 ## Exclusions
 
