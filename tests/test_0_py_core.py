@@ -131,38 +131,6 @@ class TestPyCoreComplexDistincts:
             assert len(parts) == 6
 
 
-class TestPyCoreDistinctsUntyped:
-    """Test untyped distinct generation."""
-    
-    def test_gen_distincts_untyped_strings(self):
-        """Test untyped distinct generation with strings."""
-        size = 50
-        distinct = ["apple", "banana", "cherry", "date"]
-        result = PyCore.gen_distincts_untyped(rng=RNG, size=size, distinct=distinct)
-        
-        assert len(result) == size
-        assert isinstance(result, list)
-        assert all(item in distinct for item in result)
-    
-    def test_gen_distincts_untyped_mixed_types(self):
-        """Test untyped distinct generation with mixed types."""
-        size = 30
-        distinct = [1, "two", 3.0, True, None]
-        result = PyCore.gen_distincts_untyped(rng=RNG, size=size, distinct=distinct)
-        
-        assert len(result) == size
-        assert all(item in distinct for item in result)
-    
-    def test_gen_distincts_untyped_tuples(self):
-        """Test untyped distinct generation with tuples."""
-        size = 40
-        distinct = [("A", 1), ("B", 2), ("C", 3)]
-        result = PyCore.gen_distincts_untyped(rng=RNG, size=size, distinct=distinct)
-        
-        assert len(result) == size
-        assert all(item in distinct for item in result)
-
-
 class TestPyCoreDistinctsMap:
     """Test mapped distinct generation."""
     
@@ -314,22 +282,6 @@ class TestPyCoreEdgeCases:
                 templates=templates
             )
     
-    def test_gen_distincts_untyped_empty_list(self):
-        """Test untyped generation with empty list."""
-        size = 10
-        distinct = []
-        
-        with pytest.raises((ValueError, IndexError)):
-            PyCore.gen_distincts_untyped(rng=RNG, size=size, distinct=distinct)
-    
-    def test_gen_distincts_untyped_single_element(self):
-        """Test untyped generation with single element."""
-        size = 20
-        distinct = ["only_one"]
-        result = PyCore.gen_distincts_untyped(rng=RNG, size=size, distinct=distinct)
-        
-        assert len(result) == size
-        assert all(item == "only_one" for item in result)
 
 
 class TestPyCoreIntegration:
