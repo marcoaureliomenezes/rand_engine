@@ -21,7 +21,7 @@ class PyCore:
   @classmethod
   def gen_complex_distincts(cls, size: int, pattern="x.x.x-x", replacement="x", templates=None, *, rng: np.random.Generator) -> pa.Array | pa.ChunkedArray | np.ndarray:
     """Fills each `replacement` of `pattern` with its template's draw, in pattern order; returns Arrow text (a lone part is returned as drawn)."""
-    templates = templates or []
+    if not templates: return pa.repeat(pattern, size)
     assert pattern.count(replacement) == len(templates)
     parts, lit, counter = [], "", 0
     for ch in pattern:
@@ -31,7 +31,7 @@ class PyCore:
       parts.append((METHODS[method] if isinstance(method, str) else method)(size, rng=rng, **templates[counter]["kwargs"]))
       counter += 1
     if lit: parts.append(pa.scalar(lit))
-    if len(parts) == 1 and counter: return np.asarray(parts[0]) if not isinstance(parts[0], (pa.Array, pa.ChunkedArray)) else parts[0]
+    if len(parts) == 1: return parts[0]
     return pc.binary_join_element_wise(*[_as_text(p) for p in parts], "")
 
 
