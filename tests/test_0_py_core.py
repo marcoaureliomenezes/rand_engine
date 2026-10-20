@@ -6,6 +6,7 @@ These methods handle complex distinct value generation patterns.
 """
 import pytest
 import numpy as np
+import pyarrow as pa
 from rand_engine.core._py_core import PyCore
 from rand_engine.core._np_core import NPCore
 
@@ -35,10 +36,10 @@ class TestPyCoreComplexDistincts:
         )
         
         assert len(result) == size
-        assert isinstance(result, np.ndarray)
+        assert isinstance(result, (pa.Array, pa.ChunkedArray))
         
         # Check format (IP-like)
-        for item in result:
+        for item in result.to_pylist():
             parts = str(item).split(".")
             assert len(parts) == 4
             assert parts[0] in ["192", "172"]
@@ -367,3 +368,28 @@ def test_gen_distincts_map_puts_category_first():
     """Operator ruling G9: (category, value), like distincts_map_prop."""
     result = PyCore.gen_distincts_map(rng=RNG, size=50, distincts={"smartphone": ["android", "ios"]})
     assert set(result) == {("smartphone", "android"), ("smartphone", "ios")}
+
+
+def _int(**kw):
+    return {"method": "integers", "kwargs": kw}
+
+
+@pytest.mark.parametrize("pattern, templates, expected", [
+    ("x.x.x.x",
+     [{"method": "distincts", "kwargs": {"distincts": ["192", "172", "10"]}}, _int(min=0, max=255), _int(min=0, max=255), _int(min=1, max=254)],
+     [".".join(p) for p in (("10", "229", "213", "77"), ("172", "148", "57", "73"), ("10", "198", "14", "222"))]),
+    ("n-x", [_int(min=0, max=100)], ["n-95", "n-63", "n-69"]),
+    ("x|x", [{"method": "floats", "kwargs": {"min": 0, "max": 10, "decimals": 2}}, _int(min=1, max=9)],
+     ["9.45|9", "6.25|6", "6.84|7"]),
+    ("x/x/x", [{"method": "booleans", "kwargs": {}}] * 3, ["False/True/True", "False/True/False", "False/False/False"]),
+    ("#x", [_int(min=0, max=10**12, int_type="int64")], ["#625095466605", "#897213800970", "#775685690245"]),
+    ("ID-x", [{"method": "int_zfilled", "kwargs": {"length": 5}}], ["ID-94490", "ID-62509", "ID-68417"]),
+    ("u:x", [{"method": "uuid4", "kwargs": {}}],
+     ["u:8b4ae5f1-a941-46a0-956a-26afbccdafe5", "u:62f90a94-5f56-43c6-8227-6ad5ab2da739", "u:4551370e-99b2-474c-b427-fa48d732a1df"]),
+], ids=["ci_ip", "int", "float", "bool", "bigint", "zfilled", "uuid4"])
+def test_gen_complex_distincts_arrow_text_matches_080(pattern, templates, expected):
+    result = PyCore.gen_complex_distincts(size=3, pattern=pattern, replacement="x", templates=templates,
+                                          rng=np.random.default_rng(7))
+    assert isinstance(result, (pa.Array, pa.ChunkedArray))
+    assert result.type == pa.string()
+    assert result.to_pylist() == expected
