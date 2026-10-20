@@ -350,6 +350,16 @@ def test_gen_complex_distincts_arrow_text_matches_080(pattern, templates, expect
     assert result.to_pylist() == expected
 
 
+@pytest.mark.parametrize("kwargs, head, tail", [
+    (dict(min=-100, max=100, int_type="int8"), ["n:79", "n:89", "n:32"], ["n:48", "n:57", "n:-67"]),
+    (dict(min=-20000, max=20000, int_type="int16"), ["n:-8353", "n:17796", "n:-9741"], ["n:3938", "n:-11889", "n:520"]),
+], ids=["int8", "int16"])
+def test_gen_complex_distincts_narrow_int_part_crossing_signed_max_renders_080_text(kwargs, head, tail):
+    result = PyCore.gen_complex_distincts(300, pattern="n:x", replacement="x", templates=[_int(**kwargs)],
+                                          rng=np.random.default_rng(7)).to_pylist()
+    assert (len(result), result[:3], result[-3:]) == (300, head, tail)
+
+
 def test_gen_complex_distincts_templateless_pattern_repeats_literal():
     result = PyCore.gen_complex_distincts(3, pattern="ABC", replacement="x", templates=[], rng=np.random.default_rng(7))
     assert result.type == pa.string()
