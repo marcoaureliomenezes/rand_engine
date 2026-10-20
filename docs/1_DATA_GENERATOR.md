@@ -52,7 +52,7 @@ assert not gen.get_df().equals(gen.get_df())
 
 <!-- derived-from: generation-methods sha256:1552dc309621 -->
 
-Each column is `{"method": <name>, "kwargs": {...}}`. Bounds of `integers` are inclusive.
+Each column is `{"method": <name>, "kwargs": {...}}`. Bounds of `integers` are inclusive. Every text column is `string[pyarrow]` (`pd.ArrowDtype(pa.string())`); numeric, boolean and datetime columns are unchanged.
 
 | Method | Required kwargs | Optional kwargs | Column fields |
 |---|---|---|---|
@@ -82,7 +82,7 @@ Each column is `{"method": <name>, "kwargs": {...}}`. Bounds of `integers` are i
 methods require `cols`; the global optional modifiers are documented separately below.
 
 `dates` and `unix_timestamps` parse `start` and `end` with `date_format`. A `dates` value is a
-string drawn at whole-second resolution in UTC; its `date_format` may use only the directives
+`string[pyarrow]` text drawn at whole-second resolution in UTC; its `date_format` may use only the directives
 `%Y %m %d %H %M %S %f` (`%f` renders `000000`). Any other directive fails validation on both
 engines, naming the supported set.
 
@@ -109,7 +109,12 @@ spec = {
     "epoch": {"method": "unix_timestamps", "kwargs": {"start": "2024-01-01", "end": "2024-12-31"}},
 }
 df = DataGenerator(spec, seed=1).size(1_000).get_df()
-assert df["created_at"].str.match(r"^2024-\d\d-\d\d \d\d:\d\d:\d\d$").all()
+assert df["created_at"].str.match(r"^2024-\d\d-\d\d \d\d:\d\d:\d\d$").all()  # .str.* predicates return bool[pyarrow]
+```
+
+```python
+text_df = DataGenerator({"status": {"method": "distincts", "kwargs": {"distincts": ["paid", "refunded"]}}}, seed=1).size(10).get_df()
+assert str(text_df["status"].dtype) == "string[pyarrow]"
 ```
 
 `exponential`, `lognormal`, `poisson`, `zipf` and `constant` run on the NumPy engine only.
@@ -150,7 +155,7 @@ for bad in ({"method": "floats", "kwargs": {"min": 0, "max": 1, "decimals": 309}
 
 ### Null and anomaly rates
 
-Any single-column NumPy-engine method may carry `null_rate` (share of rows set to null) and `anomaly_rate` (share
+Any single-column NumPy-engine method may carry `null_rate` (share of rows set to null; a text column's nulls are `pd.NA` and its dtype stays `string[pyarrow]`) and `anomaly_rate` (share
 replaced by a draw from `anomaly_values`, a non-empty list of scalars required when the rate is
 above 0). Both are in [0, 1]; anomalies apply first, then nulls. `pk`, `fk` and the multi-column methods
 (`distincts_map`, `distincts_map_prop`, `distincts_multi_map`, `complex_distincts`) refuse them, and so does SparkGenerator.
