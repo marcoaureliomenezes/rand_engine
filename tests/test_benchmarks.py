@@ -49,7 +49,7 @@ def test_benchmark_inventory_covers_every_numpy_catalog_method():
 
 def test_method_siblings_are_the_fair_sampling_peers():
   assert speed.METHOD_SIBLINGS == {
-    "poisson": "distincts_prop", "zipf": "distincts_prop",
+    "poisson": "floats_normal", "zipf": "floats_normal",
     "exponential": "floats_normal", "lognormal": "floats_normal"}
 
 
