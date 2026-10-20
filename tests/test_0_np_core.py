@@ -9,7 +9,7 @@ import pytest
 import numpy as np
 import pyarrow as pa
 from rand_engine import DataGenerator
-from rand_engine.core._np_core import NPCore
+from rand_engine.core._np_core import NPCore, fixed_text
 from rand_engine.validators.exceptions import ColumnGenerationError
 
 RNG = np.random.default_rng(0)
@@ -227,11 +227,12 @@ def test_gen_ints_zfilled_various_lengths(length, default_size):
   """Test zero-filled integer generation with various lengths."""
   result = NPCore.gen_ints_zfilled(rng=RNG, size=default_size, length=length)
   assert len(result) == default_size
-  assert type(result) == np.ndarray
+  assert isinstance(result, (pa.Array, pa.ChunkedArray))
+  assert result.type == pa.string()
   
   # Check all are strings of correct length
-  for item in result:
-    assert isinstance(item, (str, np.str_))
+  for item in result.to_pylist():
+    assert isinstance(item, str)
     assert len(item) == length
     assert item.isdigit()
 
@@ -243,7 +244,7 @@ def test_gen_ints_zfilled_padding():
   result = NPCore.gen_ints_zfilled(rng=RNG, size=size, length=length)
   
   # All should be 8 characters
-  for item in result:
+  for item in result.to_pylist():
     assert len(item) == length
     # Should be valid integers when converted
     int_val = int(item)
@@ -302,7 +303,7 @@ def test_gen_ints_zfilled_edge_case_small():
   length = 2
   result = NPCore.gen_ints_zfilled(rng=RNG, size=size, length=length)
   assert len(result) == size
-  for item in result:
+  for item in result.to_pylist():
     assert len(item) == length
     assert 0 <= int(item) <= 99
 
@@ -357,7 +358,7 @@ def test_gen_uuid4_is_arrow_text_with_the_same_values_as_before(seed, expected):
 
 def test_gen_ints_and_zfilled_reach_the_inclusive_max():
   assert set(NPCore.gen_ints(1000, 0, 1, rng=RNG).tolist()) == {0, 1}
-  assert set(NPCore.gen_ints_zfilled(1000, 1, rng=RNG).tolist()) == set("0123456789")
+  assert set(NPCore.gen_ints_zfilled(1000, 1, rng=RNG).to_pylist()) == set("0123456789")
 
 
 @pytest.mark.parametrize("fmt, start, end", [
@@ -657,3 +658,25 @@ def test_constant_consumes_no_rng_and_does_not_change_seeded_columns():
   assert not isinstance(with_constant, (ColumnGenerationError, KeyError))
   assert with_constant["constant"].tolist() == ["fixed"] * 100
   assert np.array_equal(with_constant["random"].to_numpy(), without_constant["random"].to_numpy())
+
+
+@pytest.mark.parametrize("length, expected", [
+  (1, ["0", "7", "6"]),
+  (7, ["0892509", "7739560", "6545715"]),
+  (10, ["7739560485", "4388784397", "8585979199"]),
+  (18, ["773956048555963429", "438878439752052425", "858597919911382541"]),
+])
+def test_gen_ints_zfilled_is_arrow_text_with_the_same_values_as_before(length, expected):
+  result = NPCore.gen_ints_zfilled(3, length, rng=np.random.default_rng(42))
+  assert isinstance(result, (pa.Array, pa.ChunkedArray))
+  assert result.type == pa.string()
+  assert result.to_pylist() == expected
+
+
+def test_fixed_text_splits_into_chunks_without_changing_the_values():
+  rows = np.frombuffer(b"0123456789abcdefghij", np.uint8).reshape(4, 5).copy()
+  whole = fixed_text(rows)
+  chunked = fixed_text(rows, max_chunk_bytes=10)
+  assert isinstance(chunked, pa.ChunkedArray) and chunked.num_chunks == 2
+  assert chunked.type == pa.string()
+  assert chunked.to_pylist() == whole.to_pylist() == ["01234", "56789", "abcde", "fghij"]
