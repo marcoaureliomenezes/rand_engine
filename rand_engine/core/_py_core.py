@@ -19,7 +19,7 @@ class PyCore:
         method = templates[counter]["method"]
         if isinstance(method, str):
           method = METHODS[method]
-        list_of_lists.append(method(size, rng=rng, **templates[counter]["kwargs"]))
+        list_of_lists.append(np.asarray(method(size, rng=rng, **templates[counter]["kwargs"])))
         counter += 1
       else:
         list_of_lists.append(np.array([pattern[replacer_cursor] for i in range(size)]))
