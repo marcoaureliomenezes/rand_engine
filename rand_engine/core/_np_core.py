@@ -101,6 +101,23 @@ def fixed_text(rows: np.ndarray, max_chunk_bytes: int = 2 ** 31 - 1) -> pa.Array
   return chunks[0] if len(chunks) == 1 else pa.chunked_array(chunks, pa.string())
 
 
+def _format_dates(ts: np.ndarray, tokens: list) -> pa.Array | pa.ChunkedArray:
+  s = ts.astype("datetime64[s]")
+  y, m, d = (s.astype(f"datetime64[{u}]") for u in "YMD")
+  sec = (s - d).astype(np.int64)
+  fields = {"%Y": y.astype(np.int64) + 1970, "%m": (m - y).astype(np.int64) + 1, "%d": (d - m).astype(np.int64) + 1,
+            "%H": sec // 3600, "%M": sec // 60 % 60, "%S": sec % 60}
+  lits = {t: np.frombuffer(t.encode(), np.uint8) for t in tokens if t not in fields}
+  widths = [(4 if t == "%Y" else 2) if t in fields else len(lits[t]) for t in tokens]
+  buf, c = np.empty((len(ts), sum(widths)), np.uint8), 0
+  for t, w in zip(tokens, widths):
+    if t in fields:
+      for k in range(w): buf[:, c + k] = fields[t] // 10 ** (w - 1 - k) % 10 + 48
+    else: buf[:, c:c + w] = lits[t]
+    c += w
+  return fixed_text(buf)
+
+
 class NPCore:
 
 
@@ -214,35 +231,16 @@ class NPCore:
   
 
   @classmethod
-  def gen_dates(cls, size: int, start: str, end: str, date_format: str = "%Y-%m-%d", *, rng: np.random.Generator) -> np.ndarray:
-    """
-    Generate random dates as formatted strings.
-    
-    Args:
-        size: Number of dates to generate
-        start: Start date string
-        end: End date string
-        format: Date format (e.g., "%Y-%m-%d", "%Y-%m-%d %H:%M:%S")
-    
-    Returns:
-        numpy array of formatted date strings
-    """
-    timestamp_array = cls.gen_unix_timestamps(size, start, end, date_format, rng=rng)
-    s = timestamp_array.astype("datetime64[s]")
-    y, m, d = (s.astype(f"datetime64[{u}]") for u in "YMD")
-    sec = (s - d).astype(np.int64)
-    fields = {"%Y": y.astype(np.int64) + 1970, "%m": (m - y).astype(np.int64) + 1, "%d": (d - m).astype(np.int64) + 1,
-              "%H": sec // 3600, "%M": sec // 60 % 60, "%S": sec % 60}
+  def gen_dates(cls, size: int, start: str, end: str, date_format: str = "%Y-%m-%d", *, rng: np.random.Generator) -> pa.Array | pa.ChunkedArray:
+    """Random UTC timestamps between start and end, formatted by date_format, as Arrow text (pa.string())."""
+    ts = cls.gen_unix_timestamps(size, start, end, date_format, rng=rng)
     tokens = [{"%f": "000000"}.get(t, t) for t in DATE_SPLIT.split(date_format) if t]
-    widths = [(4 if t == "%Y" else 2) if t in fields else len(t) for t in tokens]
-    codes, c = np.empty((size, sum(widths)), np.uint32), 0
-    for t, w in zip(tokens, widths):
-      if t in fields:
-        for k in range(w): codes[:, c + k] = fields[t] // 10 ** (w - 1 - k) % 10 + 48
-      else:
-        codes[:, c:c + w] = [ord(ch) for ch in t]
-      c += w
-    return codes.view(f"<U{sum(widths)}").ravel()
+    if size == 0: return pa.array([], pa.string())
+    if not any(t in ("%H", "%M", "%S") for t in tokens):
+      day = ts // 86400
+      lo, hi = int(day.min()), int(day.max())
+      if hi - lo + 1 <= size: return _format_dates(np.arange(lo, hi + 1, dtype=np.int64) * 86400, tokens).take(pa.array(day - lo))
+    return _format_dates(ts, tokens)
 
 if __name__ == "__main__":
   
