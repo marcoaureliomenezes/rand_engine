@@ -31,7 +31,7 @@ SAMPLE_KWARGS = {
   "lognormal": {"mean": 0.0, "std": 1.0, "decimals": 2},
   "poisson": {"lam": 1.0},
   "zipf": {"a": 2.0},
-  "constant": {"value": 1},
+  "constant": {"value": "fixed"},
   "distincts": {"distincts": ["A", "B", "C", "D", "E"]},
   "distincts_prop": {"distincts": {"gold": 10, "silver": 30, "bronze": 60}},
   "unix_timestamps": {"start": "2020-01-01", "end": "2025-12-31", "date_format": "%Y-%m-%d"},

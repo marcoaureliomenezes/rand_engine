@@ -208,8 +208,8 @@ class NPCore:
 
 
   @classmethod
-  def gen_constant(cls, size: int, value: Any, *, rng: np.random.Generator) -> np.ndarray:
-    return np.full(size, value)
+  def gen_constant(cls, size: int, value: Any, *, rng: np.random.Generator) -> pa.Array | np.ndarray:
+    return pa.repeat(value, size) if isinstance(value, str) else np.full(size, value)
 
 
 
