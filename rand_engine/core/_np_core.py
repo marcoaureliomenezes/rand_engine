@@ -118,6 +118,12 @@ def _format_dates(ts: np.ndarray, tokens: list) -> pa.Array | pa.ChunkedArray:
   return fixed_text(buf)
 
 
+def pool_draw(pool: list, idx: np.ndarray) -> pa.Array | pa.ChunkedArray | np.ndarray:
+  """Rows idx of np.asarray(pool): Arrow text for a text pool, else the NumPy array."""
+  a = np.asarray(pool)
+  return pa.array(a.tolist(), pa.string()).take(pa.array(idx)) if a.dtype.kind == "U" else a[idx]
+
+
 class NPCore:
 
 
@@ -208,16 +214,15 @@ class NPCore:
 
 
   @classmethod
-  def gen_distincts(cls, size: int, distincts: List[Any], *, rng: np.random.Generator) -> np.ndarray:
+  def gen_distincts(cls, size: int, distincts: List[Any], *, rng: np.random.Generator) -> pa.Array | pa.ChunkedArray | np.ndarray:
     assert len(list(set([type(x) for x in distincts]))) == 1
-    return rng.choice(distincts, size)
+    return pool_draw(distincts, rng.integers(0, len(distincts), size))
 
 
   @classmethod
-  def gen_distincts_prop(cls, size: int, distincts: Dict[str, int], *, rng: np.random.Generator) -> np.ndarray:
-    distincts_prop = [ key for key, value in distincts.items() for i in range(value) ]
-    #assert len(list(set([type(x) for x in distincts]))) == 1
-    return rng.choice(distincts_prop, size)
+  def gen_distincts_prop(cls, size: int, distincts: Dict[str, int], *, rng: np.random.Generator) -> pa.Array | pa.ChunkedArray | np.ndarray:
+    pool = [key for key, value in distincts.items() for _ in range(value)]
+    return pool_draw(pool, rng.integers(0, len(pool), size))
   
 
   @classmethod
