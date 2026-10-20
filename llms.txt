@@ -46,7 +46,7 @@
 
 ## Optional
 
-<!-- derived-from: benchmarks sha256:f5a23d3f2af6 -->
+<!-- derived-from: benchmarks sha256:23cc98646ec7 -->
 
 - [Benchmarks](https://marcoaureliomenezes.github.io/rand_engine/BENCHMARKS/): rows/µs per method and sink, measured in CI
 - [Changelog](https://github.com/marcoaureliomenezes/rand_engine/blob/master/CHANGELOG.md): release notes and breaking changes

@@ -29,7 +29,7 @@ sources:
 - Pull requests to the principal or integration branch, and a manual dispatch, run stress tests and the speed benchmark in one CI job.
 - The generated Markdown is placed in the job summary and one updated pull-request comment; Markdown and JSON are uploaded as artifacts.
 - Any comparable method or sink row slower than 1.3 times its base fails the job.
-- Within the same run, `poisson` and `zipf` may cost at most 1.5 times `distincts_prop`, and `exponential` and `lognormal` at most 1.5 times `floats_normal`.
+- Within the same run, each distribution method — `exponential`, `lognormal`, `poisson` and `zipf` — may cost at most 1.5 times its sibling `floats_normal`.
 - A modifier's overhead (its row time minus the unmodified `integers` time) may be at most 1.75 times that unmodified time for `null_rate` and 2.5 times for `anomaly_rate`; a modified column therefore costs at most 2.75 and 3.5 times the plain column. Modifier rows have no base comparison.
 
 ## Bounded cross-library observation
