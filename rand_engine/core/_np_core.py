@@ -1,8 +1,8 @@
 
 import math
-import uuid
 import re
 import numpy as np
+import pyarrow as pa
 
 from typing import List, Any, Dict
 from datetime import datetime as dt, timezone
@@ -89,15 +89,28 @@ def _round_finite(x: np.ndarray, decimals: int) -> np.ndarray:
   return np.where(np.isinf(r), x, r)
 
 
+def fixed_text(rows: np.ndarray, max_chunk_bytes: int = 2 ** 31 - 1) -> pa.Array | pa.ChunkedArray:
+  """C-contiguous (n, width) uint8 UTF-8 rows of equal byte width -> pa.string(); a ChunkedArray when the data exceeds max_chunk_bytes."""
+  n, width = rows.shape
+  step = max(1, max_chunk_bytes // max(width, 1))
+  chunks = [pa.StringArray.from_buffers(len(r), pa.py_buffer(np.arange(0, (len(r) + 1) * width, width, dtype=np.int32)), pa.py_buffer(r))
+            for r in (rows[i:i + step] for i in range(0, n, step))]
+  if not chunks: return pa.array([], pa.string())
+  return chunks[0] if len(chunks) == 1 else pa.chunked_array(chunks, pa.string())
+
+
 class NPCore:
 
 
   @classmethod
-  def gen_uuid4(cls, size: int, *, rng: np.random.Generator) -> np.ndarray:
+  def gen_uuid4(cls, size: int, *, rng: np.random.Generator) -> pa.Array | pa.ChunkedArray:
     b = np.frombuffer(rng.bytes(16 * size), np.uint8).reshape(size, 16).copy()
     b[:, 6] = b[:, 6] & 0x0F | 0x40
     b[:, 8] = b[:, 8] & 0x3F | 0x80
-    return np.array([str(uuid.UUID(bytes=row.tobytes())) for row in b])
+    hexed = np.frombuffer(b.tobytes().hex().encode(), np.uint8).reshape(size, 32)
+    buf = np.full((size, 36), ord("-"), np.uint8)
+    for (a, c), d in zip(((0, 8), (8, 12), (12, 16), (16, 20), (20, 32)), (0, 9, 14, 19, 24)): buf[:, d:d + c - a] = hexed[:, a:c]
+    return fixed_text(buf)
     
   @classmethod
   def gen_booleans(cls, size: int, true_prob=0.5, *, rng: np.random.Generator) -> np.ndarray:
