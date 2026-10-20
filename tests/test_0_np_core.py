@@ -7,6 +7,7 @@ from decimal import Decimal, localcontext
 
 import pytest
 import numpy as np
+import pyarrow as pa
 from rand_engine import DataGenerator
 from rand_engine.core._np_core import NPCore
 from rand_engine.validators.exceptions import ColumnGenerationError
@@ -175,9 +176,10 @@ def test_gen_uuid4_basic(default_size):
   """Test UUID generation returns correct size and format."""
   result = NPCore.gen_uuid4(rng=RNG, size=default_size)
   assert len(result) == default_size
-  assert type(result) == np.ndarray
+  assert isinstance(result, (pa.Array, pa.ChunkedArray))
+  assert result.type == pa.string()
   # Check UUID format (36 characters with dashes)
-  for uuid_str in result:
+  for uuid_str in result.to_pylist():
     assert isinstance(uuid_str, str)
     assert len(uuid_str) == 36
     assert uuid_str.count('-') == 4
@@ -187,7 +189,7 @@ def test_gen_uuid4_uniqueness():
   """Test that generated UUIDs are unique."""
   size = 1000
   result = NPCore.gen_uuid4(rng=RNG, size=size)
-  unique_uuids = set(result)
+  unique_uuids = set(result.to_pylist())
   assert len(unique_uuids) == size  # All should be unique
 
 
@@ -335,10 +337,22 @@ def test_gen_unix_timestamps_and_dates_ignore_process_timezone(tz, monkeypatch):
 def test_gen_uuid4_values_are_rfc4122_version_4():
   """AC4.5"""
   values = NPCore.gen_uuid4(1000, rng=np.random.default_rng(0))
-  parsed = [uuid.UUID(v) for v in values]
+  texts = values.to_pylist()
+  parsed = [uuid.UUID(v) for v in texts]
   assert {(u.version, u.variant) for u in parsed} == {(4, uuid.RFC_4122)}
-  assert [str(u) for u in parsed] == values.tolist()
-  assert len(set(values)) == 1000
+  assert [str(u) for u in parsed] == texts
+  assert len(set(texts)) == 1000
+
+
+@pytest.mark.parametrize("seed, expected", [
+  (0, ['5f82c2d9-cfeb-4fa3-a1d7-d982f8bd1045', 'b8e8cd4e-a93d-4d0a-9df0-4213b6273b04', '3b51de2c-787a-42d0-8e1c-40a67959aae9']),
+  (42, ['8826d916-cdfb-41c6-81ff-91a761565a70', '2416da6e-c212-4ddb-8d88-00160eb686b2', 'eb819333-b501-4c18-8c53-c786ed62c2f9']),
+])
+def test_gen_uuid4_is_arrow_text_with_the_same_values_as_before(seed, expected):
+  result = NPCore.gen_uuid4(3, rng=np.random.default_rng(seed))
+  assert isinstance(result, (pa.Array, pa.ChunkedArray))
+  assert result.type == pa.string()
+  assert result.to_pylist() == expected
 
 
 def test_gen_ints_and_zfilled_reach_the_inclusive_max():
