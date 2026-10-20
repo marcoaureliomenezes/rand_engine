@@ -1,6 +1,6 @@
 # PLAN — Release 0.8.1 rc-1
 
-**Status:** Draft (as-is review only; the DAG and job files follow the approved SPEC)
+**Status:** Draft (as-is review, DAG and job files; awaiting the operator's approval with the SPEC)
 **Owner:** dd-sw-engineer-sr
 **SPEC:** `specs/releases/0.8.1/rc-1/SPEC.md`
 
@@ -24,15 +24,17 @@ Work order: DELETE, REBUILD, UPDATE, KEEP, ADD.
 | `NPCore.gen_ints_zfilled` (`_np_core.py:115-119`) | `astype('str')` then `np.char.zfill` | 5 (`int-zfilled-nonpositive-length-validates-then-raises`, REBUILD 4a95036), 9 (`int-zfilled-length-above-18-validates-then-raises`, bbc9847); both fixed in the validator, none in this body | REBUILD | trigger met (2 bugs) and the demand changes the return type. The operator's own idea: digits by integer math (pair table), straight into an Arrow buffer. Same `rng.integers(0, 10**length, size, int64)` draw. Bounds stay the validator's (1..18). Name: `gen_ints_zfilled` |
 | `NPCore.gen_dates` (`_np_core.py:197-225`) | calendar fields by NumPy, one `uint32` code matrix, `view("<U..")`; 6.4 s/10M for date-only formats | `timestamps-depend-on-local-timezone` (97abd63), `date-format-required-but-docs-omit-it` (d7ea9a3), `dates-oracle-fails-on-windows-past-3000` (c9ed9f4) | REBUILD | trigger met (3 bugs). One format function over a timestamp array writes UTF-8 bytes into a fixed-width row buffer (every row has the same byte width, so a non-ASCII literal needs no second path); when `date_format` holds no time directive the function runs once per distinct day and the rows are an Arrow take (13.9x). The UTC and `%f` semantics are kept by reusing the same field math. `_spark_core.py:3` imports `DATE_DIRECTIVES`, `DATE_SPLIT`, `float_lattice_bounds`, `width_beyond_double` from `_np_core`: those four names stay. Name: `gen_dates` |
 | `NPCore.gen_distincts`, `gen_distincts_prop` (`_np_core.py:174-183`) | `rng.choice(list, size)` returns a `<U` array that pandas turns into 10M Python strings (wrap 1.2 s and 0.8 s) | none in the ledger | UPDATE | the draw becomes `rng.integers(0, len(pool), size)` then the pool helper; verified identical to `rng.choice` for text (M5). Numeric pools keep `np.asarray(pool)[idx]` in the same helper, so there is no second path in the method. Names: `gen_distincts`, `gen_distincts_prop` |
-| `NPCore.gen_constant` (`_np_core.py:167-169`) | `np.full(size, value)`; a text value becomes a `<U` array, 1.9 s to a DataFrame at 10M | none | UPDATE | only the text case changes (`pa.repeat`, 0.12 s). If the operator does not name `gen_constant`, the assembly decider below still converts it (U array to Arrow, measured 4-5 s/10M, slower than 0.8.0): the SPEC owner puts the name to the operator. The benchmark `constant` row is numeric and unaffected |
+| `NPCore.gen_constant` (`_np_core.py:167-169`) | `np.full(size, value)`; a text value becomes a `<U` array, 1.9 s to a DataFrame at 10M | none | UPDATE | only the text case changes (`pa.repeat`, 0.12 s). The SPEC names `gen_constant` (text case) in invariant 12. The benchmark `constant` sample in `benchmarks/speed.py` becomes a text value (AC1.10), because its numeric case is unchanged code and the A/B must measure the changed one |
 | `_rand_generator.py` `_assign_nulls` 152-168 | `if is_object_dtype or is_string_dtype` writes `None` into an object copy: an Arrow text column silently leaves Arrow after `null_rate`, nulls are `None` (measured: dtype `object`) | modifier pipeline REBUILD 97494a2 and perf 2a76652 (0.7.0, both pre-ledger) | UPDATE | delete the `or is_string_dtype(dtype)` disjunct: an `ArrowDtype` column then takes the existing extension branch (`values[mask] = pd.NA`, dtype kept; 0.63 s/10M vs 0.37 s object). Net -1 line. Behaviour change: nulls of a text column become `pd.NA` instead of `None`. Same result on pandas 2.3.3 (the four pin tests fail identically) |
 | `.github/workflows/auto_tag_publish_master.yml` (346 lines) | `find_rc` 56-68 looks up the latest rc tag; `create_tag` 126-144 runs BEFORE `publish_pypi` 146-164 (environment `production`); release notes "Promoted from Release Candidate" 186-192; summary lines 210-226; a "no rc suffix" guard 109-115 | `workflow-actions-mutable-refs` (948bfe8), `workflow-missing-top-level-permissions` (b150df5), `workflow-summary-text-stale` (af3fd67, f1f5853) | REBUILD | 3 bugs on the file. Delete `find_rc`, `latest_rc` outputs and both "Promoted from RC" blocks; `create_tag` waits on `publish_pypi`, `create_github_release` waits on `create_tag`; keep the no-rc guard as the invariant's enforcement. Net lines negative. Risk R4: a failed tag push after a successful publish; a rerun sees no tag and tries to republish a version PyPI refuses |
 | `.github/workflows/benchmarks.yml` 43-45 (A/B base) | base = `docs/benchmarks.json` `.commit`, the last committed head (bbc9847), not a release | no ledger record; audit finding | UPDATE | base = the highest closed-release tag (`git tag -l '[0-9]*.[0-9]*.[0-9]*'` sorted by version, no letters), which today resolves to `0.8.0`; it follows the next release with no edit, unlike a hard-coded tag. `actions/checkout` already uses `fetch-depth: 0`. Consumers: `benchmarks/speed.py` (reads `BASE_SHA`/`--base-tree` only, unchanged), `tests/test_benchmarks.py:307-316` (pins `TERMINAL_HEAD`/`TERMINAL_BASE` of the committed `docs/benchmarks.json`), memory atom `product/quality/benchmarks.md:25,44-45` |
 | `docs/benchmarks.json`, `docs/BENCHMARKS.md` | CI artifact of the last measured head, base 5920630 | none | UPDATE | a candidate touching measured paths records its last CI artifact byte for byte (atom `benchmarks.md:44`); `test_benchmarks.py:307-316` is re-pinned to the new head/base. Lands last, from the CI artifact |
+| `benchmarks/speed.py:34` `constant` sample | `{"value": 1}`, a numeric constant | none | UPDATE | a text value (AC1.10); the speed harness reads no other row of it |
 | `.github/workflows/comparison.yml:119-120` and `benchmarks/comparison.py:201,344,351-352`, `tests/test_comparison.py:137,167,186` | pin the cross-library observation to the published 0.8.0 wheel (five files agree) | none | KEEP | until 0.8.1 is published the only released wheel is 0.8.0, so the pin is correct and non-gating. Bumping it belongs to the step that publishes 0.8.1, not to this candidate; listed as follow-up F1 |
 | `pyproject.toml:3` version, `CHANGELOG.md` | `0.8.0` | none | UPDATE | `0.8.1`; one changelog entry in the existing Keep a Changelog shape (new section, no edit of 0.8.0) |
 | `docs/1_DATA_GENERATOR.md:60-77,84-86,112,153-156`, `docs/3_WRITING_FILES.md:42-44,94-95`, `docs/5_RECIPES.md:41-46`, `README.md:37,45,57`, `llms.txt:25`, `skills/rand-engine/SKILL.md:32,43,99`, `data_generator.py` docstrings 19-22, 244-245, 258 | text columns are described as strings/NumPy; null_rate says "set to null"; `3_WRITING_FILES.md:44` promises Parquet reads back "equal ... values and dtypes" | none | UPDATE | state the type (`string[pyarrow]`, nulls `pd.NA`, `.str.*` returns Arrow booleans) once in the method table or null-rate section, and narrow line 44: a text column reads back equal in values, and equal in dtype only with `read_parquet(..., dtype_backend="pyarrow")` (M3). `test_docs.py` executes every block: the `.str.match(...).all()` block at `1_DATA_GENERATOR.md:112` passes on Arrow (checked in the scratch run) |
-| `rand_engine/cases/databricks.py.txt:41-42` (`spark.createDataFrame(pdf)`), `kafka.py.txt:29,40`, `lake.py.txt:35`, `faker.py.txt:25`, `templates/web_server_logs.py:86-101` | consumers of a generated text column | none | KEEP | verified by running (M4, M6): the databricks flow works on a frame with no nulls; `json.dumps` of `stream_dict` rows, Parquet read-back, `nunique` and `+` on text all work. One break: a frame whose text column has `pd.NA` fails `spark.createDataFrame` on Spark's non-Arrow path (R1) |
+| `rand_engine/cases/databricks.py.txt:41-42` (`spark.createDataFrame(pdf)`) | the starter converts a generated frame with Spark's non-Arrow path | R1 (ruled) | UPDATE | the SPEC rules (a): keep `pd.NA` and Arrow, and the starter tells the user to enable Spark's Arrow option before `createDataFrame`; a Temurin-17 CI test proves both paths (AC2.8) |
+| `kafka.py.txt:29,40`, `lake.py.txt:35`, `faker.py.txt:25`, `templates/web_server_logs.py:86-101` | consumers of a generated text column | none | KEEP | verified by running (M4, M6): the databricks flow works on a frame with no nulls; `json.dumps` of `stream_dict` rows, Parquet read-back, `nunique` and `+` on text all work. One break: a frame whose text column has `pd.NA` fails `spark.createDataFrame` on Spark's non-Arrow path (R1) |
 | `StreamHandler.convert_dt_to_str` (`utils/stream_handler.py:7-16`), `data_generator.py` `stream_dict` 240-283 | `astype(object).mask(missing, None)`: str or `None` per record | `362b202`, `7aeb612`, `e8871a0` (no ledger id) | KEEP | already emits `None` for every missing value, so JSON/Kafka consumers see no change (`test_6_stream_objects.py` and `test_2` stream tests pass on Arrow text). The inv-12 name `StreamHandler` is NOT needed |
 | `file_handler.py` CSV/JSON/Parquet sessions, `_writer_batch.py` SQLite | `pa.Table.from_pandas` then `_require_same_schema` against the catalog's `pa.string()` | `csv-tz-aware-fails-on-windows` (REBUILD a49493c), `unbatched-save-refuses-transformed-null-column` (REBUILD ffdb0d1), 4 writer-state bugs | KEEP | the `ArrowDtype(pa.string())` choice is what keeps this unit untouched: the schema stays `string`, so no drift. CSV and JSON bytes are identical to 0.8.0, SQLite stores NULL for `pd.NA` (M2). Parquet bytes differ only in the embedded pandas/Arrow schema metadata; values and the BYTE_ARRAY/String logical type are identical (M2) |
 | `_rand_generator.py` `_scalar_preserves_dtype` 80-114, `_object_values_are_compatible`, `_anomaly_values_are_compatible`, `_coerce_anomaly_values`, `apply_modifiers`, `apply_embedded_transformers` | dtype-aware modifiers and the transformer `.apply` | same modifier history as `_assign_nulls` | KEEP | anomaly values on an Arrow text column work as they are (`is_string_dtype` is True for `ArrowDtype(string)` on the locked pandas 2.2.3, and the generic `pd.array` path covers a False answer on 2.3.x). A transformer's output dtype is whatever it returns (object); not engineered around, per the brief |
@@ -50,7 +52,7 @@ Found by running the unchanged suite against the scratch prototype: 48 tests fai
 | `:224`, `:237`, `:297`, `:344` `int_zfilled` variants | ndarray, `np.str_`, `.tolist()` | UPDATE: same shape change; zero padding and inclusive max asserts kept at the same literals |
 | `:130`, `:152`, `:252`, `:264`, `:288` `distincts`/`distincts_prop` | ndarray result, `==` on arrays, proportions | UPDATE: count through `to_pylist()`; proportions keep their tolerance |
 | `:323`, `:356`, `:364`, `:368` `dates` (timezone, per-row strftime oracle, zero rows, ISO bounds) | ndarray `.tolist()`, empty ndarray | UPDATE: compare `to_pylist()` to the same per-row strftime oracle; zero rows returns an empty Arrow array |
-| `:619` `constant` text, `:608-629` | dtype `object` for `"fixed"` | UPDATE only if `gen_constant` is named; else the assembly gives `string[pyarrow]` and the same assert moves |
+| `:619` `constant` text, `:608-629` | dtype `object` for `"fixed"` | UPDATE: `gen_constant` is named by the SPEC |
 | `tests/test_0_py_core.py:18` complex_distincts; `:131,141,150,315,323` `gen_distincts_untyped`; `:163,182,199,217,237,258,277,366` map family | list of row tuples, `len == rows` | DELETE the five `untyped` tests with the unit; REBUILD the eight map tests and `puts_category_first` from rows to level columns, keeping every literal value assert |
 | `tests/test_2_data_generator.py:361` (`object`), `:422` and `:437` (`[None, None, None]` + `object`), `:492` (`constant` + `null_rate` -> `object`) | text null is `None`, dtype `object` | UPDATE: text null is `pd.NA`, dtype `string[pyarrow]`; the `Int8/UInt16/boolean/float64/datetime64` rows of `:492` stay untouched |
 | `tests/test_4_rand_specs_helpers.py:83-110` `from_schema` | text/large_text/day32/day64/moment columns declared `object` | UPDATE: those five become `string[pyarrow]`; the row with no `nothing` column keeps `object` + `None` |
@@ -62,9 +64,9 @@ Pre-existing reds in this sandbox, identical on the unchanged tree (Java 21 vs S
 
 | unit | today | bugs | verdict | why |
 |---|---|---|---|---|
-| `specs/constitution.md` invariant 10 | "core generates with Python, NumPy and pandas alone" | none | UPDATE | pyarrow is already a runtime dependency (`pyproject.toml`) and the core now builds text columns with it: add "and PyArrow" to the list, keeping the "no Spark, Faker, broker or database" clause |
-| `specs/constitution.md` invariant 11 | runtime deps and release mechanism change only through a SPEC plus the Tech Stack | none | UPDATE | the SPEC approves two Tech Stack edits in the same change: the PyArrow line (add "the generated text column type and its zero-copy builders") and the GitHub Actions line (delete "RC and stable"; stable publishing only after the operator approves the `production` environment) |
-| `specs/constitution.md` invariant 12 | the v0.6.4 `gen_*` bodies change only on a by-name approval in the SPEC Origin | none | UPDATE | the Origin must name: `gen_uuid4`, `gen_ints_zfilled`, `gen_dates`, `gen_distincts`, `gen_distincts_prop`, `gen_complex_distincts`, `gen_distincts_map`, `gen_distincts_multi_map`, `gen_distincts_map_prop`, and `gen_constant` (text case) if the operator accepts it. `StreamHandler.convert_dt_to_str` and `Keys` need no name. The style clause (2-space, one-line guards) binds the new bodies |
+| `specs/constitution.md` invariant 10 | "core generates with Python, NumPy and pandas alone" | none | UPDATE | pyarrow is already a runtime dependency (`pyproject.toml`) and the core now builds text columns with it: add "and PyArrow" to the list (SPEC AC4.1 text), keeping the "no Spark, Faker, broker or database" clause |
+| `specs/constitution.md` invariant 11 | runtime deps and release mechanism change only through a SPEC plus the Tech Stack | none | UPDATE | the SPEC approves two Tech Stack edits in the same change: the PyArrow line (SPEC AC4.2 text: the generated text column type and its builders) and the GitHub Actions line (delete "RC and stable"; stable publishing only after the operator approves the `production` environment) |
+| `specs/constitution.md` invariant 12 | the v0.6.4 `gen_*` bodies change only on a by-name approval in the SPEC Origin | none | UPDATE | the Origin must name: `gen_uuid4`, `gen_ints_zfilled`, `gen_dates`, `gen_distincts`, `gen_distincts_prop`, `gen_complex_distincts`, `gen_distincts_map`, `gen_distincts_multi_map`, `gen_distincts_map_prop`, and `gen_constant` (text case), all accepted in the SPEC Origin. `StreamHandler.convert_dt_to_str` and `Keys` need no name. The style clause (2-space, one-line guards) binds the new bodies |
 | `specs/constitution.md` new invariant | no rule forbids rc publication (invariant 6 only requires Trusted Publishing) | none | ADD | an invariant: PyPI receives only closed releases, each approved by the operator through the GitHub environment `production` (required reviewer); no rc is published to PyPI, tagged, or released on GitHub; the tag is created only after the approved publish. Invariant 6 keeps its OIDC clause. Nothing in the repo can enforce the reviewer setting, so the invariant names it as an operator-held control |
 | `specs/memory/ARCHITECTURE.md:20,27,30` | PyArrow "CSV and Parquet conversion/output"; Actions "RC and stable publishing" | none | UPDATE | the two Tech Stack lines invariant 11 requires |
 | `specs/memory/QUALITY.md:36-37` | gate "Merge to development ... RC tag, PyPI publish"; "Merge to master ... the tag, PyPI publish" | none | UPDATE | delete the development publish line; master line: publish after operator approval, then the tag, then the release |
@@ -98,7 +100,7 @@ Commands run from `worktrees/rand-engine/0.8.1/rc-1/wt-rc` with `POETRY_CACHE_DI
 
 ### Risks I could not close
 
-- **R1** Spark. A `pd.NA` text column breaks `spark.createDataFrame` on the non-Arrow path (the OSS default); the Arrow path was not runnable here. The SPEC must state the contract (nulls are `pd.NA`; Spark users enable Arrow or convert) and a CI test on Temurin 17 with the Arrow JVM flags must prove both paths; this is the only place where "nulls are `pd.NA`" and "`createDataFrame` still works" conflict.
+- **R1** Spark (ruled (a) in the SPEC, AC2.8). A `pd.NA` text column breaks `spark.createDataFrame` on the non-Arrow path (the OSS default); the Arrow path was not runnable here. The SPEC must state the contract (nulls are `pd.NA`; Spark users enable Arrow or convert) and a CI test on Temurin 17 with the Arrow JVM flags must prove both paths; this is the only place where "nulls are `pd.NA`" and "`createDataFrame` still works" conflict.
 - **R2** pandas 2.3.x/3.0 and pyarrow range: only 2.2.3 (lock) and 2.3.3 were run; `is_string_dtype(ArrowDtype(string))` differs across versions and nothing depends on it after the `_assign_nulls` edit.
 - **R3** Arrow offset limit: `fixed_text` chunks below 2 GiB; `pool.take` on a pool result above 2 GiB of text (about 10^8 rows of 20 bytes) was not run. The RED tests should pin a multi-chunk case through a small chunk size.
 - **R4** Master workflow rerun after a failed tag push (see the row).
@@ -109,3 +111,65 @@ Commands run from `worktrees/rand-engine/0.8.1/rc-1/wt-rc` with `POETRY_CACHE_DI
 - F1 `comparison.yml:119-120` and its four siblings: retarget the observation to 0.8.1 at its publication.
 - F2 time-format `dates` stay at 1.3x-2.1x; a per-token table join could do better and is a separate demand.
 - F3 `docs.yml`, `scripts/docs_site.py` and the 3 docs-preview tests: the hotfix of `docs-preview-deploy-fails-after-stable`, excluded.
+
+## DAG
+
+Waves follow the SPEC ranking: 1 law and dev loop, 2 shared foundation, 3-4 features, 5 promote-facing. Jobs in one wave write disjoint files. Edges: Job 2 needs Job 1 (constitution file, and the A/B base the speed ACs measure against); Jobs 3 and 5 need Job 2 (`_column` and `pd.NA` text nulls); Job 4 needs Job 3 (`pool_draw` and `fixed_text` in `_np_core.py`); Job 6 needs Jobs 4 and 5.
+
+| job | waits on | wave | W: |
+|---|---|---|---|
+| Job 1 | — | 1 | `tests/test_docs.py`, `docs/getting-started.md`, `.github/workflows/auto_tag_publish_development.yml`, `.github/workflows/auto_tag_publish_master.yml`, `.github/workflows/benchmarks.yml`, `specs/constitution.md` |
+| Job 2 | Job 1 | 2 | `tests/test_2_data_generator.py`, `tests/test_4_rand_specs_helpers.py`, `tests/test_5_file_batches_formats.py`, `rand_engine/main/_rand_generator.py`, `specs/constitution.md` |
+| Job 3 | Job 2 | 3 | `tests/test_0_np_core.py`, `rand_engine/core/_np_core.py`, `benchmarks/speed.py` |
+| Job 4 | Job 3 | 4 | `tests/test_0_py_core.py`, `rand_engine/core/_py_core.py`, `rand_engine/main/_rand_generator.py` |
+| Job 5 | Job 2 | 3 | `tests/test_3_spark_generator.py`, `rand_engine/cases/databricks.py.txt`, `docs/1_DATA_GENERATOR.md`, `rand_engine/main/data_generator.py`, `docs/3_WRITING_FILES.md`, `docs/5_RECIPES.md`, `README.md`, `llms.txt`, `skills/rand-engine/SKILL.md` |
+| Job 6 | Job 4, Job 5 | 5 | `pyproject.toml`, `CHANGELOG.md` |
+| Reconciliation | Job 6 | 6 | `docs/benchmarks.json`, `docs/BENCHMARKS.md`, `tests/test_benchmarks.py`, `specs/memory/ARCHITECTURE.md`, `specs/memory/QUALITY.md`, `specs/memory/product/generation/generation-methods.md`, `specs/memory/product/quality/benchmarks.md`, `specs/memory/product/output/writers-and-streaming.md`, `specs/memory/product/onboarding/documentation.md` |
+
+### Schedule and sizing
+
+- Task count: Job 1 six, Job 2 seven, Job 3 ten, Job 4 six, Job 5 five, Job 6 two (36). Each behaviour is a RED task then an implementation task, each its own `wt-task-<kkk>`; the RED task of a unit also carries that unit's pinned-test edits (`test(` commits citing the SPEC's operator approval, FR5). DELETE and REBUILD tasks precede ADD ones; `fixed_text` and `pool_draw` are added with their first caller.
+- Net lines: deletions (the 412-line development workflow, the master rc blocks, the per-row bodies, `gen_distincts_untyped`, the row split) outweigh the additions, as the scratch prototype's +80/-53 over three files shows.
+- Job 3 holds ten tasks because every `NPCore` body shares `_np_core.py`; it cannot split across a wave.
+- Shared deciders stay as §1.1: `_column` is the one text-to-Arrow decider and `fixed_text`/`pool_draw` the two builders; `_spark_core.py` keeps its four imports from `_np_core`.
+- `.github/workflows/docs.yml` and `scripts/docs_site.py` are not written by any job: they belong to the hotfix lane of `docs-preview-deploy-fails-after-stable`, which lands on the work branch first; this `wt-rc` is synced onto it before its first job opens.
+
+### Reconciliation (the rc's last commits, `RC-FLOW.md` step 4)
+
+Memory and the CI-measured record cannot sit in a job file (`W:` refuses `specs/memory`; the numbers exist only after CI). Order:
+
+1. `dd-sw-engineer-sr`, after Job 6 is on `wt-rc` and the head has run `benchmarks.yml` on CI: record that artifact byte for byte in `docs/benchmarks.json` and `docs/BENCHMARKS.md`, and re-pin `tests/test_benchmarks.py:307-316` (`TERMINAL_HEAD`, `TERMINAL_BASE`) in the same commit, the final record commit. The record is the evidence of the AC1.x speed claims (each method at least 2x at 10M rows, faster at 1M, against base `0.8.0`) and of AC3.3 (the base resolves to `0.8.0`, the summary names its commit).
+2. `dd-product-engineer`, the closure memory pass (`MEMORY-UPDATE.md`): AC4.2 (the two Tech Stack lines of `specs/memory/ARCHITECTURE.md`), AC4.5 (`QUALITY.md:36-37`, and the atoms `generation-methods.md` including the constant sentence naming `string[pyarrow]`, `benchmarks.md`, `writers-and-streaming.md`, `documentation.md`).
+3. AC3.5 is observed when the work branch merges into `development`: no tag, no PyPI version, no GitHub release appears.
+4. Operator acts outside the repo (R5): remove the PyPI Trusted Publisher entry that names the deleted workflow; the main thread then deletes the GitHub environment `development`.
+
+### Acceptance map
+
+| AC | tasks |
+|---|---|
+| AC1.1 | J3.T1, J3.T2 |
+| AC1.2 | J3.T3, J3.T4 |
+| AC1.3 | J3.T5, J3.T6 |
+| AC1.4 | J4.T1, J4.T2 |
+| AC1.5, AC1.6 | J3.T7, J3.T8 |
+| AC1.7, AC1.8, AC1.9 | J4.T3, J4.T5 |
+| AC1.10 | J3.T9, J3.T10 |
+| AC1.11 | J4.T4, J4.T6 |
+| AC1.12 | J4.T3 |
+| AC1.x speed proof (E2E) | Reconciliation step 1 |
+| AC2.1 | J2.T1, J2.T3, J2.T6 |
+| AC2.2, AC2.3, AC2.4 | J2.T2, J2.T5 |
+| AC2.5, AC2.6 | J2.T4, J5.T4 |
+| AC2.7 | J5.T3 |
+| AC2.8 | J5.T1, J5.T2 |
+| AC2.9 | J5.T3, J5.T4, J5.T5 |
+| AC3.1, AC3.2 | J1.T3, J1.T4 |
+| AC3.3 | J1.T5, Reconciliation step 1 |
+| AC3.4 | J1.T1, J1.T2 |
+| AC3.5 | J1.T3, Reconciliation step 3 |
+| AC4.1 | J2.T7 |
+| AC4.2 | Reconciliation step 2 |
+| AC4.3, AC4.4 | J1.T6 |
+| AC4.5 | Reconciliation step 2 |
+| AC5.1, AC5.2 | J2.T2, J2.T3, J3.T1, J3.T3, J3.T5, J3.T7, J3.T9, J4.T1, J4.T3, J4.T4, Reconciliation step 1 |
+| AC6.1, AC6.2 | J6.T1, J6.T2 |
