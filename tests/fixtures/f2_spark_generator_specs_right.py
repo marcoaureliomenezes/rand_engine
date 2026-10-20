@@ -32,6 +32,13 @@ def spark_session():
         pytest.skip("Spark tests not supported on Windows with Python 3.12+ (worker crashes)")
         return  # This line never executes, but helps static analyzers
     
+    # Arrow on Java 17 needs netty reflection and the java.nio opens
+    java_opts = (
+        "-Dio.netty.tryReflectionSetAccessible=true "
+        "--add-opens=java.base/java.nio=ALL-UNNAMED "
+        "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
+    )
+
     # Create SparkSession with optimized settings for tests
     spark = (
         SparkSession.builder
@@ -40,6 +47,8 @@ def spark_session():
         # Memory configuration for CI environments (prevents worker crashes)
         .config("spark.driver.memory", "1g")
         .config("spark.executor.memory", "1g")
+        .config("spark.driver.extraJavaOptions", java_opts)
+        .config("spark.executor.extraJavaOptions", java_opts)
         .config("spark.driver.maxResultSize", "512m")
         # Reduce partitions for faster tests
         .config("spark.sql.shuffle.partitions", "2")

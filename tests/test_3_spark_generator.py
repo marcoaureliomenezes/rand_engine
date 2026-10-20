@@ -621,3 +621,53 @@ def test_spark_seed_only_extends_key_generation(spark_session, spark_functions):
     values = SparkGenerator(spark_session, spark_functions, spec, seed=123).size(20).get_df().toPandas()["age"]
 
     assert values.between(18, 80).all()
+
+
+ARROW_CONF = "spark.sql.execution.arrow.pyspark.enabled"
+NULLED_TEXT_SPEC = {
+    "name": {"method": "distincts", "kwargs": {"distincts": ["a", "b"]}, "null_rate": 0.5},
+}
+
+
+@pytest.fixture
+def arrow_conf(spark_session):
+    """Toggle Spark's Arrow option for one test and restore it."""
+    old = spark_session.conf.get(ARROW_CONF, "false")
+    yield lambda on: spark_session.conf.set(ARROW_CONF, "true" if on else "false")
+    spark_session.conf.set(ARROW_CONF, old)
+
+
+def test_spark_arrow_on_converts_pd_na_text_to_sql_nulls(spark_session, arrow_conf):
+    """Arrow path: pd.NA in a generated text column becomes SQL NULL in a string column."""
+    arrow_conf(True)
+    pdf = DataGenerator(NULLED_TEXT_SPEC, seed=1).size(200).get_df()
+    assert pdf["name"].isna().any()
+
+    sdf = spark_session.createDataFrame(pdf)
+
+    assert sdf.dtypes == [("name", "string")]
+    assert sdf.filter("name IS NULL").count() == int(pdf["name"].isna().sum())
+    assert {r["name"] for r in sdf.collect()} == {"a", "b", None}
+
+
+def test_spark_arrow_off_converts_text_without_nulls(spark_session, arrow_conf):
+    """Arrow off: a frame with no text nulls converts as in 0.8.0."""
+    arrow_conf(False)
+    spec = {"name": {"method": "distincts", "kwargs": {"distincts": ["a", "b"]}}}
+    pdf = DataGenerator(spec, seed=1).size(50).get_df()
+
+    sdf = spark_session.createDataFrame(pdf)
+
+    assert sdf.dtypes == [("name", "string")]
+    assert {r["name"] for r in sdf.collect()} == {"a", "b"}
+
+
+def test_spark_arrow_off_pd_na_text_raises_cannot_merge_type(spark_session, arrow_conf):
+    """Arrow off: pd.NA text nulls fail schema inference; the docs name this error."""
+    from pyspark.errors import PySparkTypeError
+
+    arrow_conf(False)
+    pdf = DataGenerator(NULLED_TEXT_SPEC, seed=1).size(200).get_df()
+
+    with pytest.raises(PySparkTypeError, match=r"CANNOT_MERGE_TYPE.*StringType.*StructType"):
+        spark_session.createDataFrame(pdf)
