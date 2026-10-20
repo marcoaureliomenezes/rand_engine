@@ -355,11 +355,11 @@ def test_modifier_anomaly_write_never_touches_caller_array_or_sibling_column():
   assert df["sibling"].tolist() == [0, 1, 2, 3, 4]
 
 
-@pytest.mark.parametrize("source, anomaly", [
-  ("base", "replacement"),
-  (None, "replacement"),
+@pytest.mark.parametrize("source, anomaly, expected_dtype", [
+  ("base", "replacement", "string[pyarrow]"),
+  (None, "replacement", "object"),
 ])
-def test_modifier_anomaly_accepts_compatible_object_scalars(source, anomaly):
+def test_modifier_anomaly_accepts_compatible_object_scalars(source, anomaly, expected_dtype):
   spec = {
     "value": {
       "method": "constant",
@@ -372,7 +372,7 @@ def test_modifier_anomaly_accepts_compatible_object_scalars(source, anomaly):
   series = DataGenerator(spec, seed=2026).size(4).get_df()["value"]
 
   assert series.tolist() == ["replacement", "replacement", "replacement", "replacement"]
-  assert str(series.dtype) == "string[pyarrow]"
+  assert str(series.dtype) == expected_dtype
 
 
 def test_modifier_null_mask_runs_last_and_wins_on_overlap():
@@ -435,7 +435,7 @@ def test_modifier_object_nulls_are_literal_python_none():
   assert str(series.dtype) == "string[pyarrow]"
 
 
-def test_modifier_transformed_string_nulls_are_literal_python_none_objects():
+def test_modifier_transformed_string_nulls_are_pd_na():
   spec = {
     "value": {
       "method": "constant",
@@ -452,7 +452,7 @@ def test_modifier_transformed_string_nulls_are_literal_python_none_objects():
   )
 
   assert series.tolist() == [pd.NA, pd.NA, pd.NA]
-  assert str(series.dtype) == "string[pyarrow]"
+  assert str(series.dtype) == "string"
 
 
 def test_modifier_pipeline_orders_embedded_global_then_anomaly():
@@ -636,7 +636,8 @@ def test_non_text_columns_keep_their_dtype():
   }
   df = DataGenerator(spec, seed=1).size(20).get_df()
   assert df.dtypes.astype(str).to_dict() == {
-    "i": "int64", "f": "float64", "b": "bool", "k": "int64", "pk": "int64", "ts": "int64", "mixed": "object"}
+    "i": "int64", "f": "float64", "b": "bool", "k": "int64", "pk": "int64", "ts": "int64", "mixed": "string[pyarrow]"}
+  assert {v for v in df["mixed"]} == {"a", "2"}
 
 
 def test_text_null_rate_writes_pd_na_and_keeps_arrow():
