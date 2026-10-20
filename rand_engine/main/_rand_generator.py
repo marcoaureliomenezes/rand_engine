@@ -3,6 +3,7 @@ from numbers import Number
 from typing import Dict, List, Optional, Callable
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 from pandas.api.types import (
   infer_dtype,
   is_bool_dtype,
@@ -31,6 +32,15 @@ class RandGenerator:
       "fk": partial(Keys.gen_fk, offset=offset, key_seed=key_seed, column=column),
     }
  
+  @staticmethod
+  def _column(values):
+    """Return a generated column; all-str data (never empty) becomes Arrow string, Arrow input is wrapped, the rest passes untouched."""
+    if isinstance(values, (pa.Array, pa.ChunkedArray)): return pd.arrays.ArrowExtensionArray(values)
+    if isinstance(values, (list, np.ndarray)) and infer_dtype(values, skipna=False) == "string":
+      return pd.arrays.ArrowExtensionArray(pa.array(values, pa.string()))
+    return values
+
+
   def generate_first_level(self, size: int, rng: np.random.Generator, key_seed: int = 0, offset: int = 0):
     dict_data = {}
     for k, v in self.random_spec.items():
@@ -39,7 +49,7 @@ class RandGenerator:
       try:
         values = generator_method(size , **v.get("kwargs", {}))
         for i, col in enumerate(columns):
-          dict_data[col] = values if len(columns) == 1 else [val[i] for val in values]
+          dict_data[col] = self._column(values if len(columns) == 1 else [val[i] for val in values])
       except Exception as e:
         raise ColumnGenerationError(
           f"Error generating column '{k}': {type(e).__name__}: {str(e)}"
