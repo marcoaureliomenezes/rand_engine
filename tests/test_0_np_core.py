@@ -131,9 +131,9 @@ def test_gen_floats_normal(size, mean, std, decimals):
 def test_gen_distincts_low_cardinality(size, distincts):
   result = NPCore.gen_distincts(rng=RNG, size=size, distincts=distincts)
   assert len(result) == size
-  assert all(item in distincts for item in result)
+  assert all(item in distincts for item in _values(result))
   if isinstance(distincts[0], str):
-    assert all(isinstance(item, str) for item in result)
+    assert isinstance(result, (pa.Array, pa.ChunkedArray)) and result.type == pa.string()
 
 
 
@@ -154,7 +154,8 @@ def test_gen_distincts_high_cardinality(default_size):
   distincts = [f"value{i}" for i in range(default_size)]
   result = NPCore.gen_distincts(rng=RNG, size=default_size, distincts=distincts)
   assert len(result) == default_size
-  assert all(isinstance(item, str) for item in result)
+  assert isinstance(result, (pa.Array, pa.ChunkedArray)) and result.type == pa.string()
+  assert all(isinstance(item, str) for item in result.to_pylist())
 
 
 def test_gen_unix_timestamps(default_size):
@@ -261,9 +262,8 @@ def test_gen_distincts_prop_basic():
   result = NPCore.gen_distincts_prop(rng=RNG, size=size, distincts=distincts)
   
   assert len(result) == size
-  assert type(result) == np.ndarray
-  # All values should be from the keys
-  assert all(item in distincts.keys() for item in result)
+  assert isinstance(result, (pa.Array, pa.ChunkedArray)) and result.type == pa.string()
+  assert all(item in distincts.keys() for item in _values(result))
 
 
 def test_gen_distincts_prop_distribution():
@@ -274,7 +274,7 @@ def test_gen_distincts_prop_distribution():
   
   # Count occurrences
   from collections import Counter
-  counts = Counter(result)
+  counts = Counter(_values(result))
   
   total_weight = sum(distincts.values())
   
@@ -295,7 +295,55 @@ def test_gen_distincts_prop_various_distributions(distincts):
   size = 1000
   result = NPCore.gen_distincts_prop(rng=RNG, size=size, distincts=distincts)
   assert len(result) == size
-  assert all(item in distincts.keys() for item in result)
+  assert all(item in distincts.keys() for item in _values(result))
+
+
+# Pinned from 0.8.0 (rng.choice over np.asarray(pool)), default_rng(1), size 8; Approve both, 2026-10-20
+def _values(result):
+  return result.to_pylist() if isinstance(result, (pa.Array, pa.ChunkedArray)) else result.tolist()
+
+
+def _draw(method, pool):
+  return getattr(NPCore, method)(rng=np.random.default_rng(1), size=8, distincts=pool)
+
+
+def test_gen_distincts_str_pool_is_arrow_text_with_the_080_values():
+  result = _draw("gen_distincts", ["A", "B", "C"])
+  assert isinstance(result, (pa.Array, pa.ChunkedArray)) and result.type == pa.string()
+  assert result.to_pylist() == ["B", "B", "C", "C", "A", "A", "C", "C"]
+
+
+@pytest.mark.parametrize("pool, dtype, expected", [
+  ([1, 2, 3, 4, 5], np.int64, [3, 3, 4, 5, 1, 1, 5, 5]),
+  ([0.5, 1.5, 2.5], np.float64, [1.5, 1.5, 2.5, 2.5, 0.5, 0.5, 2.5, 2.5]),
+  ([True, False], np.bool_, [True, False, False, False, True, True, False, False]),
+])
+def test_gen_distincts_numeric_pool_keeps_the_080_dtype_and_values(pool, dtype, expected):
+  result = _draw("gen_distincts", pool)
+  assert isinstance(result, np.ndarray) and result.dtype == dtype
+  assert result.tolist() == expected
+
+
+@pytest.mark.parametrize("weights, expected", [
+  ({"A": 3, "B": 1}, ["A", "A", "B", "B", "A", "A", "B", "B"]),
+  ({1: 2, "a": 3}, ["a", "a", "a", "a", "1", "1", "a", "a"]),
+])
+def test_gen_distincts_prop_text_keys_are_arrow_text_with_the_080_values(weights, expected):
+  result = _draw("gen_distincts_prop", weights)
+  assert isinstance(result, (pa.Array, pa.ChunkedArray)) and result.type == pa.string()
+  assert result.to_pylist() == expected
+
+
+def test_gen_distincts_prop_int_keys_keep_the_080_dtype_and_values():
+  result = _draw("gen_distincts_prop", {1: 2, 2: 3})
+  assert isinstance(result, np.ndarray) and result.dtype == np.int64
+  assert result.tolist() == [2, 2, 2, 2, 1, 1, 2, 2]
+
+
+def test_gen_distincts_prop_none_key_stays_an_object_array():
+  result = _draw("gen_distincts_prop", {None: 2, "a": 3})
+  assert isinstance(result, np.ndarray) and result.dtype == object
+  assert result.tolist() == ["a", "a", "a", "a", None, None, "a", "a"]
 
 
 # Additional edge case tests
