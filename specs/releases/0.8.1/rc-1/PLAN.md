@@ -1,6 +1,6 @@
 # PLAN — Release 0.8.1 rc-1
 
-**Status:** Draft (as-is review, DAG and job files; awaiting the operator's approval with the SPEC)
+**Status:** Approved
 **Owner:** dd-sw-engineer-sr
 **SPEC:** `specs/releases/0.8.1/rc-1/SPEC.md`
 

@@ -1,6 +1,6 @@
 # SPEC — Release: 0.8.1, candidate 1 (fast text methods, Arrow text columns, no rc publication)
 
-**Status:** Draft
+**Status:** Approved
 **Release ID:** 0.8.1
 **Owner:** dd-product-engineer
 **Opened:** 2026-10-20
