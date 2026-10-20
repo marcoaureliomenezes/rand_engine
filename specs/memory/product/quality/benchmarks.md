@@ -2,7 +2,7 @@
 slug: benchmarks
 title: Performance benchmarks
 tldr: "CI enforces same-runner rand-engine regression limits and separately records bounded, validated observations against Faker and dbldatagen."
-summary: "The regression coordinator compares long-lived base and head workers and enforces method, modifier and sink limits; a separate non-gating workflow installs pinned comparison dependencies and the public wheel, validates two named Python and Spark workloads, and retains raw samples, medians, plans and provenance without a winner or threshold."
+summary: "The regression coordinator compares long-lived head workers against the latest closed release tag and enforces method, modifier and sink limits; a separate non-gating workflow installs pinned comparison dependencies and the public wheel, validates two named Python and Spark workloads, and retains raw samples, medians, plans and provenance without a winner or threshold."
 tags: [performance, benchmarks, ci, regression]
 sources:
   - benchmarks/**
@@ -22,7 +22,7 @@ sources:
 
 - Base and head run in separate long-lived worker processes on the same CI runner. For every comparable row, the coordinator alternates three requests per side and compares their medians.
 - Untimed method-only passes record core time and peak memory after all timed rows. Throughput is reported as rows per microsecond.
-- The committed JSON identifies the comparison base for the next run; absence or failure on the base side is reported, while a head failure is fatal.
+- The comparison base is the commit of the highest bare `M.m.p` release tag, the latest closed release, never a mid-release commit or a release candidate; the job summary names that tag and its commit, and a repository without such a tag fails the job. A row absent from the base, or a base failure, is reported, while a head failure is fatal.
 
 ## Delivery and gate
 
@@ -42,5 +42,5 @@ sources:
 ## Benchmark record
 
 - A candidate whose code touches a measured path records the CI artifact of its last measured head byte for byte as `docs/benchmarks.json` and `docs/BENCHMARKS.md`; the record commit adds only `docs/` and `tests/`, so the measured paths stay at the recorded head.
-- The committed JSON names its head and base commits and is the next run's comparison base; tests check that it names the recorded commits, holds every inventory row at both sizes and passes every repo limit.
+- The committed JSON names its head and base commits; tests check that it names the recorded commits, holds every inventory row at both sizes and passes every repo limit.
 - The docs site serves `docs/BENCHMARKS.md` as its Benchmarks page ([[documentation]]).

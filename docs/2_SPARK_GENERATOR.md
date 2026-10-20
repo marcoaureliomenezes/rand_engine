@@ -40,7 +40,7 @@ assert df.columns == ["user_id", "age", "is_active", "signup"]
 ## Methods
 
 <!-- derived-from: spark-generator sha256:4d2fe0f84301 -->
-<!-- derived-from: generation-methods sha256:1552dc309621 -->
+<!-- derived-from: generation-methods sha256:4ead5672e56f -->
 
 The table records validation's current outcome for every RandSpec method. `yes` means Spark produces
 the column; `NULL + warning` means validation accepts the correlated shape, emits a warning and

@@ -50,9 +50,9 @@ assert not gen.get_df().equals(gen.get_df())
 
 ## Methods
 
-<!-- derived-from: generation-methods sha256:1552dc309621 -->
+<!-- derived-from: generation-methods sha256:4ead5672e56f -->
 
-Each column is `{"method": <name>, "kwargs": {...}}`. Bounds of `integers` are inclusive. A method that generates text gives a `string[pyarrow]` column (`pd.ArrowDtype(pa.string())`) whose nulls are `pd.NA`; numeric, boolean and datetime columns are unchanged. An embedded transformer's output dtype is whatever the transformer returns.
+Each column is `{"method": <name>, "kwargs": {...}}`. Bounds of `integers` are inclusive. A method that generates text gives a `string[pyarrow]` column (`pd.ArrowDtype(pa.string())`) whose nulls are `pd.NA`; numeric, boolean and datetime columns keep their pandas dtype. An embedded transformer's output dtype is whatever the transformer returns.
 
 | Method | Required kwargs | Optional kwargs | Column fields |
 |---|---|---|---|
