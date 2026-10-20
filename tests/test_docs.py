@@ -228,6 +228,14 @@ def test_links_resolve(name):
   assert [p for _, p in repo if not (ROOT / p).is_file()] == []
 
 
+def test_published_docs_name_no_release_candidate_version():
+  """No release-candidate version string in what docs_site.py publishes: docs/ (data files too), README.md, llms.txt, skills/."""
+  files = [p for top in (DOCS, ROOT / "skills") for p in top.rglob("*") if p.is_file()] + [ROOT / "README.md", ROOT / "llms.txt"]
+  rc = re.compile(r"\d+\.\d+\.\d+rc\d+")
+  hits = [f"{p.relative_to(ROOT)}:{n}" for p in files for n, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1) if rc.search(line)]
+  assert hits == []
+
+
 NEW_METHODS = {"exponential", "lognormal", "poisson", "zipf", "constant"}
 MODIFIERS = {"null_rate", "anomaly_rate", "anomaly_values"}
 
