@@ -152,7 +152,7 @@ class RandGenerator:
   @staticmethod
   def _assign_nulls(series: pd.Series, mask: np.ndarray) -> pd.Series:
     dtype = series.dtype
-    if is_object_dtype(dtype) or is_string_dtype(dtype):
+    if is_object_dtype(dtype):
       values = series.to_numpy(dtype=object, copy=True)
       values[mask] = None
     elif not isinstance(dtype, np.dtype):
