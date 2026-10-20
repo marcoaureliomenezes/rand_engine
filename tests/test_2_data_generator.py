@@ -372,7 +372,7 @@ def test_modifier_anomaly_accepts_compatible_object_scalars(source, anomaly):
   series = DataGenerator(spec, seed=2026).size(4).get_df()["value"]
 
   assert series.tolist() == ["replacement", "replacement", "replacement", "replacement"]
-  assert str(series.dtype) == "object"
+  assert str(series.dtype) == "string[pyarrow]"
 
 
 def test_modifier_null_mask_runs_last_and_wins_on_overlap():
@@ -431,8 +431,8 @@ def test_modifier_object_nulls_are_literal_python_none():
 
   series = DataGenerator(spec, seed=2026).size(3).get_df()["value"]
 
-  assert series.tolist() == [None, None, None]
-  assert str(series.dtype) == "object"
+  assert series.tolist() == [pd.NA, pd.NA, pd.NA]
+  assert str(series.dtype) == "string[pyarrow]"
 
 
 def test_modifier_transformed_string_nulls_are_literal_python_none_objects():
@@ -451,8 +451,8 @@ def test_modifier_transformed_string_nulls_are_literal_python_none_objects():
     .get_df()["value"]
   )
 
-  assert series.tolist() == [None, None, None]
-  assert str(series.dtype) == "object"
+  assert series.tolist() == [pd.NA, pd.NA, pd.NA]
+  assert str(series.dtype) == "string[pyarrow]"
 
 
 def test_modifier_pipeline_orders_embedded_global_then_anomaly():
@@ -488,7 +488,7 @@ def test_modifier_pipeline_orders_embedded_global_then_anomaly():
     [pd.Timestamp],
     "datetime64[ns]",
   ),
-  ("constant", {"value": "fixed"}, [], "object"),
+  ("constant", {"value": "fixed"}, [], "string[pyarrow]"),
 ])
 def test_modifier_null_rate_one_uses_dtype_specific_missing_values(
   method, kwargs, transformers, expected_dtype,
