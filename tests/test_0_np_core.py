@@ -610,7 +610,7 @@ def test_rounding_never_turns_a_finite_draw_into_inf(method, kwargs):
   (True, "bool"),
   (7, "int64"),
   (1.5, "float64"),
-  ("fixed", "object"),
+  ("fixed", "string[pyarrow]"),
   (b"fixed", "object"),
   (date(2026, 10, 8), "object"),
   (datetime(2026, 10, 8, 12, 30), "datetime64[ns]"),
