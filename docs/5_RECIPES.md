@@ -42,7 +42,8 @@ else:
 `booleans(true_prob=0.5)`; integer fields become `integers(min=0, max=min(100, type maximum),
 int_type=<Arrow type>)`; floating fields become `floats(0..1, decimals=2)`; string and large-string
 fields become `uuid4`; date fields become `dates(2000-01-01..2030-12-31)`; timezone-naive timestamps
-become second-resolution `dates`; and null fields become `constant(None)`. Nullable fields retain
+become second-resolution `dates`; string, large-string, date and timestamp fields generate `string[pyarrow]` columns; and null fields
+become `constant(None)`, an `object` column. Nullable fields retain
 the same recipe: Arrow nullability does not add a RandSpec modifier.
 
 For an override, `kwargs` merge into the default recipe. An override containing `method` replaces
