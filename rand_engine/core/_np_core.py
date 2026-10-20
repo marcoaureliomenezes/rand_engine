@@ -88,6 +88,8 @@ def _round_finite(x: np.ndarray, decimals: int) -> np.ndarray:
   with np.errstate(over='ignore'): r = np.round(x, decimals)
   return np.where(np.isinf(r), x, r)
 
+_DIGIT_PAIRS = np.array([f"{i:02d}".encode() for i in range(100)]).view(np.uint16).ravel()
+
 
 def fixed_text(rows: np.ndarray, max_chunk_bytes: int = 2 ** 31 - 1) -> pa.Array | pa.ChunkedArray:
   """C-contiguous (n, width) uint8 UTF-8 rows of equal byte width -> pa.string(); a ChunkedArray when the data exceeds max_chunk_bytes."""
@@ -125,13 +127,18 @@ class NPCore:
   
 
   @classmethod
-  def gen_ints_zfilled(cls, size: int, length: int, *, rng: np.random.Generator) -> np.ndarray:
-    # Use int64 explicitly to handle large numbers on Windows
-    max_val = 10**length - 1
-    str_arr = rng.integers(0, max_val + 1, size, dtype=np.int64).astype('str')
-    return np.char.zfill(str_arr, length)
-  
-  
+  def gen_ints_zfilled(cls, size: int, length: int, *, rng: np.random.Generator) -> pa.Array | pa.ChunkedArray:
+    v = rng.integers(0, 10**length, size, dtype=np.int64)
+    pairs = (length + 1) // 2
+    cols = np.empty((pairs, size), np.uint16)
+    q, r = np.empty_like(v), np.empty_like(v)
+    for c in range(pairs - 1, -1, -1):
+      np.floor_divide(v, 100, out=q); np.multiply(q, 100, out=r); np.subtract(v, r, out=r)
+      np.take(_DIGIT_PAIRS, r, out=cols[c]); v, q = q, v
+    b = np.ascontiguousarray(cols.T).view(np.uint8)
+    return fixed_text(b if length % 2 == 0 else np.ascontiguousarray(b[:, 1:]))
+
+
   @classmethod
   def gen_floats(cls, size: int, min: int | float, max: int | float, decimals: int = 2, *, rng: np.random.Generator) -> np.ndarray:
     low, high, fine = float_lattice_bounds(min, max, decimals)
