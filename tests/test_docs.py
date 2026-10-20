@@ -1309,3 +1309,12 @@ def test_docs_deployment_eligibility_keeps_master_deployment_outside_preview_che
   assert decision.mode == "stable"
   assert decision.reason is None
   assert calls == []
+
+
+def test_docs_workflow_deploys_pages_from_master_only():
+  """The deploy job's gate and the whole workflow name master as the only deploying branch."""
+  text = _text(ROOT / ".github" / "workflows" / "docs.yml")
+  deploy = re.search(r"^  deploy:\n(?:    .*\n|\n)*", text, re.M).group(0)
+  gate = re.search(r"^    if: (.*)$", deploy, re.M).group(1)
+  assert gate == "github.event_name == 'push' && github.ref == 'refs/heads/master'"
+  assert set(re.findall(r"refs/heads/[\w./-]+", text)) == {"refs/heads/master"}
