@@ -3,14 +3,14 @@ from typing import Dict, List, Any
 import numpy as np
 import pyarrow as pa
 import pyarrow.compute as pc
-from rand_engine.core._np_core import NPCore
+from rand_engine.core._np_core import NPCore, pool_draw
 
 def _as_text(a):
   if isinstance(a, (pa.Array, pa.ChunkedArray, pa.Scalar)): return a
   a = np.asarray(a)
-  if a.dtype.kind in "iu" and a.size and int(a.max()) - int(a.min()) < 10**6:
+  if a.dtype.kind in "iu" and a.size and int(a.max()) - int(a.min()) < min(10**6, a.size):
     lo = int(a.min())
-    return pa.array([str(i) for i in range(lo, int(a.max()) + 1)]).take(pa.array(a - lo))
+    return pa.array([str(i) for i in range(lo, int(a.max()) + 1)]).take(pa.array(np.subtract(a, lo, dtype=np.int64)))
   return pa.array(a.astype(str), pa.string())
 
 
@@ -18,7 +18,7 @@ def _level_columns(rows, size, rng):
   idx = rng.integers(0, len(rows), size)
   cols = []
   for pool in zip(*rows):
-    if all(isinstance(x, str) for x in pool): cols.append(pa.array(pool, pa.string()).take(pa.array(idx)))
+    if all(isinstance(x, str) for x in pool): cols.append(pool_draw(pool, idx))
     else: cols.append(np.fromiter(pool, object, len(pool))[idx].tolist())
   return cols
 
@@ -29,8 +29,8 @@ class PyCore:
   @classmethod
   def gen_complex_distincts(cls, size: int, pattern="x.x.x-x", replacement="x", templates=None, *, rng: np.random.Generator) -> pa.Array | pa.ChunkedArray | np.ndarray:
     """Fills each `replacement` of `pattern` with its template's draw, in pattern order; returns Arrow text (a lone part is returned as drawn)."""
+    assert pattern.count(replacement) == len(templates or [])
     if not templates: return pa.repeat(pattern, size)
-    assert pattern.count(replacement) == len(templates)
     parts, lit, counter = [], "", 0
     for ch in pattern:
       if ch != replacement: lit += ch; continue
