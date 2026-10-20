@@ -29,14 +29,14 @@ The file is in Databricks notebook source format: its first line is `# Databrick
 
 ## DataGenerator-only features
 
-`SparkGenerator` accepts stateless `pk` and `fk` through the same key definitions as `DataGenerator`; an explicit seed applies to those key columns only. It still refuses the distributions (`exponential`, `lognormal`, `poisson`, `zipf`), `constant`, `null_rate` and `anomaly_rate`. For those, or for a small volume, generate with `DataGenerator` and wrap the pandas frame with `spark.createDataFrame`. The file's last cell does that for 100 rows.
+`SparkGenerator` accepts stateless `pk` and `fk` through the same key definitions as `DataGenerator`; an explicit seed applies to those key columns only. It still refuses the distributions (`exponential`, `lognormal`, `poisson`, `zipf`), `constant`, `null_rate` and `anomaly_rate`. For those, or for a small volume, generate with `DataGenerator` and wrap the pandas frame with `spark.createDataFrame`. The file's last cell does that for 100 rows. A text column's nulls are `pd.NA`, so enable Spark's Arrow option before `createDataFrame`: `spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")`. On a self-managed Spark on Java 17, also start the JVM with `-Dio.netty.tryReflectionSetAccessible=true`.
 
 ## What it shows
 
 - **Session**: the Spark session, the one the notebook already runs or the one created where there is none.
 - **Describe**: the users spec, with supported methods only.
 - **Generate**: 1 000 rows built natively into `df`, then shown with `show` and `printSchema`.
-- **Small volume**: the `DataGenerator` path and `spark.createDataFrame`, beside the native `df`.
+- **Small volume**: the `DataGenerator` path and `spark.createDataFrame` (Arrow option on, see above), beside the native `df`.
 
 ## Next steps
 
