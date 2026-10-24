@@ -168,6 +168,15 @@ def test_gen_unix_timestamps(default_size):
   assert len(result) == default_size
 
 
+@pytest.mark.parametrize("start, end, lo, hi", [
+  ("1950-01-01", "1960-01-01", -631152000, -315619200),
+  ("1969-12-31", "1970-01-02", -86400, 86400),
+])
+def test_gen_unix_timestamps_before_1970_stay_in_range(start, end, lo, hi):
+  ts = NPCore.gen_unix_timestamps(10**4, start, end, rng=np.random.default_rng(3))
+  assert lo <= ts.min() and ts.max() < hi and (ts < 0).any()
+
+
 def test_gen_dates(default_size):
   result = NPCore.gen_dates(default_size, '2020-01-01', '2024-12-31', date_format="%Y-%m-%d", rng=RNG)
   assert isinstance(result, (pa.Array, pa.ChunkedArray))
@@ -419,6 +428,8 @@ def test_gen_ints_and_zfilled_reach_the_inclusive_max():
   ("%Y%m%d %H%M%S.%f", "19700101 000000.000000", "99991231 235959.000000"),
   ("%Y-%m-%d", "2024-01-01", "2024-12-31"),
   ("%d·%m·%Y", "01·01·2024", "31·12·2024"),
+  ("%Y-%m-%d", "1900-01-01", "1960-12-31"),
+  ("%Y-%m-%d %H:%M:%S", "1969-12-31 23:00:00", "1970-01-01 01:00:00"),
 ])
 def test_gen_dates_equals_per_row_utc_strftime(fmt, start, end):
   """AC14.1: same strings as the per-row UTC strftime, for each documented date_format."""
