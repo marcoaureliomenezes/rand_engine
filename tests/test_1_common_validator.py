@@ -221,12 +221,16 @@ class TestValidateAndRaise:
         footer = str(exc_info.value).splitlines()[-2]
         assert footer == "📚 Documentation: https://marcoaureliomenezes.github.io/rand_engine/"
 
-    def test_validate_and_raise_advanced_method_only_warns(self):
-        """Advanced methods are allowed in SparkGenerator with a warning (docs/2_SPARK_GENERATOR.md)."""
-        spec = {"device_os": {"method": "distincts_map", "cols": ["device", "os"],
-                              "kwargs": {"distincts": {"smartphone": ["android", "ios"]}}}}
-        with pytest.warns(UserWarning, match="'distincts_map' is a dummy in SparkGenerator"):
-            CommonValidator.validate_spark_and_raise(spec)
+    @pytest.mark.parametrize("method", ["distincts_map", "distincts_multi_map", "distincts_map_prop", "complex_distincts"])
+    def test_validate_and_raise_refuses_correlated_methods_on_spark(self, method):
+        """The four NULL-returning methods raise on Spark and point at DataGenerator."""
+        with pytest.raises(SpecValidationError) as exc_info:
+            CommonValidator.validate_spark_and_raise({"c": {"method": method, "kwargs": {}}})
+
+        assert (
+            f"❌ Column 'c': method '{method}' is NumPy engine only\n"
+            "   Use DataGenerator for this method"
+        ) in str(exc_info.value)
 
     @pytest.mark.parametrize("config, message", [
         ({"method": "distincts_external", "kwargs": {}}, "does not exist"),
