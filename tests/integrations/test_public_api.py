@@ -426,7 +426,13 @@ def test_wheel_exposes_faker_only_as_the_approved_optional_extra(built_wheel):
         if requirement.lower().startswith("faker ")
     ]
     assert metadata.get_all("Provides-Extra", []).count("faker") == 1
-    assert faker_requirements == ['faker (>=28.4.1,<29.0.0) ; extra == "faker"']
+    assert faker_requirements == ['faker (>=28.4.1) ; extra == "faker"']
+
+
+def test_wheel_requires_only_open_floors_of_the_three_core_dependencies(built_wheel):
+    requirements = _wheel_metadata(built_wheel).get_all("Requires-Dist", [])
+    core = sorted(r for r in requirements if "extra ==" not in r)
+    assert core == ["numpy (>=1.26)", "pandas (>=2.2,<4)", "pyarrow (>=19.0.0)"]
 
 
 def test_wheel_documentation_url_is_the_docs_site_named_by_the_error_footer(built_wheel):
@@ -473,9 +479,9 @@ def test_wheel_advertises_typed_and_exactly_the_tested_python_set(built_wheel):
 
     assert "Typing :: Typed" in classifiers
     assert sorted(c for c in classifiers if c.startswith(prefix)) == [
-        prefix + "10", prefix + "11", prefix + "12", prefix + "13",
+        prefix + "11", prefix + "12", prefix + "13", prefix + "14",
     ]
-    assert metadata["Requires-Python"] == ">=3.10"
+    assert metadata["Requires-Python"] == ">=3.11"
 
 
 @pytest.mark.parametrize("legacy", [{"args": [0, 3]}, {"splitable": True}, {"sep": ","}, {"pk": 1}])

@@ -296,10 +296,10 @@ def test_cli_imports_only_stdlib_and_rand_engine():
 def test_pyproject_declares_open_python_and_the_four_dependencies():
   pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
   data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
-  assert data.get("project", {}).get("requires-python") == ">=3.10"
+  assert data.get("project", {}).get("requires-python") == ">=3.11"
   assert data["tool"]["poetry"]["dependencies"] == {
-    "numpy": "^2.1.1",
-    "pandas": "^2.2.2",
-    "pyarrow": "^23.0.1",
-    "faker": {"version": ">=28.4.1,<29.0.0", "optional": True},
+    "numpy": ">=1.26",
+    "pandas": ">=2.2,<4",
+    "pyarrow": ">=19.0.0",
+    "faker": {"version": ">=28.4.1", "optional": True},
   }
