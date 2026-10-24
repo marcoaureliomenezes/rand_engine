@@ -1,10 +1,9 @@
 {
   "schema": "release-state-v1",
   "release": "0.8.1",
-  "phase": "DEFINITION",
+  "phase": "IMPLEMENTATION",
   "defined": {
-    "sha": "a167bc6fe7e0c2677cd02e591e63edb1e645c5e1",
-    "ts": "2026-10-20T12:08:05Z"
+    "ts": "2026-10-24T17:36:39Z"
   },
   "implemented": {
     "sha": "588e5492acd4258a2498ea509f513f37f5209cdc",
@@ -78,6 +77,14 @@
       "agent": "release.py new",
       "kind": "note",
       "text": "Candidate born on 0.8.1 (stacked on the closed prior candidate)"
+    },
+    {
+      "ts": "2026-10-24T17:36:39Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-2",
+      "milestone": "defined",
+      "text": "Candidate defined; phase IMPLEMENTATION."
     }
   ]
 }
