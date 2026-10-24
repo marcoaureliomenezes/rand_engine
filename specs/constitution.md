@@ -14,6 +14,19 @@ gitflow: {"principal": "master", "integration": "development", "work": "feature/
 - Faker composes on top: users build small realistic value pools with Faker and rand-engine samples millions of rows from them at NumPy speed — a complement, not a dependency nor a competitor.
 - It serves data engineers learning, stress-testing pipeline throughput and bandwidth, and feeding pipeline tests with synthetic datasets.
 
+## Direction
+
+Operator rulings of 2026-10-11, confirmed 2026-10-24: "Confirmo todas (Recomendado)"; north star: "Velocidade e nicho (Recomendado)".
+
+- North star, for twelve months from 2026-10-24: rand-engine is the fastest Python generator of related synthetic data on a single node, NumPy and Arrow — a declarative spec becomes pk/fk tables, then files and streams.
+- Speed ("velocidade") is rows per microsecond, the mean of a measured run; speed comes first, then resource efficiency.
+- The NumPy single-node engine comes first; `SparkGenerator` gets nothing new.
+- No new runtime dependency is added.
+- No new method or key lands without a benchmark row at 1M and 10M rows.
+- Benchmarks run only in CI.
+- A generation method is touched only after seeded golden tests pin its values.
+- Local tests stay light, as `specs/memory/QUALITY.md` `## Test architecture` states.
+
 ## Invariants
 
 1. The public import surface is `DataGenerator`, `SparkGenerator` and `RandSpecs`; it changes only through an approved release, under semantic versioning.
