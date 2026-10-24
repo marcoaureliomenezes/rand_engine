@@ -7,6 +7,7 @@ import time
 import pytest
 from rand_engine.main.data_generator import DataGenerator
 from rand_engine.validators.exceptions import RandEngineError
+from tests.conftest import natural_datetime_unit
 from tests.fixtures.f1_right_specs import (
     rand_spec_with_kwargs,
     rand_spec_with_args,
@@ -486,7 +487,7 @@ def test_modifier_pipeline_orders_embedded_global_then_anomaly():
     "dates",
     {"start": "2026-01-01", "end": "2026-01-02", "date_format": "%Y-%m-%d"},
     [pd.Timestamp],
-    "datetime64[ns]",
+    f"datetime64[{natural_datetime_unit()}]",
   ),
   ("constant", {"value": "fixed"}, [], "string[pyarrow]"),
 ])

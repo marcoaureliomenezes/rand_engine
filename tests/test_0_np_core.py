@@ -13,6 +13,7 @@ from rand_engine.core._np_core import NPCore, fixed_text
 from rand_engine.validators.exceptions import ColumnGenerationError
 
 RNG = np.random.default_rng(0)
+from tests.conftest import natural_datetime_unit
 from tests.fixtures.f1_data_generator_specs_right import default_size
 
 
@@ -711,7 +712,7 @@ def test_rounding_never_turns_a_finite_draw_into_inf(method, kwargs):
   ("fixed", "string[pyarrow]"),
   (b"fixed", "object"),
   (date(2026, 10, 8), "object"),
-  (datetime(2026, 10, 8, 12, 30), "datetime64[ns]"),
+  (datetime(2026, 10, 8, 12, 30), f"datetime64[{natural_datetime_unit()}]"),
   (Decimal("1.25"), "object"),
 ])
 def test_constant_repeats_declared_scalars_with_natural_pandas_dtype(value, expected_dtype):
