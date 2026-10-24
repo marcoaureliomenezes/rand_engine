@@ -43,8 +43,7 @@ assert df.columns == ["user_id", "age", "is_active", "signup"]
 <!-- derived-from: generation-methods sha256:4ead5672e56f -->
 
 The table records validation's current outcome for every RandSpec method. `yes` means Spark produces
-the column; `NULL + warning` means validation accepts the correlated shape, emits a warning and
-Spark produces a NULL string column. `refused` means use `DataGenerator`.
+the column; `refused` means use `DataGenerator`.
 
 | Method | Spark |
 |---|---|
@@ -63,10 +62,10 @@ Spark produces a NULL string column. `refused` means use `DataGenerator`.
 | `poisson` | refused |
 | `zipf` | refused |
 | `constant` | refused |
-| `distincts_map` | NULL + warning |
-| `distincts_map_prop` | NULL + warning |
-| `distincts_multi_map` | NULL + warning |
-| `complex_distincts` | NULL + warning |
+| `distincts_map` | refused |
+| `distincts_map_prop` | refused |
+| `distincts_multi_map` | refused |
+| `complex_distincts` | refused |
 | `pk` | yes |
 | `fk` | yes |
 
@@ -79,11 +78,8 @@ refused.
 Spark accepts `int_zfilled` only through length 15, refuses `uint64`, and refuses integer domains
 whose inclusive width exceeds 2**53 because it uses an exact double carrier for those bounds.
 
-The correlated methods are runtime placeholders in Spark: each warning accompanies a real,
-bounded DataFrame whose corresponding column is `string` and entirely NULL.
-
 ```python
-import warnings
+from rand_engine.validators.exceptions import SpecValidationError
 
 correlated_specs = {
     "pair": {"method": "distincts_map", "cols": ["kind", "value"],
@@ -96,15 +92,12 @@ correlated_specs = {
                   "kwargs": {"pattern": "<x>", "replacement": "x", "templates": []}},
 }
 for column, definition in correlated_specs.items():
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always")
-        dataframe = SparkGenerator(spark, F, {column: definition}).size(8).get_df()
-    assert any(definition["method"] in str(item.message) for item in caught)
-    assert dataframe.schema[column].dataType.typeName() == "string"
-    assert dataframe.count() == 8
-    assert dataframe.where(dataframe[column].isNotNull()).count() == 0
-    for item in caught:
-        warnings.warn(str(item.message), item.category)
+    try:
+        SparkGenerator(spark, F, {column: definition})
+    except SpecValidationError as error:
+        assert "DataGenerator" in str(error)
+    else:
+        raise AssertionError("expected SpecValidationError")
 ```
 
 ```python
