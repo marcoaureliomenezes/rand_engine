@@ -81,7 +81,6 @@ The prior candidate is rc-1. `specs/bugs/BUGS.jsonl` holds 2 resolved records an
 - A reusable CI workflow. It would delete three matrix copies but rename the required checks, so it becomes a backlog proposal.
 - Implementing the four correlated methods on Spark, seeding ordinary Spark columns, or any new Spark method or key.
 - Any change to `StreamHandler`.
-- Rewording the Spark refusal message, including its `in 0.7.0` text at `common_validator.py:229`.
 - Copying any ruling into the `## Principles` of `QUALITY.md` or `ARCHITECTURE.md`. That needs an accepted ADR.
 - Rewording constitution text the rulings do not touch, invariant 12's "v0.6.4" included.
 
@@ -138,6 +137,7 @@ Operator: "Nada além disso (Recomendado)" and "Apagar os 4 métodos NULL". Grou
   - The NULL paragraph, `:46-47` and `:82-83`, is deleted with its executable block.
   - The NULL sentence of `skills/rand-engine/SKILL.md:99` is deleted too.
   - No "NULL + warning" text remains in `docs/`, `skills/`, `README.md` or `llms.txt`.
+- AC3.4 (unit, `tests/test_1_common_validator.py`; main-thread ruling): the NumPy-only refusal (`common_validator.py:229`), which the four methods now reach, names the method and the engine only. Its `in 0.7.0` text is deleted, and no version is added.
 
 ### FR4 — One epoch computation, and the hotfix follow-ups
 
@@ -225,7 +225,7 @@ Operator: "0.8.1 (Recomendado)". The version stays 0.8.1, though it drops Python
 
 ## Replaces
 
-- `CommonValidator._validate_spark_column`: the CORRELATED warn-and-return branch is replaced by the existing `engines` refusal.
+- `CommonValidator._validate_spark_column`: the CORRELATED warn-and-return branch is replaced by the existing `engines` refusal, whose `in 0.7.0` text is removed.
 - The four `SparkCore` NULL bodies and their `SparkGenerator.map_methods` entries are removed.
 - `_constant_arrow_type`: the hard-coded `timestamp("ns")` is replaced by the pandas -> Arrow conversion's type.
 - `apply_embedded_transformers`: `apply` on the Arrow column is replaced by `apply` on a plain-object view.
