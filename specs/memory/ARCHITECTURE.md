@@ -23,7 +23,7 @@ commit that carries its accepted ADR.
 - PyArrow `>=19.0.0` — the generated text column type (`pd.ArrowDtype(pa.string())`) and its builders, CSV and Parquet conversion/output, and Arrow-schema RandSpec construction.
 - Python `sqlite3` — the output-only batch-table sink; generation never reads destination state or performs lookup SQL.
 - PySpark `^3.5` in the test group and the lock, 3.5 and 4.x on the CI legs — `SparkGenerator` runs on the caller's `SparkSession` and functions module; its key adapter imports Spark SQL types lazily, while PySpark remains outside runtime dependencies.
-- Faker `>=28.4.1` (optional extra `faker`, uncapped; `^28.4.1` in the test group) — backs `RandSpecs.faker_pool` only; generation never calls it.
+- Faker `>=28.4.1` (optional extra `faker`, uncapped, also in the test group) — backs `RandSpecs.faker_pool` only; generation never calls it.
 - pytest `^9.0`, pytest-cov (test group) — the suite and its fixture data.
 - ruff `>=0.17.1` (test group) — pydocstyle `D` rules with the numpy convention on the public-surface modules.
 - Zensical `==0.0.70` and mkdocstrings-python `==2.0.9` (optional `docs` group, Python `>=3.11`) — the strict docs-site build and its API reference from numpy-style docstrings, over `mkdocs.yml`.

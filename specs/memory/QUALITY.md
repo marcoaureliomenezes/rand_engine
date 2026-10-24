@@ -29,7 +29,7 @@ tags:
 
 ## Gates
 
-- The test matrix is 12 legs, Ubuntu, Windows and macOS × Python 3.11–3.14. Each leg installs the package by a fresh `pip install ".[faker]"` resolve of its bounds, never from `poetry.lock`, and prints the resolved versions: the Ubuntu Python 3.11 floor leg pins pandas 2.2.0, numpy 1.26.0, pyarrow 19.0.0, faker 28.4.1 and PySpark 3.5; the other Python 3.11 legs take the latest stack with PySpark 3.5, and the Python 3.12–3.14 legs the latest stack with PySpark 4.x. Poetry is installed by `pipx` for the wheel fixture only.
+- The test matrix is 12 legs, Ubuntu, Windows and macOS × Python 3.11–3.14. Each leg installs the package by a fresh `pip install ".[faker]"` resolve of its bounds, never from `poetry.lock`, and prints the resolved versions: the Ubuntu Python 3.11 floor leg pins `pandas==2.2.0 numpy==1.26.0 pyarrow==19.0.0 faker==28.4.1` and PySpark 3.5; the other Python 3.11 legs take the latest stack with PySpark 3.5, and the Python 3.12–3.14 legs the latest stack with PySpark 4.x. Poetry is installed by `pipx` for the wheel fixture only.
 - Push to any branch but `master`/`development` with no open PR: the matrix with coverage reported.
 - PR to `development`: source must not be `master`; the matrix with `--cov-fail-under=60`; Bandit, Semgrep, Safety and Trivy run advisory (they never fail the job); CodeQL analyzes.
 - PR to `master`: source must be `development`; the matrix with coverage.

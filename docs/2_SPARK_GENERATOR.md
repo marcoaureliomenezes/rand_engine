@@ -40,7 +40,7 @@ assert df.columns == ["user_id", "age", "is_active", "signup"]
 ## Methods
 
 <!-- derived-from: spark-generator sha256:b6f588852588 -->
-<!-- derived-from: generation-methods sha256:75796050a8e3 -->
+<!-- derived-from: generation-methods sha256:e6bc7670d6dc -->
 
 The table records validation's current outcome for every RandSpec method. `yes` means Spark produces
 the column; `refused` means use `DataGenerator`.

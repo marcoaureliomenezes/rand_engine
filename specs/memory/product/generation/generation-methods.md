@@ -1,7 +1,7 @@
 ---
 slug: generation-methods
 title: Generation methods
-tldr: "Ten common methods run on pandas and Spark; stateless pk/fk share one indexed authority; extra distributions, correlated methods, constants and modifiers are pandas-only."
+tldr: "Ten common methods run on pandas and Spark; pk/fk share one indexed authority; distributions, correlated methods, constants and modifiers are pandas-only."
 summary: "NPCore and PyCore provide the NumPy generator's method map, and every all-text column they generate is string[pyarrow] with pd.NA nulls; SparkCore supplies native expressions for the ten common methods. Pandas and Spark both call Keys for deterministic pk/fk values, while extra distributions, the four correlated methods, constants and modifiers remain pandas-only."
 tags: [methods, numpy, spark, correlation, distributions, modifiers]
 sources:
