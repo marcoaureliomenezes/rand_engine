@@ -1,6 +1,6 @@
 # SPEC — Release: 0.8.1, candidate 2 (installs on today's stacks and CI proves it; Spark refuses the NULL methods; direction rulings)
 
-**Status:** Draft
+**Status:** Approved
 **Release ID:** 0.8.1
 **Owner:** dd-product-engineer
 **Opened:** 2026-10-24
