@@ -9,6 +9,7 @@ import sys
 from types import MappingProxyType
 from typing import Any, Callable, Mapping
 
+import pandas as pd
 import pyarrow as pa
 
 from rand_engine.core._np_core import DATE_DIRECTIVES, float_decimals_supported, float_lattice_bounds, poisson_lam_supported
@@ -83,16 +84,9 @@ def _constant_arrow_type(kwargs: Mapping[str, Any]) -> tuple[pa.DataType, ...]:
     value = kwargs["value"]
     if value is None:
         return (pa.null(),)
-    scalar = pa.scalar(value)
-    if pa.types.is_timestamp(scalar.type):
-        natural_type = pa.timestamp("ns", tz=scalar.type.tz)
-        try:
-            scalar.cast(natural_type, safe=True)
-        except pa.ArrowInvalid:
-            pass
-        else:
-            return (natural_type,)
-    return (scalar.type,)
+    if isinstance(value, datetime):
+        return (pa.Array.from_pandas(pd.Series([value])).type,)
+    return (pa.scalar(value).type,)
 
 
 def _distinct_arrow_type(kwargs: Mapping[str, Any]) -> tuple[pa.DataType, ...]:
