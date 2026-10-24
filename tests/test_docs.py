@@ -12,7 +12,6 @@ import subprocess
 import sys
 import tempfile
 import textwrap
-import warnings
 from pathlib import Path
 
 try:
@@ -115,13 +114,11 @@ def spark_outcome(spec) -> str:
   """How Spark validation treats a spec, in the table's vocabulary."""
   from rand_engine.validators.common_validator import CommonValidator
   from rand_engine.validators.exceptions import SpecValidationError
-  with warnings.catch_warnings(record=True) as caught:
-    warnings.simplefilter("always")
-    try:
-      CommonValidator.validate_spark_and_raise({"c": dict(spec)})
-    except SpecValidationError:
-      return "refused"
-  return "NULL + warning" if caught else "yes"
+  try:
+    CommonValidator.validate_spark_and_raise({"c": dict(spec)})
+  except SpecValidationError:
+    return "refused"
+  return "yes"
 
 
 def test_skill_method_table_lists_every_method():
@@ -131,10 +128,10 @@ def test_skill_method_table_lists_every_method():
 
 
 def test_skill_method_table_spark_column_is_what_validation_does():
-  """Each row's Spark cell (yes / refused / NULL + warning) is the outcome of Spark validation of that method's catalog example."""
+  """Each row's Spark cell (yes / refused) is the outcome of Spark validation of that method's catalog example."""
   from rand_engine.validators.method_specs import METHOD_CATALOG
   claimed = skill_method_table()
-  assert set(claimed.values()) <= {"yes", "refused", "NULL + warning"}
+  assert set(claimed.values()) <= {"yes", "refused"}
   actual = {name: spark_outcome(spec.example) for name, spec in METHOD_CATALOG.items()}
   assert {m: (claimed[m], actual[m]) for m in actual if claimed[m] != actual[m]} == {}
 
@@ -407,49 +404,21 @@ def test_spark_doc_executes_integer_boundaries(tmp_path, monkeypatch, spark_sess
   )
 
 
-def documented_correlated_spark_frames(tmp_path, monkeypatch):
-  """Run the Spark guide and retain real DataFrames made from correlated specs."""
-  from rand_engine import SparkGenerator
-  from rand_engine.validators.method_specs import CORRELATED, METHOD_CATALOG
-
-  frames = []
-  get_df = SparkGenerator.get_df
-
-  def record(self):
-    dataframe = get_df(self)
-    methods = {column["method"] for column in self.metadata.values()}
-    if any(METHOD_CATALOG[method].kind == CORRELATED for method in methods):
-      frames.append((self.metadata, dataframe))
-    return dataframe
-
-  monkeypatch.setattr(SparkGenerator, "get_df", record)
-  with warnings.catch_warnings(record=True) as caught:
-    warnings.simplefilter("always")
-    run_python_blocks(DOCS / "2_SPARK_GENERATOR.md", tmp_path, monkeypatch)
-  return frames, caught
-
-
-def test_spark_doc_executes_correlated_methods_as_null_strings(tmp_path, monkeypatch, spark_session):
-  """The Spark guide runs all correlated methods as warned NULL string columns."""
-  from rand_engine.validators.method_specs import CORRELATED, METHOD_CATALOG
-
-  frames, caught = documented_correlated_spark_frames(tmp_path, monkeypatch)
-  expected = {name for name, entry in METHOD_CATALOG.items() if entry.kind == CORRELATED}
-  observed = {
+def test_spark_doc_refuses_the_four_correlated_methods(tmp_path, monkeypatch, spark_session):
+  """The Spark guide's executed block shows SparkGenerator refusing each correlated method."""
+  refused = {
       column["method"]
-      for metadata, _ in frames
-      for column in metadata.values()
-      if column["method"] in expected
+      for spec, raised in documented_spark_specs("2_SPARK_GENERATOR.md", tmp_path, monkeypatch)
+      if raised
+      for column in spec.values()
   }
-  assert observed == expected
-  assert {method for method in expected if any(method in str(item.message) for item in caught)} == expected
-  for metadata, dataframe in frames:
-    assert 0 < dataframe.count() <= 10_000
-    for name, column in metadata.items():
-      if column["method"] in expected:
-        field = dataframe.schema[name]
-        assert field.dataType.typeName() == "string"
-        assert dataframe.where(dataframe[name].isNotNull()).count() == 0
+  assert refused >= {"distincts_map", "distincts_multi_map", "distincts_map_prop", "complex_distincts"}
+
+
+def test_no_doc_promises_null_columns_for_correlated_methods():
+  """The published surface holds no "NULL + warning" outcome for any method."""
+  files = [p for top in (DOCS, ROOT / "skills") for p in top.rglob("*") if p.is_file()] + [ROOT / "README.md", ROOT / "llms.txt"]
+  assert [str(p.relative_to(ROOT)) for p in files if "NULL + warning" in p.read_text(encoding="utf-8", errors="ignore")] == []
 
 
 def documented_builder_calls(tmp_path, monkeypatch):
