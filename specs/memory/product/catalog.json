@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-20T15:06:50Z",
+  "generated_at": "2026-10-24T19:43:05Z",
   "features": [
     {
       "rank": 1,
@@ -14,7 +14,7 @@
         "package",
         "exceptions"
       ],
-      "token_estimate": 562,
+      "token_estimate": 575,
       "depends_on": [
         "data-generator",
         "spark-generator",
@@ -91,8 +91,8 @@
       "slug": "generation-methods",
       "title": "Generation methods",
       "area": "generation",
-      "tldr": "Ten common methods run on pandas and Spark; stateless pk/fk share one indexed authority; extra distributions, constants and modifiers are pandas-only.",
-      "summary": "NPCore and PyCore provide the NumPy generator's method map, and every all-text column they generate is string[pyarrow] with pd.NA nulls; SparkCore supplies native expressions for the ten common methods and NULL string columns with warnings for four correlated methods. Pandas and Spark both call Keys for deterministic pk/fk values, while extra distributions, constants and modifiers remain pandas-only.",
+      "tldr": "Ten common methods run on pandas and Spark; stateless pk/fk share one indexed authority; extra distributions, correlated methods, constants and modifiers are pandas-only.",
+      "summary": "NPCore and PyCore provide the NumPy generator's method map, and every all-text column they generate is string[pyarrow] with pd.NA nulls; SparkCore supplies native expressions for the ten common methods. Pandas and Spark both call Keys for deterministic pk/fk values, while extra distributions, the four correlated methods, constants and modifiers remain pandas-only.",
       "path": "specs/memory/product/generation/generation-methods.md",
       "tags": [
         "methods",
@@ -102,7 +102,7 @@
         "distributions",
         "modifiers"
       ],
-      "token_estimate": 1180,
+      "token_estimate": 1377,
       "depends_on": [
         "data-generator",
         "spark-generator",
@@ -128,7 +128,7 @@
         "pyspark",
         "generator"
       ],
-      "token_estimate": 486,
+      "token_estimate": 502,
       "depends_on": [
         "rand-spec-grammar",
         "generation-methods"
@@ -222,7 +222,7 @@
         "parquet",
         "sqlite"
       ],
-      "token_estimate": 886,
+      "token_estimate": 910,
       "depends_on": [
         "data-generator"
       ],
@@ -296,7 +296,7 @@
         "grammar",
         "validation"
       ],
-      "token_estimate": 732,
+      "token_estimate": 722,
       "depends_on": [
         "pk-fk-constraints",
         "generation-methods",

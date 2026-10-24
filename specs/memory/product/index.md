@@ -47,7 +47,7 @@ a scaffolded example ([[get-started-cli]]) and the docs site, `llms.txt` and age
 | slug | title | tldr |
 |------|-------|------|
 | `data-generator` | DataGenerator | The pandas generator validates a RandSpec, owns its random generator, and returns DataFrames, files, file streams or an endless lossless record stream. |
-| `generation-methods` | Generation methods | Ten common methods run on pandas and Spark; stateless pk/fk share one indexed authority; extra distributions, constants and modifiers are pandas-only. |
+| `generation-methods` | Generation methods | Ten common methods run on pandas and Spark; stateless pk/fk share one indexed authority; extra distributions, correlated methods, constants and modifiers are pandas-only. |
 | `spark-generator` | SparkGenerator | The Spark generator builds ordinary columns with native expressions and stateless pk/fk columns through the shared indexed key authority. |
 
 ### onboarding

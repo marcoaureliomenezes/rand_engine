@@ -1,8 +1,8 @@
 ---
 slug: generation-methods
 title: Generation methods
-tldr: "Ten common methods run on pandas and Spark; stateless pk/fk share one indexed authority; extra distributions, constants and modifiers are pandas-only."
-summary: "NPCore and PyCore provide the NumPy generator's method map, and every all-text column they generate is string[pyarrow] with pd.NA nulls; SparkCore supplies native expressions for the ten common methods and NULL string columns with warnings for four correlated methods. Pandas and Spark both call Keys for deterministic pk/fk values, while extra distributions, constants and modifiers remain pandas-only."
+tldr: "Ten common methods run on pandas and Spark; stateless pk/fk share one indexed authority; extra distributions, correlated methods, constants and modifiers are pandas-only."
+summary: "NPCore and PyCore provide the NumPy generator's method map, and every all-text column they generate is string[pyarrow] with pd.NA nulls; SparkCore supplies native expressions for the ten common methods. Pandas and Spark both call Keys for deterministic pk/fk values, while extra distributions, the four correlated methods, constants and modifiers remain pandas-only."
 tags: [methods, numpy, spark, correlation, distributions, modifiers]
 sources:
   - rand_engine/core/**
@@ -25,8 +25,9 @@ sources:
 | `dates` | `start`, `end`, `date_format` | UTC date strings using `%Y %m %d %H %M %S %f` |
 | `uuid4` | none | RFC 4122 version-4 UUID strings |
 
+- `unix_timestamps` and `dates` draw over the whole `[start, end)` before, across or after 1970; epoch seconds before 1970 are negative. Both engines turn the two parsed bounds into epoch seconds through one shared `epoch_seconds`.
 - On pandas these methods draw from the `numpy.random.Generator` owned by [[data-generator]]. `uuid4`, `int_zfilled` and `dates` build their text as fixed-width Arrow rows from those draws; a date-only format renders each distinct day once.
-- A column whose generated values are all text — `int_zfilled`, `dates`, `uuid4`, and `distincts`, `distincts_prop` or `constant` with text values — is `string[pyarrow]` (`pd.ArrowDtype(pa.string())`); numeric, boolean, datetime and mixed-type columns keep their pandas dtype.
+- A column whose generated values are all text — `int_zfilled`, `dates`, `uuid4`, and `distincts`, `distincts_prop` or `constant` with text values — is `string[pyarrow]` (`pd.ArrowDtype(pa.string())`) on every pandas; numeric and boolean columns keep the NumPy dtypes the methods return; a datetime column takes the unit the installed pandas gives Python datetimes, `ns` on pandas 2 and `us` on pandas 3.
 - On Spark they are native `SparkCore` expressions; an explicit Spark seed affects key columns only, not these ordinary methods ([[spark-generator]]).
 - `integers` defaults to `int32` on pandas and `long` on Spark; its bounds must fit `int_type`.
 
@@ -42,10 +43,10 @@ sources:
 
 - `exponential(scale=1.0, decimals=2)` and `lognormal(mean=0.0, std=1.0, decimals=2)` return rounded `float64`; `scale` is finite and positive, `std` finite and non-negative.
 - `poisson(lam=1.0)` and `zipf(a=2.0)` return `int64` from alias-table samplers; `lam` lies in `[0, 10^6]` and `a` is finite and greater than 1. Zipf values beyond the table are drawn exactly from the tail, up to `int64`.
-- `constant(value)` repeats an immutable scalar (`None`, bool, int, float, str, bytes, date, datetime, Decimal) and consumes no random draw; a non-null value keeps its natural pandas dtype, `string[pyarrow]` for text, and `None` gives an object column of nulls.
+- `constant(value)` repeats an immutable scalar (`None`, bool, int, float, str, bytes, date, datetime, Decimal) and consumes no random draw; a non-null value keeps its natural pandas dtype, `string[pyarrow]` for text, and `None` gives an object column of nulls. The declared Arrow type of a datetime value is the one the pandas -> Arrow conversion writes, so an empty file's schema equals a populated one's.
 - `distincts_map` and `distincts_map_prop` return a category column and a value column drawn as one row; every pool must be non-empty.
 - `distincts_multi_map` returns the category column followed by one column per declared level; `cols` therefore has exactly levels plus one names.
-- A map-family level whose values are all text is `string[pyarrow]`; a level of mixed types keeps pandas' inference (`object`).
+- A map-family level whose values are all text is `string[pyarrow]`; a level that mixes text with other values, `None` included, is an `object` column holding its Python values, so `None` stays `None`; any other level keeps pandas' inference.
 - `complex_distincts` fills a pattern from templates that use ordinary methods in the NumPy engine's method map and returns `string[pyarrow]` text; a pattern without templates repeats its literal.
 
 ## Key methods
@@ -64,4 +65,4 @@ sources:
 
 - The NumPy engine has one method-name-to-callable map shared by normal columns and `complex_distincts` templates.
 - `RandGenerator` binds the owned random generator to ordinary methods, binds row/key context to `pk` and `fk`, and applies the modifiers.
-- One `RandGenerator` decider makes each generated column `string[pyarrow]` when its values are all text, `pk` and `fk` with a text `format` included; a transformer's output keeps the dtype the transformer returns.
+- One `RandGenerator` decider makes each generated column `string[pyarrow]` when its values are all text, `pk` and `fk` with a text `format` included; a transformer runs on a plain-object view of the column, so its output takes the dtype the installed pandas infers from the returned Python values: a `pd.Timestamp` result is a datetime column, and on pandas 3 a `str` result is pandas `str` dtype, with `str` subclasses turned into plain `str`.

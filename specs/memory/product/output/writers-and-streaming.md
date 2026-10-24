@@ -36,6 +36,6 @@ sources:
 
 - CSV and Parquet convert the DataFrame to an Arrow table; mixed-type object columns fail with the column named. Parquet defaults to Snappy.
 - Parquet reads back equal to the frame in values, timezone-aware ones included, and in dtype for every non-text column. A generated text column keeps its values and the String logical type; it reads back as `pd.StringDtype("pyarrow")` under the default `pd.read_parquet` and as the frame's `string[pyarrow]` with `dtype_backend="pyarrow"`.
-- CSV accepts `sep`, `compression` (gzip, bz2, xz, zip) and `index=False`; one header per file, an empty field for a null, and timezone-aware columns rendered to pandas strings before Arrow writes them.
+- CSV accepts `sep`, `compression` (gzip, bz2, xz, zip) and `index=False`; one header per file, an empty field for a null, a naive timestamp's fraction sized by its column's unit (`ns` nine digits, `us` six, `ms` three, `s` none), and timezone-aware columns rendered to pandas strings before Arrow writes them.
 - JSON is pandas JSON-lines output (`orient` is `records` only) and accepts `force_ascii`, `indent` and `compression`; a null is `null`.
 - Parquet accepts `compression` only and writes a typed null that keeps the column's logical type.

@@ -13,15 +13,15 @@ sources:
 ## Role and use
 
 - `SparkGenerator(spark, F, spec).size(n).get_df()` builds a Spark DataFrame; PySpark is supplied by the caller and is not a runtime dependency.
-- CI runs the Spark tests on Linux and macOS with Python 3.10 to 3.13 and on Windows with Python 3.10 and 3.11; on Windows with Python 3.12 or later they skip.
+- CI runs the Spark tests on PySpark 3.5 with Python 3.11 and on PySpark 4.x with Python 3.12 to 3.14, on Linux and macOS; on Windows they run with Python 3.11 and skip with Python 3.12 or later.
 - `get_df()` without `.size(n)` raises `RandEngineError` naming `.size(n)`.
 - Generation starts from `spark.range(size)`, adds one column per spec entry and drops technical source-index columns. A user column named `id` or like an internal helper remains in the declared schema and order.
 
 ## Grammar and refusals
 
 - The common validator accepts ordinary Spark methods and named `kwargs`; `SparkGenerator` extracts `pk` and `fk` columns and applies the same advanced key validation as `DataGenerator` ([[rand-spec-grammar]], [[generation-methods]]).
-- `exponential`, `lognormal`, `poisson`, `zipf` and `constant` are refused with guidance to use `DataGenerator`; so are `null_rate` and `anomaly_rate`; `anomaly_values` alone is accepted and has no effect.
-- `args` and unknown column keys are refused; correlated pandas methods warn and produce a null string column.
+- `exponential`, `lognormal`, `poisson`, `zipf`, `constant` and the four correlated methods `distincts_map`, `distincts_multi_map`, `distincts_map_prop` and `complex_distincts` are refused as NumPy engine only, with the fix line to use `DataGenerator`; so are `null_rate` and `anomaly_rate`; `anomaly_values` alone is accepted and has no effect.
+- `args` and unknown column keys are refused.
 - `integers` refuses `uint64` and any width `max - min + 1` above 2^53, at validation and in `SparkCore` alike; `int_zfilled` refuses `length` above 15. Every other accepted integer domain, width 2^53 included, is exact and inclusive.
 
 ## Behaviour

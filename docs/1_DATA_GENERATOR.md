@@ -50,7 +50,7 @@ assert not gen.get_df().equals(gen.get_df())
 
 ## Methods
 
-<!-- derived-from: generation-methods sha256:4ead5672e56f -->
+<!-- derived-from: generation-methods sha256:75796050a8e3 -->
 
 Each column is `{"method": <name>, "kwargs": {...}}`. Bounds of `integers` are inclusive. A method that generates text gives a `string[pyarrow]` column (`pd.ArrowDtype(pa.string())`) whose nulls are `pd.NA`; numeric, boolean and datetime columns keep their pandas dtype. An embedded transformer's output dtype is pandas' inference of what the transformer returns.
 
@@ -256,7 +256,7 @@ assert df["name"].dtype == pd.Series([str.upper("ana")]).dtype  # a transformer'
 
 ## Validation
 
-<!-- derived-from: rand-spec-grammar sha256:ecbce4973b7e -->
+<!-- derived-from: rand-spec-grammar sha256:13da2bd57c1a -->
 
 An invalid spec raises `SpecValidationError` (a `RandEngineError`) on construction, listing every
 error with a corrected example.

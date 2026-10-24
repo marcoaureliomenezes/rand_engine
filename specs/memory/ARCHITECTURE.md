@@ -17,13 +17,13 @@ commit that carries its accepted ADR.
 
 ## Tech Stack
 
-- Python `>=3.10` library `rand_engine` (`requires-python`, CI-tested on 3.10–3.13), built in CI with `poetry==2.5.1` and the `poetry-core>=2.2.0` backend from a static PEP 621 `[project]` table, then published to PyPI as `rand-engine`; `pyproject.toml` holds the one version.
-- NumPy `^2.1` — the vectorized column engine (`NPCore`); each `DataGenerator` owns one `np.random.default_rng(seed)` passed to generation methods; keys are computed from definitions, the key seed, column name and row index.
-- pandas `^2.2` — DataFrame assembly, transformers, JSON-lines output and normalized streamed-record conversion.
-- PyArrow `^23.0` — the generated text column type (`pd.ArrowDtype(pa.string())`) and its builders, CSV and Parquet conversion/output, and Arrow-schema RandSpec construction.
+- Python `>=3.11` library `rand_engine` (`requires-python`, CI-tested on 3.11–3.14), built in CI with `poetry==2.5.1` and the `poetry-core>=2.2.0` backend from a static PEP 621 `[project]` table, then published to PyPI as `rand-engine`; `pyproject.toml` holds the one version.
+- NumPy `>=1.26` — the vectorized column engine (`NPCore`); each `DataGenerator` owns one `np.random.default_rng(seed)` passed to generation methods; keys are computed from definitions, the key seed, column name and row index.
+- pandas `>=2.2,<4` — DataFrame assembly, transformers, JSON-lines output and normalized streamed-record conversion; datetime and transformer-output dtypes follow the installed pandas.
+- PyArrow `>=19.0.0` — the generated text column type (`pd.ArrowDtype(pa.string())`) and its builders, CSV and Parquet conversion/output, and Arrow-schema RandSpec construction.
 - Python `sqlite3` — the output-only batch-table sink; generation never reads destination state or performs lookup SQL.
-- PySpark `^3.5` (test group only) — `SparkGenerator` runs on the caller's `SparkSession` and functions module; its key adapter imports Spark SQL types lazily, while PySpark remains outside runtime dependencies.
-- Faker `>=28.4.1,<29` (optional extra `faker`, also in the test group) — backs `RandSpecs.faker_pool` only; generation never calls it.
+- PySpark `^3.5` in the test group and the lock, 3.5 and 4.x on the CI legs — `SparkGenerator` runs on the caller's `SparkSession` and functions module; its key adapter imports Spark SQL types lazily, while PySpark remains outside runtime dependencies.
+- Faker `>=28.4.1` (optional extra `faker`, uncapped; `^28.4.1` in the test group) — backs `RandSpecs.faker_pool` only; generation never calls it.
 - pytest `^9.0`, pytest-cov (test group) — the suite and its fixture data.
 - ruff `>=0.17.1` (test group) — pydocstyle `D` rules with the numpy convention on the public-surface modules.
 - Zensical `==0.0.70` and mkdocstrings-python `==2.0.9` (optional `docs` group, Python `>=3.11`) — the strict docs-site build and its API reference from numpy-style docstrings, over `mkdocs.yml`.
