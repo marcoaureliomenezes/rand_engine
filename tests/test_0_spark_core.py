@@ -86,7 +86,7 @@ class TestSparkCoreNumeric:
         ts = [r["c"] for r in SparkCore.gen_unix_timestamps(*args, start=start, end=end).collect()]
         assert ts and all(lo <= t < hi for t in ts)
         assert any(t < 0 for t in ts)
-        dates =[r["c"] for r in SparkCore.gen_dates(*args, start=start, end=end).collect()]
+        dates = [r["c"] for r in SparkCore.gen_dates(*args, start=start, end=end).collect()]
         assert dates and all(start <= d < end for d in dates)
 
     def test_gen_unix_timestamps_end_exclusive(self, spark_session, spark_functions, empty_spark_df):
