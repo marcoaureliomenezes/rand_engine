@@ -1,4 +1,4 @@
-from datetime import datetime as dt, timezone
+from datetime import datetime as dt, timedelta
 import pandas as pd
 from rand_engine.core._np_core import DATE_DIRECTIVES, DATE_SPLIT, float_lattice_bounds, width_beyond_double
 
@@ -90,8 +90,7 @@ class SparkCore:
     Note: Unified API parameter name matches NPCore.gen_unix_timestamps().
     """
     dt_start, dt_end = dt.strptime(start, date_format), dt.strptime(end, date_format)
-    if dt_start < dt(1970, 1, 1): dt_start = dt(1970, 1, 1)
-    timestamp_start, timestamp_end = (int(d.replace(tzinfo=timezone.utc).timestamp()) for d in (dt_start, dt_end))
+    timestamp_start, timestamp_end = ((d - dt(1970, 1, 1)) // timedelta(seconds=1) for d in (dt_start, dt_end))
     df = SparkCore.gen_ints(spark, F, df, col_name, min=timestamp_start, max=timestamp_end - 1)
     return df
 

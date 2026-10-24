@@ -5,7 +5,7 @@ import numpy as np
 import pyarrow as pa
 
 from typing import List, Any, Dict
-from datetime import datetime as dt, timezone
+from datetime import datetime as dt, timedelta
 from decimal import Context, Decimal, ROUND_CEILING, ROUND_FLOOR
 
 
@@ -228,8 +228,7 @@ class NPCore:
   @classmethod
   def gen_unix_timestamps(cls, size: int, start: str, end: str, date_format: str = "%Y-%m-%d", *, rng: np.random.Generator) -> np.ndarray:
     dt_start, dt_end = (_parse_date_bound(value, date_format) for value in (start, end))
-    if dt_start < dt(1970, 1, 1): dt_start = dt(1970, 1, 1)
-    timestamp_start, timestamp_end = (int(d.replace(tzinfo=timezone.utc).timestamp()) for d in (dt_start, dt_end))
+    timestamp_start, timestamp_end = ((d - dt(1970, 1, 1)) // timedelta(seconds=1) for d in (dt_start, dt_end))
     # Use int64 to handle large Unix timestamps on Windows
     int_array = rng.integers(timestamp_start, timestamp_end, size, dtype=np.int64)
     return int_array
