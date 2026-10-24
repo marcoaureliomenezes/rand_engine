@@ -273,3 +273,20 @@ def test_stream_dict_batches_keep_order_and_cadence(monkeypatch):
   assert all(type(record["timestamp_created"]) is float for record in records)
   assert len(sleeps) == 4
   assert all(1 / 100 <= duration <= 1 / 50 for duration in sleeps)
+
+
+def _timestamp_transformer_spec():
+  return {"d": {"method": "dates", "kwargs": {"start": "2024-01-01", "end": "2024-01-31"},
+                "transformers": [pd.Timestamp]}}
+
+
+def test_timestamp_transformer_column_has_datetime_dtype_and_streams_text():
+  """A transformer's pd.Timestamp output keeps pandas' own datetime dtype and streams as text."""
+  df = DataGenerator(_timestamp_transformer_spec(), seed=3).size(4).get_df()
+  assert pd.api.types.is_datetime64_any_dtype(df["d"].dtype)
+  assert not isinstance(df["d"].dtype, pd.ArrowDtype)
+
+  record = next(DataGenerator(_timestamp_transformer_spec(), seed=3).size(4)
+                .stream_dict(min_throughput=10**9, max_throughput=10**9))
+  assert isinstance(record["d"], str)
+  assert record["d"].startswith("2024-01-")
