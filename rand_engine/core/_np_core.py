@@ -20,6 +20,8 @@ def _parse_date_bound(value: str, date_format: str) -> dt:
     return dt.strptime(value, "%Y-%m-%d")
 
 
+def epoch_seconds(dt_start: dt, dt_end: dt) -> tuple[int, int]: return tuple((d - dt(1970, 1, 1)) // timedelta(seconds=1) for d in (dt_start, dt_end))
+
 def float_decimals_supported(decimals) -> bool:
   return type(decimals) is int and abs(decimals) <= 308
 
@@ -227,8 +229,7 @@ class NPCore:
 
   @classmethod
   def gen_unix_timestamps(cls, size: int, start: str, end: str, date_format: str = "%Y-%m-%d", *, rng: np.random.Generator) -> np.ndarray:
-    dt_start, dt_end = (_parse_date_bound(value, date_format) for value in (start, end))
-    timestamp_start, timestamp_end = ((d - dt(1970, 1, 1)) // timedelta(seconds=1) for d in (dt_start, dt_end))
+    timestamp_start, timestamp_end = epoch_seconds(*(_parse_date_bound(value, date_format) for value in (start, end)))
     # Use int64 to handle large Unix timestamps on Windows
     int_array = rng.integers(timestamp_start, timestamp_end, size, dtype=np.int64)
     return int_array
