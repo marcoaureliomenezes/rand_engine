@@ -37,40 +37,6 @@
       "relates": []
     },
     {
-      "id": "compat-current-ecosystem",
-      "title": "Compatibility release for the Python, pandas, pyarrow and Faker versions in use",
-      "opened": "2026-10-24",
-      "status": "idea",
-      "description": "Horizon: short. Operator answer (verbatim): \"Cobrir o que est\u00e1 em uso (Recomendado)\". Outcome: rand-engine installs beside the libraries in use today: Python 3.11-3.14 (3.10 EOL 2026-10-01), pandas >=2.2,<4, a pyarrow floor that fits Databricks 17.3 LTS (pyarrow 19.0.1) with no major cap, Faker uncapped; CI keeps 12 legs (one pandas 2.2 leg, the rest pandas 3.x; Spark 3.5 and 4.x). Evidence (inspection): 0.8.0 requires pandas<3.0.0, pyarrow<24.0.0, faker<29.0.0, and uv pip compile proves rand-engine==0.8.0 with pandas>=3, pyarrow>=24 or faker>=30 unsatisfiable; current pandas 3.1.0, pyarrow 26.0.0, Faker 40.43.0, pyspark 4.2.0 (PyPI: pyspark 4.2.0/4.1.x declare pandas>=2.2.0, 4.0.x >=2.0.0, 3.5.8 none; https://pypi.org/pypi/pyspark/4.2.0/json). The registered HIGH bug dates-before-1970-validate-then-raise is fixed in this release (operator: \"Confirmo, HIGH, j\u00e1 (Recomendado)\"). It follows the 0.8.1 publish (operator: \"Publicar 0.8.1 j\u00e1 (Recomendado)\"). Version 0.9.0 is an agent default the operator has not ruled (minor: drops Python 3.10 and refuses the Spark dummy methods). Out of scope: Python 3.10, CI legs beyond the 12, any new feature or runtime dependency.",
-      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"Cobrir o que est\u00e1 em uso (Recomendado)\"",
-      "relates": [
-        "spark-java17-options-dead"
-      ]
-    },
-    {
-      "id": "spark-refuse-null-methods",
-      "title": "Spark in maintenance: refuse the four NULL-returning SparkCore methods at validation",
-      "opened": "2026-10-24",
-      "status": "idea",
-      "description": "Horizon: short. Operator answer (verbatim): \"Nada al\u00e9m disso (Recomendado)\". Outcome: a SparkGenerator spec naming distincts_map, distincts_multi_map, distincts_map_prop or complex_distincts is refused at validation instead of returning NULL columns from the SparkCore dummy bodies (decided in scope, invariant 3). Spark stays in maintenance: it runs on Spark 3.5 and 4.x, and ordinary Spark columns stay unseeded as a documented limit. The four bodies are deleted only with the operator's by-name approval in the SPEC Origin (invariant 12). Out of scope: implementing the four methods on Spark, seeding Spark columns, any new Spark method or key.",
-      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"Nada al\u00e9m disso (Recomendado)\"",
-      "relates": [
-        "compat-current-ecosystem",
-        "spark-java17-options-dead"
-      ]
-    },
-    {
-      "id": "constitution-direction-rulings",
-      "title": "Land the direction rulings and the north star in the constitution",
-      "opened": "2026-10-24",
-      "status": "idea",
-      "description": "Horizon: short. Operator answers (verbatim): north star \"Velocidade e nicho (Recomendado)\"; roadmap home \"Backlog + p\u00e1gina p\u00fablica (Recomendado)\", under which the 2026-10-11 direction rulings land in specs/constitution.md through the next SPEC (decided in scope). Outcome: the constitution states the north star (for 12 months the fastest Python generator of related synthetic data, single-node NumPy/Arrow: declarative spec -> pk/fk tables -> files and streams) and the 2026-10-11 rulings: \"velocidade\" = rows per microsecond (mean), speed first, then resource efficiency; NumPy single node first, Spark gets nothing new; zero new runtime dependencies; no new method or key without a 1M/10M benchmark row; benchmarks only in CI; seeded golden tests before touching a generation method; local tests stay light (<= 10^4 rows, stress marker CI-only, as QUALITY.md states). Out of scope: any code change, a new gate, rewording constitution text these rulings do not touch.",
-      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"Velocidade e nicho (Recomendado)\"; \"Backlog + p\u00e1gina p\u00fablica (Recomendado)\"",
-      "relates": [
-        "compat-current-ecosystem"
-      ]
-    },
-    {
       "id": "hardware-chunk-study",
       "title": "Mandatory hardware study: chunk size vs speed and peak memory, presented before any implementation",
       "opened": "2026-10-24",
