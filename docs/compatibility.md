@@ -2,8 +2,9 @@
 
 ## Choose an environment
 
-`rand-engine` requires Python 3.10 or newer. Continuous integration currently tests Python
-3.10 through 3.13; later Python releases may work, but are not part of that tested set.
+`rand-engine` requires Python 3.11 or newer. Continuous integration tests Python 3.11 through
+3.14; later Python releases may work, but are not part of that tested set. The supported
+dependency bounds are pandas `>=2.2,<4`, pyarrow `>=19`, numpy `>=1.26`; Faker is uncapped.
 
 ```bash
 pip install rand-engine
@@ -12,9 +13,10 @@ pip install "rand-engine[faker]"  # only for RandSpecs.faker_pool
 
 The core install includes Python, NumPy and pandas generation. PySpark is deliberately a
 caller-supplied dependency: use `SparkGenerator` only when your application already has a
-Spark session and `pyspark.sql.functions`. Spark CI runs on Linux and macOS with Python
-3.10–3.13 and on Windows with Python 3.10–3.11. It uses Java 17. On Windows with Python
-3.12 or newer, use the pandas generator or a supported Spark/Python partition instead.
+Spark session and `pyspark.sql.functions`. Spark CI runs Spark 3.5 and 4.x: Spark 3.5 on
+Python 3.11 and Spark 4.x on Python 3.12 through 3.14, on Linux, macOS and Windows. It uses
+Java 17. The Windows Spark skip applies from Python 3.12: those Spark tests skip on Windows,
+so use the pandas generator or a supported Spark/Python partition there instead.
 
 ## Pick the generator
 

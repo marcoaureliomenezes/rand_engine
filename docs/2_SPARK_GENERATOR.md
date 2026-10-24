@@ -4,7 +4,7 @@
 For `pk` and `fk`, it passes source row indexes to the same stateless key authority as
 `DataGenerator` through a key-only `mapInPandas` adapter. PySpark is not a dependency of
 `rand-engine`: bring your own session. CI runs the
-Spark tests on Linux and macOS with Python 3.10–3.13, and on Windows with Python 3.10–3.11.
+Spark tests on Linux, macOS and Windows with Python 3.11–3.14; the Windows Spark skip applies from Python 3.12.
 
 ```python
 from pyspark.sql import SparkSession, functions as F
