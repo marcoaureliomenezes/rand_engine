@@ -105,39 +105,3 @@ class SparkCore:
     span = dict(zip(DATE_DIRECTIVES, [(1, 4), (6, 2), (9, 2), (12, 2), (15, 2), (18, 2), (21, 6)]))
     tokens = [t for t in DATE_SPLIT.split(date_format) if t]
     return df.withColumn(col_name, F.concat(*[F.substring(iso, *span[t]) if t in span else F.lit(t) for t in tokens]))
-
-
-  @staticmethod
-  def gen_distincts_map(spark, F, df, col_name, **kwargs):
-    """
-    Dummy implementation for API compatibility with DataGenerator.
-    Returns NULL values. Full implementation pending.
-    """
-    return df.withColumn(col_name, F.lit(None).cast("string"))
-
-
-  @staticmethod
-  def gen_distincts_multi_map(spark, F, df, col_name, **kwargs):
-    """
-    Dummy implementation for API compatibility with DataGenerator.
-    Returns NULL values. Full implementation pending.
-    """
-    return df.withColumn(col_name, F.lit(None).cast("string"))
-
-
-  @staticmethod
-  def gen_distincts_map_prop(spark, F, df, col_name, **kwargs):
-    """
-    Dummy implementation for API compatibility with DataGenerator.
-    Returns NULL values. Full implementation pending.
-    """
-    return df.withColumn(col_name, F.lit(None).cast("string"))
-
-
-  @staticmethod
-  def gen_complex_distincts(spark, F, df, col_name, **kwargs):
-    """
-    Dummy implementation for API compatibility with DataGenerator.
-    Returns NULL values. Full implementation pending.
-    """
-    return df.withColumn(col_name, F.lit(None).cast("string"))
