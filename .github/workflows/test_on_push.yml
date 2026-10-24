@@ -79,6 +79,9 @@ jobs:
       - name: Print resolved versions
         run: python -c "import numpy, pandas, pyarrow, faker, pyspark; print('numpy', numpy.__version__, 'pandas', pandas.__version__, 'pyarrow', pyarrow.__version__, 'faker', faker.VERSION, 'pyspark', pyspark.__version__)"
       
+      - name: Install Poetry with pipx (wheel fixture)
+        run: pipx install poetry==2.5.1
+
       - name: Run tests
         run: |
           python -m pytest tests/ -v --cov=rand_engine --cov-report=term-missing
