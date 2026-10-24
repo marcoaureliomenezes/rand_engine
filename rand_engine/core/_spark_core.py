@@ -98,7 +98,7 @@ class SparkCore:
   def gen_dates(spark, F, df, col_name, start="1970-01-01", end="2023-01-01", date_format="%Y-%m-%d"):
 
     df = SparkCore.gen_unix_timestamps(spark, F, df, col_name, start=start, end=end, date_format=date_format)
-    # NTZ cast to string is TZ-free: "yyyy-MM-dd HH:mm:ss" (whole seconds, years 1970..9999), padded for %f
+    # NTZ cast to string is TZ-free: "yyyy-MM-dd HH:mm:ss" (whole seconds, years up to 9999), padded for %f
     utc_wall_clock = F.expr("TIMESTAMP_NTZ'1970-01-01 00:00:00'") + F.col(col_name) * F.expr("INTERVAL 1 SECOND")
     iso = F.concat(utc_wall_clock.cast("string"), F.lit(".000000"))
     span = dict(zip(DATE_DIRECTIVES, [(1, 4), (6, 2), (9, 2), (12, 2), (15, 2), (18, 2), (21, 6)]))
