@@ -52,7 +52,7 @@ assert not gen.get_df().equals(gen.get_df())
 
 <!-- derived-from: generation-methods sha256:4ead5672e56f -->
 
-Each column is `{"method": <name>, "kwargs": {...}}`. Bounds of `integers` are inclusive. A method that generates text gives a `string[pyarrow]` column (`pd.ArrowDtype(pa.string())`) whose nulls are `pd.NA`; numeric, boolean and datetime columns keep their pandas dtype. An embedded transformer's output dtype is whatever the transformer returns.
+Each column is `{"method": <name>, "kwargs": {...}}`. Bounds of `integers` are inclusive. A method that generates text gives a `string[pyarrow]` column (`pd.ArrowDtype(pa.string())`) whose nulls are `pd.NA`; numeric, boolean and datetime columns keep their pandas dtype. An embedded transformer's output dtype is pandas' inference of what the transformer returns.
 
 | Method | Required kwargs | Optional kwargs | Column fields |
 |---|---|---|---|
@@ -236,6 +236,8 @@ A column may carry `"transformers"`: functions applied value by value. `.transfo
 whole-frame functions, run after the column ones.
 
 ```python
+import pandas as pd
+
 spec = {
     "name": {"method": "distincts", "kwargs": {"distincts": ["ana", "bia"]},
              "transformers": [str.upper]},
@@ -249,7 +251,7 @@ def age_group(df):
 df = DataGenerator(spec, seed=3).size(100).transformers([age_group]).get_df()
 assert set(df["name"]) <= {"ANA", "BIA"}
 assert (df["adult"] == (df["age"] >= 18)).all()
-assert df["name"].dtype == object  # a transformer's output dtype is what it returns
+assert df["name"].dtype == pd.Series([str.upper("ana")]).dtype  # a transformer's output dtype is pandas' inference of its plain Python result
 ```
 
 ## Validation

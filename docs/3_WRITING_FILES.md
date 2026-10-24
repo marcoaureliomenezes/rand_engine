@@ -141,8 +141,8 @@ CSV output differs from `pandas.DataFrame.to_csv`:
 - booleans are written `true` / `false`;
 - integral floats are written `1`, so they read back as int;
 - the header and every string value are quoted;
-- a naive timestamp's fraction is sized by its column's unit: `ns` (the pandas default)
-  `.000000000`, `us` six digits, `ms` three, `s` none;
+- a naive timestamp's fraction follows its column's unit: `ns` `.000000000`, `us` six digits,
+  `ms` three, `s` none;
 - an all-midnight naive datetime column is written with its full time
   (`2020-01-01 00:00:00.000000000`), not a bare date;
 - a tz-aware column is written in its pandas string form, quoted
