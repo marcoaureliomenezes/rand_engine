@@ -81,8 +81,8 @@ class TestSparkCoreNumeric:
         ("1950-01-01", "1960-01-01", -631152000, -315619200),
         ("1969-12-31", "1970-01-02", -86400, 86400),
     ])
-    def test_gen_unix_timestamps_and_dates_before_1970_stay_in_range(self, spark_session, spark_functions, small_spark_df, start, end, lo, hi):
-        args = (spark_session, spark_functions, small_spark_df, "c")
+    def test_gen_unix_timestamps_and_dates_before_1970_stay_in_range(self, spark_session, spark_functions, empty_spark_df, start, end, lo, hi):
+        args = (spark_session, spark_functions, empty_spark_df, "c")
         ts = [r["c"] for r in SparkCore.gen_unix_timestamps(*args, start=start, end=end).collect()]
         assert ts and all(lo <= t < hi for t in ts)
         assert any(t < 0 for t in ts)
