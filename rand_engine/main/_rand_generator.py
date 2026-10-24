@@ -34,10 +34,13 @@ class RandGenerator:
  
   @staticmethod
   def _column(values):
-    """Return a generated column; all-str data (never empty) becomes Arrow string, Arrow input is wrapped, the rest passes untouched."""
+    """Return a generated column; all-str data (never empty) becomes Arrow string, Arrow input is wrapped, mixed data holding str stays object, the rest passes untouched."""
     if isinstance(values, (pa.Array, pa.ChunkedArray)): return pd.arrays.ArrowExtensionArray(values)
-    if isinstance(values, (list, np.ndarray)) and infer_dtype(values, skipna=False) == "string":
-      return pd.arrays.ArrowExtensionArray(pa.array(values, pa.string()))
+    if isinstance(values, (list, np.ndarray)):
+      kind = infer_dtype(values, skipna=False)
+      if kind == "string": return pd.arrays.ArrowExtensionArray(pa.array(values, pa.string()))
+      if kind in ("mixed", "mixed-integer") and any(isinstance(v, str) for v in values):
+        return pd.Series(values, dtype=object)
     return values
 
 
@@ -64,7 +67,7 @@ class RandGenerator:
     for col, transformers in cols_with_transformers.items():
       for i, transformer in enumerate(transformers):
         try:
-          df[col] = df[col].apply(transformer)
+          df[col] = df[col].astype(object).apply(transformer)
         except Exception as e:
           raise TransformerError(
             f"Error applying transformer {i} to column '{col}': {type(e).__name__}: {str(e)}"
@@ -156,7 +159,7 @@ class RandGenerator:
   @staticmethod
   def _coerce_anomaly_values(series: pd.Series, values: np.ndarray):
     if is_object_dtype(series.dtype):
-      return np.asarray(values, dtype=object)
+      return pd.Series(values, dtype=object)
     return pd.array(values, dtype=series.dtype)
 
 
