@@ -167,7 +167,7 @@ class _TaggedText(str):
 )
 def test_stream_dict_preserves_object_values(value, assert_value):
   """Containers and custom values retain their representation."""
-  records = list(islice(_stream_for_frame(lambda frame: pd.DataFrame({"value": [value]}, index=frame.index[:1]), 1), 1))
+  records = list(islice(_stream_for_frame(lambda frame: pd.DataFrame({"value": pd.Series([value], dtype=object, index=frame.index[:1])}, index=frame.index[:1]), 1), 1))
 
   assert assert_value(records[0]["value"])
 
@@ -207,13 +207,13 @@ def test_stream_dict_preserves_mixed_object_values():
     ),
     (
       lambda index: pd.DataFrame(
-        {"value": pd.Series(pd.Categorical([_TaggedText("kept"), _TaggedText("two")]))}, index=index
+        {"value": pd.Series(pd.Categorical(pd.Series([_TaggedText("kept"), _TaggedText("two")], dtype=object)))}, index=index
       ),
       [{"value": _TaggedText("kept")}, {"value": _TaggedText("two")}],
     ),
     (
       lambda index: pd.DataFrame(
-        {"value": pd.Series([_TaggedText("kept"), _TaggedText("two")], dtype="string")}, index=index
+        {"value": pd.Series([_TaggedText("kept"), _TaggedText("two")], dtype=pd.StringDtype("python"))}, index=index
       ),
       [{"value": _TaggedText("kept")}, {"value": _TaggedText("two")}],
     ),
