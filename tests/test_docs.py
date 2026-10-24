@@ -961,7 +961,7 @@ def _docs_site_module():
 
 
 def test_docs_site_preparation_works_without_tomllib_or_tomli(tmp_path):
-  """Preparation is standard-library-only when a Python 3.10 process has no TOML parser."""
+  """Preparation needs no TOML parser: it runs from the standard library alone when `tomllib` and `tomli` cannot be imported."""
   output = tmp_path / "prepared"
   script = textwrap.dedent(f"""
       import builtins
@@ -982,6 +982,21 @@ def test_docs_site_preparation_works_without_tomllib_or_tomli(tmp_path):
   result = subprocess.run(
       [sys.executable, "-S", "-c", script], cwd=ROOT, capture_output=True, text=True, check=False)
   assert result.returncode == 0, result.stderr
+
+
+def test_compatibility_docs_state_the_supported_bounds():
+  """compatibility.md and 2_SPARK_GENERATOR.md state the Python range, the dependency bounds, the Spark legs and the refused methods."""
+  words = lambda path: " ".join(_text(path).split())
+  page = words(DOCS / "compatibility.md")
+  for expected in [
+      "requires Python 3.11 or newer", "tests Python 3.11 through 3.14",
+      "pandas `>=2.2,<4`", "pyarrow `>=19`", "numpy `>=1.26`", "Faker is uncapped",
+      "Spark 3.5 and 4.x", "Windows Spark skip",
+      "`distincts_map`, `distincts_map_prop`, `distincts_multi_map`, and `complex_distincts` are refused"]:
+    assert expected in page
+  assert "Python 3.10" not in page
+  spark = words(DOCS / "2_SPARK_GENERATOR.md")
+  assert "Python 3.11–3.14" in spark and "Python 3.10" not in spark
 
 
 def test_docs_workflow_deploys_pages_from_master_only():
