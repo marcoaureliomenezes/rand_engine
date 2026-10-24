@@ -106,7 +106,7 @@ graph TD
 
 ## Known limits
 
-- The `exponential`, `lognormal`, `poisson` and `zipf` distributions, constants, null and anomaly modifiers and transformers run on pandas only. Spark runs the ten common methods, warns and produces a NULL string column for the four correlated methods, accepts `pk` and `fk`, and refuses the other NumPy-only methods.
+- The `exponential`, `lognormal`, `poisson` and `zipf` distributions, constants, null and anomaly modifiers and transformers run on pandas only. Spark runs the ten common methods and accepts `pk` and `fk`; it refuses the four correlated methods and the other NumPy-only methods as NumPy engine only.
 - A seed controls pandas values and keys. On Spark, ordinary columns remain unseeded and an explicit seed controls only `pk` and `fk`.
 - PK/FK relations are stateless: parent and child link through definitions, seeds and row indexes, including optional event-time eligibility, with no stored keys or database lookup.
 - Built-in sinks are CSV, JSON-lines and Parquet files plus an output-only SQLite batch table. Queues, object storage and other databases are reached by forwarding DataFrames or `stream_dict` records.
