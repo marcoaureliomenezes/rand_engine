@@ -11,9 +11,10 @@
 - Operator words carried: compatibility "Cobrir o que está em uso (Recomendado)"; Spark "Nada além disso (Recomendado)"; north star "Velocidade e nicho (Recomendado)"; roadmap home "Backlog + página pública (Recomendado)"; the 2026-10-11 rulings "Confirmo todas (Recomendado)"; dtype "uai, se possivel ns. See if for pyarrow is faster. If it is, we use it. if no, we use pandas."; version "0.8.1 (Recomendado)".
 - Invariant 12, by-name approval, operator verbatim: "Apagar os 4 métodos NULL, Unificar o cálculo de epoch, You've mentined v0.6.4. Don't forget we are in 0.8.0." It approves, and nothing else:
   - deleting `SparkCore.gen_distincts_map`, `SparkCore.gen_distincts_multi_map`, `SparkCore.gen_distincts_map_prop` and `SparkCore.gen_complex_distincts`;
-  - changing `NPCore.gen_unix_timestamps` and `SparkCore.gen_unix_timestamps` so both call one shared epoch-bounds function.
+  - changing `NPCore.gen_unix_timestamps` and `SparkCore.gen_unix_timestamps` so both call one shared epoch-bounds function;
+  - changing `SparkCore.gen_dates`, for its one comment line only (FR4, AC4.4), operator verbatim, 2026-10-24: "Aprovo (Recomendado)".
 - The same two `gen_unix_timestamps` bodies were REBUILT in the hotfix lane on the operator's approval, verbatim: "Aprovo os dois (Recomendado)".
-- `SparkCore.gen_dates` is named for approval with this SPEC, for one comment line only (FR4, AC4.4; §6 Q1). `StreamHandler` and every other `gen_*` body stay untouched. Changed bodies keep the operator's style: 2-space indentation, one-line guards, terse NumPy.
+- `StreamHandler` and every other `gen_*` body stay untouched. Changed bodies keep the operator's style: 2-space indentation, one-line guards, terse NumPy.
 - The "v0.6.4" remark: the invariant names the release whose bodies it protects; its text stays unchanged unless the operator orders otherwise.
 
 ## Bug window review
@@ -95,7 +96,7 @@ Operator: "Cobrir o que está em uso (Recomendado)".
   - The Python classifiers are exactly 3.11, 3.12, 3.13 and 3.14.
   - `Requires-Dist` carries `numpy>=1.26` (no cap), `pandas>=2.2,<4` and `pyarrow>=19.0.0` (no cap).
   - The `faker` extra is `>=28.4.1`, with no cap.
-- AC1.2 (unit, `tests/test_9_cli.py`): `project.requires-python == ">=3.11"`.
+- AC1.2 (unit, `tests/test_9_cli.py`): `project.requires-python == ">=3.11"`, and the asserted `tool.poetry.dependencies` literals are the FR1 bounds (`numpy`, `pandas`, `pyarrow`, and `faker` optional at `>=28.4.1`), changed under "Cobrir o que está em uso (Recomendado)".
 - AC1.3 (no test; the command is the check): `poetry lock` on the widened bounds keeps faker 28.4.1, numpy 2.1.1, pandas 2.2.3, pyarrow 23.0.1 and pyspark 3.5.8; `poetry check --lock` passes. `verify:` is unchanged (no gate-cost ruling); the test group keeps `pyspark ^3.5.0` and `faker ^28.4.1`.
 - AC1.4 (E2E, CI, proven by FR5): the floor and latest stacks of §2 install and pass.
 
@@ -146,7 +147,7 @@ Operator: "Unificar o cálculo de epoch". The intake items (a)–(d) of the rele
 - AC4.1 (unit and integration, existing tests): `NPCore.gen_unix_timestamps` and `SparkCore.gen_unix_timestamps` call one shared function that turns the two parsed bounds into epoch seconds. A grep of `rand_engine/core/` finds the epoch arithmetic once. Each engine keeps its own parsing, so no parsing behaviour changes.
 - AC4.2 (integration, existing tests): the golden SHA-256 cases `unix_timestamps` and `dates` of `test_golden_seeded_output` pass with their literals unchanged, and so do the hotfix's pre-1970 and 1970-crossing cases on NumPy and Spark.
 - AC4.3 (unit, `tests/test_0_spark_core.py:82`, intake (d)): the `1969-12-31..1970-01-02` Spark case also asserts that some value is negative (`t < 0`), as its NumPy twin does. It goes red on the reverted `1c3ddc2`.
-- AC4.4 (no test; comment text, intake (c)): the comment at `rand_engine/core/_spark_core.py:102` in `SparkCore.gen_dates` no longer claims "years 1970..9999". It applies only with the by-name approval of §6 Q1. Without it, the line stays and AC4.4 is cancelled with that reason.
+- AC4.4 (no test; comment text, intake (c)): the comment at `rand_engine/core/_spark_core.py:102` in `SparkCore.gen_dates` no longer claims "years 1970..9999" (by-name approval in the Origin).
 - AC4.5 (no test; ledger verb, intake (a)): `bugs.py update dates-before-1970-validate-then-raise` makes two changes:
   - `cause` no longer says `timestamp()` read naive values, since the base was UTC-aware;
   - `caused_by` becomes `none`, since the clamp is the operator's body `bf4b12d`.
@@ -157,7 +158,7 @@ Operator: "Unificar o cálculo de epoch". The intake items (a)–(d) of the rele
 
 - AC5.1 (E2E, CI; workflow YAML has no seam in the suite): `test_on_push.yml`, `pr_to_development.yml` and `pr_to_master.yml` each run 12 legs, 3 OS × Python 3.11–3.14. `auto_tag_publish_master.yml` runs Ubuntu × 3.11–3.14.
   - Every test leg installs by `pip install ".[faker]"` plus its test tools and pins, a fresh resolve of the package bounds. `poetry` stays for the build, docs, benchmarks and `verify:`.
-  - The matrices are edited in place, so the required-check names are unchanged. `--cov-fail-under=60` stays on `pr_to_development.yml`.
+  - The matrices are edited in place. Master branch protection requires no status check, operator verbatim: "Remover os 3 checks mortos (Recomendado)"; the main thread applied it via the GitHub API on 2026-10-24, and protection keeps 1 required review. The three removed contexts, `Run Tests (Python 3.10/3.11/3.12)`, came only from `auto_tag_publish_master.yml` (`pull_request: closed`), so they never reported on a PR. The PR test jobs and CI on push stay the nets. `--cov-fail-under=60` stays on `pr_to_development.yml`.
 - AC5.2 (E2E, CI): the legs install these stacks.
 
   | leg | install |
@@ -249,4 +250,4 @@ Operator: "0.8.1 (Recomendado)". The version stays 0.8.1, though it drops Python
 
 ## 6. Open questions
 
-- **Q1 — invariant 12 for `SparkCore.gen_dates`.** Intake item (c) edits only the comment at `rand_engine/core/_spark_core.py:102` ("years 1970..9999", false since the hotfix). It sits in `SparkCore.gen_dates`, a 0.6.4 body the operator's by-name words do not name. Approving this SPEC with Q1 answered "yes" approves `SparkCore.gen_dates` for that one line. With "no", the line stays and AC4.4 is cancelled with that reason.
+none. Q1 (invariant 12 for the `SparkCore.gen_dates` comment line) is resolved: the operator answered "Aprovo (Recomendado)" on 2026-10-24, recorded in the Origin.
