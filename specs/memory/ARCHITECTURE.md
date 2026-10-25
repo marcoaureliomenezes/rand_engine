@@ -2,7 +2,7 @@
 slug: ARCHITECTURE
 title: Architecture
 tldr: The system's principles, technology stack and structure.
-summary: Principles change only with an accepted ADR; Tech Stack and Structure state what rand-engine's code is — a NumPy-first synthetic-data library with pandas and Spark generators, validators, Arrow-backed files and schema construction, normalized pandas record conversion, stateless PK/FK key columns, an output-only SQLite sink, a get-started CLI and an isolated stable-or-preview docs pipeline.
+summary: Principles change only with an accepted ADR; Tech Stack and Structure state what rand-engine's code is — a NumPy-first synthetic-data library with pandas and Spark generators, validators, Arrow text columns, Arrow-backed files and schema construction, normalized pandas record conversion, stateless PK/FK key columns, an output-only SQLite sink, a get-started CLI and an isolated docs pipeline deployed from master.
 tags:
   - architecture
   - layers
@@ -17,17 +17,17 @@ commit that carries its accepted ADR.
 
 ## Tech Stack
 
-- Python `>=3.10` library `rand_engine` (`requires-python`, CI-tested on 3.10–3.13), built in CI with `poetry==2.5.1` and the `poetry-core>=2.2.0` backend from a static PEP 621 `[project]` table, then published to PyPI as `rand-engine`; `pyproject.toml` holds the one version.
-- NumPy `^2.1` — the vectorized column engine (`NPCore`); each `DataGenerator` owns one `np.random.default_rng(seed)` passed to generation methods; keys are computed from definitions, the key seed, column name and row index.
-- pandas `^2.2` — DataFrame assembly, transformers, JSON-lines output and normalized streamed-record conversion.
-- PyArrow `^23.0` — CSV and Parquet conversion/output plus Arrow-schema RandSpec construction.
+- Python `>=3.11` library `rand_engine` (`requires-python`, CI-tested on 3.11–3.14), built in CI with `poetry==2.5.1` and the `poetry-core>=2.2.0` backend from a static PEP 621 `[project]` table, then published to PyPI as `rand-engine`; `pyproject.toml` holds the one version.
+- NumPy `>=1.26` — the vectorized column engine (`NPCore`); each `DataGenerator` owns one `np.random.default_rng(seed)` passed to generation methods; keys are computed from definitions, the key seed, column name and row index.
+- pandas `>=2.2,<4` — DataFrame assembly, transformers, JSON-lines output and normalized streamed-record conversion; datetime and transformer-output dtypes follow the installed pandas.
+- PyArrow `>=19.0.0` — the generated text column type (`pd.ArrowDtype(pa.string())`) and its builders, CSV and Parquet conversion/output, and Arrow-schema RandSpec construction.
 - Python `sqlite3` — the output-only batch-table sink; generation never reads destination state or performs lookup SQL.
-- PySpark `^3.5` (test group only) — `SparkGenerator` runs on the caller's `SparkSession` and functions module; its key adapter imports Spark SQL types lazily, while PySpark remains outside runtime dependencies.
-- Faker `>=28.4.1,<29` (optional extra `faker`, also in the test group) — backs `RandSpecs.faker_pool` only; generation never calls it.
+- PySpark `^3.5` in the test group and the lock, 3.5 and 4.x on the CI legs — `SparkGenerator` runs on the caller's `SparkSession` and functions module; its key adapter imports Spark SQL types lazily, while PySpark remains outside runtime dependencies.
+- Faker `>=28.4.1` (optional extra `faker`, uncapped, also in the test group) — backs `RandSpecs.faker_pool` only; generation never calls it.
 - pytest `^9.0`, pytest-cov (test group) — the suite and its fixture data.
 - ruff `>=0.17.1` (test group) — pydocstyle `D` rules with the numpy convention on the public-surface modules.
 - Zensical `==0.0.70` and mkdocstrings-python `==2.0.9` (optional `docs` group, Python `>=3.11`) — the strict docs-site build and its API reference from numpy-style docstrings, over `mkdocs.yml`.
-- GitHub Actions — test matrix, advisory security scans, same-runner A/B regression benchmarks, a non-gating isolated cross-library observation, RC and stable publishing through PyPI Trusted Publishing, and an isolated docs build with a guarded GitHub Pages deploy.
+- GitHub Actions — test matrix, advisory security scans, same-runner A/B regression benchmarks against the latest closed release, a non-gating isolated cross-library observation, publishing of closed releases through PyPI Trusted Publishing after the operator approves the `production` environment, and an isolated docs build with a guarded GitHub Pages deploy.
 
 ## Structure
 
@@ -44,8 +44,8 @@ rand_engine/
     spark_generator.py     SparkGenerator — native ordinary columns and indexed PK/FK adapter over spark.range(size)
   core/              stateless generation primitives
     _keys.py               stateless PK/FK sequence, permutation and parent selection
-    _np_core.py            NPCore — vectorized NumPy methods, alias samplers, float grid helpers
-    _py_core.py            PyCore — correlated tuples and pattern strings; METHODS, the NumPy method map
+    _np_core.py            NPCore — vectorized NumPy methods, fixed-width and pool Arrow text builders, alias samplers, float grid helpers
+    _py_core.py            PyCore — correlated level columns and pattern text; METHODS, the NumPy method map
     _spark_core.py         SparkCore — native Spark column expressions
   validators/        RandSpec grammar
     method_specs.py        METHOD_CATALOG — the one method authority
@@ -57,7 +57,7 @@ rand_engine/
   templates/         WebServerLogs template, IRandomSpec
   utils/             StreamHandler
 scripts/
-  docs_site.py       isolated stable/preview preparation plus fail-closed Pages eligibility
+  docs_site.py       isolated docs-site input and raw resources
 benchmarks/
   comparison.py      isolated observational runner for bounded Python and Spark contracts
   comparison-requirements.txt  pinned CI-only environment for that runner
@@ -65,12 +65,12 @@ benchmarks/
 
 - Dependency direction: `main` -> `core`, `validators`, `file_handlers`, `utils`; `validators.method_specs` -> `core._np_core` for date directives and float-domain predicates, and `validators.common_validator` -> `core._np_core` for `width_beyond_double`, the one Spark width predicate `SparkCore.gen_ints` and `float_lattice_bounds` also call, so grammar and engine decide each numeric rule once; `cli` imports only the standard library and reads `cases/` as package resources; `core._keys` and `file_handlers` import only `validators.exceptions`; `examples.common_rand_specs` runs `AdvancedValidator` on `from_schema` output; `core` imports no generator and `examples` import no engine.
 - A RandSpec is a dict keyed by column name; the NumPy path has one method-name -> function map shared by columns and nested templates, while `METHOD_CATALOG` owns the accepted grammar: names, parameters, engines and Arrow output types.
-- Generation is NumPy-first: every column is one array call, assembled into one DataFrame, then transformed.
+- Generation is NumPy-first: every column is one array call; one `RandGenerator` decider makes an all-text column `string[pyarrow]`, then the columns are assembled into one DataFrame and transformed.
 - The Spark path builds ordinary columns as native expressions plus one broadcast join per `distincts` column; a key-only `mapInPandas` adapter applies the shared indexed `Keys` authority, with no row-wise Python UDF or Spark hash substitute.
 - Relations are stateless `pk` and `fk` column methods; no database read, lookup SQL, checkpoint or retained key state participates in generation. The SQLite integration persists generated rows only.
 - File writers stage output beside the destination and commit it only after every file closes; with `maxRowsPerBatch` a final file is generated one row batch at a time. SQLite overwrite stages an adjacent database and replaces only the selected table; append uses one transaction.
-- Documentation preparation copies tracked sources into a caller-owned isolated input and emits raw Markdown, `llms.txt`, all starter resources and a byte-derived mirror of the canonical Agent Skill. The workflow renders that isolated input with Zensical and combines its HTML with those prepared resources. Preview mode adds an unreleased notice, rewrites own-project routes and both core and Faker-extra installs to the event SHA's source ZIP while preserving external links and skill front matter; stable mode retains ordinary PyPI and principal-branch guidance.
-- The Pages deployment adapter reads remote refs without moving the checkout. Events on the configured `MASTER_REF` bypass preview-version reads; an event on the one configured `PREVIEW_REF` is eligible only when its local version and the fresh `MASTER_REF` version equal the guard's policy constants and the fresh remote preview SHA equals the event SHA. Missing, unreadable, stale or mismatched state produces an explained successful skip.
+- Documentation preparation copies tracked sources into a caller-owned isolated input and emits raw Markdown, `llms.txt`, all starter resources and a byte copy of the canonical Agent Skill. The workflow renders that isolated input with Zensical and combines its HTML with those prepared resources.
+- Only a push to `master` uploads the site and deploys it to GitHub Pages, through one bounded `pages-public-site` queue.
 
 <!-- dadaia:fixed slop-code -->
 ### Slop — code (fixed)

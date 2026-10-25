@@ -71,11 +71,23 @@ class TestSparkCoreNumeric:
         ("gen_ints", {"min": 1, "max": 0}),
         ("gen_floats", {"min": 1.01, "max": 1.0}),
         ("gen_unix_timestamps", {"start": "9999-12-31", "end": "9999-12-31"}),
-        ("gen_dates", {"start": "1960-01-01", "end": "1965-01-01"}),
+        ("gen_dates", {"start": "1965-01-01", "end": "1960-01-01"}),
     ])
     def test_empty_range_raises_like_npcore(self, spark_session, spark_functions, empty_spark_df, method, kwargs):
         with pytest.raises(ValueError, match=r"must be <= max"):
             getattr(SparkCore, method)(spark_session, spark_functions, empty_spark_df, "c", **kwargs)
+
+    @pytest.mark.parametrize("start, end, lo, hi", [
+        ("1950-01-01", "1960-01-01", -631152000, -315619200),
+        ("1969-12-31", "1970-01-02", -86400, 86400),
+    ])
+    def test_gen_unix_timestamps_and_dates_before_1970_stay_in_range(self, spark_session, spark_functions, empty_spark_df, start, end, lo, hi):
+        args = (spark_session, spark_functions, empty_spark_df, "c")
+        ts = [r["c"] for r in SparkCore.gen_unix_timestamps(*args, start=start, end=end).collect()]
+        assert ts and all(lo <= t < hi for t in ts)
+        assert any(t < 0 for t in ts)
+        dates = [r["c"] for r in SparkCore.gen_dates(*args, start=start, end=end).collect()]
+        assert dates and all(start <= d < end for d in dates)
 
     def test_gen_unix_timestamps_end_exclusive(self, spark_session, spark_functions, empty_spark_df):
         result = SparkCore.gen_unix_timestamps(spark_session, spark_functions, empty_spark_df, "ts",

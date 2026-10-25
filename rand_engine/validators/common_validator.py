@@ -2,13 +2,11 @@
 
 import json
 from typing import Any
-import warnings
 
 from rand_engine.core._np_core import width_beyond_double
 from rand_engine.validators.exceptions import SpecValidationError
 from rand_engine.validators.method_specs import (
     COMMON_METHOD_SPECS,
-    CORRELATED,
     METHOD_CATALOG,
     MethodSpec,
     ORDINARY,
@@ -217,16 +215,9 @@ class CommonValidator:
                 "   Use DataGenerator for specs with modifiers"
             ]
 
-        if method_spec.kind == CORRELATED:
-            warnings.warn(
-                f"⚠️  Column '{col_name}': method '{method}' is a dummy in SparkGenerator (returns NULL)\n"
-                "   This method is only fully implemented in DataGenerator\n"
-                f"   Available SparkGenerator methods: {', '.join(sorted(cls.METHOD_SPECS))}"
-            )
-            return []
         if SPARK not in method_spec.engines:
             return [
-                f"❌ Column '{col_name}': method '{method}' is NumPy engine only in 0.7.0\n"
+                f"❌ Column '{col_name}': method '{method}' is NumPy engine only\n"
                 "   Use DataGenerator for this method"
             ]
 

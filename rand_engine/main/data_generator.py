@@ -18,7 +18,8 @@ class DataGenerator:
   """
   Generate pandas DataFrames, dict streams or files from a RandSpec.
 
-  ``stream_dict`` converts normalized microbatches to pandas records.
+  ``stream_dict`` converts normalized microbatches to pandas records. Text columns of ``get_df``
+  are ``string[pyarrow]`` with ``pd.NA`` nulls; a transformer's output keeps the dtype it returns; ``stream_dict`` records hold Python ``None`` for nulls.
 
   Parameters
   ----------
@@ -241,8 +242,8 @@ class DataGenerator:
     """
     Yield the rows of an endless stream as dicts, one microbatch of ``size`` rows at a time.
 
-    Each record gains a ``timestamp_created`` key (epoch seconds, 3 decimals); datetime
-    columns are strings. After each record the generator sleeps
+    Each record gains a ``timestamp_created`` key (epoch seconds, 3 decimals); text columns,
+    dates included, are ``str`` and nulls are ``None``. After each record the generator sleeps
     ``1 / uniform(min_throughput, max_throughput)`` seconds.
 
     Parameters
@@ -255,7 +256,7 @@ class DataGenerator:
     Yields
     ------
     dict
-        One row of the spec's columns plus ``timestamp_created``.
+        One row of the spec's columns plus ``timestamp_created``; nulls are ``None``.
 
     Raises
     ------

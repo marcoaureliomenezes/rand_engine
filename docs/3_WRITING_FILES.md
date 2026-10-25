@@ -24,7 +24,7 @@ assert len(os.listdir("out/clients_json")) == 4
 
 ## Writer contract
 
-<!-- derived-from: writers-and-streaming sha256:194abd1a89af -->
+<!-- derived-from: writers-and-streaming sha256:786ab5799347 -->
 
 - `csv` and `parquet` are written by pyarrow; `json` by pandas (`orient="records"`, one record per line).
 - Only the options below are accepted. Any other raises `RandEngineError` naming it and listing the
@@ -41,7 +41,7 @@ assert len(os.listdir("out/clients_json")) == 4
 
 - A column holding mixed types (e.g. ints and strings in one object column) raises
   `RandEngineError` naming the column for `csv` and `parquet`.
-- Parquet reads back equal to the frame, values and dtypes, tz-aware columns included.
+- Parquet reads back equal to the frame in values, tz-aware columns included, and in dtype for every non-text column. A generated text column reads back as `pd.StringDtype("pyarrow")` under the default read and as the frame's `pd.ArrowDtype(pa.string())` with `pd.read_parquet(..., dtype_backend="pyarrow")`.
 
 ```python
 from rand_engine.validators.exceptions import RandEngineError
@@ -54,9 +54,11 @@ else:
     raise AssertionError("expected RandEngineError")
 ```
 
+Spark: a text column with nulls holds `pd.NA`. To convert such a frame with `spark.createDataFrame`, enable `spark.sql.execution.arrow.pyspark.enabled` first. Without it, `spark.createDataFrame` raises `PySparkTypeError` (`[CANNOT_MERGE_TYPE]`).
+
 ## Batch: `write`
 
-<!-- derived-from: writers-and-streaming sha256:194abd1a89af -->
+<!-- derived-from: writers-and-streaming sha256:786ab5799347 -->
 
 - `save(path)` with `numFiles` 1 writes one file at `path`, the format and compression extension
   added when missing (`out/clients.csv` + `gzip` → `out/clients.csv.gz`; parquet never gets one).
@@ -117,7 +119,7 @@ else:
 
 ## Stream: `writeStream`
 
-<!-- derived-from: writers-and-streaming sha256:194abd1a89af -->
+<!-- derived-from: writers-and-streaming sha256:786ab5799347 -->
 
 `trigger(frequency)` only configures the pause after each write and returns the stream writer.
 `start(path)` writes one microbatch of `size` rows to `path/part-<uuid>.<ext>`, sleeps the
@@ -132,15 +134,15 @@ assert len(files) >= 2
 
 ## CSV written by pyarrow
 
-<!-- derived-from: writers-and-streaming sha256:194abd1a89af -->
+<!-- derived-from: writers-and-streaming sha256:786ab5799347 -->
 
 CSV output differs from `pandas.DataFrame.to_csv`:
 
 - booleans are written `true` / `false`;
 - integral floats are written `1`, so they read back as int;
 - the header and every string value are quoted;
-- a naive timestamp's fraction is sized by its column's unit: `ns` (the pandas default)
-  `.000000000`, `us` six digits, `ms` three, `s` none;
+- a naive timestamp's fraction follows its column's unit: `ns` `.000000000`, `us` six digits,
+  `ms` three, `s` none;
 - an all-midnight naive datetime column is written with its full time
   (`2020-01-01 00:00:00.000000000`), not a bare date;
 - a tz-aware column is written in its pandas string form, quoted

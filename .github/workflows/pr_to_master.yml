@@ -30,8 +30,19 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ['3.10', '3.11', '3.12', '3.13']
+        include:
+          - {os: ubuntu-latest, python-version: '3.11', pins: 'pandas==2.2.0 numpy==1.26.0 pyarrow==19.0.0 faker==28.4.1 "pyspark>=3.5,<4"'}
+          - {os: windows-latest, python-version: '3.11', pins: '"pyspark>=3.5,<4"'}
+          - {os: macos-latest, python-version: '3.11', pins: '"pyspark>=3.5,<4"'}
+          - {os: ubuntu-latest, python-version: '3.12', pins: '"pyspark>=4"'}
+          - {os: windows-latest, python-version: '3.12', pins: '"pyspark>=4"'}
+          - {os: macos-latest, python-version: '3.12', pins: '"pyspark>=4"'}
+          - {os: ubuntu-latest, python-version: '3.13', pins: '"pyspark>=4"'}
+          - {os: windows-latest, python-version: '3.13', pins: '"pyspark>=4"'}
+          - {os: macos-latest, python-version: '3.13', pins: '"pyspark>=4"'}
+          - {os: ubuntu-latest, python-version: '3.14', pins: '"pyspark>=4"'}
+          - {os: windows-latest, python-version: '3.14', pins: '"pyspark>=4"'}
+          - {os: macos-latest, python-version: '3.14', pins: '"pyspark>=4"'}
       fail-fast: false
     
     steps:
@@ -49,34 +60,18 @@ jobs:
           distribution: temurin
           java-version: '17'
       
-      - name: Install Poetry (Linux/macOS)
-        if: runner.os != 'Windows'
-        run: python -m pip install poetry==2.5.1
-        shell: bash
+      - name: Install package and pinned test stack
+        run: python -m pip install ".[faker]" pytest pytest-cov setuptools ${{ matrix.pins }}
+
+      - name: Print resolved versions
+        run: python -c "import numpy, pandas, pyarrow, faker, pyspark; print('numpy', numpy.__version__, 'pandas', pandas.__version__, 'pyarrow', pyarrow.__version__, 'faker', faker.VERSION, 'pyspark', pyspark.__version__)"
       
-      - name: Install Poetry (Windows)
-        if: runner.os == 'Windows'
-        run: python -m pip install poetry==2.5.1
-        shell: powershell
-      
-      - name: Cache Poetry dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/pypoetry
-            ~/AppData/Local/pypoetry/Cache
-            ~/Library/Caches/pypoetry
-          key: ${{ runner.os }}-poetry-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-poetry-${{ matrix.python-version }}-
-      
-      - name: Install dependencies
-        run: |
-          poetry install --with test --no-interaction
-      
+      - name: Install Poetry with pipx (wheel fixture)
+        run: pipx install poetry==2.5.1
+
       - name: Run tests with coverage
         run: |
-          poetry run pytest tests/ -v --cov=rand_engine --cov-report=xml --cov-report=term-missing
+          python -m pytest tests/ -v --cov=rand_engine --cov-report=xml --cov-report=term-missing
       
       - name: Upload coverage
         continue-on-error: true

@@ -1,5 +1,4 @@
 import ast
-import builtins
 import doctest
 import importlib
 import importlib.util
@@ -13,9 +12,7 @@ import subprocess
 import sys
 import tempfile
 import textwrap
-import warnings
 from pathlib import Path
-from types import SimpleNamespace
 
 try:
   import tomllib as TEST_TOML
@@ -117,13 +114,11 @@ def spark_outcome(spec) -> str:
   """How Spark validation treats a spec, in the table's vocabulary."""
   from rand_engine.validators.common_validator import CommonValidator
   from rand_engine.validators.exceptions import SpecValidationError
-  with warnings.catch_warnings(record=True) as caught:
-    warnings.simplefilter("always")
-    try:
-      CommonValidator.validate_spark_and_raise({"c": dict(spec)})
-    except SpecValidationError:
-      return "refused"
-  return "NULL + warning" if caught else "yes"
+  try:
+    CommonValidator.validate_spark_and_raise({"c": dict(spec)})
+  except SpecValidationError:
+    return "refused"
+  return "yes"
 
 
 def test_skill_method_table_lists_every_method():
@@ -133,10 +128,10 @@ def test_skill_method_table_lists_every_method():
 
 
 def test_skill_method_table_spark_column_is_what_validation_does():
-  """Each row's Spark cell (yes / refused / NULL + warning) is the outcome of Spark validation of that method's catalog example."""
+  """Each row's Spark cell (yes / refused) is the outcome of Spark validation of that method's catalog example."""
   from rand_engine.validators.method_specs import METHOD_CATALOG
   claimed = skill_method_table()
-  assert set(claimed.values()) <= {"yes", "refused", "NULL + warning"}
+  assert set(claimed.values()) <= {"yes", "refused"}
   actual = {name: spark_outcome(spec.example) for name, spec in METHOD_CATALOG.items()}
   assert {m: (claimed[m], actual[m]) for m in actual if claimed[m] != actual[m]} == {}
 
@@ -228,6 +223,14 @@ def test_links_resolve(name):
   repo = [u[len(REPO_BLOB):].split("#")[0].split("/", 1) for u in links if u.startswith(REPO_BLOB)]
   assert [b for b, _ in repo if b != PRINCIPAL] == []
   assert [p for _, p in repo if not (ROOT / p).is_file()] == []
+
+
+def test_published_docs_name_no_release_candidate_version():
+  """No release-candidate version string in what docs_site.py publishes: docs/ (data files too), README.md, llms.txt, skills/."""
+  files = [p for top in (DOCS, ROOT / "skills") for p in top.rglob("*") if p.is_file()] + [ROOT / "README.md", ROOT / "llms.txt"]
+  rc = re.compile(r"\d+\.\d+\.\d+rc\d+")
+  hits = [f"{p.relative_to(ROOT)}:{n}" for p in files for n, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1) if rc.search(line)]
+  assert hits == []
 
 
 NEW_METHODS = {"exponential", "lognormal", "poisson", "zipf", "constant"}
@@ -401,49 +404,21 @@ def test_spark_doc_executes_integer_boundaries(tmp_path, monkeypatch, spark_sess
   )
 
 
-def documented_correlated_spark_frames(tmp_path, monkeypatch):
-  """Run the Spark guide and retain real DataFrames made from correlated specs."""
-  from rand_engine import SparkGenerator
-  from rand_engine.validators.method_specs import CORRELATED, METHOD_CATALOG
-
-  frames = []
-  get_df = SparkGenerator.get_df
-
-  def record(self):
-    dataframe = get_df(self)
-    methods = {column["method"] for column in self.metadata.values()}
-    if any(METHOD_CATALOG[method].kind == CORRELATED for method in methods):
-      frames.append((self.metadata, dataframe))
-    return dataframe
-
-  monkeypatch.setattr(SparkGenerator, "get_df", record)
-  with warnings.catch_warnings(record=True) as caught:
-    warnings.simplefilter("always")
-    run_python_blocks(DOCS / "2_SPARK_GENERATOR.md", tmp_path, monkeypatch)
-  return frames, caught
-
-
-def test_spark_doc_executes_correlated_methods_as_null_strings(tmp_path, monkeypatch, spark_session):
-  """The Spark guide runs all correlated methods as warned NULL string columns."""
-  from rand_engine.validators.method_specs import CORRELATED, METHOD_CATALOG
-
-  frames, caught = documented_correlated_spark_frames(tmp_path, monkeypatch)
-  expected = {name for name, entry in METHOD_CATALOG.items() if entry.kind == CORRELATED}
-  observed = {
+def test_spark_doc_refuses_the_four_correlated_methods(tmp_path, monkeypatch, spark_session):
+  """The Spark guide's executed block shows SparkGenerator refusing each correlated method."""
+  refused = {
       column["method"]
-      for metadata, _ in frames
-      for column in metadata.values()
-      if column["method"] in expected
+      for spec, raised in documented_spark_specs("2_SPARK_GENERATOR.md", tmp_path, monkeypatch)
+      if raised
+      for column in spec.values()
   }
-  assert observed == expected
-  assert {method for method in expected if any(method in str(item.message) for item in caught)} == expected
-  for metadata, dataframe in frames:
-    assert 0 < dataframe.count() <= 10_000
-    for name, column in metadata.items():
-      if column["method"] in expected:
-        field = dataframe.schema[name]
-        assert field.dataType.typeName() == "string"
-        assert dataframe.where(dataframe[name].isNotNull()).count() == 0
+  assert refused >= {"distincts_map", "distincts_multi_map", "distincts_map_prop", "complex_distincts"}
+
+
+def test_no_doc_promises_null_columns_for_correlated_methods():
+  """The published surface holds no "NULL + warning" outcome for any method."""
+  files = [p for top in (DOCS, ROOT / "skills") for p in top.rglob("*") if p.is_file()] + [ROOT / "README.md", ROOT / "llms.txt"]
+  assert [str(p.relative_to(ROOT)) for p in files if "NULL + warning" in p.read_text(encoding="utf-8", errors="ignore")] == []
 
 
 def documented_builder_calls(tmp_path, monkeypatch):
@@ -934,18 +909,14 @@ def test_landing_contract(check):
   check()
 
 
-PREVIEW_SHA = "0123456789abcdef0123456789abcdef01234567"
 REPO_MASTER = f"{REPO_BLOB}{PRINCIPAL}/"
-SOURCE_ZIP = "https://github.com/marcoaureliomenezes/rand_engine/archive/"
-PREVIEW_NOTICE = "unreleased preview"
 
 
-def _prepare_docs(tmp_path, mode: str):
+def _prepare_docs(tmp_path):
   """Prepare one isolated documentation input and its public raw resources."""
-  output = tmp_path / mode
+  output = tmp_path / "prepared"
   result = subprocess.run(
-      [sys.executable, str(ROOT / "scripts" / "docs_site.py"), "prepare", "--mode", mode,
-       "--sha", PREVIEW_SHA, "--output", str(output)],
+      [sys.executable, str(ROOT / "scripts" / "docs_site.py"), "--output", str(output)],
       cwd=ROOT,
       capture_output=True,
       text=True,
@@ -964,64 +935,15 @@ def _prepared_texts(input_root: Path, public_root: Path) -> dict[str, str]:
           for path in paths}
 
 
-def _external_urls(texts: dict[str, str]) -> set[str]:
-  urls = set().union(*(set(re.findall(r"https://[^)\s`]+", text)) for text in texts.values()))
-  return {url for url in urls if not url.startswith(REPO_BLOB) and not url.startswith(SITE)}
-
-
-def test_docs_preparation_preview_binds_every_public_entry_to_one_reviewed_source(tmp_path):
-  """Preview preparation stages a truthful immutable source route without editing its inputs."""
-  source_paths = [README, ROOT / "llms.txt", SKILL, ROOT / "rand_engine" / "cases" / "agent.md.txt",
-                  ROOT / "mkdocs.yml", *sorted(DOCS.glob("**/*.md"))]
-  before = {path: path.read_bytes() for path in source_paths}
-  input_root, public_root = _prepare_docs(tmp_path, "preview")
-  assert {path: path.read_bytes() for path in source_paths} == before
-
-  texts = _prepared_texts(input_root, public_root)
-  raw_cases = public_root / "rand_engine" / "cases"
-  assert {path.name for path in raw_cases.glob("*")} == {case.resource for case in CASES.values()}
-  case_texts = {path.relative_to(public_root).as_posix(): _text(path) for path in raw_cases.glob("*")}
-  expected_zip = f"{SOURCE_ZIP}{PREVIEW_SHA}.zip"
-  preview_targets = {
-      f'"{expected_zip}"',
-      f'"rand-engine[faker] @ {expected_zip}"',
-  }
-  installs = [
-      target
-      for text in [*texts.values(), *case_texts.values()]
-      for target in re.findall(r"pip install\s+(\"[^\"]+\"|'[^']+'|[^\s`.,;)]+)", text)
-  ]
-  project_installs = [target for target in installs if "rand-engine" in target or SOURCE_ZIP in target]
-  assert all(PREVIEW_NOTICE in text.lower() for text in texts.values())
-  assert all(text.lower().index(PREVIEW_NOTICE) < text.index("pip install") for text in texts.values())
-  assert all(expected_zip in text for text in texts.values())
-  assert set(project_installs) <= preview_targets
-  assert f'"{expected_zip}"' in project_installs
-  assert f'"rand-engine[faker] @ {expected_zip}"' in project_installs
-  assert {target for target in installs if "kafka-python" in target} == {"kafka-python"}
-  assert all(REPO_MASTER not in text for text in texts.values())
-  assert all(f"{REPO_BLOB}{PREVIEW_SHA}/" in text for text in texts.values() if REPO_BLOB in text)
-
-  agent = (raw_cases / agent_case().resource).read_text(encoding="utf-8")
-  assert f"{SITE}getting-started/" in agent
-  assert f"{SITE}skills/rand-engine/SKILL.md" in agent
-  assert "pip install" not in agent
-
-  mirror = public_root / "skills" / "rand-engine" / "SKILL.md"
-  assert mirror.read_text(encoding="utf-8").startswith("---\n")
-  assert mirror.read_text(encoding="utf-8").split("---\n", 2)[1] == SKILL.read_text(encoding="utf-8").split("---\n", 2)[1]
-  canonical = {"README.md": _text(README), "llms.txt": _text(ROOT / "llms.txt"),
-               **{f"docs/{path.relative_to(DOCS).as_posix()}": _text(path) for path in DOCS.glob("**/*.md")},
-               "skills/rand-engine/SKILL.md": _text(SKILL)}
-  assert _external_urls(texts) >= _external_urls(canonical)
-
-
 def test_docs_preparation_stable_keeps_ordinary_install_and_principal_routes(tmp_path):
   """Stable preparation retains ordinary package installation and the principal source authority."""
-  input_root, public_root = _prepare_docs(tmp_path, "stable")
+  source_paths = [README, ROOT / "llms.txt", SKILL, ROOT / "mkdocs.yml", *sorted(DOCS.glob("**/*.md"))]
+  before = {path: path.read_bytes() for path in source_paths}
+  input_root, public_root = _prepare_docs(tmp_path)
+  assert {path: path.read_bytes() for path in source_paths} == before
   texts = _prepared_texts(input_root, public_root)
-  assert all(PREVIEW_NOTICE not in text.lower() for text in texts.values())
-  assert all(SOURCE_ZIP not in text for text in texts.values())
+  assert {path.name for path in (public_root / "rand_engine" / "cases").glob("*")} == {
+      case.resource for case in CASES.values()}
   assert any("pip install rand-engine" in text for text in texts.values())
   assert any(REPO_MASTER in text for text in texts.values())
   mirror = public_root / "skills" / "rand-engine" / "SKILL.md"
@@ -1038,29 +960,8 @@ def _docs_site_module():
   return module
 
 
-def _docs_site_module_without_toml_parser(monkeypatch):
-  """Load the authority with neither TOML parser importable."""
-  original_import = builtins.__import__
-  monkeypatch.delitem(sys.modules, "tomllib", raising=False)
-  monkeypatch.delitem(sys.modules, "tomli", raising=False)
-
-  def without_toml_parser(name, *args, **kwargs):
-    if name in {"tomllib", "tomli"}:
-      raise ModuleNotFoundError(name)
-    return original_import(name, *args, **kwargs)
-
-  monkeypatch.setattr(builtins, "__import__", without_toml_parser)
-  return _docs_site_module()
-
-
-def _docs_site_module_with_metadata_parser(monkeypatch):
-  """Load the metadata adapter with the test suite's real TOML parser."""
-  monkeypatch.setitem(sys.modules, "tomllib", TEST_TOML)
-  return _docs_site_module()
-
-
 def test_docs_site_preparation_works_without_tomllib_or_tomli(tmp_path):
-  """Preparation is standard-library-only when a Python 3.10 process has no TOML parser."""
+  """Preparation needs no TOML parser: it runs from the standard library alone when `tomllib` and `tomli` cannot be imported."""
   output = tmp_path / "prepared"
   script = textwrap.dedent(f"""
       import builtins
@@ -1075,7 +976,7 @@ def test_docs_site_preparation_works_without_tomllib_or_tomli(tmp_path):
       builtins.__import__ = without_toml_parser
       module = runpy.run_path({str(ROOT / "scripts" / "docs_site.py")!r})
       target = Path({str(output)!r})
-      module["prepare"]("stable", {PREVIEW_SHA!r}, target)
+      module["prepare"](target)
       assert (target / "input" / "mkdocs.yml").is_file()
   """)
   result = subprocess.run(
@@ -1083,229 +984,25 @@ def test_docs_site_preparation_works_without_tomllib_or_tomli(tmp_path):
   assert result.returncode == 0, result.stderr
 
 
-def test_docs_preview_without_a_toml_parser_skips_before_remote_reads(monkeypatch, tmp_path, capsys):
-  """An unknown local preview version is an explained successful skip, not a deployment failure."""
-  module = _docs_site_module_without_toml_parser(monkeypatch)
-
-  def unreadable_remote(*args, **kwargs):
-    raise AssertionError("unknown local preview version must skip before remote reads")
-
-  monkeypatch.setattr(module, "remote_project_version", unreadable_remote)
-  monkeypatch.setattr(module, "remote_ref", unreadable_remote)
-  output = tmp_path / "github-output"
-  assert module.check_deployment(SimpleNamespace(
-      event_name="push", ref="refs/heads/feature/0.8.0", sha=PREVIEW_SHA,
-      github_output=output)) == 0
-  values = dict(line.split("=", 1) for line in output.read_text(encoding="utf-8").splitlines())
-  assert values["mode"] == "skip"
-  assert values["reason"]
-  assert capsys.readouterr().out.startswith("skip: ")
+def test_compatibility_docs_state_the_supported_bounds():
+  """compatibility.md and 2_SPARK_GENERATOR.md state the Python range, the dependency bounds, the Spark legs and the refused methods."""
+  words = lambda path: " ".join(_text(path).split())
+  page = words(DOCS / "compatibility.md")
+  for expected in [
+      "requires Python 3.11 or newer", "tests Python 3.11 through 3.14",
+      "pandas `>=2.2,<4`", "pyarrow `>=19`", "numpy `>=1.26`", "Faker is uncapped",
+      "Spark 3.5 and 4.x", "Windows Spark skip",
+      "`distincts_map`, `distincts_map_prop`, `distincts_multi_map`, and `complex_distincts` are refused"]:
+    assert expected in page
+  assert "Python 3.10" not in page
+  spark = words(DOCS / "2_SPARK_GENERATOR.md")
+  assert "Python 3.11–3.14" in spark and "Python 3.10" not in spark
 
 
-def test_docs_master_deployment_bypasses_local_and_remote_metadata_reads(monkeypatch, tmp_path, capsys):
-  """Master remains stable when neither local nor remote preview metadata can be read."""
-  module = _docs_site_module_without_toml_parser(monkeypatch)
-
-  def unreadable(*args, **kwargs):
-    raise AssertionError("master deployment must not read preview metadata")
-
-  monkeypatch.setattr(module, "local_project_version", unreadable)
-  monkeypatch.setattr(module, "remote_project_version", unreadable)
-  monkeypatch.setattr(module, "remote_ref", unreadable)
-  output = tmp_path / "github-output"
-  assert module.check_deployment(SimpleNamespace(
-      event_name="push", ref="refs/heads/master", sha=PREVIEW_SHA,
-      github_output=output)) == 0
-  assert output.read_text(encoding="utf-8") == "mode=stable\nreason=\n"
-  assert capsys.readouterr().out == "stable\n"
-
-
-def test_docs_local_project_metadata_reads_with_an_available_parser(monkeypatch):
-  """The metadata adapter reads the current project version when its parser is available."""
-  module = _docs_site_module_with_metadata_parser(monkeypatch)
-  assert module.local_project_version() == "0.8.0"
-
-
-def _remote_metadata_runner(metadata: str):
-  """Return a subprocess boundary that serves one remote master metadata file."""
-  calls = []
-
-  def run(args, **kwargs):
-    calls.append(args)
-    if args[:3] == ["git", "ls-remote", "--refs"]:
-      ref = args[-1]
-      sha = "a" * 40 if ref == "refs/heads/master" else PREVIEW_SHA
-      return subprocess.CompletedProcess(args, 0, stdout=f"{sha}\t{ref}\n")
-    if args[:3] == ["git", "fetch", "--no-tags"]:
-      return subprocess.CompletedProcess(args, 0, stdout="")
-    if args[:2] == ["git", "show"]:
-      return subprocess.CompletedProcess(args, 0, stdout=metadata)
-    raise AssertionError(args)
-
-  return run, calls
-
-
-@pytest.mark.parametrize("metadata", [
-    '[project]\nversion = "0.7.0"\n',
-    '[tool.poetry]\nversion = "0.7.0"\n',
-])
-def test_docs_deployment_eligibility_accepts_supported_remote_metadata(
-    monkeypatch, tmp_path, capsys, metadata):
-  """Each supported remote metadata declaration permits the exact preview pair."""
-  module = _docs_site_module_with_metadata_parser(monkeypatch)
-  run, calls = _remote_metadata_runner(metadata)
-  monkeypatch.setattr(module.subprocess, "run", run)
-  output = tmp_path / "github-output"
-
-  assert module.check_deployment(SimpleNamespace(
-      event_name="push", ref="refs/heads/feature/0.8.0", sha=PREVIEW_SHA,
-      github_output=output)) == 0
-
-  values = dict(line.split("=", 1) for line in output.read_text(encoding="utf-8").splitlines())
-  assert values == {"mode": "preview", "reason": ""}
-  assert capsys.readouterr().out == "preview\n"
-  assert any(args[:2] == ["git", "show"] for args in calls)
-
-
-@pytest.mark.parametrize("metadata", [
-    'project = "malformed"\n',
-    'tool = "malformed"\n',
-    '[tool]\npoetry = "malformed"\n',
-    "",
-    "[project]\nversion = 7\n",
-    "[tool.poetry]\nversion = 7\n",
-])
-def test_docs_deployment_eligibility_skips_unknown_remote_metadata(
-    monkeypatch, tmp_path, capsys, metadata):
-  """Missing, malformed or non-string remote metadata has an observable successful skip."""
-  module = _docs_site_module_with_metadata_parser(monkeypatch)
-  run, calls = _remote_metadata_runner(metadata)
-  monkeypatch.setattr(module.subprocess, "run", run)
-  output = tmp_path / "github-output"
-
-  assert module.check_deployment(SimpleNamespace(
-      event_name="push", ref="refs/heads/feature/0.8.0", sha=PREVIEW_SHA,
-      github_output=output)) == 0
-
-  values = dict(line.split("=", 1) for line in output.read_text(encoding="utf-8").splitlines())
-  assert values["mode"] == "skip"
-  assert values["reason"]
-  assert capsys.readouterr().out.startswith("skip: ")
-  assert any(args[:2] == ["git", "show"] for args in calls)
-
-
-def _deployment_eligibility(*, event_name="push", ref="refs/heads/feature/0.8.0",
-                            sha=PREVIEW_SHA, project_version="0.8.0",
-                            master_version="0.7.0", feature_sha=PREVIEW_SHA,
-                            master_error=None, feature_error=None):
-  """Evaluate a deployment with literal, observable remote-ref fixtures."""
-  calls = []
-
-  def read_remote_project_version(remote_ref):
-    calls.append(("version", remote_ref))
-    if master_error is not None:
-      raise master_error
-    return master_version
-
-  def read_remote_ref(remote_ref):
-    calls.append(("ref", remote_ref))
-    if feature_error is not None:
-      raise feature_error
-    return feature_sha
-
-  decision = _docs_site_module().deployment_eligibility(
-      event_name=event_name,
-      ref=ref,
-      sha=sha,
-      project_version=project_version,
-      read_remote_project_version=read_remote_project_version,
-      read_remote_ref=read_remote_ref,
-  )
-  return decision, calls
-
-
-def _assert_skip(decision):
-  assert decision.mode == "skip"
-  assert decision.reason
-
-
-@pytest.mark.parametrize("event_name, ref", [
-    ("pull_request", "refs/pull/45/merge"),
-    ("workflow_dispatch", "refs/heads/feature/0.8.0"),
-    ("push", "refs/heads/feature/0.8"),
-    ("push", "refs/heads/feature/0.8.0-next"),
-    ("push", "refs/tags/0.8.0"),
-])
-def test_docs_deployment_eligibility_skips_every_non_deploy_event_or_ref(event_name, ref):
-  """Only the two exact pushed branch refs may reach a Pages deployment."""
-  decision, calls = _deployment_eligibility(event_name=event_name, ref=ref)
-  _assert_skip(decision)
-  assert calls == []
-
-
-def test_docs_deployment_eligibility_accepts_only_the_fresh_matching_preview_pair():
-  """An exact preview reads both remote facts and accepts one matching revision."""
-  decision, calls = _deployment_eligibility()
-  assert decision.mode == "preview"
-  assert decision.reason is None
-  assert set(calls) == {
-      ("version", "refs/heads/master"),
-      ("ref", "refs/heads/feature/0.8.0"),
-  }
-
-
-@pytest.mark.parametrize("project_version", ["", "0.7.0", "0.8.0rc4", "0.8.1"])
-def test_docs_deployment_eligibility_skips_a_preview_without_the_exact_own_version(project_version):
-  """A preview must identify exactly the unreleased source it is about to publish."""
-  decision, calls = _deployment_eligibility(project_version=project_version)
-  _assert_skip(decision)
-  assert calls == []
-
-
-@pytest.mark.parametrize("master_version", [None, "", "0.8.0", "0.8.1", "0.7.0rc4"])
-def test_docs_deployment_eligibility_skips_missing_or_different_remote_master_version(master_version):
-  """A preview stops when the freshly read stable branch is not the expected release."""
-  decision, calls = _deployment_eligibility(master_version=master_version)
-  _assert_skip(decision)
-  assert ("version", "refs/heads/master") in calls
-
-
-def test_docs_deployment_eligibility_skips_an_unreadable_remote_master_version():
-  """A remote read failure is a successful, explained deployment skip."""
-  decision, calls = _deployment_eligibility(master_error=OSError("remote unavailable"))
-  _assert_skip(decision)
-  assert ("version", "refs/heads/master") in calls
-
-
-@pytest.mark.parametrize("feature_sha", [None, "", "f" * 40])
-def test_docs_deployment_eligibility_skips_a_missing_or_stale_remote_feature_head(feature_sha):
-  """A queued preview cannot deploy after its reviewed feature head has changed."""
-  decision, calls = _deployment_eligibility(feature_sha=feature_sha)
-  _assert_skip(decision)
-  assert set(calls) == {
-      ("version", "refs/heads/master"),
-      ("ref", "refs/heads/feature/0.8.0"),
-  }
-
-
-def test_docs_deployment_eligibility_skips_an_unreadable_remote_feature_head():
-  """A feature-ref read failure is a successful, explained deployment skip."""
-  decision, calls = _deployment_eligibility(feature_error=OSError("remote unavailable"))
-  _assert_skip(decision)
-  assert set(calls) == {
-      ("version", "refs/heads/master"),
-      ("ref", "refs/heads/feature/0.8.0"),
-  }
-
-
-def test_docs_deployment_eligibility_keeps_master_deployment_outside_preview_checks():
-  """Master remains deployable without a preview version-pair or remote-read dependency."""
-  decision, calls = _deployment_eligibility(
-      ref="refs/heads/master",
-      project_version="not-a-preview-version",
-      master_error=AssertionError("stable deployment must not read preview state"),
-      feature_error=AssertionError("stable deployment must not read preview state"),
-  )
-  assert decision.mode == "stable"
-  assert decision.reason is None
-  assert calls == []
+def test_docs_workflow_deploys_pages_from_master_only():
+  """The deploy job's gate and the whole workflow name master as the only deploying branch."""
+  text = _text(ROOT / ".github" / "workflows" / "docs.yml")
+  deploy = re.search(r"^  deploy:\n(?:    .*\n|\n)*", text, re.M).group(0)
+  gate = re.search(r"^    if: (.*)$", deploy, re.M).group(1)
+  assert gate == "github.event_name == 'push' && github.ref == 'refs/heads/master'"
+  assert set(re.findall(r"refs/heads/[\w./-]+", text)) == {"refs/heads/master"}

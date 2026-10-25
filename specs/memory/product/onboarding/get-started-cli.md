@@ -25,7 +25,7 @@ sources:
 | `test-data` | a DataFrame for pipeline tests with `null_rate` and `anomaly_rate` ([[generation-methods]]) |
 | `lake` | `pk`/`fk` related tables written as Parquet under `lake/` in the run directory, read back and joined ([[pk-fk-constraints]], [[writers-and-streaming]]) |
 | `kafka` | an event stream printed as JSON lines; a Kafka producer block runs only when the file's `SEND_TO_KAFKA` constant is set to `True`, so no broker or client is needed by default ([[data-generator]]) |
-| `databricks` | a Spark notebook on native `SparkGenerator`, with a note on `DataGenerator`-only features and the `spark.createDataFrame` path ([[spark-generator]]) |
+| `databricks` | a Spark notebook on native `SparkGenerator`, with a note on `DataGenerator`-only features and the `spark.createDataFrame` path, which enables Spark's Arrow option first so `pd.NA` text nulls convert ([[spark-generator]]) |
 | `faker` | Faker pools sampled at NumPy speed through `RandSpecs.faker_pool`; needs the `rand-engine[faker]` extra ([[templates-and-examples]]) |
 | `agent` | concise rand-engine package-use guidance written to `AGENTS.md` for a consuming project; it is context for an agent, not an executable tutorial ([[documentation]]) |
 
@@ -33,4 +33,4 @@ sources:
 
 - Each runnable scaffold starts with `# Databricks notebook source` and separates cells with `# COMMAND ----------`; both are comments, so the file imports into Databricks and runs with `python <file>`.
 - Runnable scaffolds use synthetic data only, generate at most 10^4 rows and write only beneath the directory they run in. Each docs-site tutorial includes its case file verbatim, so the page and the CLI output cannot diverge ([[documentation]]).
-- The Agent resource is Markdown. It routes installation, compatibility and the first result to the live Getting started guide; gives supported imports, a first `DataGenerator` path and the `SparkGenerator` boundary; and links the public machine guide and generated mirror of the canonical Agent Skill. It tells a user to preserve and merge existing project instructions, and never executes as Python.
+- The Agent resource is Markdown. It routes installation, compatibility and the first result to the live Getting started guide; gives supported imports, a first `DataGenerator` path and the `SparkGenerator` boundary; and links the public machine guide and the published copy of the canonical Agent Skill. It tells a user to preserve and merge existing project instructions, and never executes as Python.

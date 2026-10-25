@@ -2,10 +2,12 @@ from random import randint
 import pickle
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 import time
 import pytest
 from rand_engine.main.data_generator import DataGenerator
 from rand_engine.validators.exceptions import RandEngineError
+from tests.conftest import natural_datetime_unit
 from tests.fixtures.f1_right_specs import (
     rand_spec_with_kwargs,
     rand_spec_with_args,
@@ -354,11 +356,11 @@ def test_modifier_anomaly_write_never_touches_caller_array_or_sibling_column():
   assert df["sibling"].tolist() == [0, 1, 2, 3, 4]
 
 
-@pytest.mark.parametrize("source, anomaly", [
-  ("base", "replacement"),
-  (None, "replacement"),
+@pytest.mark.parametrize("source, anomaly, expected_dtype", [
+  ("base", "replacement", "string[pyarrow]"),
+  (None, "replacement", "object"),
 ])
-def test_modifier_anomaly_accepts_compatible_object_scalars(source, anomaly):
+def test_modifier_anomaly_accepts_compatible_object_scalars(source, anomaly, expected_dtype):
   spec = {
     "value": {
       "method": "constant",
@@ -371,7 +373,7 @@ def test_modifier_anomaly_accepts_compatible_object_scalars(source, anomaly):
   series = DataGenerator(spec, seed=2026).size(4).get_df()["value"]
 
   assert series.tolist() == ["replacement", "replacement", "replacement", "replacement"]
-  assert str(series.dtype) == "object"
+  assert str(series.dtype) == expected_dtype
 
 
 def test_modifier_null_mask_runs_last_and_wins_on_overlap():
@@ -430,11 +432,11 @@ def test_modifier_object_nulls_are_literal_python_none():
 
   series = DataGenerator(spec, seed=2026).size(3).get_df()["value"]
 
-  assert series.tolist() == [None, None, None]
-  assert str(series.dtype) == "object"
+  assert series.tolist() == [pd.NA, pd.NA, pd.NA]
+  assert str(series.dtype) == "string[pyarrow]"
 
 
-def test_modifier_transformed_string_nulls_are_literal_python_none_objects():
+def test_modifier_transformed_string_nulls_are_pd_na():
   spec = {
     "value": {
       "method": "constant",
@@ -450,8 +452,8 @@ def test_modifier_transformed_string_nulls_are_literal_python_none_objects():
     .get_df()["value"]
   )
 
-  assert series.tolist() == [None, None, None]
-  assert str(series.dtype) == "object"
+  assert series.tolist() == [pd.NA, pd.NA, pd.NA]
+  assert str(series.dtype) == "string"
 
 
 def test_modifier_pipeline_orders_embedded_global_then_anomaly():
@@ -485,9 +487,9 @@ def test_modifier_pipeline_orders_embedded_global_then_anomaly():
     "dates",
     {"start": "2026-01-01", "end": "2026-01-02", "date_format": "%Y-%m-%d"},
     [pd.Timestamp],
-    "datetime64[ns]",
+    f"datetime64[{natural_datetime_unit()}]",
   ),
-  ("constant", {"value": "fixed"}, [], "object"),
+  ("constant", {"value": "fixed"}, [], "string[pyarrow]"),
 ])
 def test_modifier_null_rate_one_uses_dtype_specific_missing_values(
   method, kwargs, transformers, expected_dtype,
@@ -570,7 +572,7 @@ GOLDEN_SHA256 = {
   "lognormal": "ab772e854c1ceb974d6b775fd4b1604c914d07621845dcbc6a8a12eb026462f7",
   "poisson": "5020a7c5c747a757af286e15f94299fb2c3452a7b85e919d1896deb009f3ff92",
   "zipf": "2afdf432ca2b874bab1dbca068d2dd123089658693c4e88deb7c1446f2cd1f02",
-  "constant": "411ebd46841c12b29e52f61150826e52f95eecf167c1ad91facbf3d352a78784",
+  "constant": "68a0959e5b03e1ce29df5d9238b1499c66228bff6fced2572bf9dd2656957820",
   "distincts": "9ed5a4bc7ab4166a007da955731e00f82080182feb6507edec09d7406c3376e2",
   "distincts_prop": "a551262b37e7743f62bf46d60fe60b13dc9fa5ca000ca3d62f589d0bf250d0dc",
   "unix_timestamps": "4dbe45709175a998c32b04c4617677ee5cf6933e60b61ee3f56a467cea23f9f6",
@@ -605,3 +607,63 @@ def test_golden_multi_column_draw_order():
   from benchmarks.speed import SINK_SPEC
   df = DataGenerator(SINK_SPEC, seed=42).size(10**3).get_df()
   assert hashlib.sha256(json.dumps(df.to_dict("list")).encode()).hexdigest() == "3b0464af85f501117a2be790d55ac1bd856a004f6745f781d317dabcc9dcb10f"
+
+
+def test_every_generated_text_column_is_arrow():
+  from benchmarks.speed import COLS, SAMPLE_KWARGS
+  arrow = pd.ArrowDtype(pa.string())
+  text = ["int_zfilled", "distincts", "distincts_prop", "uuid4", "dates", "complex_distincts"]
+  spec = {m: {"method": m, "kwargs": SAMPLE_KWARGS[m]} for m in text}
+  spec["constant"] = {"method": "constant", "kwargs": {"value": "x"}}
+  for m, cols in COLS.items():
+    spec[m] = {"method": m, "cols": cols, "kwargs": SAMPLE_KWARGS[m]}
+  spec["pk"] = {"method": "pk", "kwargs": {"style": "sequence", "start": 1, "step": 1, "format": "id-{}"}}
+  spec["fk"] = {"method": "fk", "kwargs": {"parent": spec["pk"], "parent_size": 10}}
+  df = DataGenerator(spec, seed=1).size(20).get_df()
+  expected = {m: arrow for m in text + ["constant", "pk", "fk"]}
+  expected.update({c: arrow for cols in COLS.values() for c in cols})
+  assert df.dtypes.to_dict() == expected
+
+
+def test_non_text_columns_keep_their_dtype():
+  spec = {
+    "i": {"method": "integers", "kwargs": {"min": 0, "max": 9, "int_type": "int64"}},
+    "f": {"method": "floats", "kwargs": {"min": 0, "max": 9, "decimals": 2}},
+    "b": {"method": "booleans", "kwargs": {"true_prob": 0.5}},
+    "k": {"method": "constant", "kwargs": {"value": 1}},
+    "pk": {"method": "pk", "kwargs": {"style": "sequence", "start": 1, "step": 1}},
+    "ts": {"method": "unix_timestamps", "kwargs": {"start": "2020-01-01", "end": "2020-12-31", "date_format": "%Y-%m-%d"}},
+    "mixed": {"method": "distincts_prop", "kwargs": {"distincts": {"a": 1, 2: 1}}},
+  }
+  df = DataGenerator(spec, seed=1).size(20).get_df()
+  assert df.dtypes.astype(str).to_dict() == {
+    "i": "int64", "f": "float64", "b": "bool", "k": "int64", "pk": "int64", "ts": "int64", "mixed": "string[pyarrow]"}
+  assert {v for v in df["mixed"]} == {"a", "2"}
+
+
+def test_text_null_rate_writes_pd_na_and_keeps_arrow():
+  spec = {"v": {"method": "constant", "kwargs": {"value": "fixed"}, "null_rate": 0.5}}
+
+  series = DataGenerator(spec, seed=2026).size(8).get_df()["v"]
+
+  assert [v is pd.NA for v in series] == [True, False, True, True, True, False, False, True]
+  assert [v for v in series if v is not pd.NA] == ["fixed", "fixed", "fixed"]
+  assert series.dtype == pd.ArrowDtype(pa.string())
+
+
+def test_text_anomaly_rate_keeps_arrow():
+  spec = {"v": {"method": "constant", "kwargs": {"value": "fixed"}, "anomaly_rate": 0.5, "anomaly_values": ["odd"]}}
+
+  series = DataGenerator(spec, seed=2026).size(8).get_df()["v"]
+
+  assert series.tolist() == ["odd", "fixed", "odd", "odd", "odd", "fixed", "fixed", "odd"]
+  assert series.dtype == pd.ArrowDtype(pa.string())
+
+
+def test_stream_dict_text_null_is_python_none():
+  from itertools import islice
+  spec = {"v": {"method": "constant", "kwargs": {"value": "fixed"}, "null_rate": 0.5}}
+
+  rows = list(islice(DataGenerator(spec, seed=2026).size(8).stream_dict(1000, 1000), 8))
+
+  assert [r["v"] for r in rows] == [None, "fixed", None, None, None, "fixed", "fixed", None]

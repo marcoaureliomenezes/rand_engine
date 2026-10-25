@@ -1,3 +1,4 @@
+import hashlib
 import gzip
 import json
 from datetime import datetime, timezone
@@ -434,3 +435,84 @@ def test_callable_spec_is_evaluated_once_per_final_file(
 
     assert (error, calls) == (None, expected_calls)
 
+
+
+ALL_METHODS_SPEC = {
+    "uuid": {"method": "uuid4", "kwargs": {}},
+    "code": {"method": "int_zfilled", "kwargs": {"length": 8}},
+    "day": {"method": "dates", "kwargs": {"start": "2024-01-01", "end": "2024-12-31", "date_format": "%Y-%m-%d"}},
+    "ip": {
+        "method": "complex_distincts",
+        "kwargs": {
+            "pattern": "x.x.x.x",
+            "replacement": "x",
+            "templates": [
+                {"method": "distincts", "kwargs": {"distincts": ["192", "172", "10"]}},
+                {"method": "integers", "kwargs": {"min": 0, "max": 255}},
+                {"method": "integers", "kwargs": {"min": 0, "max": 255}},
+                {"method": "integers", "kwargs": {"min": 1, "max": 254}},
+            ],
+        },
+    },
+    "device_os": {
+        "method": "distincts_map",
+        "cols": ["device", "os"],
+        "kwargs": {"distincts": {"mobile": ["android", "ios"], "desktop": ["windows", "macos", "linux"]}},
+    },
+    "trade_details": {
+        "method": "distincts_map_prop",
+        "cols": ["trade_type", "trade_side"],
+        "kwargs": {"distincts": {"EQUITY": [("BUY", 6), ("SELL", 4)], "FX": [("BUY", 5), ("SELL", 5)]}},
+    },
+    "company_data": {
+        "method": "distincts_multi_map",
+        "cols": ["industry", "sub_industry", "company_size"],
+        "kwargs": {"distincts": {"tech": [["software", "hardware"], ["small", "medium", "large"]]}},
+    },
+    "category": {"method": "distincts", "kwargs": {"distincts": ["A", "B", "C"]}},
+    "tier": {"method": "distincts_prop", "kwargs": {"distincts": {"gold": 10, "silver": 30, "bronze": 60}}},
+    "fixed": {"method": "constant", "kwargs": {"value": "fixed"}},
+}
+TEXT_COLUMNS = [
+    "uuid", "code", "day", "ip", "device", "os", "trade_type", "trade_side",
+    "industry", "sub_industry", "company_size", "category", "tier", "fixed",
+]
+# SHA-256 of the files written by the closed 0.8.0 release.
+GUARD_SHA256 = {
+    "csv": "322794c12b31ae617174e036a03892b3b31ad6a90feaa52f744a86d3e2c8fe06",
+    "json": "968f1dafdd92cafafce7dd8e4572019c5e2ac594aed011c80cff531dd71ce2e9",
+}
+
+
+def _write_all_methods(tmp_path, format_type):
+    generator = DataGenerator(ALL_METHODS_SPEC, seed=7).size(50)
+    path = tmp_path / format_type
+    assert _save(generator, path, format_type) is None
+    return generator, _single_output(path)
+
+
+@pytest.mark.parametrize("format_type", ["csv", "json"])
+def test_all_methods_csv_json_bytes_equal_0_8_0(tmp_path, format_type):
+    """The written bytes hash to the literals recorded from the 0.8.0 release."""
+    _, output = _write_all_methods(tmp_path, format_type)
+
+    assert hashlib.sha256(output.read_bytes()).hexdigest() == GUARD_SHA256[format_type]
+
+
+def test_all_methods_parquet_values_and_string_type_unchanged_and_reads_back_arrow(tmp_path):
+    """Values and the BYTE_ARRAY/String type match 0.8.0; Arrow read-back keeps the frame dtype."""
+    _, output = _write_all_methods(tmp_path, "parquet")
+    frame = DataGenerator(ALL_METHODS_SPEC, seed=7).size(50).get_df()
+
+    schema = pq.ParquetFile(output).schema
+    for column in TEXT_COLUMNS:
+        parquet_column = schema.column(schema.names.index(column))
+        assert parquet_column.physical_type == "BYTE_ARRAY"
+        assert parquet_column.logical_type.type == "STRING"
+    default = pd.read_parquet(output)
+    assert default[TEXT_COLUMNS].values.tolist() == frame[TEXT_COLUMNS].values.tolist()
+
+    arrow = pd.read_parquet(output, dtype_backend="pyarrow")
+    for column in TEXT_COLUMNS:
+        assert arrow[column].tolist() == frame[column].tolist()
+        assert arrow[column].dtype == frame[column].dtype

@@ -50,7 +50,7 @@ The sixth starter is an optional project context for an agent that uses rand-eng
 rand-engine get-started agent --out PROJECT
 ```
 
-It writes only `PROJECT/AGENTS.md`. This starter begins in 0.8.0; it is not in the published 0.8.0rc4 wheel. Existing project instructions are preserved: review both files and merge the package-use context into the project's own rules.
+It writes only `PROJECT/AGENTS.md`. This starter begins in 0.8.0. Existing project instructions are preserved: review both files and merge the package-use context into the project's own rules.
 
 Choose [Writing files](3_WRITING_FILES.md) for a direct file writer, [Keys](4_CONSTRAINTS.md) for
 related tables, and [Recipes](5_RECIPES.md) for the runnable Kafka-or-queue and Parquet patterns.

@@ -86,17 +86,17 @@ Every method below runs on `DataGenerator` (NumPy). The last column says whether
 | `poisson` | — | `lam` | — | counts | refused |
 | `zipf` | — | `a` | — | rank-skewed ints | refused |
 | `constant` | `value` | — | — | the same scalar in every row | refused |
-| `distincts_map` | `distincts` | — | `cols` | correlated key/value columns | NULL + warning |
-| `distincts_map_prop` | `distincts` | — | `cols` | weighted correlated pair | NULL + warning |
-| `distincts_multi_map` | `distincts` | — | `cols` | correlated columns, one per level | NULL + warning |
-| `complex_distincts` | `pattern`, `replacement`, `templates` | — | — | strings built from templates | NULL + warning |
+| `distincts_map` | `distincts` | — | `cols` | correlated key/value columns | refused |
+| `distincts_map_prop` | `distincts` | — | `cols` | weighted correlated pair | refused |
+| `distincts_multi_map` | `distincts` | — | `cols` | correlated columns, one per level | refused |
+| `complex_distincts` | `pattern`, `replacement`, `templates` | — | — | strings built from templates | refused |
 | `pk` | — | `style`, `start`, `step`, `domain`, `key`, `format` | — | unique keys | yes |
 | `fk` | `parent`, `parent_size` | `skew`, `born_before` | — | references to parent keys | yes |
 
 **Column fields** are required keys outside `kwargs`. Only the three map methods require `cols`;
 `null_rate`, `anomaly_rate`, and `anomaly_values` are global NumPy-only modifiers.
 
-`dates` `date_format` accepts `%Y %m %d %H %M %S %f` only. Spark refuses `uint64` and integer domains wider than 2**53; it also refuses `int_zfilled` length 16 or above. The four correlated methods validate with a warning and give a NULL column. `null_rate` and `anomaly_rate` are NumPy only. `RandSpecs.faker_pool("name", locale="pt_BR", pool_size=500, seed=0)` returns a `distincts` spec and needs `rand-engine[faker]`; `RandSpecs.from_schema(arrow_schema, overrides={...})` builds a validated RandSpec from supported Arrow families. For the complete boundaries, factory inventory and runnable examples, see the [method guide](https://marcoaureliomenezes.github.io/rand_engine/1_DATA_GENERATOR/) and [recipes](https://marcoaureliomenezes.github.io/rand_engine/5_RECIPES/).
+`dates` `date_format` accepts `%Y %m %d %H %M %S %f` only. Spark refuses `uint64` and integer domains wider than 2**53; it also refuses `int_zfilled` length 16 or above. The four correlated methods are refused by Spark with `SpecValidationError`. `null_rate` and `anomaly_rate` are NumPy only. `RandSpecs.faker_pool("name", locale="pt_BR", pool_size=500, seed=0)` returns a `distincts` spec and needs `rand-engine[faker]`; `RandSpecs.from_schema(arrow_schema, overrides={...})` builds a validated RandSpec from supported Arrow families. For the complete boundaries, factory inventory and runnable examples, see the [method guide](https://marcoaureliomenezes.github.io/rand_engine/1_DATA_GENERATOR/) and [recipes](https://marcoaureliomenezes.github.io/rand_engine/5_RECIPES/).
 
 ## Related tables: pk and fk
 

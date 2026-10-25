@@ -22,7 +22,6 @@ jobs:
     outputs:
       version: ${{ steps.extract_version.outputs.version }}
       tag_exists: ${{ steps.check_tag.outputs.tag_exists }}
-      latest_rc: ${{ steps.find_rc.outputs.latest_rc }}
     
     steps:
       - name: Checkout code
@@ -52,19 +51,6 @@ jobs:
             echo "tag_exists=false" >> $GITHUB_OUTPUT
             echo "✅ Tag $VERSION does not exist yet"
           fi
-      
-      - name: Find latest RC tag
-        id: find_rc
-        run: |
-          VERSION="${{ steps.extract_version.outputs.version }}"
-          LATEST_RC=$(git tag -l "${VERSION}rc*" | grep -E "^${VERSION}rc[0-9]+$" | sort -V | tail -1 || echo "")
-          if [ -n "$LATEST_RC" ]; then
-            echo "latest_rc=$LATEST_RC" >> $GITHUB_OUTPUT
-            echo "📋 Latest RC tag found: $LATEST_RC"
-          else
-            echo "latest_rc=" >> $GITHUB_OUTPUT
-            echo "📋 No RC tags found for version $VERSION"
-          fi
 
   # Job 2: Run tests
   test:
@@ -74,7 +60,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.10', '3.11', '3.12', '3.13']
+        include:
+          - {python-version: '3.11', pins: 'pandas==2.2.0 numpy==1.26.0 pyarrow==19.0.0 faker==28.4.1 "pyspark>=3.5,<4"'}
+          - {python-version: '3.12', pins: '"pyspark>=4"'}
+          - {python-version: '3.13', pins: '"pyspark>=4"'}
+          - {python-version: '3.14', pins: '"pyspark>=4"'}
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
@@ -86,12 +76,14 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Install Poetry
-        run: python -m pip install poetry==2.5.1
-      - name: Install dependencies
-        run: poetry install --with test --no-interaction
+      - name: Install package and pinned test stack
+        run: python -m pip install ".[faker]" pytest pytest-cov setuptools ${{ matrix.pins }}
+      - name: Print resolved versions
+        run: python -c "import numpy, pandas, pyarrow, faker, pyspark; print('numpy', numpy.__version__, 'pandas', pandas.__version__, 'pyarrow', pyarrow.__version__, 'faker', faker.VERSION, 'pyspark', pyspark.__version__)"
+      - name: Install Poetry with pipx (wheel fixture)
+        run: pipx install poetry==2.5.1
       - name: Run tests
-        run: poetry run pytest tests/ -v
+        run: python -m pytest tests/ -v
 
   # Job 3: Build and validate
   build:
@@ -122,30 +114,10 @@ jobs:
           name: dist-production-${{ needs.prepare.outputs.version }}
           path: dist/
 
-  # Job 4: Create production tag
-  create_tag:
-    name: Create Production Tag
-    needs: [prepare, build]
-    if: needs.prepare.outputs.tag_exists == 'false'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Create and push tag
-        run: |
-          VERSION="${{ needs.prepare.outputs.version }}"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "$VERSION" -m "Production Release $VERSION"
-          git push origin "$VERSION"
-
-  # Job 5: Publish to PyPI
+  # Job 4: Publish to PyPI (operator approves the production environment)
   publish_pypi:
     name: Publish to PyPI (Production)
-    needs: [prepare, build, create_tag]
+    needs: [prepare, build]
     if: needs.prepare.outputs.tag_exists == 'false'
     runs-on: ubuntu-latest
     environment:
@@ -162,10 +134,30 @@ jobs:
           packages-dir: dist/
           verbose: true
 
+  # Job 5: Create production tag (only after the publish has passed)
+  create_tag:
+    name: Create Production Tag
+    needs: [prepare, build, publish_pypi]
+    if: needs.prepare.outputs.tag_exists == 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Create and push tag
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$VERSION" -m "Production Release $VERSION"
+          git push origin "$VERSION"
+
   # Job 6: Create GitHub Release
   create_github_release:
     name: Create GitHub Release
-    needs: [prepare, build, create_tag, publish_pypi]
+    needs: [prepare, build, create_tag]
     if: needs.prepare.outputs.tag_exists == 'false'
     runs-on: ubuntu-latest
     permissions:
@@ -183,18 +175,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"
-          LATEST_RC="${{ needs.prepare.outputs.latest_rc }}"
-          
-          NOTES="## 🚀 Production Release v$VERSION"
-          if [ -n "$LATEST_RC" ]; then
-            NOTES="$NOTES
-
-          Promoted from Release Candidate: **$LATEST_RC**"
-          fi
-          
           gh release create "$VERSION" dist/* \
             --title "🚀 Release v$VERSION" \
-            --notes "$NOTES" \
+            --notes "## 🚀 Production Release v$VERSION" \
             --latest
 
   # Job 7: Deployment Summary
@@ -207,8 +190,7 @@ jobs:
       - name: Generate Deployment Summary
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"
-          LATEST_RC="${{ needs.prepare.outputs.latest_rc }}"
-          
+
           echo "# 🎉 Production Deployment Complete!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
@@ -218,13 +200,6 @@ jobs:
           echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| **Production Version** | \`$VERSION\` |" >> $GITHUB_STEP_SUMMARY
-          
-          if [ -n "$LATEST_RC" ]; then
-            echo "| **Promoted from RC** | \`$LATEST_RC\` |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "| **Promoted from RC** | _No RC found_ |" >> $GITHUB_STEP_SUMMARY
-          fi
-          
           echo "| **Git Tag** | [\`$VERSION\`](https://github.com/${{ github.repository }}/releases/tag/$VERSION) |" >> $GITHUB_STEP_SUMMARY
           echo "| **Triggered by** | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -237,8 +212,8 @@ jobs:
           echo "| 1️⃣ Prepare | ${{ needs.prepare.result == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 2️⃣ Tests | ${{ needs.test.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 3️⃣ Build Package | ${{ needs.build.result == 'success' && '✅ Built' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 4️⃣ Create Tag | ${{ needs.create_tag.result == 'success' && '✅ Created' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 5️⃣ Publish PyPI | ${{ needs.publish_pypi.result == 'success' && '✅ Published' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 4️⃣ Publish PyPI | ${{ needs.publish_pypi.result == 'success' && '✅ Published' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 5️⃣ Create Tag | ${{ needs.create_tag.result == 'success' && '✅ Created' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 6️⃣ GitHub Release | ${{ needs.create_github_release.result == 'success' && '✅ Created' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
@@ -279,6 +254,7 @@ jobs:
           echo "- 📢 Announce release to users" >> $GITHUB_STEP_SUMMARY
           echo "- 📚 Update documentation if needed" >> $GITHUB_STEP_SUMMARY
           echo "- 🔄 Start working on next version (e.g., bump to the next version)" >> $GITHUB_STEP_SUMMARY
+          echo "- If the publish succeeded and the tag step failed, use GitHub's 'Re-run failed jobs' only, never 'Re-run all jobs'." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
           # Success Message

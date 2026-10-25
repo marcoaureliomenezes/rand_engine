@@ -7,11 +7,13 @@ from decimal import Decimal, localcontext
 
 import pytest
 import numpy as np
+import pyarrow as pa
 from rand_engine import DataGenerator
-from rand_engine.core._np_core import NPCore
+from rand_engine.core._np_core import NPCore, fixed_text
 from rand_engine.validators.exceptions import ColumnGenerationError
 
 RNG = np.random.default_rng(0)
+from tests.conftest import natural_datetime_unit
 from tests.fixtures.f1_data_generator_specs_right import default_size
 
 
@@ -121,6 +123,11 @@ def test_gen_floats_normal(size, mean, std, decimals):
   assert abs(np.std(real_result) - std) < std * 0.5
 
 
+# Pinned from 0.8.0 (rng.choice over np.asarray(pool)), default_rng(1), size 8
+def _values(result):
+  return result.to_pylist() if isinstance(result, (pa.Array, pa.ChunkedArray)) else result.tolist()
+
+
 @pytest.mark.parametrize("size, distincts", [
     (10, ["A", "B", "C"]),
     (10, [1, 2, 3, 4, 5]),
@@ -130,9 +137,9 @@ def test_gen_floats_normal(size, mean, std, decimals):
 def test_gen_distincts_low_cardinality(size, distincts):
   result = NPCore.gen_distincts(rng=RNG, size=size, distincts=distincts)
   assert len(result) == size
-  assert all(item in distincts for item in result)
+  assert all(item in distincts for item in _values(result))
   if isinstance(distincts[0], str):
-    assert all(isinstance(item, str) for item in result)
+    assert isinstance(result, (pa.Array, pa.ChunkedArray)) and result.type == pa.string()
 
 
 
@@ -153,7 +160,8 @@ def test_gen_distincts_high_cardinality(default_size):
   distincts = [f"value{i}" for i in range(default_size)]
   result = NPCore.gen_distincts(rng=RNG, size=default_size, distincts=distincts)
   assert len(result) == default_size
-  assert all(isinstance(item, str) for item in result)
+  assert isinstance(result, (pa.Array, pa.ChunkedArray)) and result.type == pa.string()
+  assert all(isinstance(item, str) for item in result.to_pylist())
 
 
 def test_gen_unix_timestamps(default_size):
@@ -161,8 +169,19 @@ def test_gen_unix_timestamps(default_size):
   assert len(result) == default_size
 
 
+@pytest.mark.parametrize("start, end, lo, hi", [
+  ("1950-01-01", "1960-01-01", -631152000, -315619200),
+  ("1969-12-31", "1970-01-02", -86400, 86400),
+])
+def test_gen_unix_timestamps_before_1970_stay_in_range(start, end, lo, hi):
+  ts = NPCore.gen_unix_timestamps(10**4, start, end, rng=np.random.default_rng(3))
+  assert lo <= ts.min() and ts.max() < hi and (ts < 0).any()
+
+
 def test_gen_dates(default_size):
   result = NPCore.gen_dates(default_size, '2020-01-01', '2024-12-31', date_format="%Y-%m-%d", rng=RNG)
+  assert isinstance(result, (pa.Array, pa.ChunkedArray))
+  assert result.type == pa.string()
   assert len(result) == default_size
 
 
@@ -175,9 +194,10 @@ def test_gen_uuid4_basic(default_size):
   """Test UUID generation returns correct size and format."""
   result = NPCore.gen_uuid4(rng=RNG, size=default_size)
   assert len(result) == default_size
-  assert type(result) == np.ndarray
+  assert isinstance(result, (pa.Array, pa.ChunkedArray))
+  assert result.type == pa.string()
   # Check UUID format (36 characters with dashes)
-  for uuid_str in result:
+  for uuid_str in result.to_pylist():
     assert isinstance(uuid_str, str)
     assert len(uuid_str) == 36
     assert uuid_str.count('-') == 4
@@ -187,7 +207,7 @@ def test_gen_uuid4_uniqueness():
   """Test that generated UUIDs are unique."""
   size = 1000
   result = NPCore.gen_uuid4(rng=RNG, size=size)
-  unique_uuids = set(result)
+  unique_uuids = set(result.to_pylist())
   assert len(unique_uuids) == size  # All should be unique
 
 
@@ -225,11 +245,12 @@ def test_gen_ints_zfilled_various_lengths(length, default_size):
   """Test zero-filled integer generation with various lengths."""
   result = NPCore.gen_ints_zfilled(rng=RNG, size=default_size, length=length)
   assert len(result) == default_size
-  assert type(result) == np.ndarray
+  assert isinstance(result, (pa.Array, pa.ChunkedArray))
+  assert result.type == pa.string()
   
   # Check all are strings of correct length
-  for item in result:
-    assert isinstance(item, (str, np.str_))
+  for item in result.to_pylist():
+    assert isinstance(item, str)
     assert len(item) == length
     assert item.isdigit()
 
@@ -241,7 +262,7 @@ def test_gen_ints_zfilled_padding():
   result = NPCore.gen_ints_zfilled(rng=RNG, size=size, length=length)
   
   # All should be 8 characters
-  for item in result:
+  for item in result.to_pylist():
     assert len(item) == length
     # Should be valid integers when converted
     int_val = int(item)
@@ -256,9 +277,8 @@ def test_gen_distincts_prop_basic():
   result = NPCore.gen_distincts_prop(rng=RNG, size=size, distincts=distincts)
   
   assert len(result) == size
-  assert type(result) == np.ndarray
-  # All values should be from the keys
-  assert all(item in distincts.keys() for item in result)
+  assert isinstance(result, (pa.Array, pa.ChunkedArray)) and result.type == pa.string()
+  assert all(item in distincts.keys() for item in _values(result))
 
 
 def test_gen_distincts_prop_distribution():
@@ -269,7 +289,7 @@ def test_gen_distincts_prop_distribution():
   
   # Count occurrences
   from collections import Counter
-  counts = Counter(result)
+  counts = Counter(_values(result))
   
   total_weight = sum(distincts.values())
   
@@ -290,7 +310,50 @@ def test_gen_distincts_prop_various_distributions(distincts):
   size = 1000
   result = NPCore.gen_distincts_prop(rng=RNG, size=size, distincts=distincts)
   assert len(result) == size
-  assert all(item in distincts.keys() for item in result)
+  assert all(item in distincts.keys() for item in _values(result))
+
+
+def _draw(method, pool):
+  return getattr(NPCore, method)(rng=np.random.default_rng(1), size=8, distincts=pool)
+
+
+def test_gen_distincts_str_pool_is_arrow_text_with_the_080_values():
+  result = _draw("gen_distincts", ["A", "B", "C"])
+  assert isinstance(result, (pa.Array, pa.ChunkedArray)) and result.type == pa.string()
+  assert result.to_pylist() == ["B", "B", "C", "C", "A", "A", "C", "C"]
+
+
+@pytest.mark.parametrize("pool, dtype, expected", [
+  ([1, 2, 3, 4, 5], np.int64, [3, 3, 4, 5, 1, 1, 5, 5]),
+  ([0.5, 1.5, 2.5], np.float64, [1.5, 1.5, 2.5, 2.5, 0.5, 0.5, 2.5, 2.5]),
+  ([True, False], np.bool_, [True, False, False, False, True, True, False, False]),
+])
+def test_gen_distincts_numeric_pool_keeps_the_080_dtype_and_values(pool, dtype, expected):
+  result = _draw("gen_distincts", pool)
+  assert isinstance(result, np.ndarray) and result.dtype == dtype
+  assert result.tolist() == expected
+
+
+@pytest.mark.parametrize("weights, expected", [
+  ({"A": 3, "B": 1}, ["A", "A", "B", "B", "A", "A", "B", "B"]),
+  ({1: 2, "a": 3}, ["a", "a", "a", "a", "1", "1", "a", "a"]),
+])
+def test_gen_distincts_prop_text_keys_are_arrow_text_with_the_080_values(weights, expected):
+  result = _draw("gen_distincts_prop", weights)
+  assert isinstance(result, (pa.Array, pa.ChunkedArray)) and result.type == pa.string()
+  assert result.to_pylist() == expected
+
+
+def test_gen_distincts_prop_int_keys_keep_the_080_dtype_and_values():
+  result = _draw("gen_distincts_prop", {1: 2, 2: 3})
+  assert isinstance(result, np.ndarray) and result.dtype == np.int64
+  assert result.tolist() == [2, 2, 2, 2, 1, 1, 2, 2]
+
+
+def test_gen_distincts_prop_none_key_stays_an_object_array():
+  result = _draw("gen_distincts_prop", {None: 2, "a": 3})
+  assert isinstance(result, np.ndarray) and result.dtype == object
+  assert result.tolist() == ["a", "a", "a", "a", None, None, "a", "a"]
 
 
 # Additional edge case tests
@@ -300,7 +363,7 @@ def test_gen_ints_zfilled_edge_case_small():
   length = 2
   result = NPCore.gen_ints_zfilled(rng=RNG, size=size, length=length)
   assert len(result) == size
-  for item in result:
+  for item in result.to_pylist():
     assert len(item) == length
     assert 0 <= int(item) <= 99
 
@@ -326,7 +389,7 @@ def test_gen_unix_timestamps_and_dates_ignore_process_timezone(tz, monkeypatch):
   try:
     args = (3, "2024-01-01 00:00:00", "2024-01-01 00:00:01", "%Y-%m-%d %H:%M:%S")
     assert NPCore.gen_unix_timestamps(*args, rng=RNG).tolist() == [1704067200] * 3
-    assert NPCore.gen_dates(*args, rng=RNG).tolist() == ["2024-01-01 00:00:00"] * 3
+    assert NPCore.gen_dates(*args, rng=RNG).to_pylist() == ["2024-01-01 00:00:00"] * 3
   finally:
     monkeypatch.undo()
     time.tzset()
@@ -335,15 +398,27 @@ def test_gen_unix_timestamps_and_dates_ignore_process_timezone(tz, monkeypatch):
 def test_gen_uuid4_values_are_rfc4122_version_4():
   """AC4.5"""
   values = NPCore.gen_uuid4(1000, rng=np.random.default_rng(0))
-  parsed = [uuid.UUID(v) for v in values]
+  texts = values.to_pylist()
+  parsed = [uuid.UUID(v) for v in texts]
   assert {(u.version, u.variant) for u in parsed} == {(4, uuid.RFC_4122)}
-  assert [str(u) for u in parsed] == values.tolist()
-  assert len(set(values)) == 1000
+  assert [str(u) for u in parsed] == texts
+  assert len(set(texts)) == 1000
+
+
+@pytest.mark.parametrize("seed, expected", [
+  (0, ['5f82c2d9-cfeb-4fa3-a1d7-d982f8bd1045', 'b8e8cd4e-a93d-4d0a-9df0-4213b6273b04', '3b51de2c-787a-42d0-8e1c-40a67959aae9']),
+  (42, ['8826d916-cdfb-41c6-81ff-91a761565a70', '2416da6e-c212-4ddb-8d88-00160eb686b2', 'eb819333-b501-4c18-8c53-c786ed62c2f9']),
+])
+def test_gen_uuid4_is_arrow_text_with_the_same_values_as_before(seed, expected):
+  result = NPCore.gen_uuid4(3, rng=np.random.default_rng(seed))
+  assert isinstance(result, (pa.Array, pa.ChunkedArray))
+  assert result.type == pa.string()
+  assert result.to_pylist() == expected
 
 
 def test_gen_ints_and_zfilled_reach_the_inclusive_max():
   assert set(NPCore.gen_ints(1000, 0, 1, rng=RNG).tolist()) == {0, 1}
-  assert set(NPCore.gen_ints_zfilled(1000, 1, rng=RNG).tolist()) == set("0123456789")
+  assert set(NPCore.gen_ints_zfilled(1000, 1, rng=RNG).to_pylist()) == set("0123456789")
 
 
 @pytest.mark.parametrize("fmt, start, end", [
@@ -352,17 +427,41 @@ def test_gen_ints_and_zfilled_reach_the_inclusive_max():
   ("%d/%m/%Y", "01/01/1970", "31/12/9999"),
   ("%Y-%m-%dT%H:%M:%S", "1970-01-01T00:00:00", "9999-12-31T23:59:59"),
   ("%Y%m%d %H%M%S.%f", "19700101 000000.000000", "99991231 235959.000000"),
+  ("%Y-%m-%d", "2024-01-01", "2024-12-31"),
+  ("%d·%m·%Y", "01·01·2024", "31·12·2024"),
+  ("%Y-%m-%d", "1900-01-01", "1960-12-31"),
+  ("%Y-%m-%d %H:%M:%S", "1969-12-31 23:00:00", "1970-01-01 01:00:00"),
 ])
 def test_gen_dates_equals_per_row_utc_strftime(fmt, start, end):
   """AC14.1: same strings as the per-row UTC strftime, for each documented date_format."""
   from datetime import datetime, timedelta, timezone
   ts = NPCore.gen_unix_timestamps(10**4, start, end, fmt, rng=np.random.default_rng(7))
   expected = [(datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(seconds=int(t))).strftime(fmt) for t in ts]
-  assert NPCore.gen_dates(10**4, start, end, fmt, rng=np.random.default_rng(7)).tolist() == expected
+  assert NPCore.gen_dates(10**4, start, end, fmt, rng=np.random.default_rng(7)).to_pylist() == expected
 
 
 def test_gen_dates_zero_rows_returns_empty():
-  assert NPCore.gen_dates(0, "2020-01-01", "2024-12-31", "%Y-%m-%d", rng=RNG).tolist() == []
+  result = NPCore.gen_dates(0, "2020-01-01", "2024-12-31", "%Y-%m-%d", rng=RNG)
+  assert isinstance(result, (pa.Array, pa.ChunkedArray))
+  assert result.type == pa.string()
+  assert result.to_pylist() == []
+
+
+@pytest.mark.parametrize("fmt, start, end, expected", [
+  ("%Y-%m-%d", "2020-01-01", "2024-12-31", ['2020-06-11', '2023-11-14', '2023-04-10']),
+  ("%d/%m/%Y", "01/01/2020", "31/12/2024", ['11/06/2020', '14/11/2023', '10/04/2023']),
+  ("%Y-%m-%d %H:%M:%S", "2020-01-01 00:00:00", "2020-01-02 00:00:00",
+   ['2020-01-01 02:08:31', '2020-01-01 18:34:29', '2020-01-01 15:42:34']),
+  ("%Y%m%d %H%M%S.%f", "20200101 000000.000000", "20200102 000000.000000",
+   ['20200101 020831.000000', '20200101 183429.000000', '20200101 154234.000000']),
+  ("%Y年%m月%d日", "2020年01月01日", "2024年12月31日", ['2020年06月11日', '2023年11月14日', '2023年04月10日']),
+  ("%d·%m·%Y", "01·01·2020", "31·12·2024", ['11·06·2020', '14·11·2023', '10·04·2023']),
+])
+def test_gen_dates_is_arrow_text_with_the_same_values_as_before(fmt, start, end, expected):
+  result = NPCore.gen_dates(3, start, end, fmt, rng=np.random.default_rng(42))
+  assert isinstance(result, (pa.Array, pa.ChunkedArray))
+  assert result.type == pa.string()
+  assert result.to_pylist() == expected
 
 
 def test_date_only_iso_bounds_are_independent_from_timestamp_output_format():
@@ -373,7 +472,7 @@ def test_date_only_iso_bounds_are_independent_from_timestamp_output_format():
       "2026-02-05",
       "%Y-%m-%d %H:%M:%S",
       rng=np.random.default_rng(704),
-    ).tolist()
+    ).to_pylist()
   except ValueError as error:
     actual = error
 
@@ -392,7 +491,7 @@ def test_date_only_iso_bounds_are_independent_from_timestamp_output_format():
     "04/02/2026 00:00:00",
     "%d/%m/%Y %H:%M:%S",
     rng=np.random.default_rng(704),
-  ).tolist() == [
+  ).to_pylist() == [
     "03/02/2026 15:52:13",
     "03/02/2026 09:09:50",
     "03/02/2026 08:43:35",
@@ -610,10 +709,10 @@ def test_rounding_never_turns_a_finite_draw_into_inf(method, kwargs):
   (True, "bool"),
   (7, "int64"),
   (1.5, "float64"),
-  ("fixed", "object"),
+  ("fixed", "string[pyarrow]"),
   (b"fixed", "object"),
   (date(2026, 10, 8), "object"),
-  (datetime(2026, 10, 8, 12, 30), "datetime64[ns]"),
+  (datetime(2026, 10, 8, 12, 30), f"datetime64[{natural_datetime_unit()}]"),
   (Decimal("1.25"), "object"),
 ])
 def test_constant_repeats_declared_scalars_with_natural_pandas_dtype(value, expected_dtype):
@@ -643,3 +742,52 @@ def test_constant_consumes_no_rng_and_does_not_change_seeded_columns():
   assert not isinstance(with_constant, (ColumnGenerationError, KeyError))
   assert with_constant["constant"].tolist() == ["fixed"] * 100
   assert np.array_equal(with_constant["random"].to_numpy(), without_constant["random"].to_numpy())
+
+
+@pytest.mark.parametrize("length, expected", [
+  (1, ["0", "7", "6"]),
+  (7, ["0892509", "7739560", "6545715"]),
+  (10, ["7739560485", "4388784397", "8585979199"]),
+  (18, ["773956048555963429", "438878439752052425", "858597919911382541"]),
+])
+def test_gen_ints_zfilled_is_arrow_text_with_the_same_values_as_before(length, expected):
+  result = NPCore.gen_ints_zfilled(3, length, rng=np.random.default_rng(42))
+  assert isinstance(result, (pa.Array, pa.ChunkedArray))
+  assert result.type == pa.string()
+  assert result.to_pylist() == expected
+
+
+def test_fixed_text_splits_into_chunks_without_changing_the_values():
+  rows = np.frombuffer(b"0123456789abcdefghij", np.uint8).reshape(4, 5).copy()
+  whole = fixed_text(rows)
+  chunked = fixed_text(rows, max_chunk_bytes=10)
+  assert isinstance(chunked, pa.ChunkedArray) and chunked.num_chunks == 2
+  assert chunked.type == pa.string()
+  assert chunked.to_pylist() == whole.to_pylist() == ["01234", "56789", "abcde", "fghij"]
+
+
+@pytest.mark.parametrize("size", [3, 0])
+def test_gen_constant_text_is_arrow_text(size):
+  result = NPCore.gen_constant(size, "fixed", rng=np.random.default_rng(1))
+  assert isinstance(result, (pa.Array, pa.ChunkedArray)) and result.type == pa.string()
+  assert result.to_pylist() == ["fixed"] * size
+
+
+@pytest.mark.parametrize("value, dtype", [
+  (7, np.dtype(np.int64)),
+  (1.5, np.dtype(np.float64)),
+  (True, np.dtype(np.bool_)),
+  (None, np.dtype(object)),
+])
+def test_gen_constant_non_text_stays_ndarray(value, dtype):
+  result = NPCore.gen_constant(3, value, rng=np.random.default_rng(1))
+  assert isinstance(result, np.ndarray) and result.dtype == dtype
+  assert result.tolist() == [value] * 3
+
+
+@pytest.mark.parametrize("value", ["fixed", 7])
+def test_gen_constant_draws_nothing(value):
+  rng = np.random.default_rng(1)
+  before = rng.bit_generator.state
+  NPCore.gen_constant(5, value, rng=rng)
+  assert rng.bit_generator.state == before

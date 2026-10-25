@@ -214,7 +214,8 @@ def test_parquet_reads_back_equal(tmp_path, compression, codec):
 
 def test_csv_divergences_from_pandas(tmp_path):
   path = str(tmp_path / "f.csv")
-  FileHandler.to_csv(lambda: FRAME, path, {"index": False})()
+  frame = FRAME.astype({"t": "datetime64[ns]"})
+  FileHandler.to_csv(lambda: frame, path, {"index": False})()
   with open(path, encoding="utf-8") as f:
     assert f.read() == (
       '"b","f","g","s","t"\n'
@@ -236,7 +237,8 @@ def _zip_member(path, mode):
 ])
 def test_csv_every_compression_reads_back(tmp_path, compression, opener):
   path = str(tmp_path / f"f.csv.{compression}")
-  FileHandler.to_csv(lambda: FRAME, path, {"compression": compression, "sep": ";"})()
+  frame = FRAME.astype({"t": "datetime64[ns]"})
+  FileHandler.to_csv(lambda: frame, path, {"compression": compression, "sep": ";"})()
   with opener(path, "rb") as f:
     assert f.read().decode().splitlines()[1] == 'true;1;1;"x";2024-01-01 00:00:00.000000000'
 
@@ -306,7 +308,7 @@ def test_csv_tz_aware_in_pandas_form_nat_empty_with_lf_lines(tmp_path):
 
 def test_parquet_tz_aware_round_trip_keeps_dtype(tmp_path):
   path = str(tmp_path / "f.parquet")
-  frame = pd.DataFrame({"t": pd.to_datetime(["2024-01-01 09:00:00", None]).tz_localize("America/Sao_Paulo")})
+  frame = pd.DataFrame({"t": pd.to_datetime(["2024-01-01 09:00:00", None]).tz_localize("America/Sao_Paulo").astype("datetime64[ns, America/Sao_Paulo]")})
   FileHandler.to_parquet(lambda: frame, path, {})()
   back = pd.read_parquet(path)
   pd.testing.assert_frame_equal(back, frame)
@@ -332,7 +334,7 @@ def test_undocumented_option_fails_before_overwrite_deletes(rand_spec_with_kwarg
 
 def test_csv_all_midnight_written_in_full(tmp_path):
   path = str(tmp_path / "f.csv")
-  FileHandler.to_csv(lambda: pd.DataFrame({"midnight": pd.to_datetime(["2020-01-01"])}), path, {})()
+  FileHandler.to_csv(lambda: pd.DataFrame({"midnight": pd.to_datetime(["2020-01-01"]).astype("datetime64[ns]")}), path, {})()
   with open(path, "rb") as f:
     assert f.read() == b'"midnight"\n2020-01-01 00:00:00.000000000\n'
 
