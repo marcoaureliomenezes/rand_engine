@@ -1,6 +1,6 @@
-from datetime import datetime as dt, timezone
+from datetime import datetime as dt
 import pandas as pd
-from rand_engine.core._np_core import DATE_DIRECTIVES, DATE_SPLIT, float_lattice_bounds, width_beyond_double
+from rand_engine.core._np_core import DATE_DIRECTIVES, DATE_SPLIT, epoch_seconds, float_lattice_bounds, width_beyond_double
 
 
 class SparkCore:
@@ -89,9 +89,7 @@ class SparkCore:
     
     Note: Unified API parameter name matches NPCore.gen_unix_timestamps().
     """
-    dt_start, dt_end = dt.strptime(start, date_format), dt.strptime(end, date_format)
-    if dt_start < dt(1970, 1, 1): dt_start = dt(1970, 1, 1)
-    timestamp_start, timestamp_end = (int(d.replace(tzinfo=timezone.utc).timestamp()) for d in (dt_start, dt_end))
+    timestamp_start, timestamp_end = epoch_seconds(dt.strptime(start, date_format), dt.strptime(end, date_format))
     df = SparkCore.gen_ints(spark, F, df, col_name, min=timestamp_start, max=timestamp_end - 1)
     return df
 
@@ -100,45 +98,9 @@ class SparkCore:
   def gen_dates(spark, F, df, col_name, start="1970-01-01", end="2023-01-01", date_format="%Y-%m-%d"):
 
     df = SparkCore.gen_unix_timestamps(spark, F, df, col_name, start=start, end=end, date_format=date_format)
-    # NTZ cast to string is TZ-free: "yyyy-MM-dd HH:mm:ss" (whole seconds, years 1970..9999), padded for %f
+    # NTZ cast to string is TZ-free: "yyyy-MM-dd HH:mm:ss" (whole seconds, years up to 9999), padded for %f
     utc_wall_clock = F.expr("TIMESTAMP_NTZ'1970-01-01 00:00:00'") + F.col(col_name) * F.expr("INTERVAL 1 SECOND")
     iso = F.concat(utc_wall_clock.cast("string"), F.lit(".000000"))
     span = dict(zip(DATE_DIRECTIVES, [(1, 4), (6, 2), (9, 2), (12, 2), (15, 2), (18, 2), (21, 6)]))
     tokens = [t for t in DATE_SPLIT.split(date_format) if t]
     return df.withColumn(col_name, F.concat(*[F.substring(iso, *span[t]) if t in span else F.lit(t) for t in tokens]))
-
-
-  @staticmethod
-  def gen_distincts_map(spark, F, df, col_name, **kwargs):
-    """
-    Dummy implementation for API compatibility with DataGenerator.
-    Returns NULL values. Full implementation pending.
-    """
-    return df.withColumn(col_name, F.lit(None).cast("string"))
-
-
-  @staticmethod
-  def gen_distincts_multi_map(spark, F, df, col_name, **kwargs):
-    """
-    Dummy implementation for API compatibility with DataGenerator.
-    Returns NULL values. Full implementation pending.
-    """
-    return df.withColumn(col_name, F.lit(None).cast("string"))
-
-
-  @staticmethod
-  def gen_distincts_map_prop(spark, F, df, col_name, **kwargs):
-    """
-    Dummy implementation for API compatibility with DataGenerator.
-    Returns NULL values. Full implementation pending.
-    """
-    return df.withColumn(col_name, F.lit(None).cast("string"))
-
-
-  @staticmethod
-  def gen_complex_distincts(spark, F, df, col_name, **kwargs):
-    """
-    Dummy implementation for API compatibility with DataGenerator.
-    Returns NULL values. Full implementation pending.
-    """
-    return df.withColumn(col_name, F.lit(None).cast("string"))

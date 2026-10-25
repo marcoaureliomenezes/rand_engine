@@ -50,9 +50,9 @@ assert not gen.get_df().equals(gen.get_df())
 
 ## Methods
 
-<!-- derived-from: generation-methods sha256:1552dc309621 -->
+<!-- derived-from: generation-methods sha256:e6bc7670d6dc -->
 
-Each column is `{"method": <name>, "kwargs": {...}}`. Bounds of `integers` are inclusive.
+Each column is `{"method": <name>, "kwargs": {...}}`. Bounds of `integers` are inclusive. A method that generates text gives a `string[pyarrow]` column (`pd.ArrowDtype(pa.string())`) whose nulls are `pd.NA`; numeric, boolean and datetime columns keep their pandas dtype. An embedded transformer's output dtype is pandas' inference of what the transformer returns.
 
 | Method | Required kwargs | Optional kwargs | Column fields |
 |---|---|---|---|
@@ -109,7 +109,12 @@ spec = {
     "epoch": {"method": "unix_timestamps", "kwargs": {"start": "2024-01-01", "end": "2024-12-31"}},
 }
 df = DataGenerator(spec, seed=1).size(1_000).get_df()
-assert df["created_at"].str.match(r"^2024-\d\d-\d\d \d\d:\d\d:\d\d$").all()
+assert df["created_at"].str.match(r"^2024-\d\d-\d\d \d\d:\d\d:\d\d$").all()  # .str.* predicates return bool[pyarrow]
+```
+
+```python
+text_df = DataGenerator({"status": {"method": "distincts", "kwargs": {"distincts": ["paid", "refunded"]}}}, seed=1).size(10).get_df()
+assert str(text_df["status"].dtype) == "string[pyarrow]"
 ```
 
 `exponential`, `lognormal`, `poisson`, `zipf` and `constant` run on the NumPy engine only.
@@ -231,6 +236,8 @@ A column may carry `"transformers"`: functions applied value by value. `.transfo
 whole-frame functions, run after the column ones.
 
 ```python
+import pandas as pd
+
 spec = {
     "name": {"method": "distincts", "kwargs": {"distincts": ["ana", "bia"]},
              "transformers": [str.upper]},
@@ -244,11 +251,12 @@ def age_group(df):
 df = DataGenerator(spec, seed=3).size(100).transformers([age_group]).get_df()
 assert set(df["name"]) <= {"ANA", "BIA"}
 assert (df["adult"] == (df["age"] >= 18)).all()
+assert df["name"].dtype == pd.Series([str.upper("ana")]).dtype  # a transformer's output dtype is pandas' inference of its plain Python result
 ```
 
 ## Validation
 
-<!-- derived-from: rand-spec-grammar sha256:ecbce4973b7e -->
+<!-- derived-from: rand-spec-grammar sha256:13da2bd57c1a -->
 
 An invalid spec raises `SpecValidationError` (a `RandEngineError`) on construction, listing every
 error with a corrected example.

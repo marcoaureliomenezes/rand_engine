@@ -47,14 +47,14 @@ a scaffolded example ([[get-started-cli]]) and the docs site, `llms.txt` and age
 | slug | title | tldr |
 |------|-------|------|
 | `data-generator` | DataGenerator | The pandas generator validates a RandSpec, owns its random generator, and returns DataFrames, files, file streams or an endless lossless record stream. |
-| `generation-methods` | Generation methods | Ten common methods run on pandas and Spark; stateless pk/fk share one indexed authority; extra distributions, constants and modifiers are pandas-only. |
+| `generation-methods` | Generation methods | Ten common methods run on pandas and Spark; pk/fk share one indexed authority; distributions, correlated methods, constants and modifiers are pandas-only. |
 | `spark-generator` | SparkGenerator | The Spark generator builds ordinary columns with native expressions and stateless pk/fk columns through the shared indexed key authority. |
 
 ### onboarding
 
 | slug | title | tldr |
 |------|-------|------|
-| `documentation` | Documentation site, llms.txt and agent skill | Strict-built stable or preview docs, README, llms.txt and Agent guidance cover APIs, tutorials, compatibility, migration, support and security routes. |
+| `documentation` | Documentation site, llms.txt and agent skill | Strict-built docs, README, llms.txt and Agent guidance cover APIs, tutorials, compatibility, migration, support and security routes. |
 | `get-started-cli` | Get-started CLI | The rand-engine console script lists six starters: five runnable Python examples and one opt-in AGENTS.md project context. |
 
 ### output
@@ -106,7 +106,7 @@ graph TD
 
 ## Known limits
 
-- The `exponential`, `lognormal`, `poisson` and `zipf` distributions, constants, null and anomaly modifiers and transformers run on pandas only. Spark runs the ten common methods, warns and produces a NULL string column for the four correlated methods, accepts `pk` and `fk`, and refuses the other NumPy-only methods.
+- The `exponential`, `lognormal`, `poisson` and `zipf` distributions, constants, null and anomaly modifiers and transformers run on pandas only. Spark runs the ten common methods and accepts `pk` and `fk`; it refuses the four correlated methods and the other NumPy-only methods as NumPy engine only.
 - A seed controls pandas values and keys. On Spark, ordinary columns remain unseeded and an explicit seed controls only `pk` and `fk`.
 - PK/FK relations are stateless: parent and child link through definitions, seeds and row indexes, including optional event-time eligibility, with no stored keys or database lookup.
 - Built-in sinks are CSV, JSON-lines and Parquet files plus an output-only SQLite batch table. Queues, object storage and other databases are reached by forwarding DataFrames or `stream_dict` records.

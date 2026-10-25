@@ -3,6 +3,7 @@ from numbers import Number
 from typing import Dict, List, Optional, Callable
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 from pandas.api.types import (
   infer_dtype,
   is_bool_dtype,
@@ -31,6 +32,18 @@ class RandGenerator:
       "fk": partial(Keys.gen_fk, offset=offset, key_seed=key_seed, column=column),
     }
  
+  @staticmethod
+  def _column(values):
+    """Return a generated column; all-str data (never empty) becomes Arrow string, Arrow input is wrapped, mixed data holding str stays object, the rest passes untouched."""
+    if isinstance(values, (pa.Array, pa.ChunkedArray)): return pd.arrays.ArrowExtensionArray(values)
+    if isinstance(values, (list, np.ndarray)):
+      kind = infer_dtype(values, skipna=False)
+      if kind == "string": return pd.arrays.ArrowExtensionArray(pa.array(values, pa.string()))
+      if kind in ("mixed", "mixed-integer") and any(isinstance(v, str) for v in values):
+        return pd.Series(values, dtype=object)
+    return values
+
+
   def generate_first_level(self, size: int, rng: np.random.Generator, key_seed: int = 0, offset: int = 0):
     dict_data = {}
     for k, v in self.random_spec.items():
@@ -38,8 +51,9 @@ class RandGenerator:
       generator_method = self.map_methods(rng, offset, key_seed, k)[v["method"]]
       try:
         values = generator_method(size , **v.get("kwargs", {}))
-        for i, col in enumerate(columns):
-          dict_data[col] = values if len(columns) == 1 else [val[i] for val in values]
+        if len(columns) == 1: dict_data[columns[0]] = self._column(values)
+        else:
+          for col, vals in zip(columns, values): dict_data[col] = self._column(vals)
       except Exception as e:
         raise ColumnGenerationError(
           f"Error generating column '{k}': {type(e).__name__}: {str(e)}"
@@ -53,7 +67,7 @@ class RandGenerator:
     for col, transformers in cols_with_transformers.items():
       for i, transformer in enumerate(transformers):
         try:
-          df[col] = df[col].apply(transformer)
+          df[col] = df[col].astype(object).apply(transformer)
         except Exception as e:
           raise TransformerError(
             f"Error applying transformer {i} to column '{col}': {type(e).__name__}: {str(e)}"
@@ -145,14 +159,14 @@ class RandGenerator:
   @staticmethod
   def _coerce_anomaly_values(series: pd.Series, values: np.ndarray):
     if is_object_dtype(series.dtype):
-      return np.asarray(values, dtype=object)
+      return pd.Series(values, dtype=object)
     return pd.array(values, dtype=series.dtype)
 
 
   @staticmethod
   def _assign_nulls(series: pd.Series, mask: np.ndarray) -> pd.Series:
     dtype = series.dtype
-    if is_object_dtype(dtype) or is_string_dtype(dtype):
+    if is_object_dtype(dtype):
       values = series.to_numpy(dtype=object, copy=True)
       values[mask] = None
     elif not isinstance(dtype, np.dtype):

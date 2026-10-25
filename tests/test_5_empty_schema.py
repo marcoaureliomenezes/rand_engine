@@ -8,6 +8,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from rand_engine import DataGenerator
+from tests.conftest import natural_datetime_unit
 from rand_engine.file_handlers._writer_batch import FileBatchWriter
 from rand_engine.validators.exceptions import RandEngineError
 
@@ -210,10 +211,10 @@ def test_indeterminate_empty_transform_preserves_destination_without_calls(
 @pytest.mark.parametrize(
     "value, expected_type",
     [
-        (datetime(2024, 1, 1, 12, 30), pa.timestamp("ns")),
+        (datetime(2024, 1, 1, 12, 30), pa.timestamp(natural_datetime_unit())),
         (
             datetime(2024, 1, 1, 12, 30, tzinfo=timezone.utc),
-            pa.timestamp("ns", tz="UTC"),
+            pa.timestamp(natural_datetime_unit(), tz="UTC"),
         ),
         (datetime(3000, 1, 1), pa.timestamp("us")),
     ],
@@ -239,6 +240,24 @@ def test_constant_datetime_empty_parquet_keeps_nonempty_timestamp_carrier(
         (None, expected_schema, {"event_at": []}),
         [],
     )
+
+
+@pytest.mark.parametrize(
+    "value",
+    [datetime(2024, 1, 1, 12, 30), datetime(2024, 1, 1, 12, 30, tzinfo=timezone.utc)],
+    ids=["naive", "utc-aware"],
+)
+def test_constant_datetime_empty_type_equals_populated_type(tmp_path, value):
+    spec = {"event_at": {"method": "constant", "kwargs": {"value": value}}}
+    types = [
+        _parquet_result(
+            DataGenerator(spec, seed=41).size(size).write.format("parquet"),
+            tmp_path / f"size{size}",
+        )[1].field("event_at").type
+        for size in (4, 0)
+    ]
+
+    assert types[1] == types[0]
 
 
 def test_constant_string_all_null_parquet_retains_declared_logical_type(tmp_path):

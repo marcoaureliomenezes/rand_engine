@@ -1,4 +1,146 @@
 {
   "schema": "backlog-v1",
-  "active": []
+  "active": [
+    {
+      "id": "spark-java17-options-dead",
+      "title": "Drop the dead Java 17 JVM options from the Spark Arrow path",
+      "opened": "2026-10-20",
+      "status": "idea",
+      "description": "On Temurin 17 with pyspark 3.5.8 the three Arrow tests pass without the extraJavaOptions netty reflection flag and java.nio --add-opens, because Spark's launcher adds the opens itself (the 0.8.1 PLAN M4 failure was Java 21). Design: amend the 0.8.1 AC2.8 contract that requires the options; delete them (and their comment) from the session builder in tests/fixtures/f2_spark_generator_specs_right.py; delete the netty sentence from rand_engine/cases/databricks.py.txt and docs/tutorials/databricks.md. Also: the databricks starter sets spark.sql.execution.arrow.pyspark.enabled on the shared session-wide test Spark session and nothing resets it, so the Spark tests depend on order (tests/test_9_cli.py runs the starter); the test that runs the starter restores the conf, or runs it on an isolated session.",
+      "provenance": "operator ruling on the 0.8.1 intake report, 2026-10-20; Job 5 review 2026-10-20T134636Z (MEDIUM dead options, LOW Arrow conf left on)"
+    },
+    {
+      "id": "test-docstring-hygiene",
+      "title": "Test and docstring hygiene left by 0.8.1",
+      "opened": "2026-10-20",
+      "status": "idea",
+      "description": "Stale names and text the 0.8.1 reviews found, no behaviour change. (1) tests/test_2_data_generator.py: test_modifier_object_nulls_are_literal_python_none and test_non_text_columns_keep_their_dtype now assert pd.NA/Arrow text, rename to what they assert. (2) tests/test_docs.py: delete the dead _docs_site_module helper and its importlib.util import; fix the docstring of the release-candidate scan test, which claims the scan equals docs_site.py's publish set while rand_engine/cases/ is published and not scanned. (3) rand_engine/main/_rand_generator.py RandGenerator._column docstring: drop 'never empty' (zero-row text converts) and say the Arrow branch wraps any Arrow type. (4) tests/test_0_np_core.py: replace the bare AC id docstring (\"AC4.5\") with the test's contract; move the 'Pinned from 0.8.0' comment from beside _values to the _draw test it describes. (5) .github/workflows/benchmarks.yml: the speed-benchmark comment 'No base tree -> every row absent' is stale.",
+      "provenance": "operator ruling on the 0.8.1 intake report, 2026-10-20; Jobs 1-4 reviews 2026-10-20 (J1 review 2026-10-20T122320Z, reviewer 2026-10-20T121237Z, J2.T2, Job 3 review 2026-10-20T140908Z and re-review 2026-10-20T141419Z)",
+      "relates": []
+    },
+    {
+      "id": "text-perf-follow-ups",
+      "title": "Text generation performance follow-ups after the Arrow rewrite",
+      "opened": "2026-10-20",
+      "status": "idea",
+      "description": "(1) dates with time directives is only ~1.2x faster than 0.8.0 (7.71 s -> 6.28 s at 10M rows, measured in J3.T6) against ~25x for date-only, because each time field runs per-row digit loops; candidate: a two-digit pair table per field, as int_zfilled already does; 0.8.1 AC1.3 covered date-only only. (2) uuid4 in rand_engine/core/_np_core.py hex-encodes through bytes.hex().encode(), ~640 MB of temporaries at 10M rows; binascii.hexlify writes the hex bytes directly. (3) zero-row uuid4 and int_zfilled now return an empty Arrow column (0.8.0: empty float64, and a raise) and no test pins it; add the zero-size partition to their contract tests.",
+      "provenance": "operator ruling on the 0.8.1 intake report, 2026-10-20; Job 3 review 2026-10-20T140908Z and the J3.T6 measurements",
+      "relates": []
+    },
+    {
+      "id": "shared-verify-venv",
+      "title": "One shared virtualenv for the repo's verify gate",
+      "opened": "2026-10-20",
+      "status": "idea",
+      "description": "The verify: line in the repo AGENTS.md sets POETRY_VIRTUALENVS_IN_PROJECT=false with one shared poetry cache, so poetry builds a ~0.66 GB virtualenv per worktree path and nothing removes it when the tree is dropped; on 2026-10-20 70 orphaned environments (43 GB) filled the disk. Design: one shared environment that every tree's verify: reuses (for example POETRY_VIRTUALENVS_CREATE=false inside one environment kept under the shared cache), not one per path. This changes the verify: gate, so the operator rules on it with its measured cost per run against the current line (a cold and a warm run of each).",
+      "provenance": "operator ruling on the 0.8.1 intake report, 2026-10-20; operations finding 2026-10-20 (disk full from per-worktree verify environments)",
+      "relates": []
+    },
+    {
+      "id": "hardware-chunk-study",
+      "title": "Mandatory hardware study: chunk size vs speed and peak memory, presented before any implementation",
+      "opened": "2026-10-24",
+      "status": "idea",
+      "description": "Horizon: medium, first (agent default order, unruled: study -> output/memory -> stream -> public benchmark -> docs -> JSON Schema + generate -> 1.0). Operator answer (verbatim): \"devemos fazer em peda\u00e7os, mas devemos observar e fazer um estudo serio sobre o trade-off de velocidade vs montar em peda\u00e7\u00f5 e fazer append, se usamos o disco, como usamos, quais seriam os chunks otimizados para que mantenhamos a velocidade e reduzimos. ... \u00e9 obrigatorio vc me apresentar esse estudo ... um grafico onde temos eixos com o tamanho do chunk e a velocidade ... pelo menos 3 estrategias ... Oferecer como default memoria m\u00e1xima consumida de 1GB. E usu\u00e1rio consegue passar alterar, diminuir, isso afetar\u00e1 no tamanho de chunks, devemos ter as estimativas de velocidade de gera\u00e7\u00e3o para aquele tamanho de chunk.\" Outcome: a study presented to the operator before any chunked-output implementation, naming the winning strategy and chunk size per memory budget: a chunk-size sweep 10^3..10^8 rows, x = chunk size, y = throughput (rows/\u00b5s, MB/s), a second panel with peak RSS; at least 3 strategies among monolithic, sequential chunks + append, multiprocessing parts, threads with per-block Generators, and Python 3.14 free-threaded if the ecosystem supports it; interfering variables isolated (cache sizes, column types, format/codec, row-group size, workers, per-chunk fixed cost, page cache, disk type); hardware measured (CPU, caches, RAM bandwidth, disk write); per-block Philox streams tested so seeds are independent of chunk size and thread count. Out of scope: changing the library's generation or writers; the study is the operator's decision input.",
+      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"devemos fazer em peda\u00e7os, mas devemos observar e fazer um estudo serio sobre o trade-off de velocidade vs montar em peda\u00e7\u00f5 e fazer append, se usamos o disco, como usamos, quais seriam os chunks otimizados para que mantenhamos a velocidade e reduzimos. ... \u00e9 obrigatorio vc me apresentar esse estudo ... um grafico onde temos eixos com o tamanho do chunk e a velocidade ... pelo menos 3 estrategias ... Oferecer como default memoria m\u00e1xima consumida de 1GB. E usu\u00e1rio consegue passar alterar, diminuir, isso afetar\u00e1 no tamanho de chunks, devemos ter as estimativas de velocidade de gera\u00e7\u00e3o para aquele tamanho de chunk.\"",
+      "relates": []
+    },
+    {
+      "id": "memory-budget-chunked-output",
+      "title": "Output speed first under a bounded memory budget",
+      "opened": "2026-10-24",
+      "status": "idea",
+      "description": "Horizon: medium, after hardware-chunk-study. Operator answers (verbatim): \"A sa\u00edda primeiro (Recomendado)\"; \"Writers/stream + get_df recusa (Recomendado)\"; \"Docs + plan() + CLI local (Recomendado)\"; \"Oferecer como default memoria m\u00e1xima consumida de 1GB. E usu\u00e1rio consegue passar alterar, diminuir, isso afetar\u00e1 no tamanho de chunks, devemos ter as estimativas de velocidade de gera\u00e7\u00e3o para aquele tamanho de chunk.\" Outcome: output built from the study's winning strategy: a memory budget, default 1 GB and user-adjustable, sets the chunk size from the measured bytes/row table; writers and stream obey it; get_df refuses an estimated frame above it with the estimate in the message; max_memory=None disables it; parallel part writing, Arrow-direct Parquet/CSV, vectorized JSON; gen.plan(max_memory=...) returns chunk rows, expected peak and throughput without measuring; `rand-engine benchmark --max-memory 1GB` measures the user's machine (~1 min); the docs publish the study curves on reference hardware. The draw-order change is a seed-contract revision in its SPEC (invariant 4). Measured motivation (CI): columns 7-512 rows/\u00b5s vs CSV 3, Parquet 2.4, JSON 0.5, stream_dict 0.17 rows/\u00b5s. Out of scope: the stream rate contract (stream-rate-per-microbatch), text-method speed (text-perf-follow-ups), a native core, a new runtime dependency.",
+      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"A sa\u00edda primeiro (Recomendado)\"; \"Writers/stream + get_df recusa (Recomendado)\"; \"Docs + plan() + CLI local (Recomendado)\"",
+      "relates": [
+        "hardware-chunk-study",
+        "text-perf-follow-ups"
+      ]
+    },
+    {
+      "id": "stream-rate-per-microbatch",
+      "title": "stream_dict rate as records/s per microbatch, no limit by default",
+      "opened": "2026-10-24",
+      "status": "idea",
+      "description": "Horizon: medium. Operator answer (verbatim): \"Taxa alvo por micro-lote (Recomendado)\". Outcome: min_throughput/max_throughput become a records/s rate drawn per microbatch, one sleep per batch instead of per record, no limit by default, with a migration note. StreamHandler is operator code (invariant 12): the SPEC Origin names it. Measured on 0.8.0: stream_dict default 5.0 records/s; 17,656 records/s at throughput 1e9. Out of scope: new built-in sinks (operator: \"Nenhum novo; receitas (Recomendado)\"), the memory budget (memory-budget-chunked-output).",
+      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"Taxa alvo por micro-lote (Recomendado)\"",
+      "relates": [
+        "memory-budget-chunked-output"
+      ]
+    },
+    {
+      "id": "public-benchmark-page",
+      "title": "Public benchmark page per release",
+      "opened": "2026-10-24",
+      "status": "idea",
+      "description": "Horizon: medium. Operator answer (verbatim): \"P\u00e1gina p\u00fablica por release (Recomendado)\". Outcome: each release publishes a page from the extended harness: end-to-end scenarios (generate + write CSV/Parquet/JSON, stream) at 1M/10M/100M rows measuring rows/\u00b5s and peak memory; Faker and Mimesis, plus raw NumPy and DuckDB SQL as reference ceilings; hardware disclosed, CI-generated charts, raw data published, the hardware-chunk-study curves included. The Spark comparison is removed. Out of scope: the internal regression gate, which stays unchanged; any new runtime dependency.",
+      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"P\u00e1gina p\u00fablica por release (Recomendado)\"",
+      "relates": [
+        "hardware-chunk-study",
+        "memory-budget-chunked-output"
+      ]
+    },
+    {
+      "id": "docs-restructure",
+      "title": "Restructure the Zensical docs site",
+      "opened": "2026-10-24",
+      "status": "idea",
+      "description": "Horizon: medium. Operator answers (verbatim): \"Zensical, reestruturado (Recomendado)\"; sinks \"Nenhum novo; receitas (Recomendado)\"; roadmap home \"Backlog + p\u00e1gina p\u00fablica (Recomendado)\". Outcome: the site follows Di\u00e1taxis with clean URLs (no numbered uppercase pages); one page per method generated from METHOD_CATALOG; a gallery of realistic specs; a \"Why rand-engine\" page replacing the hedged comparison; changelog and migration inside the site; tested recipes for Kafka, S3 and databases over stream_dict/get_df; a public Roadmap page rendering these backlog entries, updated at each closure with the memory pass; wrong public annotations corrected (e.g. seed: int = None), py.typed and 'Typing :: Typed' kept (decided in scope). Out of scope: new built-in sinks, a type-check gate, versioned docs before 1.0.",
+      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"Zensical, reestruturado (Recomendado)\"; \"Nenhum novo; receitas (Recomendado)\"; \"Backlog + p\u00e1gina p\u00fablica (Recomendado)\"",
+      "relates": [
+        "public-benchmark-page",
+        "test-docstring-hygiene"
+      ]
+    },
+    {
+      "id": "randspec-json-schema-generate-cli",
+      "title": "Publish the RandSpec JSON Schema and a generate CLI",
+      "opened": "2026-10-24",
+      "status": "idea",
+      "description": "Horizon: medium. Operator answer (verbatim): \"JSON Schema + `generate` (Recomendado)\". Outcome: the RandSpec JSON Schema is published, and `rand-engine generate spec.json --rows N --format parquet --out DIR --seed S` writes data from a JSON spec, stdlib only. Out of scope: transformers, which stay Python-only; any new runtime dependency.",
+      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"JSON Schema + `generate` (Recomendado)\"",
+      "relates": [
+        "docs-restructure"
+      ]
+    },
+    {
+      "id": "release-1-0",
+      "title": "rand-engine 1.0: freeze the API, RandSpec grammar, generate CLI and seed contract",
+      "opened": "2026-10-24",
+      "status": "idea",
+      "description": "Horizon: medium, last (agent default order, unruled: study -> output/memory -> stream -> public benchmark -> docs -> JSON Schema + generate -> 1.0). Operator answer (verbatim): \"1.0 cedo; n\u00facleo nativo = 2.0 (Recomendado)\". Outcome: 1.0 ships after the compatibility, docs, public benchmark and output speed work, and freezes the public API, the RandSpec grammar (its JSON Schema), the generate CLI and the seed contract; versioned docs start here. Out of scope: a native core; one that changes seeded values ships as 2.0.",
+      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"1.0 cedo; n\u00facleo nativo = 2.0 (Recomendado)\"",
+      "relates": [
+        "compat-current-ecosystem",
+        "memory-budget-chunked-output",
+        "public-benchmark-page",
+        "docs-restructure",
+        "randspec-json-schema-generate-cli"
+      ]
+    },
+    {
+      "id": "adoption-measured",
+      "title": "Adoption: little and measured",
+      "opened": "2026-10-24",
+      "status": "idea",
+      "description": "Horizon: medium, ongoing. Operator answer (verbatim): \"Pouco e medido (Recomendado)\". Outcome: one technical article per minor (benchmark + niche), runnable notebooks (Colab, Kaggle, Databricks), curated-list submissions, and a monthly reading of downloads, stars and dependents against the baseline read 2026-10-24: 1 star and 0 open issues (GitHub API), 26 downloads in Aug and 80 in Sep 2026 (pypistats, mirrors excluded). Out of scope: outreach beyond these four acts.",
+      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"Pouco e medido (Recomendado)\"",
+      "relates": [
+        "public-benchmark-page",
+        "docs-restructure"
+      ]
+    },
+    {
+      "id": "native-core-research",
+      "title": "Research a native core behind the Python API",
+      "opened": "2026-10-24",
+      "status": "idea",
+      "description": "Horizon: long. Operator answer (verbatim): \"N\u00facleo nativo, API Python (Recomendado)\"; operator demand (verbatim): \"we must do a hard research to understand if exists programming such that could deliver us a faster rand-engine ... maximize speed have a good control about memory peaks\". Outcome: a research result, with the Python API unchanged: prototypes of 4-5 hot paths (integers, text/uuid4/dates, pk/fk, CSV/Parquet write, stream) in NumPy (base), Numba, Cython, Rust (PyO3), C++ (nanobind), and Zig/Mojo if mature, measured for rows/\u00b5s and peak RSS at 10M/100M rows, 1 and N cores, on the same runner, with seed reproduction checked. Migration only above an operator-set threshold stated in its SPEC; a core that changes seeded values ships as 2.0 (release-1-0). Out of scope: changing the Python API; migrating any path below the threshold.",
+      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"N\u00facleo nativo, API Python (Recomendado)\"; \"we must do a hard research to understand if exists programming such that could deliver us a faster rand-engine ... maximize speed have a good control about memory peaks\"",
+      "relates": [
+        "hardware-chunk-study",
+        "release-1-0"
+      ]
+    }
+  ]
 }

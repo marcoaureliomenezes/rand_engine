@@ -1,59 +1,69 @@
 import itertools
-import time
 from typing import Dict, List, Any
 import numpy as np
-from functools import reduce
-from rand_engine.core._np_core import NPCore
+import pyarrow as pa
+import pyarrow.compute as pc
+from rand_engine.core._np_core import NPCore, pool_draw
+
+def _as_text(a):
+  if isinstance(a, (pa.Array, pa.ChunkedArray, pa.Scalar)): return a
+  a = np.asarray(a)
+  if a.dtype.kind in "iu" and a.size and int(a.max()) - int(a.min()) < min(10**6, a.size):
+    lo = int(a.min())
+    return pa.array([str(i) for i in range(lo, int(a.max()) + 1)]).take(pa.array(np.subtract(a, lo, dtype=np.int64)))
+  return pa.array(a.astype(str), pa.string())
+
+
+def _level_columns(rows, size, rng):
+  idx = rng.integers(0, len(rows), size)
+  cols = []
+  for pool in zip(*rows):
+    if all(isinstance(x, str) for x in pool): cols.append(pool_draw(pool, idx))
+    else: cols.append(np.fromiter(pool, object, len(pool))[idx].tolist())
+  return cols
+
 
 class PyCore:
 
 
   @classmethod
-  def gen_complex_distincts(cls, size: int, pattern="x.x.x-x", replacement="x", templates=None, *, rng: np.random.Generator):
-    if templates is None:
-      templates = []
-    assert pattern.count(replacement) == len(templates)
-    list_of_lists, counter = [], 0
-    for replacer_cursor in range(len(pattern)):
-      if pattern[replacer_cursor] == replacement:
-        method = templates[counter]["method"]
-        if isinstance(method, str):
-          method = METHODS[method]
-        list_of_lists.append(method(size, rng=rng, **templates[counter]["kwargs"]))
-        counter += 1
-      else:
-        list_of_lists.append(np.array([pattern[replacer_cursor] for i in range(size)]))
-    return reduce(lambda a, b: a.astype('str') + b.astype('str'), list_of_lists)
+  def gen_complex_distincts(cls, size: int, pattern="x.x.x-x", replacement="x", templates=None, *, rng: np.random.Generator) -> pa.Array | pa.ChunkedArray | np.ndarray:
+    """Fills each `replacement` of `pattern` with its template's draw, in pattern order; returns Arrow text (a lone part is returned as drawn)."""
+    assert pattern.count(replacement) == len(templates or [])
+    if not templates: return pa.repeat(pattern, size)
+    parts, lit, counter = [], "", 0
+    for ch in pattern:
+      if ch != replacement: lit += ch; continue
+      if lit: parts.append(pa.scalar(lit)); lit = ""
+      method = templates[counter]["method"]
+      parts.append((METHODS[method] if isinstance(method, str) else method)(size, rng=rng, **templates[counter]["kwargs"]))
+      counter += 1
+    if lit: parts.append(pa.scalar(lit))
+    if len(parts) == 1: return parts[0]
+    return pc.binary_join_element_wise(*[_as_text(p) for p in parts], "")
 
-
-  @classmethod  
-  def gen_distincts_untyped(cls, size: int, distinct: List[Any], *, rng: np.random.Generator) -> List[Any]:
-    return list(map(lambda x: distinct[x], rng.integers(0, len(distinct), size)))
-  
 
   @classmethod
-  def gen_distincts_map(cls, size: int, distincts: Dict[str, List[Any]], *, rng: np.random.Generator) -> np.ndarray:
-    distincts_map = [(k, v) for k, values in distincts.items() for v in values]
+  def gen_distincts_map(cls, size: int, distincts: Dict[str, List[Any]], *, rng: np.random.Generator) -> list:
+    """Draws rows of (category, value); returns one column per level."""
     assert len(list(set([type(x) for x in distincts]))) == 1
-    return cls.gen_distincts_untyped(size, distincts_map, rng=rng)
+    return _level_columns([(k, v) for k, values in distincts.items() for v in values], size, rng)
 
 
   @classmethod
-  def gen_distincts_multi_map(cls, size: int, distincts: Dict[str, List[Any]], *, rng: np.random.Generator) -> np.ndarray:
-    combinations = [list(itertools.product([k], *v)) for k, v in distincts.items()]
-    combinations = [[[i for i in tupla] for tupla in sublist] for sublist in combinations]
-    distincts = [i for sublist in combinations for i in sublist]
-    return cls.gen_distincts_untyped(size, distincts, rng=rng)
+  def gen_distincts_multi_map(cls, size: int, distincts: Dict[str, List[Any]], *, rng: np.random.Generator) -> list:
+    """Draws rows of (category, *levels); returns one column per level."""
+    return _level_columns([t for k, v in distincts.items() for t in itertools.product([k], *v)], size, rng)
 
   @classmethod
-  def gen_distincts_map_prop(cls, size: int, distincts: Dict[str, List[Any]], *, rng: np.random.Generator) -> np.ndarray:
-    distincts_map_prop = [
+  def gen_distincts_map_prop(cls, size: int, distincts: Dict[str, List[Any]], *, rng: np.random.Generator) -> list:
+    """Draws (category, value) rows, each value repeated by its weight; returns one column per level."""
+    return _level_columns([
       (category, value)
       for category, value_weight_pairs in distincts.items()
       for value, weight in value_weight_pairs
       for _ in range(weight)
-    ]
-    return cls.gen_distincts_untyped(size, distincts_map_prop, rng=rng)
+    ], size, rng)
 
 
 

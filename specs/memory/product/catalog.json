@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-18T18:41:10Z",
+  "generated_at": "2026-10-24T19:48:10Z",
   "features": [
     {
       "rank": 1,
@@ -14,7 +14,7 @@
         "package",
         "exceptions"
       ],
-      "token_estimate": 562,
+      "token_estimate": 575,
       "depends_on": [
         "data-generator",
         "spark-generator",
@@ -91,8 +91,8 @@
       "slug": "generation-methods",
       "title": "Generation methods",
       "area": "generation",
-      "tldr": "Ten common methods run on pandas and Spark; stateless pk/fk share one indexed authority; extra distributions, constants and modifiers are pandas-only.",
-      "summary": "NPCore and PyCore provide the NumPy generator's method map; SparkCore supplies native expressions for the ten common methods and NULL string columns with warnings for four correlated methods. Pandas and Spark both call Keys for deterministic pk/fk values, while extra distributions, constants and modifiers remain pandas-only.",
+      "tldr": "Ten common methods run on pandas and Spark; pk/fk share one indexed authority; distributions, correlated methods, constants and modifiers are pandas-only.",
+      "summary": "NPCore and PyCore provide the NumPy generator's method map, and every all-text column they generate is string[pyarrow] with pd.NA nulls; SparkCore supplies native expressions for the ten common methods. Pandas and Spark both call Keys for deterministic pk/fk values, while extra distributions, the four correlated methods, constants and modifiers remain pandas-only.",
       "path": "specs/memory/product/generation/generation-methods.md",
       "tags": [
         "methods",
@@ -102,7 +102,7 @@
         "distributions",
         "modifiers"
       ],
-      "token_estimate": 1014,
+      "token_estimate": 1377,
       "depends_on": [
         "data-generator",
         "spark-generator",
@@ -128,7 +128,7 @@
         "pyspark",
         "generator"
       ],
-      "token_estimate": 486,
+      "token_estimate": 502,
       "depends_on": [
         "rand-spec-grammar",
         "generation-methods"
@@ -144,8 +144,8 @@
       "slug": "documentation",
       "title": "Documentation site, llms.txt and agent skill",
       "area": "onboarding",
-      "tldr": "Strict-built stable or preview docs, README, llms.txt and Agent guidance cover APIs, tutorials, compatibility, migration, support and security routes.",
-      "summary": "Zensical builds an isolated stable or immutable-source preview from Markdown and public docstrings for the GitHub Pages target; README becomes the site home; rendered references and five tutorials cover package use; one compatibility guide covers tested boundaries, migration and recovery; llms.txt indexes rendered guides, the mirrored canonical skill and all six starter resources; and canonical contribution and security files route support and private reports.",
+      "tldr": "Strict-built docs, README, llms.txt and Agent guidance cover APIs, tutorials, compatibility, migration, support and security routes.",
+      "summary": "Zensical builds an isolated site from Markdown and public docstrings, deployed to GitHub Pages from master only; README becomes the site home; rendered references and five tutorials cover package use; one compatibility guide covers tested boundaries, migration and recovery; llms.txt indexes rendered guides, the mirrored canonical skill and all six starter resources; and canonical contribution and security files route support and private reports.",
       "path": "specs/memory/product/onboarding/documentation.md",
       "tags": [
         "docs",
@@ -154,7 +154,7 @@
         "agent-skill",
         "readme"
       ],
-      "token_estimate": 992,
+      "token_estimate": 938,
       "depends_on": [
         "public-api",
         "writers-and-streaming",
@@ -188,7 +188,7 @@
         "scaffolds",
         "examples"
       ],
-      "token_estimate": 587,
+      "token_estimate": 603,
       "depends_on": [
         "public-api",
         "generation-methods",
@@ -222,7 +222,7 @@
         "parquet",
         "sqlite"
       ],
-      "token_estimate": 829,
+      "token_estimate": 910,
       "depends_on": [
         "data-generator"
       ],
@@ -236,7 +236,7 @@
       "title": "Performance benchmarks",
       "area": "quality",
       "tldr": "CI enforces same-runner rand-engine regression limits and separately records bounded, validated observations against Faker and dbldatagen.",
-      "summary": "The regression coordinator compares long-lived base and head workers and enforces method, modifier and sink limits; a separate non-gating workflow installs pinned comparison dependencies and the public wheel, validates two named Python and Spark workloads, and retains raw samples, medians, plans and provenance without a winner or threshold.",
+      "summary": "The regression coordinator compares long-lived head workers against the latest closed release tag and enforces method, modifier and sink limits; a separate non-gating workflow installs pinned comparison dependencies and the public wheel, validates two named Python and Spark workloads, and retains raw samples, medians, plans and provenance without a winner or threshold.",
       "path": "specs/memory/product/quality/benchmarks.md",
       "tags": [
         "performance",
@@ -244,7 +244,7 @@
         "ci",
         "regression"
       ],
-      "token_estimate": 725,
+      "token_estimate": 764,
       "depends_on": [
         "documentation"
       ],
@@ -296,7 +296,7 @@
         "grammar",
         "validation"
       ],
-      "token_estimate": 732,
+      "token_estimate": 722,
       "depends_on": [
         "pk-fk-constraints",
         "generation-methods",

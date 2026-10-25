@@ -1,11 +1,11 @@
 
 import math
-import uuid
 import re
 import numpy as np
+import pyarrow as pa
 
 from typing import List, Any, Dict
-from datetime import datetime as dt, timezone
+from datetime import datetime as dt, timedelta
 from decimal import Context, Decimal, ROUND_CEILING, ROUND_FLOOR
 
 
@@ -19,6 +19,8 @@ def _parse_date_bound(value: str, date_format: str) -> dt:
   except ValueError:
     return dt.strptime(value, "%Y-%m-%d")
 
+
+def epoch_seconds(dt_start: dt, dt_end: dt) -> tuple[int, int]: return tuple((d - dt(1970, 1, 1)) // timedelta(seconds=1) for d in (dt_start, dt_end))
 
 def float_decimals_supported(decimals) -> bool:
   return type(decimals) is int and abs(decimals) <= 308
@@ -88,16 +90,54 @@ def _round_finite(x: np.ndarray, decimals: int) -> np.ndarray:
   with np.errstate(over='ignore'): r = np.round(x, decimals)
   return np.where(np.isinf(r), x, r)
 
+_DIGIT_PAIRS = np.array([f"{i:02d}".encode() for i in range(100)]).view(np.uint16).ravel()
+
+
+def fixed_text(rows: np.ndarray, max_chunk_bytes: int = 2 ** 31 - 1) -> pa.Array | pa.ChunkedArray:
+  """C-contiguous (n, width) uint8 UTF-8 rows of equal byte width -> pa.string(); a ChunkedArray when the data exceeds max_chunk_bytes."""
+  n, width = rows.shape
+  step = max(1, max_chunk_bytes // max(width, 1))
+  chunks = [pa.StringArray.from_buffers(len(r), pa.py_buffer(np.arange(0, (len(r) + 1) * width, width, dtype=np.int32)), pa.py_buffer(r))
+            for r in (rows[i:i + step] for i in range(0, n, step))]
+  if not chunks: return pa.array([], pa.string())
+  return chunks[0] if len(chunks) == 1 else pa.chunked_array(chunks, pa.string())
+
+
+def _format_dates(ts: np.ndarray, tokens: list) -> pa.Array | pa.ChunkedArray:
+  s = ts.astype("datetime64[s]")
+  y, m, d = (s.astype(f"datetime64[{u}]") for u in "YMD")
+  sec = (s - d).astype(np.int64)
+  fields = {"%Y": y.astype(np.int64) + 1970, "%m": (m - y).astype(np.int64) + 1, "%d": (d - m).astype(np.int64) + 1,
+            "%H": sec // 3600, "%M": sec // 60 % 60, "%S": sec % 60}
+  lits = {t: np.frombuffer(t.encode(), np.uint8) for t in tokens if t not in fields}
+  widths = [(4 if t == "%Y" else 2) if t in fields else len(lits[t]) for t in tokens]
+  buf, c = np.empty((len(ts), sum(widths)), np.uint8), 0
+  for t, w in zip(tokens, widths):
+    if t in fields:
+      for k in range(w): buf[:, c + k] = fields[t] // 10 ** (w - 1 - k) % 10 + 48
+    else: buf[:, c:c + w] = lits[t]
+    c += w
+  return fixed_text(buf)
+
+
+def pool_draw(pool: list, idx: np.ndarray) -> pa.Array | pa.ChunkedArray | np.ndarray:
+  """Rows idx of np.asarray(pool): Arrow text for a text pool, else the NumPy array."""
+  a = np.asarray(pool)
+  return pa.array(a.tolist(), pa.string()).take(pa.array(idx)) if a.dtype.kind == "U" else a[idx]
+
 
 class NPCore:
 
 
   @classmethod
-  def gen_uuid4(cls, size: int, *, rng: np.random.Generator) -> np.ndarray:
+  def gen_uuid4(cls, size: int, *, rng: np.random.Generator) -> pa.Array | pa.ChunkedArray:
     b = np.frombuffer(rng.bytes(16 * size), np.uint8).reshape(size, 16).copy()
     b[:, 6] = b[:, 6] & 0x0F | 0x40
     b[:, 8] = b[:, 8] & 0x3F | 0x80
-    return np.array([str(uuid.UUID(bytes=row.tobytes())) for row in b])
+    hexed = np.frombuffer(b.tobytes().hex().encode(), np.uint8).reshape(size, 32)
+    buf = np.full((size, 36), ord("-"), np.uint8)
+    for (a, c), d in zip(((0, 8), (8, 12), (12, 16), (16, 20), (20, 32)), (0, 9, 14, 19, 24)): buf[:, d:d + c - a] = hexed[:, a:c]
+    return fixed_text(buf)
     
   @classmethod
   def gen_booleans(cls, size: int, true_prob=0.5, *, rng: np.random.Generator) -> np.ndarray:
@@ -112,13 +152,18 @@ class NPCore:
   
 
   @classmethod
-  def gen_ints_zfilled(cls, size: int, length: int, *, rng: np.random.Generator) -> np.ndarray:
-    # Use int64 explicitly to handle large numbers on Windows
-    max_val = 10**length - 1
-    str_arr = rng.integers(0, max_val + 1, size, dtype=np.int64).astype('str')
-    return np.char.zfill(str_arr, length)
-  
-  
+  def gen_ints_zfilled(cls, size: int, length: int, *, rng: np.random.Generator) -> pa.Array | pa.ChunkedArray:
+    v = rng.integers(0, 10**length, size, dtype=np.int64)
+    pairs = (length + 1) // 2
+    cols = np.empty((pairs, size), np.uint16)
+    q, r = np.empty_like(v), np.empty_like(v)
+    for c in range(pairs - 1, -1, -1):
+      np.floor_divide(v, 100, out=q); np.multiply(q, 100, out=r); np.subtract(v, r, out=r)
+      np.take(_DIGIT_PAIRS, r, out=cols[c]); v, q = q, v
+    b = np.ascontiguousarray(cols.T).view(np.uint8)
+    return fixed_text(b if length % 2 == 0 else np.ascontiguousarray(b[:, 1:]))
+
+
   @classmethod
   def gen_floats(cls, size: int, min: int | float, max: int | float, decimals: int = 2, *, rng: np.random.Generator) -> np.ndarray:
     low, high, fine = float_lattice_bounds(min, max, decimals)
@@ -165,64 +210,42 @@ class NPCore:
 
 
   @classmethod
-  def gen_constant(cls, size: int, value: Any, *, rng: np.random.Generator) -> np.ndarray:
-    return np.full(size, value)
+  def gen_constant(cls, size: int, value: Any, *, rng: np.random.Generator) -> pa.Array | np.ndarray:
+    return pa.repeat(value, size) if isinstance(value, str) else np.full(size, value)
 
 
 
   @classmethod
-  def gen_distincts(cls, size: int, distincts: List[Any], *, rng: np.random.Generator) -> np.ndarray:
+  def gen_distincts(cls, size: int, distincts: List[Any], *, rng: np.random.Generator) -> pa.Array | pa.ChunkedArray | np.ndarray:
     assert len(list(set([type(x) for x in distincts]))) == 1
-    return rng.choice(distincts, size)
+    return pool_draw(distincts, rng.integers(0, len(distincts), size))
 
 
   @classmethod
-  def gen_distincts_prop(cls, size: int, distincts: Dict[str, int], *, rng: np.random.Generator) -> np.ndarray:
-    distincts_prop = [ key for key, value in distincts.items() for i in range(value) ]
-    #assert len(list(set([type(x) for x in distincts]))) == 1
-    return rng.choice(distincts_prop, size)
+  def gen_distincts_prop(cls, size: int, distincts: Dict[str, int], *, rng: np.random.Generator) -> pa.Array | pa.ChunkedArray | np.ndarray:
+    pool = [key for key, value in distincts.items() for _ in range(value)]
+    return pool_draw(pool, rng.integers(0, len(pool), size))
   
 
   @classmethod
   def gen_unix_timestamps(cls, size: int, start: str, end: str, date_format: str = "%Y-%m-%d", *, rng: np.random.Generator) -> np.ndarray:
-    dt_start, dt_end = (_parse_date_bound(value, date_format) for value in (start, end))
-    if dt_start < dt(1970, 1, 1): dt_start = dt(1970, 1, 1)
-    timestamp_start, timestamp_end = (int(d.replace(tzinfo=timezone.utc).timestamp()) for d in (dt_start, dt_end))
+    timestamp_start, timestamp_end = epoch_seconds(*(_parse_date_bound(value, date_format) for value in (start, end)))
     # Use int64 to handle large Unix timestamps on Windows
     int_array = rng.integers(timestamp_start, timestamp_end, size, dtype=np.int64)
     return int_array
   
 
   @classmethod
-  def gen_dates(cls, size: int, start: str, end: str, date_format: str = "%Y-%m-%d", *, rng: np.random.Generator) -> np.ndarray:
-    """
-    Generate random dates as formatted strings.
-    
-    Args:
-        size: Number of dates to generate
-        start: Start date string
-        end: End date string
-        format: Date format (e.g., "%Y-%m-%d", "%Y-%m-%d %H:%M:%S")
-    
-    Returns:
-        numpy array of formatted date strings
-    """
-    timestamp_array = cls.gen_unix_timestamps(size, start, end, date_format, rng=rng)
-    s = timestamp_array.astype("datetime64[s]")
-    y, m, d = (s.astype(f"datetime64[{u}]") for u in "YMD")
-    sec = (s - d).astype(np.int64)
-    fields = {"%Y": y.astype(np.int64) + 1970, "%m": (m - y).astype(np.int64) + 1, "%d": (d - m).astype(np.int64) + 1,
-              "%H": sec // 3600, "%M": sec // 60 % 60, "%S": sec % 60}
+  def gen_dates(cls, size: int, start: str, end: str, date_format: str = "%Y-%m-%d", *, rng: np.random.Generator) -> pa.Array | pa.ChunkedArray:
+    """Random UTC timestamps between start and end, formatted by date_format, as Arrow text (pa.string())."""
+    ts = cls.gen_unix_timestamps(size, start, end, date_format, rng=rng)
     tokens = [{"%f": "000000"}.get(t, t) for t in DATE_SPLIT.split(date_format) if t]
-    widths = [(4 if t == "%Y" else 2) if t in fields else len(t) for t in tokens]
-    codes, c = np.empty((size, sum(widths)), np.uint32), 0
-    for t, w in zip(tokens, widths):
-      if t in fields:
-        for k in range(w): codes[:, c + k] = fields[t] // 10 ** (w - 1 - k) % 10 + 48
-      else:
-        codes[:, c:c + w] = [ord(ch) for ch in t]
-      c += w
-    return codes.view(f"<U{sum(widths)}").ravel()
+    if size == 0: return pa.array([], pa.string())
+    if not any(t in ("%H", "%M", "%S") for t in tokens):
+      day = ts // 86400
+      lo, hi = int(day.min()), int(day.max())
+      if hi - lo + 1 <= size: return _format_dates(np.arange(lo, hi + 1, dtype=np.int64) * 86400, tokens).take(pa.array(day - lo))
+    return _format_dates(ts, tokens)
 
 if __name__ == "__main__":
   

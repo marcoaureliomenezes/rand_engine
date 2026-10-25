@@ -2,8 +2,9 @@
 
 ## Choose an environment
 
-`rand-engine` requires Python 3.10 or newer. Continuous integration currently tests Python
-3.10 through 3.13; later Python releases may work, but are not part of that tested set.
+`rand-engine` requires Python 3.11 or newer. Continuous integration tests Python 3.11 through
+3.14; later Python releases may work, but are not part of that tested set. The supported
+dependency bounds are pandas `>=2.2,<4`, pyarrow `>=19`, numpy `>=1.26`; Faker is uncapped.
 
 ```bash
 pip install rand-engine
@@ -12,9 +13,10 @@ pip install "rand-engine[faker]"  # only for RandSpecs.faker_pool
 
 The core install includes Python, NumPy and pandas generation. PySpark is deliberately a
 caller-supplied dependency: use `SparkGenerator` only when your application already has a
-Spark session and `pyspark.sql.functions`. Spark CI runs on Linux and macOS with Python
-3.10–3.13 and on Windows with Python 3.10–3.11. It uses Java 17. On Windows with Python
-3.12 or newer, use the pandas generator or a supported Spark/Python partition instead.
+Spark session and `pyspark.sql.functions`. Spark CI runs Spark 3.5 and 4.x: Spark 3.5 on
+Python 3.11 and Spark 4.x on Python 3.12 through 3.14, on Linux, macOS and Windows. It uses
+Java 17. The Windows Spark skip applies from Python 3.12: those Spark tests skip on Windows,
+so use the pandas generator or a supported Spark/Python partition there instead.
 
 ## Pick the generator
 
@@ -28,7 +30,7 @@ ordinary Spark columns remain unseeded.
 15. It refuses `uint64`, inclusive integer domains wider than `2**53`, NumPy-only
 distributions such as `poisson`, and modifiers such as `null_rate`. The four correlated
 methods `distincts_map`, `distincts_map_prop`, `distincts_multi_map`, and `complex_distincts`
-are a special case: Spark warns and returns a NULL string column. They do not raise. See the
+are refused too: Spark raises `SpecValidationError` and points at `DataGenerator`. See the
 [Spark method table](2_SPARK_GENERATOR.md#methods) for the supported surface rather than
 copying an exhaustive grammar into a job.
 
@@ -66,6 +68,5 @@ for the complete version history, including the distinct 0.7 migration changes.
 | `faker` cannot be imported | Faker is optional. | Install `pip install "rand-engine[faker]"`, then rebuild the pool with `RandSpecs.faker_pool`. |
 | Spark cannot start or Java is missing | Spark and its JDK are supplied by the caller. | Install/configure PySpark and a compatible Java runtime; use Java 17 for the tested setup, or use `DataGenerator` for a pandas path. |
 | A Spark spec raises `SpecValidationError` | The method or boundary is unsupported by Spark. | Use the [Spark table](2_SPARK_GENERATOR.md#methods); generate the unsupported portion with `DataGenerator` and create a Spark DataFrame when that suits the workload. |
-| A correlated Spark column is NULL | One of the four correlated methods is a warned placeholder in Spark. | Use `DataGenerator` for correlated values, or change the Spark spec to supported ordinary/key columns. |
 | A RandSpec is invalid | Construction validates the whole spec. | Read every reported item and its corrected example, fix the spec, then construct a new generator. |
 | A starter target already exists | Starters create files exclusively to protect project work. | Keep the existing file, choose a different `--out` directory, or review and merge the starter manually. |

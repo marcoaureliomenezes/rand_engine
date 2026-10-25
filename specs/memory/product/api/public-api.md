@@ -38,6 +38,6 @@ rand_engine.__version__  # the installed rand-engine version, else "0.0.0+unknow
 ## Distribution
 
 - PyPI distribution `rand-engine`, import package `rand_engine`; the wheel holds only `rand_engine/` — the `py.typed` marker and the `cases/*.py.txt` scaffolds included, the agent skill excluded — and declares the `rand-engine` console script.
-- The metadata is a static PEP 621 `[project]` table; only the runtime dependencies stay dynamic, from Poetry. It declares `Requires-Python: >=3.10`, the Python classifiers 3.10 to 3.13 that CI tests, `Typing :: Typed`, 14 keywords and `License-Expression: MIT`. The Summary is `project.description`, and the package docstring's first line repeats it.
+- The metadata is a static PEP 621 `[project]` table; only the runtime dependencies stay dynamic, from Poetry. It declares `Requires-Python: >=3.11`, the Python classifiers 3.11 to 3.14 that CI tests, `Typing :: Typed`, 14 keywords and `License-Expression: MIT`. The Summary is `project.description`, and the package docstring's first line repeats it.
 - The metadata's `Documentation` project URL is the docs site, the same URL the validators' error footer names ([[documentation]]).
-- Mandatory dependencies are NumPy, pandas and PyArrow. Faker is the optional extra `rand-engine[faker]`; without it only `RandSpecs.faker_pool` fails, with a `RandEngineError` naming the extra.
+- Mandatory dependencies are NumPy `>=1.26`, pandas `>=2.2,<4` and PyArrow `>=19.0.0`, with no other cap. Faker is the optional extra `rand-engine[faker]`, `>=28.4.1` and uncapped; without it only `RandSpecs.faker_pool` fails, with a `RandEngineError` naming the extra.

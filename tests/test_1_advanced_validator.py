@@ -16,7 +16,7 @@ from rand_engine.main.spark_generator import SparkGenerator
 from rand_engine.validators.common_validator import CommonValidator
 from rand_engine.validators.advanced_validator import AdvancedValidator
 from rand_engine.validators.exceptions import SpecValidationError
-from rand_engine.validators.method_specs import CORRELATED, METHOD_CATALOG, NUMPY, SPARK
+from rand_engine.validators.method_specs import METHOD_CATALOG, NUMPY, SPARK
 
 
 def test_valid_spec_integers():
@@ -556,10 +556,7 @@ def test_validator_tables_match_engine_maps_and_signatures():
   numpy = RandGenerator({}).map_methods()
   spark = SparkGenerator.map_methods(None)
   expected_numpy = {name for name, spec in METHOD_CATALOG.items() if NUMPY in spec.engines}
-  expected_spark = {
-    name for name, spec in METHOD_CATALOG.items()
-    if SPARK in spec.engines or spec.kind == CORRELATED
-  }
+  expected_spark = {name for name, spec in METHOD_CATALOG.items() if SPARK in spec.engines}
   assert set(numpy) == expected_numpy
   assert set(spark) == expected_spark
   for name, fn in [*numpy.items(), *spark.items()]:

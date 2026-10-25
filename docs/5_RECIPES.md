@@ -4,7 +4,7 @@ Short, runnable patterns. Every `python` block runs in CI, in order, in one name
 
 ## Faker pools
 
-<!-- derived-from: generation-methods sha256:1552dc309621 -->
+<!-- derived-from: generation-methods sha256:e6bc7670d6dc -->
 <!-- derived-from: templates-and-examples sha256:fa66c7f7252b -->
 
 Faker is slow per value; `RandSpecs.faker_pool` draws a pool once and returns a `distincts` spec.
@@ -42,7 +42,8 @@ else:
 `booleans(true_prob=0.5)`; integer fields become `integers(min=0, max=min(100, type maximum),
 int_type=<Arrow type>)`; floating fields become `floats(0..1, decimals=2)`; string and large-string
 fields become `uuid4`; date fields become `dates(2000-01-01..2030-12-31)`; timezone-naive timestamps
-become second-resolution `dates`; and null fields become `constant(None)`. Nullable fields retain
+become second-resolution `dates`; string, large-string, date and timestamp fields generate `string[pyarrow]` columns; and null fields
+become `constant(None)`, an `object` column. Nullable fields retain
 the same recipe: Arrow nullability does not add a RandSpec modifier.
 
 For an override, `kwargs` merge into the default recipe. An override containing `method` replaces
@@ -127,7 +128,7 @@ for record in events.stream_dict(min_throughput=10, max_throughput=50):
 
 ## Parquet lake
 
-<!-- derived-from: writers-and-streaming sha256:194abd1a89af -->
+<!-- derived-from: writers-and-streaming sha256:786ab5799347 -->
 
 One folder per partition value, several files each.
 

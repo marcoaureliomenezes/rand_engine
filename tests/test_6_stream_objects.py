@@ -167,7 +167,7 @@ class _TaggedText(str):
 )
 def test_stream_dict_preserves_object_values(value, assert_value):
   """Containers and custom values retain their representation."""
-  records = list(islice(_stream_for_frame(lambda frame: pd.DataFrame({"value": [value]}, index=frame.index[:1]), 1), 1))
+  records = list(islice(_stream_for_frame(lambda frame: pd.DataFrame({"value": pd.Series([value], dtype=object, index=frame.index[:1])}, index=frame.index[:1]), 1), 1))
 
   assert assert_value(records[0]["value"])
 
@@ -207,13 +207,13 @@ def test_stream_dict_preserves_mixed_object_values():
     ),
     (
       lambda index: pd.DataFrame(
-        {"value": pd.Series(pd.Categorical([_TaggedText("kept"), _TaggedText("two")]))}, index=index
+        {"value": pd.Series(pd.Categorical(pd.Series([_TaggedText("kept"), _TaggedText("two")], dtype=object)))}, index=index
       ),
       [{"value": _TaggedText("kept")}, {"value": _TaggedText("two")}],
     ),
     (
       lambda index: pd.DataFrame(
-        {"value": pd.Series([_TaggedText("kept"), _TaggedText("two")], dtype="string")}, index=index
+        {"value": pd.Series([_TaggedText("kept"), _TaggedText("two")], dtype=pd.StringDtype("python"))}, index=index
       ),
       [{"value": _TaggedText("kept")}, {"value": _TaggedText("two")}],
     ),
@@ -273,3 +273,20 @@ def test_stream_dict_batches_keep_order_and_cadence(monkeypatch):
   assert all(type(record["timestamp_created"]) is float for record in records)
   assert len(sleeps) == 4
   assert all(1 / 100 <= duration <= 1 / 50 for duration in sleeps)
+
+
+def _timestamp_transformer_spec():
+  return {"d": {"method": "dates", "kwargs": {"start": "2024-01-01", "end": "2024-01-31"},
+                "transformers": [pd.Timestamp]}}
+
+
+def test_timestamp_transformer_column_has_datetime_dtype_and_streams_text():
+  """A transformer's pd.Timestamp output keeps pandas' own datetime dtype and streams as text."""
+  df = DataGenerator(_timestamp_transformer_spec(), seed=3).size(4).get_df()
+  assert pd.api.types.is_datetime64_any_dtype(df["d"].dtype)
+  assert not isinstance(df["d"].dtype, pd.ArrowDtype)
+
+  record = next(DataGenerator(_timestamp_transformer_spec(), seed=3).size(4)
+                .stream_dict(min_throughput=10**9, max_throughput=10**9))
+  assert isinstance(record["d"], str)
+  assert record["d"].startswith("2024-01-")
