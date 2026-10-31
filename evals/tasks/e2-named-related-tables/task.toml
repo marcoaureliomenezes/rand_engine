@@ -1,0 +1,10 @@
+schema_version = "1.4"
+
+[metadata]
+description = "Named use: related parent and child tables with a valid foreign key"
+
+[verifier]
+timeout_sec = 300.0
+
+[agent]
+timeout_sec = 1800.0

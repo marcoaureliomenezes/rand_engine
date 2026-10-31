@@ -1,0 +1,1 @@
+I need fast synthetic test data in Python: a `customers` table and an `orders` table where every order's `customer_id` is a valid customer. About 2,000,000 customers and 5,000,000 orders. Write both as Parquet files, `customers.parquet` and `orders.parquet`, in the current directory, and keep the script that makes them next to them.

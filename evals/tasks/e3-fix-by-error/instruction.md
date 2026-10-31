@@ -1,0 +1,1 @@
+`spec.py` in the current directory defines `spec`, a `rand-engine` spec that does not build. Fix `spec.py` using the error the library reports; keep its four columns `id`, `name`, `amount` and `status`. Then `DataGenerator(spec, seed=1).size(1000).get_df()` must return 1,000 rows. Edit only `spec.py`.

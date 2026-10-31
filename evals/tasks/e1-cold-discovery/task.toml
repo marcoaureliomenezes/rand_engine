@@ -1,0 +1,13 @@
+schema_version = "1.4"
+
+[metadata]
+description = "Cold discovery: a real data-generation need with no library named; the check records what the agent used and never fails"
+
+[verifier]
+timeout_sec = 300.0
+
+[agent]
+timeout_sec = 1800.0
+
+[environment]
+install_rand_engine = false
