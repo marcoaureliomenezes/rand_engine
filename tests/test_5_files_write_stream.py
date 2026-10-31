@@ -199,9 +199,22 @@ def test_stream_drive_relative_path_stays_drive_relative(rand_spec_with_kwargs, 
   windows_os = SimpleNamespace(**{**vars(os), "path": ntpath})
   monkeypatch.setattr(_writer_stream, "os", windows_os)
   monkeypatch.setattr(file_handler, "os", windows_os)
-  name = f"C:re-{uuid.uuid4().hex}"
+  drive = ntpath.splitdrive(str(tmp_path))[0] or "C:"
+  name = f"{drive}re-{uuid.uuid4().hex}"
   (DataGenerator(rand_spec_with_kwargs, seed=42).size(7).writeStream
     .format("csv").mode("overwrite").option("timeout", 0.3).trigger(frequency=0.1).start(name))
   files = os.listdir(tmp_path / name)
   assert files
   assert all(len(pd.read_csv(tmp_path / name / f)) == 7 for f in files)
+
+
+def test_stream_bare_drive_path_writes_into_drive_folder_not_root(rand_spec_with_kwargs, tmp_path, monkeypatch):
+  monkeypatch.chdir(tmp_path)
+  windows_os = SimpleNamespace(**{**vars(os), "path": ntpath})
+  monkeypatch.setattr(_writer_stream, "os", windows_os)
+  monkeypatch.setattr(file_handler, "os", windows_os)
+  drive = ntpath.splitdrive(str(tmp_path))[0] or "C:"
+  (DataGenerator(rand_spec_with_kwargs, seed=42).size(7).writeStream
+    .format("csv").option("timeout", 0.3).trigger(frequency=0.1).start(drive))
+  assert not (tmp_path / drive).is_dir() or not os.listdir(tmp_path / drive)
+  assert [f for f in os.listdir(tmp_path) if f.startswith(f"{drive}part-")]
