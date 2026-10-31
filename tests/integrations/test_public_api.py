@@ -536,6 +536,25 @@ def test_wheel_holds_only_the_rand_engine_package(built_wheel):
     assert [n for n in names if "skills/" in n] == []
 
 
+def test_no_workflow_names_the_evals_folder():
+    workflows = Path(__file__).parents[2] / ".github" / "workflows"
+    assert [w.name for w in workflows.glob("*") if "evals/" in w.read_text()] == []
+
+
+def test_evals_folder_holds_no_file_pytest_collects():
+    evals = Path(__file__).parents[2] / "evals"
+    collected = [
+        p.name for p in evals.rglob("*")
+        if p.is_file() and (p.name in ("conftest.py",) or p.match("test_*.py") or p.match("*_test.py"))
+    ]
+    assert collected == []
+
+
+def test_wheel_lists_no_evals_entry(built_wheel):
+    with ZipFile(built_wheel) as wheel:
+        assert [n for n in wheel.namelist() if n.startswith("evals/")] == []
+
+
 @pytest.mark.parametrize("sub", ["main", "file_handlers", "core", "utils"])
 def test_wheel_holds_subpackage_init(built_wheel, sub):
     with ZipFile(built_wheel) as wheel:
