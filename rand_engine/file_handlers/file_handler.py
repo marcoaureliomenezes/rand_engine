@@ -416,7 +416,7 @@ class FileHandler:
   def handle_path(path: str, format: str, write_options: dict) -> str:
     file_format = format
     file_name = os.path.basename(path)
-    base_path = os.path.dirname(path)
+    base_path = os.path.dirname(path) or "."
     comp_type = write_options.get("compression", None)
     comp_type = "gz" if comp_type == "gzip" else comp_type
     file_name_cleaned = file_name.replace(f".{file_format}", "").replace(f".{comp_type}", "")

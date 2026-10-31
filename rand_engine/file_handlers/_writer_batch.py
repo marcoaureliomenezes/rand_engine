@@ -397,7 +397,7 @@ class FileBatchWriter(FileWriter):
     base_path, file_name, extension = FileHandler.handle_path(
       path, self.write_format, write_options
     )
-    parent = Path(base_path or ".")
+    parent = Path(base_path)
     destination = parent / file_name if num_files > 1 else parent / f"{file_name}.{extension}"
     file_sizes = self._file_sizes(total, num_files)
     self.writer_method[self.write_format](
