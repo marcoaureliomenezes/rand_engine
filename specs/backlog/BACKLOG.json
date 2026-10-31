@@ -23,8 +23,8 @@
       "title": "Text generation performance follow-ups after the Arrow rewrite",
       "opened": "2026-10-20",
       "status": "idea",
-      "description": "(1) dates with time directives is only ~1.2x faster than 0.8.0 (7.71 s -> 6.28 s at 10M rows, measured in J3.T6) against ~25x for date-only, because each time field runs per-row digit loops; candidate: a two-digit pair table per field, as int_zfilled already does; 0.8.1 AC1.3 covered date-only only. (2) uuid4 in rand_engine/core/_np_core.py hex-encodes through bytes.hex().encode(), ~640 MB of temporaries at 10M rows; binascii.hexlify writes the hex bytes directly. (3) zero-row uuid4 and int_zfilled now return an empty Arrow column (0.8.0: empty float64, and a raise) and no test pins it; add the zero-size partition to their contract tests.",
-      "provenance": "operator ruling on the 0.8.1 intake report, 2026-10-20; Job 3 review 2026-10-20T140908Z and the J3.T6 measurements",
+      "description": "(1) dates with time directives is only ~1.2x faster than 0.8.0 (7.71 s -> 6.28 s at 10M rows, measured in J3.T6) against ~25x for date-only, because each time field runs per-row digit loops; candidate: a two-digit pair table per field, as int_zfilled already does; 0.8.1 AC1.3 covered date-only only. (2) uuid4 in rand_engine/core/_np_core.py hex-encodes through bytes.hex().encode(), ~640 MB of temporaries at 10M rows; binascii.hexlify writes the hex bytes directly. (3) zero-row uuid4 and int_zfilled now return an empty Arrow column (0.8.0: empty float64, and a raise) and no test pins it; add the zero-size partition to their contract tests. 2026-10-31: (1) is re-judged after native-datetime-output (0.9.0 rc-3), since a native date/time column needs no per-field digit loop; a change to gen_dates needs its by-name approval (invariant 12).",
+      "provenance": "operator ruling on the 0.8.1 intake report, 2026-10-20; Job 3 review 2026-10-20T140908Z and the J3.T6 measurements; operator grill 2026-10-31, handoff 2026-10-31T155739Z-main-grill-randspec-contract: \"Data e hora nativas (Recomendado)\"",
       "relates": []
     },
     {
@@ -41,8 +41,8 @@
       "title": "Mandatory hardware study: chunk size vs speed and peak memory, presented before any implementation",
       "opened": "2026-10-24",
       "status": "idea",
-      "description": "Horizon: medium, first (agent default order, unruled: study -> output/memory -> stream -> public benchmark -> docs -> JSON Schema + generate -> 1.0). Operator answer (verbatim): \"devemos fazer em peda\u00e7os, mas devemos observar e fazer um estudo serio sobre o trade-off de velocidade vs montar em peda\u00e7\u00f5 e fazer append, se usamos o disco, como usamos, quais seriam os chunks otimizados para que mantenhamos a velocidade e reduzimos. ... \u00e9 obrigatorio vc me apresentar esse estudo ... um grafico onde temos eixos com o tamanho do chunk e a velocidade ... pelo menos 3 estrategias ... Oferecer como default memoria m\u00e1xima consumida de 1GB. E usu\u00e1rio consegue passar alterar, diminuir, isso afetar\u00e1 no tamanho de chunks, devemos ter as estimativas de velocidade de gera\u00e7\u00e3o para aquele tamanho de chunk.\" Outcome: a study presented to the operator before any chunked-output implementation, naming the winning strategy and chunk size per memory budget: a chunk-size sweep 10^3..10^8 rows, x = chunk size, y = throughput (rows/\u00b5s, MB/s), a second panel with peak RSS; at least 3 strategies among monolithic, sequential chunks + append, multiprocessing parts, threads with per-block Generators, and Python 3.14 free-threaded if the ecosystem supports it; interfering variables isolated (cache sizes, column types, format/codec, row-group size, workers, per-chunk fixed cost, page cache, disk type); hardware measured (CPU, caches, RAM bandwidth, disk write); per-block Philox streams tested so seeds are independent of chunk size and thread count. Out of scope: changing the library's generation or writers; the study is the operator's decision input.",
-      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"devemos fazer em peda\u00e7os, mas devemos observar e fazer um estudo serio sobre o trade-off de velocidade vs montar em peda\u00e7\u00f5 e fazer append, se usamos o disco, como usamos, quais seriam os chunks otimizados para que mantenhamos a velocidade e reduzimos. ... \u00e9 obrigatorio vc me apresentar esse estudo ... um grafico onde temos eixos com o tamanho do chunk e a velocidade ... pelo menos 3 estrategias ... Oferecer como default memoria m\u00e1xima consumida de 1GB. E usu\u00e1rio consegue passar alterar, diminuir, isso afetar\u00e1 no tamanho de chunks, devemos ter as estimativas de velocidade de gera\u00e7\u00e3o para aquele tamanho de chunk.\"",
+      "description": "Horizon: 0.9.0 rc-4, first, before 1.0 (operator 2026-10-31: \"Mem\u00f3ria: estudo + teto 1 GB (Recomendado)\"; order: release-1-0). Operator answer (verbatim): \"devemos fazer em peda\u00e7os, mas devemos observar e fazer um estudo serio sobre o trade-off de velocidade vs montar em peda\u00e7\u00f5 e fazer append, se usamos o disco, como usamos, quais seriam os chunks otimizados para que mantenhamos a velocidade e reduzimos. ... \u00e9 obrigatorio vc me apresentar esse estudo ... um grafico onde temos eixos com o tamanho do chunk e a velocidade ... pelo menos 3 estrategias ... Oferecer como default memoria m\u00e1xima consumida de 1GB. E usu\u00e1rio consegue passar alterar, diminuir, isso afetar\u00e1 no tamanho de chunks, devemos ter as estimativas de velocidade de gera\u00e7\u00e3o para aquele tamanho de chunk.\" Outcome: a study presented to the operator before any chunked-output implementation, naming the winning strategy and chunk size per memory budget: a chunk-size sweep 10^3..10^8 rows, x = chunk size, y = throughput (rows/\u00b5s, MB/s), a second panel with peak RSS; at least 3 strategies among monolithic, sequential chunks + append, multiprocessing parts, threads with per-block Generators, and Python 3.14 free-threaded if the ecosystem supports it; interfering variables isolated (cache sizes, column types, format/codec, row-group size, workers, per-chunk fixed cost, page cache, disk type); hardware measured (CPU, caches, RAM bandwidth, disk write); per-block Philox streams tested so seeds are independent of chunk size and thread count. Out of scope: changing the library's generation or writers; the study is the operator's decision input. Seed (2026-10-31): the study measures against seed-per-column (0.9.0 rc-1); a seed guarantee across threads or processes is not a 1.0 contract (a counter-based per-row seed is the 2.0 path).",
+      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"devemos fazer em peda\u00e7os, mas devemos observar e fazer um estudo serio sobre o trade-off de velocidade vs montar em peda\u00e7\u00f5 e fazer append, se usamos o disco, como usamos, quais seriam os chunks otimizados para que mantenhamos a velocidade e reduzimos. ... \u00e9 obrigatorio vc me apresentar esse estudo ... um grafico onde temos eixos com o tamanho do chunk e a velocidade ... pelo menos 3 estrategias ... Oferecer como default memoria m\u00e1xima consumida de 1GB. E usu\u00e1rio consegue passar alterar, diminuir, isso afetar\u00e1 no tamanho de chunks, devemos ter as estimativas de velocidade de gera\u00e7\u00e3o para aquele tamanho de chunk.\"; operator grill 2026-10-31, handoff 2026-10-31T155739Z-main-grill-randspec-contract: \"Mem\u00f3ria: estudo + teto 1 GB (Recomendado), Stream: taxa por micro-lote (Recomendado), P\u00e1gina p\u00fablica de benchmark (Recomendado), Docs reestruturadas (Recomendado)\" (all before 1.0); order confirmed in the summary: \"Confirmo tudo (Recomendado)\"",
       "relates": []
     },
     {
@@ -50,8 +50,8 @@
       "title": "Output speed first under a bounded memory budget",
       "opened": "2026-10-24",
       "status": "idea",
-      "description": "Horizon: medium, after hardware-chunk-study. Operator answers (verbatim): \"A sa\u00edda primeiro (Recomendado)\"; \"Writers/stream + get_df recusa (Recomendado)\"; \"Docs + plan() + CLI local (Recomendado)\"; \"Oferecer como default memoria m\u00e1xima consumida de 1GB. E usu\u00e1rio consegue passar alterar, diminuir, isso afetar\u00e1 no tamanho de chunks, devemos ter as estimativas de velocidade de gera\u00e7\u00e3o para aquele tamanho de chunk.\" Outcome: output built from the study's winning strategy: a memory budget, default 1 GB and user-adjustable, sets the chunk size from the measured bytes/row table; writers and stream obey it; get_df refuses an estimated frame above it with the estimate in the message; max_memory=None disables it; parallel part writing, Arrow-direct Parquet/CSV, vectorized JSON; gen.plan(max_memory=...) returns chunk rows, expected peak and throughput without measuring; `rand-engine benchmark --max-memory 1GB` measures the user's machine (~1 min); the docs publish the study curves on reference hardware. The draw-order change is a seed-contract revision in its SPEC (invariant 4). Measured motivation (CI): columns 7-512 rows/\u00b5s vs CSV 3, Parquet 2.4, JSON 0.5, stream_dict 0.17 rows/\u00b5s. Out of scope: the stream rate contract (stream-rate-per-microbatch), text-method speed (text-perf-follow-ups), a native core, a new runtime dependency.",
-      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"A sa\u00edda primeiro (Recomendado)\"; \"Writers/stream + get_df recusa (Recomendado)\"; \"Docs + plan() + CLI local (Recomendado)\"",
+      "description": "Horizon: 0.9.0 rc-4, after hardware-chunk-study, before 1.0 since it changes a default (operator 2026-10-31: \"Mem\u00f3ria: estudo + teto 1 GB (Recomendado)\"). Operator answers (verbatim): \"A sa\u00edda primeiro (Recomendado)\"; \"Writers/stream + get_df recusa (Recomendado)\"; \"Docs + plan() + CLI local (Recomendado)\"; \"Oferecer como default memoria m\u00e1xima consumida de 1GB. E usu\u00e1rio consegue passar alterar, diminuir, isso afetar\u00e1 no tamanho de chunks, devemos ter as estimativas de velocidade de gera\u00e7\u00e3o para aquele tamanho de chunk.\" Outcome: output built from the study's winning strategy: a memory budget, default 1 GB and user-adjustable, sets the chunk size from the measured bytes/row table; writers and stream obey it; get_df refuses an estimated frame above it with the estimate in the message; max_memory=None disables it; parallel part writing, Arrow-direct Parquet/CSV, vectorized JSON; gen.plan(max_memory=...) returns chunk rows, expected peak and throughput without measuring; `rand-engine benchmark --max-memory 1GB` measures the user's machine (~1 min); the docs publish the study curves on reference hardware. Any draw-order change beyond seed-per-column (0.9.0 rc-1) is a seed-contract revision in its SPEC (invariant 4). Measured motivation (CI): columns 7-512 rows/\u00b5s vs CSV 3, Parquet 2.4, JSON 0.5, stream_dict 0.17 rows/\u00b5s. Out of scope: the stream rate contract (stream-rate-per-microbatch), text-method speed (text-perf-follow-ups), a native core, a new runtime dependency.",
+      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"A sa\u00edda primeiro (Recomendado)\"; \"Writers/stream + get_df recusa (Recomendado)\"; \"Docs + plan() + CLI local (Recomendado)\"; operator grill 2026-10-31, handoff 2026-10-31T155739Z-main-grill-randspec-contract: \"Mem\u00f3ria: estudo + teto 1 GB (Recomendado), Stream: taxa por micro-lote (Recomendado), P\u00e1gina p\u00fablica de benchmark (Recomendado), Docs reestruturadas (Recomendado)\" (all before 1.0); order confirmed in the summary: \"Confirmo tudo (Recomendado)\"",
       "relates": [
         "hardware-chunk-study",
         "text-perf-follow-ups"
@@ -62,8 +62,8 @@
       "title": "stream_dict rate as records/s per microbatch, no limit by default",
       "opened": "2026-10-24",
       "status": "idea",
-      "description": "Horizon: medium. Operator answer (verbatim): \"Taxa alvo por micro-lote (Recomendado)\". Outcome: min_throughput/max_throughput become a records/s rate drawn per microbatch, one sleep per batch instead of per record, no limit by default, with a migration note. StreamHandler is operator code (invariant 12): the SPEC Origin names it. Measured on 0.8.0: stream_dict default 5.0 records/s; 17,656 records/s at throughput 1e9. Out of scope: new built-in sinks (operator: \"Nenhum novo; receitas (Recomendado)\"), the memory budget (memory-budget-chunked-output).",
-      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"Taxa alvo por micro-lote (Recomendado)\"",
+      "description": "Horizon: 0.9.0 rc-4, after memory-budget-chunked-output, before 1.0 (operator 2026-10-31: \"Stream: taxa por micro-lote (Recomendado)\"). Operator answer (verbatim): \"Taxa alvo por micro-lote (Recomendado)\". Outcome: min_throughput/max_throughput become a records/s rate drawn per microbatch, one sleep per batch instead of per record, no limit by default, with a migration note. StreamHandler is operator code (invariant 12): the SPEC Origin names it. Measured on 0.8.0: stream_dict default 5.0 records/s; 17,656 records/s at throughput 1e9. Out of scope: new built-in sinks (operator: \"Nenhum novo; receitas (Recomendado)\"), the memory budget (memory-budget-chunked-output).",
+      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"Taxa alvo por micro-lote (Recomendado)\"; operator grill 2026-10-31, handoff 2026-10-31T155739Z-main-grill-randspec-contract: \"Mem\u00f3ria: estudo + teto 1 GB (Recomendado), Stream: taxa por micro-lote (Recomendado), P\u00e1gina p\u00fablica de benchmark (Recomendado), Docs reestruturadas (Recomendado)\" (all before 1.0); order confirmed in the summary: \"Confirmo tudo (Recomendado)\"",
       "relates": [
         "memory-budget-chunked-output"
       ]
@@ -73,8 +73,8 @@
       "title": "Public benchmark page per release",
       "opened": "2026-10-24",
       "status": "idea",
-      "description": "Horizon: medium. Operator answer (verbatim): \"P\u00e1gina p\u00fablica por release (Recomendado)\". Outcome: each release publishes a page from the extended harness: end-to-end scenarios (generate + write CSV/Parquet/JSON, stream) at 1M/10M/100M rows measuring rows/\u00b5s and peak memory; Faker and Mimesis, plus raw NumPy and DuckDB SQL as reference ceilings; hardware disclosed, CI-generated charts, raw data published, the hardware-chunk-study curves included. The Spark comparison is removed. Out of scope: the internal regression gate, which stays unchanged; any new runtime dependency.",
-      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"P\u00e1gina p\u00fablica por release (Recomendado)\"",
+      "description": "Horizon: 0.9.0 rc-5, before 1.0 (operator 2026-10-31: \"P\u00e1gina p\u00fablica de benchmark (Recomendado)\"). Operator answer (verbatim): \"P\u00e1gina p\u00fablica por release (Recomendado)\". Outcome: each release publishes a page from the extended harness: end-to-end scenarios (generate + write CSV/Parquet/JSON, stream) at 1M/10M/100M rows measuring rows/\u00b5s and peak memory; Faker and Mimesis, plus raw NumPy and DuckDB SQL as reference ceilings; hardware disclosed, CI-generated charts, raw data published, the hardware-chunk-study curves included. The Spark comparison is removed. Out of scope: the internal regression gate, which stays unchanged; any new runtime dependency. Public text (operator 2026-10-31: \"Norte interno, p\u00fablico s\u00f3 o medido (Recomendado)\"): the page states measured facts, losses included; 'fastest' appears in no public text.",
+      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"P\u00e1gina p\u00fablica por release (Recomendado)\"; operator grill 2026-10-31, handoff 2026-10-31T155739Z-main-grill-randspec-contract: \"Mem\u00f3ria: estudo + teto 1 GB (Recomendado), Stream: taxa por micro-lote (Recomendado), P\u00e1gina p\u00fablica de benchmark (Recomendado), Docs reestruturadas (Recomendado)\" (all before 1.0); order confirmed in the summary: \"Confirmo tudo (Recomendado)\"; \"Norte interno, p\u00fablico s\u00f3 o medido (Recomendado)\"",
       "relates": [
         "hardware-chunk-study",
         "memory-budget-chunked-output"
@@ -85,8 +85,8 @@
       "title": "Restructure the Zensical docs site",
       "opened": "2026-10-24",
       "status": "idea",
-      "description": "Horizon: medium. Operator answers (verbatim): \"Zensical, reestruturado (Recomendado)\"; sinks \"Nenhum novo; receitas (Recomendado)\"; roadmap home \"Backlog + p\u00e1gina p\u00fablica (Recomendado)\". Outcome: the site follows Di\u00e1taxis with clean URLs (no numbered uppercase pages); one page per method generated from METHOD_CATALOG; a gallery of realistic specs; a \"Why rand-engine\" page replacing the hedged comparison; changelog and migration inside the site; tested recipes for Kafka, S3 and databases over stream_dict/get_df; a public Roadmap page rendering these backlog entries, updated at each closure with the memory pass; wrong public annotations corrected (e.g. seed: int = None), py.typed and 'Typing :: Typed' kept (decided in scope). Out of scope: new built-in sinks, a type-check gate, versioned docs before 1.0.",
-      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"Zensical, reestruturado (Recomendado)\"; \"Nenhum novo; receitas (Recomendado)\"; \"Backlog + p\u00e1gina p\u00fablica (Recomendado)\"",
+      "description": "Horizon: 0.9.0 rc-5, before 1.0 (operator 2026-10-31: \"Docs reestruturadas (Recomendado)\"). Operator answers (verbatim): \"Zensical, reestruturado (Recomendado)\"; sinks \"Nenhum novo; receitas (Recomendado)\"; roadmap home \"Backlog + p\u00e1gina p\u00fablica (Recomendado)\". Outcome: the site follows Di\u00e1taxis with clean URLs (no numbered uppercase pages); one page per method generated from METHOD_CATALOG; a gallery of realistic specs; a \"Why rand-engine\" page replacing the hedged comparison; changelog and migration inside the site; tested recipes for Kafka, S3 and databases over stream_dict/get_df; a public Roadmap page rendering these backlog entries, updated at each closure with the memory pass; wrong public annotations corrected (e.g. seed: int = None), py.typed and 'Typing :: Typed' kept (decided in scope). Out of scope: new built-in sinks, a type-check gate, versioned docs before 1.0. Since 2026-10-31: the method pages come from the declarative catalog (randspec-catalog-validation) under the renamed names (randspec-rename-table); the Spark page states that SparkGenerator exists for one spec on a laptop and on Databricks and that dbldatagen is faster on Spark (operator: \"Manter como o ADR 0003 (Recomendado)\").",
+      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"Zensical, reestruturado (Recomendado)\"; \"Nenhum novo; receitas (Recomendado)\"; \"Backlog + p\u00e1gina p\u00fablica (Recomendado)\"; operator grill 2026-10-31, handoff 2026-10-31T155739Z-main-grill-randspec-contract: \"Mem\u00f3ria: estudo + teto 1 GB (Recomendado), Stream: taxa por micro-lote (Recomendado), P\u00e1gina p\u00fablica de benchmark (Recomendado), Docs reestruturadas (Recomendado)\" (all before 1.0); order confirmed in the summary: \"Confirmo tudo (Recomendado)\"; \"Manter como o ADR 0003 (Recomendado)\"",
       "relates": [
         "public-benchmark-page",
         "test-docstring-hygiene"
@@ -97,8 +97,8 @@
       "title": "Publish the RandSpec JSON Schema and a generate CLI",
       "opened": "2026-10-24",
       "status": "idea",
-      "description": "Horizon: medium. Operator answer (verbatim): \"JSON Schema + `generate` (Recomendado)\". Outcome: the RandSpec JSON Schema is published, and `rand-engine generate spec.json --rows N --format parquet --out DIR --seed S` writes data from a JSON spec, stdlib only. Out of scope: transformers, which stay Python-only; any new runtime dependency.",
-      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"JSON Schema + `generate` (Recomendado)\"",
+      "description": "Horizon: 0.9.0 rc-2, with dataset-spec-fk-references (order confirmed in the summary 2026-10-31). Operator answer (verbatim): \"JSON Schema + `generate` (Recomendado)\". Outcome: the RandSpec JSON Schema is published, and `rand-engine generate spec.json --rows N --format parquet --out DIR --seed S` writes data from a JSON spec, stdlib only. Out of scope: transformers, which stay Python-only; any new runtime dependency. Since 2026-10-31: the JSON Schema is one output of the declarative catalog (randspec-catalog-validation, rc-1); generate writes a whole dataset spec (dataset-spec-fk-references).",
+      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"JSON Schema + `generate` (Recomendado)\"; operator grill 2026-10-31, handoff 2026-10-31T155739Z-main-grill-randspec-contract: summary \"Confirmo tudo (Recomendado)\"",
       "relates": [
         "docs-restructure"
       ]
@@ -108,8 +108,8 @@
       "title": "rand-engine 1.0: freeze the API, RandSpec grammar, generate CLI and seed contract",
       "opened": "2026-10-24",
       "status": "idea",
-      "description": "Horizon: medium, last (agent default order, unruled: study -> output/memory -> stream -> public benchmark -> docs -> JSON Schema + generate -> 1.0). Operator answer (verbatim): \"1.0 cedo; n\u00facleo nativo = 2.0 (Recomendado)\". Outcome: 1.0 ships after the compatibility, docs, public benchmark and output speed work, and freezes the public API, the RandSpec grammar (its JSON Schema), the generate CLI and the seed contract; versioned docs start here. Out of scope: a native core; one that changes seeded values ships as 2.0.",
-      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"1.0 cedo; n\u00facleo nativo = 2.0 (Recomendado)\"",
+      "description": "Horizon: last, after 0.9.0 (operator 2026-10-31: \"0.8.2 \u2192 0.9.0 \u2192 1.0 (Recomendado)\"): 0.9.0 makes every breaking change once, rc-1 contract core (catalog, validation engine, corpus, errors, names, seed, types, JSON Schema), rc-2 dataset spec + generate CLI, rc-3 gaps with 1M/10M rows and goldens, rc-4 chunk study then memory budget and stream rate, rc-5 docs + benchmark page; then one eval cycle on 0.9.0, the two-judge score (quality-rubric-nine), then the 1.0 SPEC (agent default order, confirmed in the summary: \"Confirmo tudo (Recomendado)\"). Operator answer (verbatim): \"1.0 cedo; n\u00facleo nativo = 2.0 (Recomendado)\". Outcome: 1.0 ships after the compatibility, docs, public benchmark and output speed work, and freezes the public API, the RandSpec grammar (its JSON Schema), the generate CLI, the seed contract (seed-per-column) and the error codes (structured-spec-errors), only with every rubric dimension >= 9; the freeze gets its own ADR at the 1.0 SPEC; versioned docs start here. Out of scope: a native core; one that changes seeded values ships as 2.0; a seed guarantee across parallel processes or Spark partitions (counter-based per row, the 2.0 path); spec inference from real data (constitution exclusion); a Spark seed (ADR 0003); equal values across NumPy versions. Additive after 1.0: ordered event time, numeric correlation, composite keys, unique N:N pairs, builder functions.",
+      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"1.0 cedo; n\u00facleo nativo = 2.0 (Recomendado)\"; operator grill 2026-10-31, handoff 2026-10-31T155739Z-main-grill-randspec-contract: \"0.8.2 \u2192 0.9.0 \u2192 1.0 (Recomendado)\"; \"Rubrica medida + 2 ju\u00edzes (Recomendado)\"; summary \"Confirmo tudo (Recomendado)\"",
       "relates": [
         "compat-current-ecosystem",
         "memory-budget-chunked-output",
@@ -123,8 +123,8 @@
       "title": "Adoption: little and measured",
       "opened": "2026-10-24",
       "status": "idea",
-      "description": "Horizon: medium, ongoing. Operator answer (verbatim): \"Pouco e medido (Recomendado)\". Outcome: one technical article per minor (benchmark + niche), runnable notebooks (Colab, Kaggle, Databricks), curated-list submissions, and a monthly reading of downloads, stars and dependents against the baseline read 2026-10-24: 1 star and 0 open issues (GitHub API), 26 downloads in Aug and 80 in Sep 2026 (pypistats, mirrors excluded). Out of scope: outreach beyond these four acts.",
-      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"Pouco e medido (Recomendado)\"",
+      "description": "Horizon: medium, ongoing. Operator answer (verbatim): \"Pouco e medido (Recomendado)\". Outcome: one technical article per minor (benchmark + niche), runnable notebooks (Colab, Kaggle, Databricks), curated-list submissions, and a monthly reading of downloads, stars and dependents against the baseline read 2026-10-24: 1 star and 0 open issues (GitHub API), 26 downloads in Aug and 80 in Sep 2026 (pypistats, mirrors excluded). Out of scope: outreach beyond these four acts. 2026-10-31: the human-discovery dimension of quality-rubric-nine reads these monthly outcomes; the operator authorized \"Topics no GitHub (Recomendado), Cadastro no Context7 (Recomendado)\": the topics are done (14), the Context7 registration waits on the operator's login.",
+      "provenance": "operator grill 2026-10-24, handoff 2026-10-24T160915Z-main-thread-grill-roadmap: \"Pouco e medido (Recomendado)\"; operator grill 2026-10-31, handoff 2026-10-31T155739Z-main-grill-randspec-contract: \"Rubrica medida + 2 ju\u00edzes (Recomendado)\"; \"Topics no GitHub (Recomendado), Cadastro no Context7 (Recomendado), Apagar origin/feature/0.8.1 (Recomendado), Yank dos rc antigos no PyPI\"",
       "relates": [
         "public-benchmark-page",
         "docs-restructure"
@@ -140,6 +140,144 @@
       "relates": [
         "hardware-chunk-study",
         "release-1-0"
+      ]
+    },
+    {
+      "id": "seed-per-column",
+      "title": "Seed contract: one random generator per column, from the seed and the column name",
+      "opened": "2026-10-31",
+      "status": "idea",
+      "description": "Horizon: 0.9.0 rc-1 (contract core). Operator answer (verbatim): \"Um gerador por coluna (Recomendado)\". Outcome: each column draws from its own generator derived from the seed and the column name, so adding a column leaves the other columns unchanged and batch generation (stream, maxRowsPerBatch) gives the get_df values for the chunk-invariant methods; every seeded value changes once in 0.9.0; the gen_* functions stay untouched. Measured at feature/0.8.1 3fcd389: adding a column in front changes every other column, and 1x1000 vs 10x100 rows differ for 14 of 15 ordinary methods (only constant equal); a prototype with one SeedSequence([seed, crc32(name)]) stream per column made 13 of 15 chunk-invariant, poisson and zipf still differing through _alias_draw's two draws per call (not operator code). The 0.9.0 SPEC revises invariant 4; ADR 0004 (seed contract) is proposed with its rc, its measured_by the chunk/column-independence contract test that rc writes, and the operator accepts it at that rc's closure. Out of scope: a seed guarantee across parallel processes or Spark partitions (a counter-based per-row seed is the 2.0 path).",
+      "provenance": "operator grill 2026-10-31, handoff 2026-10-31T155739Z-main-grill-randspec-contract (summary: \"Confirmo tudo (Recomendado)\"): Q \"Qual contrato de seed congelamos na 1.0? Hoje, acrescentar uma coluna muda os valores das outras, e gerar em lotes (stream, maxRowsPerBatch) d\u00e1 valores diferentes do get_df.\" A \"Um gerador por coluna (Recomendado)\"",
+      "relates": [
+        "hardware-chunk-study",
+        "memory-budget-chunked-output",
+        "release-1-0"
+      ]
+    },
+    {
+      "id": "randspec-catalog-validation",
+      "title": "One declarative catalog as the grammar source, with a validation engine, a conformance corpus and a 1-row net",
+      "opened": "2026-10-31",
+      "status": "idea",
+      "description": "Horizon: 0.9.0 rc-1 (contract core). Operator answer (verbatim): \"Cat\u00e1logo declarativo + rede (Recomendado)\". Outcome: one declarative catalog (METHOD_CATALOG) declares each method's constraints and generates the validator, the JSON Schema, the Python types, the docs reference and llms.txt; a validation engine checks a spec against those constraints; a 1-row generation net (planned for 0.8.2 rc-1, transformers excluded) covers what the constraints do not; a conformance corpus is the contract test: the 36 probed wrong specs, the repros of the 64 ledger bugs, and valid specs with seeded goldens. rand_engine/validators/ is rebuilt around the declared constraints; the as-is review lists every duplicated decider with path:line; a net shrink of validator code is expected, not promised. Measured: validators 1,260 lines (method_specs 550, advanced 438, common 272) vs the NumPy core 535 (_np_core 257, _keys 155, _py_core 123); 19 of the 64 bugs came from this duplication.",
+      "provenance": "operator grill 2026-10-31, handoff 2026-10-31T155739Z-main-grill-randspec-contract (summary: \"Confirmo tudo (Recomendado)\"): Q \"Onde mora o contrato da gram\u00e1tica a partir da 0.9.0? Hoje o validador (1.260 linhas) repete \u00e0 m\u00e3o o que cada gen_* aceita, e 19 dos 64 bugs vieram dessa duplica\u00e7\u00e3o.\" A \"Cat\u00e1logo declarativo + rede (Recomendado)\"",
+      "relates": [
+        "randspec-json-schema-generate-cli",
+        "docs-restructure",
+        "release-1-0"
+      ]
+    },
+    {
+      "id": "randspec-rename-table",
+      "title": "Rename confusing RandSpec names once: one name per concept, no aliases",
+      "opened": "2026-10-31",
+      "status": "idea",
+      "description": "Horizon: 0.9.0 rc-1 (contract core). Operator answer (verbatim): \"Renomear na 0.9.0, sem apelido (Recomendado)\". Outcome: one name per concept, renamed once in 0.9.0 with no aliases; the validator recognizes every old name and answers with the exact new spelling (precedent: 'args' removed in 0.7.0 with a guiding message). Cases the question names: 'distincts' is a method name, a kwarg and a key inside distincts_prop; 'transformers' on a column takes a per-value function and on the generator a function over the DataFrame; int_zfilled and dates return text while unix_timestamps returns an integer. The exact rename table goes in the 0.9.0 SPEC for the operator's approval; a read-only dd-researcher pre-mortem lists every consumer (docs, examples, llms.txt, skill, templates, tests) before that approval and the PLAN answers each hit. The eval measures whether agents write the new names.",
+      "provenance": "operator grill 2026-10-31, handoff 2026-10-31T155739Z-main-grill-randspec-contract (summary: \"Confirmo tudo (Recomendado)\"): Q \"Nomes confusos antes do congelamento: 'distincts' \u00e9 nome de m\u00e9todo, de kwarg e de chave dentro do distincts_prop; 'transformers' na coluna recebe fun\u00e7\u00e3o por valor e no gerador recebe fun\u00e7\u00e3o sobre o DataFrame; int_zfilled e dates devolvem texto, e unix_timestamps devolve inteiro. Qual pol\u00edtica?\" A \"Renomear na 0.9.0, sem apelido (Recomendado)\"",
+      "relates": [
+        "randspec-catalog-validation",
+        "docs-restructure",
+        "release-1-0"
+      ]
+    },
+    {
+      "id": "dataset-spec-fk-references",
+      "title": "Dataset spec: tables and sizes, fk as 'table.column', compiled to the stateless keys",
+      "opened": "2026-10-31",
+      "status": "idea",
+      "description": "Horizon: 0.9.0 rc-2, with the generate CLI (randspec-json-schema-generate-cli). Operator answer (verbatim): \"Spec de dataset (Recomendado)\". Outcome: a dataset spec declares tables and their sizes; an fk points to 'table.column'; a compiler fills parent and parent_size and checks the reference and the size; the stateless key authority is unchanged (keys computed from definitions, seed and row index); the old fk form (the parent pk spec repeated, parent_size typed by hand) leaves in 0.9.0; the generate CLI writes the whole dataset. Today a parent_size larger than the parent table generates orphan fks without warning and a smaller one leaves parents without children. ADR 0005, amending ADR 0002's fk grammar, is proposed with its rc; the operator accepts it at that rc's closure when its check exists.",
+      "provenance": "operator grill 2026-10-31, handoff 2026-10-31T155739Z-main-grill-randspec-contract (summary: \"Confirmo tudo (Recomendado)\"): Q \"Rela\u00e7\u00f5es na gram\u00e1tica: hoje a fk repete a spec do pk pai e o parent_size \u00e9 digitado \u00e0 m\u00e3o, sem nada que confira. Um parent_size maior que a tabela pai gera fk \u00f3rf\u00e3, sem aviso; um menor deixa pais sem filhos. Como fica no contrato?\" A \"Spec de dataset (Recomendado)\"",
+      "relates": [
+        "randspec-json-schema-generate-cli",
+        "randspec-catalog-validation",
+        "release-1-0"
+      ]
+    },
+    {
+      "id": "structured-spec-errors",
+      "title": "Structured spec errors: SpecValidationError exported, with .errors",
+      "opened": "2026-10-31",
+      "status": "idea",
+      "description": "Horizon: 0.9.0 rc-1 (contract core). Operator answer (verbatim): \"Erros estruturados (Recomendado)\". Outcome: SpecValidationError is exported from rand_engine and carries .errors = [{column, path, code, message, fix, did_you_mean}]; its text is plain, one line per error, no banner or emoji; the codes freeze at 1.0. Today it is one text with an 80 '=' banner and emojis, not importable from rand_engine. The public surface grows by one class and one attribute, an invariant 1 amendment in the 0.9.0 SPEC. The eval's E3 measures fix-on-first-try.",
+      "provenance": "operator grill 2026-10-31, handoff 2026-10-31T155739Z-main-grill-randspec-contract (summary: \"Confirmo tudo (Recomendado)\"): Q \"Contrato de erro: hoje a SpecValidationError \u00e9 um texto \u00fanico, com banner de 80 '=' e emojis, e nem \u00e9 import\u00e1vel de rand_engine. Para agentes e iniciantes, como fica?\" A \"Erros estruturados (Recomendado)\"",
+      "relates": [
+        "randspec-catalog-validation",
+        "randspec-rename-table",
+        "release-1-0"
+      ]
+    },
+    {
+      "id": "randspec-types",
+      "title": "TypedDict types generated from the catalog, exported as RandSpec",
+      "opened": "2026-10-31",
+      "status": "idea",
+      "description": "Horizon: 0.9.0 rc-1 (contract core). Operator answer (verbatim): \"Tipos gerados do cat\u00e1logo (Recomendado)\". Outcome: TypedDicts generated from the declarative catalog (randspec-catalog-validation) and exported as RandSpec, at zero runtime cost; today the public types are Dict[str, Any], so an IDE neither completes nor flags a dict spec. RandSpec joins the public surface, an invariant 1 amendment in the 0.9.0 SPEC. Out of scope: builder functions, which may come after 1.0, additively, if the eval shows the types are not enough.",
+      "provenance": "operator grill 2026-10-31, handoff 2026-10-31T155739Z-main-grill-randspec-contract (summary: \"Confirmo tudo (Recomendado)\"): Q \"Experi\u00eancia do programador Python: hoje os tipos p\u00fablicos s\u00e3o Dict[str, Any], ent\u00e3o a IDE n\u00e3o completa nem aponta erro. O JSON Schema (j\u00e1 decidido) ajuda em arquivos JSON, n\u00e3o em dict Python. O que entra na 0.9.0?\" A \"Tipos gerados do cat\u00e1logo (Recomendado)\"",
+      "relates": [
+        "randspec-catalog-validation",
+        "docs-restructure",
+        "release-1-0"
+      ]
+    },
+    {
+      "id": "fractional-weights-alias-sampler",
+      "title": "Fractional weights for distincts_prop on the alias sampler",
+      "opened": "2026-10-31",
+      "status": "idea",
+      "description": "Horizon: 0.9.0 rc-3 (gaps). Operator answer (verbatim): \"Pesos fracion\u00e1rios (Recomendado)\". Outcome: distincts_prop accepts fractional weights and samples through the existing alias sampler; today gen_distincts_prop expands a Python list of sum(weights) items (a weight of 10**9 builds a 10**9-item list). The alias switch changes seeded values, so it rides the 0.9.0 seed change (seed-per-column). gen_distincts_prop is operator code: its SPEC Origin names it for the operator's by-name approval (invariant 12). Lands with a 1M/10M benchmark row and seeded goldens (ADR 0003).",
+      "provenance": "operator grill 2026-10-31, handoff 2026-10-31T155739Z-main-grill-randspec-contract (summary: \"Confirmo tudo (Recomendado)\"): Q \"Quais lacunas entram na 0.9.0? S\u00f3 o que quebraria depois PRECISA entrar antes da 1.0. Fora desta pergunta: tempo de evento ordenado, correla\u00e7\u00e3o num\u00e9rica, chave composta e pares N:N \u00fanicos entram depois da 1.0 sem quebrar ningu\u00e9m. Inferir spec de um DataFrame real fere a exclus\u00e3o de privacidade. Seed no Spark \u00e9 vetado pelo ADR 0003, e valores iguais entre vers\u00f5es do NumPy dependem do NumPy.\" A \"Pesos fracion\u00e1rios (Recomendado), Data e hora nativas (Recomendado), fk que aceita nulo (Recomendado), Decimal / dinheiro (Recomendado)\"",
+      "relates": [
+        "seed-per-column",
+        "randspec-catalog-validation"
+      ]
+    },
+    {
+      "id": "native-datetime-output",
+      "title": "Native date and time output",
+      "opened": "2026-10-31",
+      "status": "idea",
+      "description": "Horizon: 0.9.0 rc-3 (gaps). Operator answer (verbatim): \"Data e hora nativas (Recomendado)\". Outcome: a date/time column has a native date/time output; today dates returns text, and whether a text form stays, under which name, is the rename table's (randspec-rename-table). If gen_dates is touched, its SPEC Origin names it for the operator's by-name approval (invariant 12). Lands with a 1M/10M benchmark row and seeded goldens (ADR 0003).",
+      "provenance": "operator grill 2026-10-31, handoff 2026-10-31T155739Z-main-grill-randspec-contract (summary: \"Confirmo tudo (Recomendado)\"): Q \"Quais lacunas entram na 0.9.0? S\u00f3 o que quebraria depois PRECISA entrar antes da 1.0. Fora desta pergunta: tempo de evento ordenado, correla\u00e7\u00e3o num\u00e9rica, chave composta e pares N:N \u00fanicos entram depois da 1.0 sem quebrar ningu\u00e9m. Inferir spec de um DataFrame real fere a exclus\u00e3o de privacidade. Seed no Spark \u00e9 vetado pelo ADR 0003, e valores iguais entre vers\u00f5es do NumPy dependem do NumPy.\" A \"Pesos fracion\u00e1rios (Recomendado), Data e hora nativas (Recomendado), fk que aceita nulo (Recomendado), Decimal / dinheiro (Recomendado)\"",
+      "relates": [
+        "randspec-rename-table",
+        "randspec-catalog-validation",
+        "text-perf-follow-ups"
+      ]
+    },
+    {
+      "id": "nullable-fk",
+      "title": "fk that accepts nulls (null_rate on fk)",
+      "opened": "2026-10-31",
+      "status": "idea",
+      "description": "Horizon: 0.9.0 rc-3 (gaps). Operator answer (verbatim): \"fk que aceita nulo (Recomendado)\". Outcome: an fk column accepts null_rate, so a child row may have no parent. Lands with a 1M/10M benchmark row and seeded goldens (ADR 0003).",
+      "provenance": "operator grill 2026-10-31, handoff 2026-10-31T155739Z-main-grill-randspec-contract (summary: \"Confirmo tudo (Recomendado)\"): Q \"Quais lacunas entram na 0.9.0? S\u00f3 o que quebraria depois PRECISA entrar antes da 1.0. Fora desta pergunta: tempo de evento ordenado, correla\u00e7\u00e3o num\u00e9rica, chave composta e pares N:N \u00fanicos entram depois da 1.0 sem quebrar ningu\u00e9m. Inferir spec de um DataFrame real fere a exclus\u00e3o de privacidade. Seed no Spark \u00e9 vetado pelo ADR 0003, e valores iguais entre vers\u00f5es do NumPy dependem do NumPy.\" A \"Pesos fracion\u00e1rios (Recomendado), Data e hora nativas (Recomendado), fk que aceita nulo (Recomendado), Decimal / dinheiro (Recomendado)\"",
+      "relates": [
+        "dataset-spec-fk-references",
+        "randspec-catalog-validation"
+      ]
+    },
+    {
+      "id": "decimal-money-columns",
+      "title": "Decimal / money columns as Arrow decimal128",
+      "opened": "2026-10-31",
+      "status": "idea",
+      "description": "Horizon: 0.9.0 rc-3 (gaps). Operator answer (verbatim): \"Decimal / dinheiro (Recomendado)\". Outcome: a decimal/money column generated as Arrow decimal128. Lands with a 1M/10M benchmark row and seeded goldens (ADR 0003).",
+      "provenance": "operator grill 2026-10-31, handoff 2026-10-31T155739Z-main-grill-randspec-contract (summary: \"Confirmo tudo (Recomendado)\"): Q \"Quais lacunas entram na 0.9.0? S\u00f3 o que quebraria depois PRECISA entrar antes da 1.0. Fora desta pergunta: tempo de evento ordenado, correla\u00e7\u00e3o num\u00e9rica, chave composta e pares N:N \u00fanicos entram depois da 1.0 sem quebrar ningu\u00e9m. Inferir spec de um DataFrame real fere a exclus\u00e3o de privacidade. Seed no Spark \u00e9 vetado pelo ADR 0003, e valores iguais entre vers\u00f5es do NumPy dependem do NumPy.\" A \"Pesos fracion\u00e1rios (Recomendado), Data e hora nativas (Recomendado), fk que aceita nulo (Recomendado), Decimal / dinheiro (Recomendado)\"",
+      "relates": [
+        "randspec-catalog-validation"
+      ]
+    },
+    {
+      "id": "quality-rubric-nine",
+      "title": "The 9/10 rubric: 15 measured dimensions, two read-only judges, 1.0 only with every dimension >= 9",
+      "opened": "2026-10-31",
+      "status": "idea",
+      "description": "Horizon: 0.9.0, defined before the two-judge score that precedes release-1-0. Operator answer (verbatim): \"Rubrica medida + 2 ju\u00edzes (Recomendado)\". Outcome: each of the 15 dimensions of the 2026-10-31 grill report gets a definition and a measure; two independent read-only reviewers score every dimension at each release close; 1.0 freezes only with every dimension >= 9. Human discovery scores the inputs we control (PyPI page, topics, Context7, docs SEO) and tracks the outcomes (downloads, stars, search) monthly per the adoption-measured ruling. Cost: 1-2 h agent time per scoring (source: the dadaia scorecard measure, gates audit).",
+      "provenance": "operator grill 2026-10-31, handoff 2026-10-31T155739Z-main-grill-randspec-contract (summary: \"Confirmo tudo (Recomendado)\"): Q \"Meta 9/10 em toda dimens\u00e3o: quem d\u00e1 a nota e como? No relat\u00f3rio fui eu que pontuei, e isso contradisse o meu 'estamos bem'.\" A \"Rubrica medida + 2 ju\u00edzes (Recomendado)\"",
+      "relates": [
+        "release-1-0",
+        "adoption-measured"
       ]
     }
   ]
