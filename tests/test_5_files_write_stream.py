@@ -5,6 +5,7 @@ import glob
 import time
 import typing
 import threading
+import uuid
 import pytest
 from types import SimpleNamespace
 from rand_engine.file_handlers import _writer_stream
@@ -180,3 +181,13 @@ def test_sqlite_stream_refusal_happens_before_creating_output(tmp_path):
 
   assert sentinel.read_text(encoding="utf-8") == "keep"
   assert sorted(file.name for file in path.iterdir()) == ["keep.txt"]
+
+
+def test_stream_bare_name_resolves_against_cwd(rand_spec_with_kwargs, tmp_path, monkeypatch):
+  monkeypatch.chdir(tmp_path)
+  name = f"re-{uuid.uuid4().hex}"
+  (DataGenerator(rand_spec_with_kwargs, seed=42).size(7).writeStream
+    .format("csv").mode("overwrite").option("timeout", 0.3).trigger(frequency=0.1).start(name))
+  files = os.listdir(tmp_path / name)
+  assert files
+  assert all(len(pd.read_csv(tmp_path / name / f)) == 7 for f in files)
