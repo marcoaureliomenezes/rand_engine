@@ -413,7 +413,7 @@ class FileHandler:
     return write
 
   @staticmethod
-  def handle_path(path: str, format: str, write_options: dict) -> str:
+  def handle_path(path: str, format: str, write_options: dict) -> tuple:
     file_format = format
     file_name = os.path.basename(path)
     base_path = os.path.dirname(path) or "."
@@ -424,4 +424,4 @@ class FileHandler:
       ext = f"{file_format}.{comp_type}"
     else:
       ext = file_format
-    return base_path, file_name_cleaned, ext
+    return os.path.join(base_path, file_name_cleaned), ext

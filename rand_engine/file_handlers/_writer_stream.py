@@ -96,8 +96,7 @@ class FileStreamWriter(FileWriter):
     """
     if self.write_format == "sqlite":
       raise RandEngineError("sqlite is available only through write.save")
-    base_path, file_name_cleaned, ext = FileHandler.handle_path(path, self.write_format, self.write_options)
-    path = f"{base_path}/{file_name_cleaned}"
+    path, ext = FileHandler.handle_path(path, self.write_format, self.write_options)
     size = self.size_def()
     dataframe, offset = self.microbatch_def(size, 0), size
     write_options = dict(self.write_options)

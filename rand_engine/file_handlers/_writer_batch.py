@@ -394,11 +394,9 @@ class FileBatchWriter(FileWriter):
       batch_limit = self._positive_integer("maxRowsPerBatch", batch_limit)
     total = self._resolved_size(self.size_def())
 
-    base_path, file_name, extension = FileHandler.handle_path(
-      path, self.write_format, write_options
-    )
-    parent = Path(base_path)
-    destination = parent / file_name if num_files > 1 else parent / f"{file_name}.{extension}"
+    stem, extension = FileHandler.handle_path(path, self.write_format, write_options)
+    destination = Path(stem if num_files > 1 else f"{stem}.{extension}")
+    parent = destination.parent
     file_sizes = self._file_sizes(total, num_files)
     self.writer_method[self.write_format](
       lambda: None, str(destination), write_options, ("numFiles",)
