@@ -1,8 +1,10 @@
 {
   "schema": "release-state-v1",
   "release": "0.8.2",
-  "phase": "DEFINITION",
-  "defined": null,
+  "phase": "IMPLEMENTATION",
+  "defined": {
+    "ts": "2026-10-31T21:41:23Z"
+  },
   "implemented": null,
   "shipped": null,
   "log": [
@@ -11,6 +13,14 @@
       "agent": "release.py new",
       "kind": "note",
       "text": "Release 0.8.2 born"
+    },
+    {
+      "ts": "2026-10-31T21:41:23Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-1",
+      "milestone": "defined",
+      "text": "Candidate defined; phase IMPLEMENTATION."
     }
   ]
 }
