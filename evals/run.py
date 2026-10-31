@@ -15,15 +15,25 @@ REPO = HERE.parent
 FLAGS = ["--output-format", "stream-json", "--verbose", "--setting-sources", "",
          "--strict-mcp-config", '--mcp-config={"mcpServers":{}}', "--disable-slash-commands",
          "--no-session-persistence", "--permission-mode", "dontAsk",
-         "--allowedTools", "Bash,Read,Write,Edit,Glob,Grep"]
+         "--allowedTools", "Bash,Read,Write,Edit,Glob,Grep,WebSearch,WebFetch"]
 
 
-def host_free_env(venv_bin):
-    """The caller's environment minus the host Claude session variables, venv first on PATH."""
+def host_free_env(venv):
+    """The caller's environment minus the host Claude session variables, with the trial venv active."""
     env = {k: v for k, v in os.environ.items()
            if not (k.startswith("CLAUDE_CODE_") or k in ("CLAUDECODE", "CLAUDE_PID", "CLAUDE_EFFORT"))}
-    env["PATH"] = f"{venv_bin}{os.pathsep}{env.get('PATH', '')}"
+    env["VIRTUAL_ENV"] = str(venv)
+    env["PATH"] = f"{venv / ('Scripts' if os.name == 'nt' else 'bin')}{os.pathsep}{env.get('PATH', '')}"
     return env
+
+
+def sandbox_settings(tmp):
+    """--settings JSON: Bash in the native sandbox, writes confined to `tmp`, network to PyPI only, no escape."""
+    return json.dumps({"sandbox": {
+        "enabled": True, "failIfUnavailable": True, "allowUnsandboxedCommands": False,
+        "autoAllowBashIfSandboxed": True,
+        "filesystem": {"allowWrite": [str(tmp)]},
+        "network": {"allowedDomains": ["pypi.org", "files.pythonhosted.org"]}}})
 
 
 def assert_isolated(init):
@@ -43,18 +53,20 @@ def run_trial(task, n, args):
     work = Path(tempfile.mkdtemp(prefix=f"eval-{task}-"))
     t0 = time.monotonic()
     try:
-        timeout = tomllib.loads((task_dir / "task.toml").read_text())["agent"]["timeout_sec"]
-        subprocess.run([sys.executable, "-m", "venv", str(work / ".venv")], check=True)
-        bin_dir = work / ".venv" / ("Scripts" if os.name == "nt" else "bin")
-        subprocess.run([str(bin_dir / "python"), "-m", "pip", "install", "-q", args.rand_engine],
-                       check=True, stdin=subprocess.DEVNULL)
-        if (task_dir / "environment").is_dir():
-            shutil.copytree(task_dir / "environment", work, dirs_exist_ok=True)
-        env = host_free_env(bin_dir)
+        cfg = tomllib.loads((task_dir / "task.toml").read_text())
+        venv, cwd = work / "venv", work / "work"
+        subprocess.run([sys.executable, "-m", "venv", str(venv)], check=True)
+        py = venv / ("Scripts" if os.name == "nt" else "bin") / "python"
+        if cfg.get("environment", {}).get("install_rand_engine", True):
+            subprocess.run([str(py), "-m", "pip", "install", "-q", args.rand_engine],
+                           check=True, stdin=subprocess.DEVNULL)
+        shutil.copytree(task_dir / "environment", cwd) if (task_dir / "environment").is_dir() else cwd.mkdir()
+        env = host_free_env(venv)
         try:
             p = subprocess.run(["claude", "-p", (task_dir / "instruction.md").read_text(), *FLAGS,
-                                "--model", args.model], cwd=work, env=env, text=True,
-                               capture_output=True, stdin=subprocess.DEVNULL, timeout=timeout)
+                                "--settings", sandbox_settings(work), "--model", args.model], cwd=cwd, env=env, text=True,
+                               capture_output=True, stdin=subprocess.DEVNULL,
+                               timeout=cfg["agent"]["timeout_sec"])
             stream, res["agent_exit"] = p.stdout, p.returncode
         except subprocess.TimeoutExpired as e:
             stream, res["agent_exit"] = (e.stdout or b"").decode(), "timeout"
@@ -68,10 +80,11 @@ def run_trial(task, n, args):
                                   ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"))
         res["output_tokens"] = u.get("output_tokens", 0)
         res["cost_usd"] = done.get("total_cost_usd")
-        check = subprocess.run([str(bin_dir / "python"), str(task_dir / "tests" / "check.py")],
-                               cwd=work, env=env, stdin=subprocess.DEVNULL, capture_output=True, text=True)
+        check = subprocess.run([str(py), str(task_dir / "tests" / "check.py")], cwd=cwd, env=env,
+                               stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                               timeout=cfg["verifier"]["timeout_sec"])
         res["passed"] = check.returncode == 0
-        res["check_output"] = check.stdout[-2000:]
+        res["check_output"] = (check.stdout.strip().splitlines() or [""])[-1]
     except Exception as e:
         res["error"] = f"{type(e).__name__}: {e}"
     finally:
