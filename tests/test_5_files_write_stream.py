@@ -1,4 +1,5 @@
 """Intent: CONTRACT — writer-options-consumed-by-use (timeout/trigger read with defaults, never consumed); writer-state-shared-across-chains (each .writeStream access is a fresh writer); writer-size-not-from-generator (callable generator size reaches the stream; no size fails before overwrite deletes anything)."""
+import ntpath
 import os
 import pandas as pd
 import glob
@@ -8,7 +9,7 @@ import threading
 import uuid
 import pytest
 from types import SimpleNamespace
-from rand_engine.file_handlers import _writer_stream
+from rand_engine.file_handlers import _writer_stream, file_handler
 
 from rand_engine.file_handlers._writer_stream import FileStreamWriter
 from rand_engine.main.data_generator import DataGenerator
@@ -186,6 +187,19 @@ def test_sqlite_stream_refusal_happens_before_creating_output(tmp_path):
 def test_stream_bare_name_resolves_against_cwd(rand_spec_with_kwargs, tmp_path, monkeypatch):
   monkeypatch.chdir(tmp_path)
   name = f"re-{uuid.uuid4().hex}"
+  (DataGenerator(rand_spec_with_kwargs, seed=42).size(7).writeStream
+    .format("csv").mode("overwrite").option("timeout", 0.3).trigger(frequency=0.1).start(name))
+  files = os.listdir(tmp_path / name)
+  assert files
+  assert all(len(pd.read_csv(tmp_path / name / f)) == 7 for f in files)
+
+
+def test_stream_drive_relative_path_stays_drive_relative(rand_spec_with_kwargs, tmp_path, monkeypatch):
+  monkeypatch.chdir(tmp_path)
+  windows_os = SimpleNamespace(**{**vars(os), "path": ntpath})
+  monkeypatch.setattr(_writer_stream, "os", windows_os)
+  monkeypatch.setattr(file_handler, "os", windows_os)
+  name = f"C:re-{uuid.uuid4().hex}"
   (DataGenerator(rand_spec_with_kwargs, seed=42).size(7).writeStream
     .format("csv").mode("overwrite").option("timeout", 0.3).trigger(frequency=0.1).start(name))
   files = os.listdir(tmp_path / name)
