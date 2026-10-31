@@ -1,4 +1,4 @@
-# SPEC — Release: 0.8.2, candidate 1 (a spec that validates generates; measured public claims; agent eval baseline)
+# SPEC — Release: 0.8.2, candidate 1 (a spec that validates generates; agent eval baseline)
 
 **Status:** Draft
 **Release ID:** 0.8.2
@@ -8,7 +8,8 @@
 
 - Sources: grill `.dadaia/handoff/rand-engine/2026-10-31T155739Z-main-grill-randspec-contract` (summary "Confirmo tudo (Recomendado)"); as-is review `2026-10-31T160733Z-dd-sw-engineer-sr-asis-0.8.2-rc1` and the main thread's rulings D1–D5; the `dd-researcher` consumer pre-mortem of `fb41854` and the main thread's rulings R1–R11.
 - Version ruling, operator verbatim: "0.8.2 → 0.9.0 → 1.0 (Recomendado)". 0.8.2 carries bug fixes, docs and discovery; every grammar, seed, error-format or default change is 0.9.0's.
-- Grill, external acts: README/PyPI top, `project_urls`, keywords, `context7.json`, sitemap, `llms.txt` in the wheel. "Norte interno, público só o medido (Recomendado)"; Spark: "Manter como o ADR 0003 (Recomendado)"; "evals/ no repo, sob demanda (Recomendado)".
+- Grill: Spark: "Manter como o ADR 0003 (Recomendado)"; "evals/ no repo, sob demanda (Recomendado)".
+- Split, main-thread ruling (size law): FR5 (public texts, doc drift) and FR6 (discovery metadata), with R3, R4, R6, R8 and their Replaces rows, move to rc-2, born by `release.py new` at this candidate's CLOSURE. FR numbers stay stable.
 - Invariant 12: no `gen_*` body and no `StreamHandler` change; the grill's by-name approvals (`gen_distincts_prop`, `StreamHandler`, `gen_dates`) are 0.9.0's.
 
 ## Bug window review
@@ -35,8 +36,6 @@ Prior candidate: 0.8.1 rc-2 (archived): 3 resolved records, plus this Origin's 5
 - A callable spec is validated once; each later evaluation (`data_generator.py:74`) generates unvalidated.
 - Size has three deciders: `DataGenerator` fails `size(-5)`, `size(2.5)`, `size('3')`, `size(True)` as raw NumPy errors; `write.save` has its own rule (`_writer_batch.py:55-58`); `SparkGenerator` checks only "not set" (`spark_generator.py:160-161`).
 - A typo gets the full list, no suggestion: `'integerz'` lists 21 methods.
-- Public texts claim unmeasured speed (R4). dbldatagen is 2.6× faster on Spark at 1M rows. The measured fact is 4.8× Faker on the 100,000-dict workload (CI run 39153239357, medians 0.159 s vs 0.769 s).
-- Discovery gaps: `project_urls` lack `llms.txt` and the Agent skill; no `llms.txt` in the wheel; no `context7.json`; no per-page docs description; the keywords miss 3 of 14 GitHub topics.
 - Hygiene (FR7): Databricks markers in the `test-data` starter; Portuguese exception docstrings citing dead APIs; a `cache` that rarely hits; two uncalled `*_with_warnings` printers; Dependabot GHSA-xmj3-9gf7-h52w on setuptools 83.0.0.
 - Nothing measures whether an agent finds rand-engine, uses it, or fixes a spec from its error.
 
@@ -46,7 +45,6 @@ Prior candidate: 0.8.1 rc-2 (archived): 3 resolved records, plus this Origin's 5
 - One decider per question: date-bound parsing, size, output-name uniqueness.
 - Seeded output is unchanged: the golden SHA-256 literals stay.
 - Each typo of a method name, kwarg or column key with a close match gets one "did you mean" suggestion.
-- Every public text states only measured facts; the one speed figure cites its run.
 - The eval baseline on PyPI 0.8.1 exists (passes out of 3 per task, measured tokens and cost).
 
 ### Wave ranking
@@ -56,7 +54,7 @@ Prior candidate: 0.8.1 rc-2 (archived): 3 resolved records, plus this Origin's 5
 | 1 — law, skills and dev loop | the eval harness and its 0.8.1 baseline (the grill's first job); the setuptools bump | FR8, FR7 (AC7.6) |
 | 2 — shared foundation | the static rules, the date-bound decider, the size decider, did-you-mean, the one-row net | FR2, FR4, FR3, FR1 |
 | 3 — features and bugs | dead code, exception docstrings, the starter | FR7 |
-| 4 — promote-facing | measured claims, doc drift, discovery metadata, version, CHANGELOG, closure memory | FR5, FR6, FR9 |
+| 4 — promote-facing | version, CHANGELOG, closure memory | FR9 |
 
 ## 3. Non-goals
 
@@ -65,7 +63,6 @@ Prior candidate: 0.8.1 rc-2 (archived): 3 resolved records, plus this Origin's 5
 - A net for `SparkGenerator` (a Spark job per construction; ADR 0003): Spark gets the static rules only.
 - Any `gen_*` body or `StreamHandler` change; any new runtime dependency (`difflib` is stdlib).
 - Per-file overwrite ownership for streams; Databricks markers in the other starters.
-- The Context7 registration, the operator's act ("Cadastro no Context7 (Recomendado)").
 - Running the eval in CI or as any gate; any change to the repo `verify:` line (gate law).
 
 ## 4. Requirements
@@ -110,26 +107,6 @@ D2, main-thread ruling, within the version ruling: `_parse_date_bound` is the on
 - AC4.3 (integration, `tests/test_docs.py` runs the page): `docs/1_DATA_GENERATOR.md` states that a bound which does not parse under `date_format` is read as `%Y-%m-%d`.
 - AC4.4 (no test; ledger verbs): the fix is a REBUILD, `refactor(bugs)`, `caused_by` the feature task `0.7.0-rc2/J4.T2` (`1b116d8`).
 
-### FR5 — Public texts state only measured facts; doc drift; SparkGenerator's purpose
-
-Operator: "Norte interno, público só o medido (Recomendado)". Doc drift is lying text: every drift item is in scope.
-
-- R4, main-thread ruling (pre-mortem): AC5.1 and AC5.2 cover every public text: `README.md:3`, `:39`, `:49`; `llms.txt:3`, `:29`; `rand_engine/cli.py:22`; `rand_engine/cases/faker.py.txt:2`; `docs/explanation.md:17`; `mkdocs.yml:2`; `skills/rand-engine/SKILL.md:3`; `pyproject.toml:4` with `rand_engine/__init__.py:1`. Facts stay ("vectorized NumPy", a benchmark link); unmeasured speed adjectives go. The README keeps its landing constraints (`tests/test_docs.py:830-845`: pitch first after the H1, heading order, exact badge set) and absolute https links on master (`:218-226`).
-- AC5.1 (integration, `tests/test_docs.py`): no R4 site matches `(?i)\bfastest\b|\bvery fast\b|\bfast\b|numpy speed`; code literals (`option("engine", "fast")`) are outside the scan. The package docstring's first line stays the wheel `Summary` (`tests/integrations/test_public_api.py:459-462`).
-- AC5.2 (no test; it would pin prose): the README's opening paragraph (the PyPI top) states only the grill facts: a declarative spec validated before generating; related pk/fk tables without a database; a reproducible seed; NumPy-vectorized generation; published benchmarks with their losses. Its one speed figure is "4.8× Faker", with the 100,000-dict workload and CI run 39153239357 linked to `docs/comparison.md`.
-- AC5.3 (integration, `tests/test_docs.py` runs the page): `docs/2_SPARK_GENERATOR.md` opens with the purpose: one spec runs on a laptop with `DataGenerator` and on Databricks with `SparkGenerator`. It states that dbldatagen is faster on Spark, 0.516 s against 1.341 s at 1M rows (CI run 39153239357), linked to `docs/comparison.md`.
-- AC5.4 (integration, `tests/test_docs.py` runs the pages): the drift items state 0.8.2. `docs/errors.md:9-14`: a spec fault, an incompatible modifier included, is a `SpecValidationError` at construction; `ColumnGenerationError` is left for engine failures no spec rule covers. `docs/1_DATA_GENERATOR.md:25` ("validates the spec at once") names the net; `:26` says `n` is a non-negative int. R8, main-thread ruling (pre-mortem): `docs/4_CONSTRAINTS.md:85` says a child with no eligible parent at row 0 is refused at construction (R2); the phrases `tests/test_docs.py:795-798` and `:987-1000` pin stay. `docs/compatibility.md` states the new refusals. The Portuguese comment at `spark_generator.py:47` becomes English.
-- AC5.5 (no test): `specs/constitution.md` `## Direction` stays; north star internal.
-
-### FR6 — Discovery metadata
-
-- AC6.1 (integration, the wheel METADATA test `tests/integrations/test_public_api.py`): `Project-URL` carries `llms.txt, https://marcoaureliomenezes.github.io/rand_engine/llms.txt` and an `Agent skill` entry whose URL is the published skill copy; the five current URLs stay.
-- AC6.2 (same test): `Keywords` include the repo's 14 GitHub topics read on 2026-10-31, three added: `data-generation`, `python`, `test-fixtures`. R3, main-thread ruling (pre-mortem): `test_public_api.py:465-473` keeps an exact list, updated to these. The classifiers add `Topic :: Software Development :: Testing :: Mocking` and `Topic :: Software Development :: Libraries :: Python Modules`.
-- AC6.3 (same test, plus a wheel test): R6, main-thread ruling (pre-mortem): the one tracked source is `rand_engine/llms.txt`; the wheel ships it, and `scripts/docs_site.py:47` copies it, so the site still serves `/llms.txt`, byte-equal.
-- AC6.4 (integration, `tests/test_docs.py`): `context7.json` at the repo root parses as JSON, `projectTitle` `rand-engine`; its folders include `docs`; its excluded folders include `specs`, `tests`, `benchmarks`, `evals`.
-- AC6.5 (integration, `tests/test_docs.py`): every page in the `mkdocs.yml` nav carries a front-matter `description` of 50–160 characters, distinct across pages.
-- AC6.6 (E2E, the Docs workflow's strict build on push): the site's `sitemap.xml` lists every nav page under `site_url`, and each page's `<meta name="description">` is its own. The PLAN first measures whether the build already emits the sitemap and adds nothing it emits; the review cites the run.
-
 ### FR7 — Hygiene: starter, exception docstrings, dead code, setuptools
 
 - AC7.1 (integration, `tests/test_9_cli.py`): `rand-engine get-started test-data` writes a file with no `# Databricks notebook source`, `# COMMAND ----------` or `# MAGIC` line; run with plain `python`, it exits 0; the tutorial includes the same bytes. D5, main-thread ruling, within the version ruling: the marker assert at `tests/test_9_cli.py:171-172` narrows to the `databricks` slug, covered by the operator's "Confirmo tudo (Recomendado)". R11, main-thread ruling (pre-mortem): its test (`:161-172`) is renamed to what it asserts, in the same commit.
@@ -152,25 +129,23 @@ E1: an agent finds rand-engine cold. E2: given the name, it generates correct re
 ### FR9 — Version, changelog and closure memory
 
 - AC9.1 (no test; the literal mirrors `pyproject.toml`): the version is `0.8.2`; the built-wheel literal in `tests/integrations/test_public_api.py` follows.
-- AC9.2 (integration, `tests/test_docs.py:858-862` requires a dated header): R7, main-thread ruling (pre-mortem): `## [0.8.2] - <closure date>` is written at closure, corrected at ship if the publish date differs. Groups:
+- AC9.2 (integration, `tests/test_docs.py:858-862` requires a dated header): R7, main-thread ruling (pre-mortem): `## [0.8.2] - <closure date>` is written at this candidate's closure with its entries; rc-2 adds its own under the same header and re-dates it at its closure; corrected at ship if the publish date differs. This candidate's groups:
   - **Fixed**: the five Origin bugs; the Windows drive-relative stream target that landed on the work branch;
-  - **Changed**: did-you-mean lines, size refused at resolution, the newly refused specs, the measured public texts, `llms.txt` in the wheel;
+  - **Changed**: did-you-mean lines, size refused at resolution, the newly refused specs;
   - **Removed**: `validate_with_warnings`, `validate_spark_with_warnings`.
-- AC9.3 (closure memory pass, `pe`): the atoms `rand-spec-grammar`, `data-generator`, `writers-and-streaming`, `documentation` and `public-api` state FR1–FR7 as they leave them; `ARCHITECTURE.md` `## Structure` names `evals/` and the `llms.txt` package resource; `QUALITY.md` `## Test architecture` states that the eval runs on demand, outside pytest and CI. The same pass re-stamps the derived-from sha256 markers in `docs/1_DATA_GENERATOR.md:21,36` and `docs/5_RECIPES.md:7,8,39,100,131,151`.
+- AC9.3 (closure memory pass, `pe`): the atoms `rand-spec-grammar`, `data-generator`, `writers-and-streaming`, `documentation` and `public-api` state FR1–FR4 and FR7 as they leave them; `ARCHITECTURE.md` `## Structure` names `evals/`; `QUALITY.md` `## Test architecture` states that the eval runs on demand, outside pytest and CI. The same pass re-stamps the derived-from sha256 markers in `docs/1_DATA_GENERATOR.md:21,36` and `docs/5_RECIPES.md:7,8,39,100,131,151`.
 
 ### Test changes the rulings carry
 
-D5+R11, R2, R3 and R4 each change asserts in a `test(...)` commit naming the ruling; R6 changes paths only. Their lines are in Replaces. Every other assert is kept, nothing skipped; a fixture that now fails a rule is a finding for the main thread, never a silent edit.
+D5+R11 and R2 each change asserts in a `test(...)` commit naming the ruling. Their lines are in Replaces. Every other assert is kept, nothing skipped; a fixture that now fails a rule is a finding for the main thread, never a silent edit.
 
 ## Replaces
 
-- `DataGenerator.__validate_spec`: static validation becomes static validation plus the net; a callable's later evaluations become statically validated. An fk `born_before` spec with no eligible parent at row 0 moves from `RandEngineError` in generation to `SpecValidationError` at construction: `tests/test_8_consistency.py:188-197` (R2), `docs/4_CONSTRAINTS.md:85` (R8).
+- `DataGenerator.__validate_spec`: static validation becomes static validation plus the net; a callable's later evaluations become statically validated. An fk `born_before` spec with no eligible parent at row 0 moves from `RandEngineError` in generation to `SpecValidationError` at construction: `tests/test_8_consistency.py:188-197` (R2); its doc consumer `docs/4_CONSTRAINTS.md:85` (R8) is rc-2's.
 - Size: `_writer_batch._resolved_size` (`:55-58`, callers `:230`, `:395`) and `SparkGenerator`'s own unset check (`spark_generator.py:160-161`) are deleted for `_resolve_size` (R1).
 - Dates: validators accepting any bound string, and the Spark dispatch handing raw bounds to `SparkCore` (`spark_generator.py:103-106`, `:175`), go for `_parse_date_bound` (R9).
 - Deleted: the two `*_with_warnings` printers, the `cache` wrapper at `data_generator.py:88`, the Portuguese exception docstrings.
-- Speed adjectives at every R4 site become measured facts; consumers `tests/test_9_cli.py:79` (the `cli.py:22` literal) and `tests/integrations/test_public_api.py:459-462`.
-- The root `llms.txt` moves to `rand_engine/llms.txt` (R6); consumers `scripts/docs_site.py:47`, `tests/AGENTS.md:8`, and `tests/test_docs.py:196`, `201`, `217-226`, `229-230`, `420`, `641-643`, `870-871`, `886`, `905`, `940`.
-- The exact keyword list at `tests/integrations/test_public_api.py:465-473` (R3); the `test-data` starter's Databricks markers (`tests/test_9_cli.py:161-172`, D5+R11); setuptools 83.0.0 becomes 84.1.0 or later.
+- The `test-data` starter's Databricks markers (`tests/test_9_cli.py:161-172`, D5+R11); setuptools 83.0.0 becomes 84.1.0 or later.
 
 ## 5. Constraints and risks
 
@@ -180,12 +155,12 @@ D5+R11, R2, R3 and R4 each change asserts in a `test(...)` commit naming the rul
 | The trial shifts seeded values | its own generator (AC1.2); AC1.3's goldens |
 | A spec 0.8.1 accepted is refused | each failed or lost data on 0.8.1; the CHANGELOG states it |
 | FR2 adds hand rules the 0.9.0 catalog REBUILDs | ruled ("Catálogo declarativo + rede (Recomendado)"); they become catalog data |
-| FR1–FR4 share `rand_engine/validators/`; FR5–FR7 share `tests/test_docs.py` | the PLAN orders or edges those jobs |
-| Renamed public text, deleted names, `llms.txt` moving | Replaces lists the pre-mortem's consumers; the PLAN answers each |
+| FR1–FR4 share `rand_engine/validators/`; FR4, FR7 and FR8 share `tests/test_docs.py` | the PLAN orders or edges those jobs |
+| Deleted names | Replaces lists the pre-mortem's consumers; the PLAN answers each |
 | `claude -p` needs the operator's auth | read from the operator's environment, never printed, copied or persisted |
 
 - At promote the operator approves the PyPI publish in the GitHub environment `production` (invariant 13).
 
 ## 6. Open questions
 
-- None. D1–D5 answer the as-is review's decisions, R1–R11 the pre-mortem's hits.
+- None. D1–D5 answer the as-is review's decisions, R1–R11 the pre-mortem's hits (R3, R4, R6, R8 with rc-2).
