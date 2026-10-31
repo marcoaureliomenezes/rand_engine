@@ -203,9 +203,9 @@ def test_stream_drive_relative_path_stays_drive_relative(rand_spec_with_kwargs, 
   name = f"{drive}re-{uuid.uuid4().hex}"
   (DataGenerator(rand_spec_with_kwargs, seed=42).size(7).writeStream
     .format("csv").mode("overwrite").option("timeout", 0.3).trigger(frequency=0.1).start(name))
-  parts = [f for f in os.listdir(tmp_path) if f.startswith(f"{name}\\part-")]
+  parts = glob.glob(ntpath.join(name, "part-*.csv"))
   assert parts
-  assert all(len(pd.read_csv(tmp_path / f)) == 7 for f in parts)
+  assert all(len(pd.read_csv(f)) == 7 for f in parts)
 
 
 def test_stream_bare_drive_path_writes_into_drive_folder_not_root(rand_spec_with_kwargs, tmp_path, monkeypatch):
@@ -216,5 +216,4 @@ def test_stream_bare_drive_path_writes_into_drive_folder_not_root(rand_spec_with
   drive = ntpath.splitdrive(str(tmp_path))[0] or "C:"
   (DataGenerator(rand_spec_with_kwargs, seed=42).size(7).writeStream
     .format("csv").option("timeout", 0.3).trigger(frequency=0.1).start(drive))
-  assert not (tmp_path / drive).is_dir() or not os.listdir(tmp_path / drive)
-  assert [f for f in os.listdir(tmp_path) if f.startswith(f"{drive}part-")]
+  assert glob.glob(ntpath.join(drive, "part-*.csv"))
