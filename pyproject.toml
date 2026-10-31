@@ -45,7 +45,7 @@ pytest = "^9.0.3"
 pytest-cov = "^6.0.0"
 faker = "^28.4.1"
 pyspark = "^3.5.0"
-setuptools = "^83.0.0"
+setuptools = ">=84.1.0"
 ruff = ">=0.17.1"
 
 [tool.poetry.group.docs]
