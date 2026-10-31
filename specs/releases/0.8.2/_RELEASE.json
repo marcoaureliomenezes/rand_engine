@@ -1,0 +1,16 @@
+{
+  "schema": "release-state-v1",
+  "release": "0.8.2",
+  "phase": "DEFINITION",
+  "defined": null,
+  "implemented": null,
+  "shipped": null,
+  "log": [
+    {
+      "ts": "2026-10-31T16:03:38Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Release 0.8.2 born"
+    }
+  ]
+}
