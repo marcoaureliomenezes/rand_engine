@@ -57,7 +57,7 @@ class FileStreamWriter(FileWriter):
 
   def __handle_filenames(self, path: str, ext: str) -> Generator:
     while True:
-      yield f"{path}/part-{str(uuid.uuid4())}.{ext}"
+      yield os.path.join(path, f"part-{uuid.uuid4()}.{ext}")
 
   def __writer(self, dataframe, file_gen, write_options):
     return self.writer_method[self.write_format](dataframe, next(file_gen), write_options, ("timeout",))
