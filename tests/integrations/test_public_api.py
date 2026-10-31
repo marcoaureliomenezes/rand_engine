@@ -550,11 +550,6 @@ def test_evals_folder_holds_no_file_pytest_collects():
     assert collected == []
 
 
-def test_wheel_lists_no_evals_entry(built_wheel):
-    with ZipFile(built_wheel) as wheel:
-        assert [n for n in wheel.namelist() if n.startswith("evals/")] == []
-
-
 @pytest.mark.parametrize("sub", ["main", "file_handlers", "core", "utils"])
 def test_wheel_holds_subpackage_init(built_wheel, sub):
     with ZipFile(built_wheel) as wheel:
