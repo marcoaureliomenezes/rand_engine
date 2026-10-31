@@ -1,0 +1,10 @@
+# Job 4 — one size decider (wave 4)
+
+R1: `DataGenerator._resolve_size` is the one size decider; the writer's and Spark's own rules are deleted. Design choice (PLAN section 1.2): the rule is one module-level function `resolve_size(size)` in `data_generator.py`; `_resolve_size` and `SparkGenerator.get_df` both call it (`spark_generator.py` already sits beside `data_generator.py` in `main/`, and no import runs the other way). Serial: T1 then T2.
+
+| task | who | AC | `W:` | outcome |
+|---|---|---|---|---|
+| J4.T1 | sr | AC2.5 | `tests/test_2_data_generator.py`, `tests/test_3_spark_generator.py` | RED: `size(-5)`, `size(2.5)`, `size('3')`, `size(True)` and a callable returning each raise `RandEngineError` naming the value, at `get_df`, at the first `next()` of `stream_dict`, and at `write.save`, before any row or file; `np.int64(3)` is accepted; `size(0)` gives an empty frame; an unset size raises `No size set: call .size(n) with an int or a callable returning one.`; the same refusals on `SparkGenerator.get_df` (Spark case, with the dispatch brief's environment). Red today: raw NumPy errors, and Spark checks only `None` |
+| J4.T2 | sr | AC2.5 | `rand_engine/main/data_generator.py`, `rand_engine/main/spark_generator.py`, `rand_engine/file_handlers/_writer_batch.py` | `resolve_size` accepts a `numbers.Integral` that is not `bool` and is `>= 0`, calling a callable first; `DataGenerator._resolve_size` and `SparkGenerator.get_df` call it and `SparkGenerator`'s own unset check (`:160-161`) goes; `FileBatchWriter._resolved_size` (`:55-58`) and its two calls (`:230`, `:395`) go, the writers reaching the decider through `size_def`. Unchanged and green: `tests/test_5_files_write_batch.py:538-551`, `tests/test_8_consistency.py:377-380`. Net lines of the three files at most 0, else the reason in the body |
+
+Done when: `verify:`; `tests/test_2_data_generator.py`, `tests/test_3_spark_generator.py`, `tests/test_5_files_write_batch.py`, `tests/test_5_files_write_stream.py`, `tests/test_8_consistency.py` pass; `git grep -n "_resolved_size" -- rand_engine tests` prints only the test's own name.
