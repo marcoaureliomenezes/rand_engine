@@ -1,6 +1,6 @@
 # SPEC — Release: 0.8.2, candidate 1 (a spec that validates generates; agent eval baseline)
 
-**Status:** Draft
+**Status:** Approved
 **Release ID:** 0.8.2
 **Owner:** dd-product-engineer
 **Opened:** 2026-10-31
