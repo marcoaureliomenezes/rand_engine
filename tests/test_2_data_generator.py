@@ -616,12 +616,12 @@ def test_every_generated_text_column_is_arrow():
   spec = {m: {"method": m, "kwargs": SAMPLE_KWARGS[m]} for m in text}
   spec["constant"] = {"method": "constant", "kwargs": {"value": "x"}}
   for m, cols in COLS.items():
-    spec[m] = {"method": m, "cols": cols, "kwargs": SAMPLE_KWARGS[m]}
+    spec[m] = {"method": m, "cols": [f"{m}_{c}" for c in cols], "kwargs": SAMPLE_KWARGS[m]}
   spec["pk"] = {"method": "pk", "kwargs": {"style": "sequence", "start": 1, "step": 1, "format": "id-{}"}}
   spec["fk"] = {"method": "fk", "kwargs": {"parent": spec["pk"], "parent_size": 10}}
   df = DataGenerator(spec, seed=1).size(20).get_df()
   expected = {m: arrow for m in text + ["constant", "pk", "fk"]}
-  expected.update({c: arrow for cols in COLS.values() for c in cols})
+  expected.update({f"{m}_{c}": arrow for m, cols in COLS.items() for c in cols})
   assert df.dtypes.to_dict() == expected
 
 
