@@ -61,6 +61,29 @@
       "kind": "summary",
       "candidate": "rc-1",
       "text": "delivered: FR1 one-row construction net and callable validation (validated-specs-fail-in-generation, anomaly-values-dtype-validates-then-raises), FR2 static rules by class (distincts-prop-negative-weight-drops-value, correlated-cols-overwrite-existing-column), FR3 one size decider, FR4 one date-bound decider (date-bound-parse-diverges-numpy-spark), FR7 hygiene deletions, FR8 CI agent eval, FR9 version 0.8.2 and changelog; plus hotfix validator-non-string-kwarg-raises-typeerror and bug cols-rule-refuses-non-string-names; carried: none; backlog exits: none"
+    },
+    {
+      "ts": "2026-11-01T16:34:53Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 7c98e0013d77827ca687cdd12f04d63930db19ee..42b7542ae5d1: 5 reviewed, 6 changed.",
+      "since": "7c98e0013d77827ca687cdd12f04d63930db19ee",
+      "until": "42b7542ae5d1b2bf9b7afe79457f2d37a579472f",
+      "reviewed": [
+        "benchmarks",
+        "documentation",
+        "get-started-cli",
+        "writers-and-streaming",
+        "pk-fk-constraints"
+      ],
+      "changed": [
+        "public-api",
+        "data-generator",
+        "generation-methods",
+        "spark-generator",
+        "rand-spec-grammar",
+        "agent-eval"
+      ]
     }
   ]
 }
