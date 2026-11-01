@@ -737,6 +737,7 @@ FK_NO_PARENT_AT_ROW_0 = {"parent_id": {"method": "fk", "kwargs": {
 CONSTRUCTION_REFUSALS = {
   **{name: (spec, next(iter(spec))) for name, spec in VALIDATED_BUT_UNGENERABLE.items()},
   "anomaly_values_dtype": (ANOMALY_SPEC, "a"),
+  "anomaly_values_dtype_empty_transformers": ({"a": {**ANOMALY_SPEC["a"], "anomaly_rate": 0.5, "transformers": []}}, "a"),
   "fk_born_before_no_parent_at_row_0": (FK_NO_PARENT_AT_ROW_0, "parent_id"),
 }
 VALID_SPEC = {"v": {"method": "constant", "kwargs": {"value": 1}}}

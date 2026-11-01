@@ -975,7 +975,7 @@ def test_anomaly_values_fitting_only_after_an_embedded_transformer_construct_and
 
 
 def test_anomaly_values_fitting_only_after_a_global_transformer_are_refused_at_construction():
-    """R14 residual: global transformers are set after construction, so the net never reaches them."""
+    """Anomaly values that fit only after a global transformer are refused at construction, since the transformer is set later."""
     spec = {"a": {"method": "integers", "kwargs": {"min": 0, "max": 9}, "anomaly_rate": 0.5, "anomaly_values": ["x"]}}
     transformer = lambda df: pytest.fail("global transformer reached")  # noqa: E731
     with pytest.raises(SpecValidationError) as error:
