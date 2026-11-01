@@ -56,7 +56,12 @@ jobs:
           node-version: '22'
 
       - name: Install the agent CLI
-        run: npm install -g @anthropic-ai/claude-code@2.1.296
+        run: npm install -g @anthropic-ai/claude-code@2.1.316
+
+      - name: Install bubblewrap for the agent's subprocess sandbox
+        run: |
+          sudo apt-get install -y bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       - name: Build the wheel
         if: matrix.install == 'wheel'

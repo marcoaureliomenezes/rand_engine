@@ -59,7 +59,8 @@ def run_trial(task, n, args):
         try:
             p = subprocess.run(["claude", "-p", (task_dir / "instruction.md").read_text(), *FLAGS,
                                 "--model", args.model], cwd=cwd, text=True,
-                               env={**env, **{k: v for k, v in os.environ.items() if k == "CLAUDE_CODE_OAUTH_TOKEN"}},
+                               env={**env, "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1",
+                                    **{k: v for k, v in os.environ.items() if k == "CLAUDE_CODE_OAUTH_TOKEN"}},
                                capture_output=True, stdin=subprocess.DEVNULL,
                                timeout=cfg["agent"]["timeout_sec"])
             stream, res["agent_exit"] = p.stdout, p.returncode
