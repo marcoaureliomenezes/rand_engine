@@ -108,7 +108,7 @@ class DataGenerator:
       generator = RandGenerator({column: config})
       try:
         frame = generator.generate_first_level(1, np.random.default_rng(0), key_seed=0)
-        if "transformers" not in config:
+        if not config.get("transformers"):
           generator.apply_modifiers(frame, np.random.default_rng(0))
       except Exception as error:
         errors.append(f"❌ Column '{column}': method '{config['method']}' cannot generate a row: {type(error).__name__}: {error}")
