@@ -11,6 +11,7 @@ from rand_engine.file_handlers._writer_batch import FileBatchWriter
 from rand_engine.file_handlers._writer_stream import FileStreamWriter
 from rand_engine.utils.stream_handler import StreamHandler
 from rand_engine.validators.advanced_validator import AdvancedValidator
+from rand_engine.validators.common_validator import CommonValidator
 from rand_engine.validators.exceptions import RandEngineError
 from rand_engine.validators.method_specs import METHOD_CATALOG
 
@@ -79,26 +80,40 @@ class DataGenerator:
       
   def __init__(self, random_spec: Callable[[], dict] | dict, seed: int = None):
     self.lazy_random_spec = random_spec
-    self.__validate_spec()
+    evaluated_spec = self.__evaluate_spec()
+    if not callable(random_spec):
+      AdvancedValidator.validate_and_raise(evaluated_spec)
+    self.__refuse_ungeneratable(evaluated_spec)
 
     seed_sequence = np.random.SeedSequence(seed)
     self._rng = np.random.default_rng(seed_sequence)
     self._key_seed = int(seed_sequence.generate_state(1)[0])
     self._size = None
     self._transformers: List[Callable] = []
- 
+
 
   def __evaluate_spec(self):
-    if callable(self.lazy_random_spec): 
-      return self.lazy_random_spec()
+    if callable(self.lazy_random_spec):
+      evaluated_spec = self.lazy_random_spec()
+      AdvancedValidator.validate_and_raise(evaluated_spec)
+      return evaluated_spec
     return self.lazy_random_spec
-  
-  
-  def __validate_spec(self):
-    evaluated_spec = self.__evaluate_spec()
-    AdvancedValidator.validate_and_raise(evaluated_spec)
 
-  
+
+  @staticmethod
+  def __refuse_ungeneratable(evaluated_spec: dict):
+    """Generate one row per column on a private generator; raise SpecValidationError for each column that fails (column keys only the message names, so one pass per column)."""
+    errors = []
+    for column, config in evaluated_spec.items():
+      generator = RandGenerator({column: config})
+      try:
+        generator.apply_modifiers(generator.generate_first_level(1, np.random.default_rng(0), key_seed=0), np.random.default_rng(0))
+      except Exception as error:
+        errors.append(f"❌ Column '{column}': method '{config['method']}' cannot generate a row: {type(error).__name__}: {error}")
+    if errors:
+      CommonValidator._raise(errors, "DATAGENERATOR")
+
+
   def _file_seam(self) -> tuple[Callable[..., pa.Schema], Callable[[int, int], pd.DataFrame]]:
     """Evaluate the spec once; return its catalog schema and a batch factory over that mapping."""
     evaluated_spec = self.__evaluate_spec()
