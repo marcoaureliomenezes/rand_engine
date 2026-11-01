@@ -596,6 +596,9 @@ _OUT_NAME = "❌ Column '{col}': output name '{name}' is produced twice: by {fir
    "c", "1", "'cols'[0] of column 'c'", "'cols'[1] of column 'c'"),
   ({"c": {"method": "distincts_map", "cols": [True, 1], "kwargs": _MAP}},
    "c", "1", "'cols'[0] of column 'c'", "'cols'[1] of column 'c'"),
+  ({"1": {"method": "distincts_map", "kwargs": _MAP, "cols": ["a", "b"]},
+    1: {"method": "distincts_map", "kwargs": _MAP, "cols": ["a", "c"]}},
+   "1", "a", "'cols'[0] of column '1'", "'cols'[0] of column '1'"),
 ])
 def test_output_name_produced_twice_is_refused(spec, col, name, first, second):
   errors = AdvancedValidator.validate(spec)
