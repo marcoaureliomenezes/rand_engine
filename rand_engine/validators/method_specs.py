@@ -203,17 +203,19 @@ def _mixed_types(values: Iterable[Any]) -> str:
     return ", ".join(sorted(t.__name__ for t in types)) if len(types) > 1 else ""
 
 
-# Exact types: a subclass (numpy text, numpy integers) is not written like its base.
+# Exact types: a numpy scalar is not written like its base once pandas holds the column as objects.
 _POOL_ATOMS = {
     bool: "bool", int: "int", float: "float", Decimal: "Decimal", bytes: "bytes",
-    date: "date", datetime: "datetime", str: "text", np.bool_: "bool",
+    date: "date", datetime: "datetime", str: "text",
 }
 _WRITTEN_BESIDE_TEXT = {bool, int, float, Decimal, str}
 
 
-def _spark_pool_problem(pool: Iterable[Any]) -> str:
+def _spark_pool_problem(pool: list[Any]) -> str:
     """Why Spark cannot write the pool into one column, else empty.
 
+    pandas turns a pool of numbers, or of bool and numpy bool without None, into one typed column
+    Spark writes as given; any other numpy scalar stays an object Spark cannot infer.
     Spark merges the value types in order: two kinds ahead of the first text value fail, and
     beside text only bool, int, float and Decimal are written faithfully (the other kinds
     fail or become Java object strings). Numbers alone reach Spark as one numeric column.
@@ -221,11 +223,12 @@ def _spark_pool_problem(pool: Iterable[Any]) -> str:
     values = [v for v in pool if v is not None]
     if not values:
         return "holds only None"
-    if all(isinstance(v, Real) and not isinstance(v, bool) for v in values):
+    if all(isinstance(v, Real) and not isinstance(v, bool) for v in values) or all(isinstance(v, (bool, np.bool_)) for v in pool):
         return ""
     for v in values:
         if type(v) not in _POOL_ATOMS:
-            return f"holds {type(v).__name__}, which Spark cannot write unchanged"
+            module = "" if type(v).__module__ == "builtins" else type(v).__module__ + "."
+            return f"holds {module}{type(v).__name__}, which Spark cannot write unchanged"
     kinds = [_POOL_ATOMS[type(v)] for v in values]
     head = kinds[:kinds.index("text")] if "text" in kinds else kinds
     for kind in head:
