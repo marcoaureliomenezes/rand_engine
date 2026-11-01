@@ -1,7 +1,5 @@
-# Databricks notebook source
 # Test data: a DataFrame with nulls and anomalies for pipeline tests. Runs as-is with plain python.
 
-# COMMAND ----------
 # Describe the data: order rows, with nulls and extreme values on amount.
 
 from rand_engine import DataGenerator
@@ -13,12 +11,10 @@ spec = {
   "category": {"method": "distincts", "kwargs": {"distincts": ["books", "games", "food"]}},
 }
 
-# COMMAND ----------
 # Generate 1 000 rows into df. The seed makes every run produce the same rows.
 
 df = DataGenerator(spec, seed=42).size(1_000).get_df()
 
-# COMMAND ----------
 # Look at the first rows, then count the nulls and list the anomalous rows.
 
 print(df.head())
