@@ -5,8 +5,10 @@ Covers common methods shared between DataGenerator and SparkGenerator.
 
 from datetime import date, datetime, time
 from decimal import Decimal
+from fractions import Fraction
 
 import numpy as np
+import pandas as pd
 import pytest
 from rand_engine import DataGenerator
 from rand_engine.validators.advanced_validator import AdvancedValidator
@@ -322,7 +324,7 @@ def test_mixed_type_pool_is_accepted_by_spark_and_refused_by_numpy(pool):
     assert "parameter 'distincts' must hold one type" in errors[0]
 
 
-_ORDER = "ahead of any text value; Spark merges kinds in order and fails unless text comes first"
+_ORDER = ", which Spark merges in order and cannot merge into one column"
 
 
 def _pool_spec(method, distincts):
@@ -330,40 +332,48 @@ def _pool_spec(method, distincts):
 
 
 @pytest.mark.parametrize(("method", "distincts", "tail"), [
-    ("distincts", [True, 2.5], "holds bool and float " + _ORDER),
-    ("distincts", [True, date(2020, 1, 1)], "holds bool and date " + _ORDER),
-    ("distincts", [True, datetime(2020, 1, 1, 3)], "holds bool and datetime " + _ORDER),
-    ("distincts", [1, date(2020, 1, 1)], "holds int and date " + _ORDER),
-    ("distincts", [2.5, datetime(2020, 1, 1, 3)], "holds float and datetime " + _ORDER),
-    ("distincts", [date(2020, 1, 1), datetime(2020, 1, 1, 3)], "holds date and datetime " + _ORDER),
-    ("distincts", [Decimal("1.5"), 1], "holds Decimal and int " + _ORDER),
-    ("distincts", [b"a", 1], "holds bytes and int " + _ORDER),
-    ("distincts", [1, 2.5, "x"], "holds int and float " + _ORDER),
+    ("distincts", [True, 2.5], "holds BooleanType and DoubleType" + _ORDER),
+    ("distincts", [True, date(2020, 1, 1)], "holds BooleanType and DateType" + _ORDER),
+    ("distincts", [True, datetime(2020, 1, 1, 3)], "holds BooleanType and TimestampType" + _ORDER),
+    ("distincts", [1, date(2020, 1, 1)], "holds LongType and DateType" + _ORDER),
+    ("distincts", [2.5, datetime(2020, 1, 1, 3)], "holds DoubleType and TimestampType" + _ORDER),
+    ("distincts", [date(2020, 1, 1), datetime(2020, 1, 1, 3)], "holds DateType and TimestampType" + _ORDER),
+    ("distincts", [Decimal("1.5"), 1], "holds DecimalType and LongType" + _ORDER),
+    ("distincts", [b"a", 1], "holds BinaryType and LongType" + _ORDER),
+    ("distincts", [1, 2.5, "x"], "holds LongType and DoubleType" + _ORDER),
     ("distincts", [date(2020, 1, 1), "x"], "holds date beside text, which Spark writes as a Java object string"),
-    ("distincts", [datetime(2020, 1, 1, 3), "x", None], "holds datetime beside text, which Spark writes as a Java object string"),
+    ("distincts", [datetime(2020, 1, 1, 3), "x", None], "holds timestamp beside text, which Spark writes as a Java object string"),
     ("distincts", ["x", date(2020, 1, 1)], "holds date beside text, which Spark writes as a Java object string"),
-    ("distincts", [b"a", "x"], "holds bytes beside text, which Spark writes as a Java object string"),
-    ("distincts", ["x", [1]], "holds list, which Spark cannot write unchanged"),
-    ("distincts", [{"a": 1}], "holds dict, which Spark cannot write unchanged"),
-    ("distincts", [(1, 2)], "holds tuple, which Spark cannot write unchanged"),
-    ("distincts", [time(3, 0)], "holds datetime.time, which Spark cannot write unchanged"),
-    ("distincts", [np.str_("x")], "holds numpy.str_, which Spark cannot write unchanged"),
-    ("distincts", [np.int64(1), "x"], "holds numpy.int64, which Spark cannot write unchanged"),
-    ("distincts", [None], "holds only None"),
-    ("distincts", [np.True_, None], "holds numpy.bool, which Spark cannot write unchanged"),
-    ("distincts", [None, np.True_], "holds numpy.bool, which Spark cannot write unchanged"),
-    ("distincts", [np.True_, "x"], "holds numpy.bool, which Spark cannot write unchanged"),
-    ("distincts_prop", {np.True_: 1, None: 1}, "holds numpy.bool, which Spark cannot write unchanged"),
-    ("distincts_prop", {True: 1, 2.5: 1}, "holds bool and float " + _ORDER),
-    ("distincts_prop", {1: 1, 2.5: 1, "x": 1}, "holds int and float " + _ORDER),
+    ("distincts", [b"a", "x"], "holds binary beside text, which Spark writes as a Java object string"),
+    ("distincts", [pd.Timestamp("2020-01-01"), "x"], "holds StructType and StringType" + _ORDER),
+    ("distincts", ["x", [1]], "holds a list, tuple or dict, which Spark writes as another value"),
+    ("distincts", [{"a": 1}], "holds a list, tuple or dict, which Spark writes as another value"),
+    ("distincts", [(1, 2)], "holds a list, tuple or dict, which Spark writes as another value"),
+    ("distincts", [time(3, 0)], "holds a value Spark cannot type or convert"),
+    ("distincts", [Fraction(1, 2)], "holds a value Spark cannot type or convert"),
+    ("distincts", [Fraction(1, 2), 1], "holds a value Spark cannot type or convert"),
+    ("distincts", [np.str_("x")], "holds a value Spark cannot type or convert"),
+    ("distincts", [np.int64(1), "x"], "holds a value Spark cannot type or convert"),
+    ("distincts", [np.True_, None], "holds a value Spark cannot type or convert"),
+    ("distincts", [None, np.True_], "holds a value Spark cannot type or convert"),
+    ("distincts", [np.True_, "x"], "holds a value Spark cannot type or convert"),
+    ("distincts", [1j], "holds complex128 values, which Spark cannot write unchanged"),
+    ("distincts", [None], "holds no value Spark can infer a type from"),
+    ("distincts", [pd.NaT], "holds no value Spark can infer a type from"),
+    ("distincts", [2**70], "holds an integer outside int64, which Spark writes as null"),
+    ("distincts", [2**63, 1], "holds an integer outside int64, which Spark writes as null"),
+    ("distincts", [np.uint64(2**63)], "holds an integer outside int64, which Spark writes as null"),
+    ("distincts_prop", {True: 1, 2.5: 1}, "holds BooleanType and DoubleType" + _ORDER),
+    ("distincts_prop", {1: 1, 2.5: 1, "x": 1}, "holds LongType and DoubleType" + _ORDER),
     ("distincts_prop", {date(2020, 1, 1): 1, "x": 1}, "holds date beside text, which Spark writes as a Java object string"),
-    ("distincts_prop", {b"a": 1, "x": 2}, "holds bytes beside text, which Spark writes as a Java object string"),
-    ("distincts_prop", {time(3, 0): 1}, "holds datetime.time, which Spark cannot write unchanged"),
-    ("distincts_prop", {None: 1, "x": 0}, "holds only None"),
-    ("distincts_prop", {True: 1, "x": 0, 2.5: 1}, "holds bool and float " + _ORDER),
+    ("distincts_prop", {b"a": 1, "x": 2}, "holds binary beside text, which Spark writes as a Java object string"),
+    ("distincts_prop", {time(3, 0): 1}, "holds a value Spark cannot type or convert"),
+    ("distincts_prop", {None: 1, "x": 0}, "holds no value Spark can infer a type from"),
+    ("distincts_prop", {True: 1, "x": 0, 2.5: 1}, "holds BooleanType and DoubleType" + _ORDER),
+    ("distincts_prop", {np.True_: 1, None: 1}, "holds a value Spark cannot type or convert"),
 ])
 def test_spark_refuses_pools_it_cannot_write_into_one_column(method, distincts, tail):
-    """Spark fails (CANNOT_MERGE_TYPE and others) or writes a Java object string for these pools."""
+    """Spark fails (CANNOT_MERGE_TYPE and others), writes null or a Java object string for these pools."""
     assert CommonValidator.validate_spark_spec(_pool_spec(method, distincts)) == [
         f"❌ Column 'c': method '{method}' parameter 'distincts' {tail}"
     ]
@@ -388,11 +398,19 @@ def test_spark_refuses_pools_it_cannot_write_into_one_column(method, distincts, 
     ("distincts", [np.True_]),
     ("distincts", [True, np.True_]),
     ("distincts", [np.True_, np.False_]),
-    ("distincts_prop", {np.True_: 1, np.False_: 1}),
+    ("distincts", [pd.Timestamp("2020-01-01")]),
+    ("distincts", [pd.Timestamp("2020-01-01"), None]),
+    ("distincts", [np.datetime64("2020-01-01")]),
+    ("distincts", [np.float32(1.5)]),
+    ("distincts", [np.uint64(5)]),
+    ("distincts", [2**63 - 1, -2**63]),
+    ("distincts", [2**70, "x"]),
+    ("distincts", [np.timedelta64(1, 'D')]),
     ("distincts_prop", {"x": 1, 1: 1, 2.5: 1}),
     ("distincts_prop", {date(2020, 1, 1): 0, "x": 3}),
     ("distincts_prop", {date(2020, 1, 1): 1, "x": 0, 1: 0}),
     ("distincts_prop", {True: 0, 2.5: 1, "x": 1}),
+    ("distincts_prop", {np.True_: 1, np.False_: 1}),
 ])
 def test_spark_keeps_pools_it_writes_faithfully(method, distincts):
     """distincts_prop is judged on the keys of positive weight, the pool Spark merges."""
