@@ -7,7 +7,7 @@ from collections.abc import Mapping as MappingABC
 import re
 import sys
 from types import MappingProxyType
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Hashable, Mapping
 
 import pandas as pd
 import pyarrow as pa
@@ -196,9 +196,22 @@ def _booleans(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
 
 
 def _distincts(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
-    if not kwargs.get("distincts"):
+    values = kwargs.get("distincts")
+    if not values:
         return (("distincts", "must be non-empty"),)
+    types = sorted({type(value).__name__ for value in values})
+    if len(types) > 1:
+        return (("distincts", f"must hold one type, found {', '.join(types)}"),)
     return ()
+
+
+def _weight_issues(weights: Mapping[Any, Any], suffix: str = "") -> list[SemanticIssue]:
+    """Negative weights, else an all-zero set; non-integer weights are another rule's."""
+    ints = {key: w for key, w in weights.items() if isinstance(w, int) and not isinstance(w, bool)}
+    issues = [("distincts", f"has negative weight {w} for {key!r}") for key, w in ints.items() if w < 0]
+    if ints and not issues and not any(ints.values()):
+        issues.append(("distincts", f"weights must not all be zero{suffix}"))
+    return issues
 
 
 def _distincts_prop(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
@@ -209,6 +222,14 @@ def _distincts_prop(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
     for weight in values.values():
         if isinstance(weight, bool) or not isinstance(weight, int):
             issues.append(("distincts", "every weight must be an integer"))
+    return tuple(issues + _weight_issues(values))
+
+
+def _distincts_map_prop(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
+    issues: list[SemanticIssue] = []
+    for category, pool in kwargs.get("distincts", {}).items():
+        pairs = [item for item in pool if isinstance(item, (list, tuple)) and len(item) == 2] if isinstance(pool, list) else []
+        issues += _weight_issues({value: weight for value, weight in pairs if isinstance(value, Hashable)}, f" for {category!r}")
     return tuple(issues)
 
 
@@ -470,6 +491,7 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
             required={"distincts": dict},
             engines=(NUMPY,),
             kind=CORRELATED,
+            semantic=_distincts_map_prop,
             arrow_types=_weighted_mapped_arrow_types,
             example={
                 "method": "distincts_map_prop",
