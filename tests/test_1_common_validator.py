@@ -679,3 +679,48 @@ def test_int_zfilled_length_outside_1_18_is_refused_at_construction(length):
 def test_int_zfilled_length_within_1_18_validates_and_constructs(length):
     assert CommonValidator.validate_column("z", _zfilled(length)["z"]) == []
     DataGenerator(_zfilled(length))
+
+
+_DYM_INT = {"method": "integers", "kwargs": {"min": 0, "max": 9}}
+_DYM_KEYS = "method, kwargs, cols, transformers, null_rate, anomaly_rate, anomaly_values"
+_DYM_PARAMS = "'int_type', 'max', 'min'"
+_DYM_METHODS = "'booleans', 'dates', 'distincts', 'distincts_prop', 'floats', 'floats_normal', 'int_zfilled', 'integers', 'unix_timestamps', 'uuid4'"
+
+
+@pytest.mark.parametrize("spec, expected", [
+    (
+        {"c": {"method": "integerz", "kwargs": {"min": 0, "max": 9}}},
+        "❌ Column 'c': method 'integerz' does not exist\n   Available methods: " + _DYM_METHODS
+        + "\n   Did you mean 'integers'?",
+    ),
+    (
+        {"c": {"method": "integers", "kwargs": {"min": 0, "max": 9, "mni": 5}}},
+        "⚠️  Column 'c': unknown parameters: 'mni'\n   Valid parameters for 'integers': " + _DYM_PARAMS
+        + "\n   Did you mean 'min'?",
+    ),
+    (
+        {"c": {**_DYM_INT, "null_rat": 0.1}},
+        "❌ Column 'c': unknown column key 'null_rat'\n   Accepted keys: " + _DYM_KEYS
+        + "\n   Did you mean 'null_rate'?",
+    ),
+])
+def test_unknown_name_with_close_match_adds_did_you_mean_line(spec, expected):
+    assert CommonValidator.validate_spark_spec(spec) == [expected]
+
+
+@pytest.mark.parametrize("spec, expected", [
+    (
+        {"c": {"method": "zzzqqq", "kwargs": {}}},
+        "❌ Column 'c': method 'zzzqqq' does not exist\n   Available methods: " + _DYM_METHODS,
+    ),
+    (
+        {"c": {"method": "integers", "kwargs": {"min": 0, "max": 9, "qqqqzz": 1}}},
+        "⚠️  Column 'c': unknown parameters: 'qqqqzz'\n   Valid parameters for 'integers': " + _DYM_PARAMS,
+    ),
+    (
+        {"c": {**_DYM_INT, "qqqqzz": 1}},
+        "❌ Column 'c': unknown column key 'qqqqzz'\n   Accepted keys: " + _DYM_KEYS,
+    ),
+])
+def test_unknown_name_without_close_match_adds_no_suggestion(spec, expected):
+    assert CommonValidator.validate_spark_spec(spec) == [expected]

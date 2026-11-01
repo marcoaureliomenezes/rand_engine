@@ -860,3 +860,48 @@ def test_float_span_finite_is_accepted():
     spec = _float_span_spec(1e307)
     assert AdvancedValidator.validate(spec) == []
     DataGenerator(spec)
+
+
+_DYM_INT = {"method": "integers", "kwargs": {"min": 0, "max": 9}}
+_DYM_KEYS = "method, kwargs, cols, transformers, null_rate, anomaly_rate, anomaly_values"
+_DYM_PARAMS = "'int_type', 'max', 'min'"
+_DYM_METHODS = "'booleans', 'complex_distincts', 'constant', 'dates', 'distincts', 'distincts_map', 'distincts_map_prop', 'distincts_multi_map', 'distincts_prop', 'exponential', 'fk', 'floats', 'floats_normal', 'int_zfilled', 'integers', 'lognormal', 'pk', 'poisson', 'unix_timestamps', 'uuid4', 'zipf'"
+
+
+@pytest.mark.parametrize("spec, expected", [
+    (
+        {"c": {"method": "integerz", "kwargs": {"min": 0, "max": 9}}},
+        "❌ Column 'c': method 'integerz' does not exist\n   Available methods: " + _DYM_METHODS
+        + "\n   Did you mean 'integers'?",
+    ),
+    (
+        {"c": {"method": "integers", "kwargs": {"min": 0, "max": 9, "mni": 5}}},
+        "⚠️  Column 'c': unknown parameters: 'mni'\n   Valid parameters for 'integers': " + _DYM_PARAMS
+        + "\n   Did you mean 'min'?",
+    ),
+    (
+        {"c": {**_DYM_INT, "null_rat": 0.1}},
+        "❌ Column 'c': unknown column key 'null_rat'\n   Accepted keys: " + _DYM_KEYS
+        + "\n   Did you mean 'null_rate'?",
+    ),
+])
+def test_unknown_name_with_close_match_adds_did_you_mean_line(spec, expected):
+    assert AdvancedValidator.validate(spec) == [expected]
+
+
+@pytest.mark.parametrize("spec, expected", [
+    (
+        {"c": {"method": "zzzqqq", "kwargs": {}}},
+        "❌ Column 'c': method 'zzzqqq' does not exist\n   Available methods: " + _DYM_METHODS,
+    ),
+    (
+        {"c": {"method": "integers", "kwargs": {"min": 0, "max": 9, "qqqqzz": 1}}},
+        "⚠️  Column 'c': unknown parameters: 'qqqqzz'\n   Valid parameters for 'integers': " + _DYM_PARAMS,
+    ),
+    (
+        {"c": {**_DYM_INT, "qqqqzz": 1}},
+        "❌ Column 'c': unknown column key 'qqqqzz'\n   Accepted keys: " + _DYM_KEYS,
+    ),
+])
+def test_unknown_name_without_close_match_adds_no_suggestion(spec, expected):
+    assert AdvancedValidator.validate(spec) == [expected]
