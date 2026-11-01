@@ -18,13 +18,12 @@ FLAGS = ["--output-format", "stream-json", "--verbose", "--setting-sources", "",
          "--allowedTools", "Bash,Read,Write,Edit,Glob,Grep,WebSearch,WebFetch"]
 
 
-def host_free_env(venv):
-    """The caller's environment minus the host Claude session variables (the OAuth token kept), with the trial venv active."""
+def trial_env(venv):
+    """The caller's environment minus every host Claude session variable (the OAuth token too), the trial venv active."""
     env = {k: v for k, v in os.environ.items()
-           if k == "CLAUDE_CODE_OAUTH_TOKEN"
-           or not (k.startswith("CLAUDE_CODE_") or k in ("CLAUDECODE", "CLAUDE_PID", "CLAUDE_EFFORT"))}
+           if not (k.startswith("CLAUDE_CODE_") or k in ("CLAUDECODE", "CLAUDE_PID", "CLAUDE_EFFORT"))}
     env["VIRTUAL_ENV"] = str(venv)
-    env["PATH"] = f"{venv / ('Scripts' if os.name == 'nt' else 'bin')}{os.pathsep}{env.get('PATH', '')}"
+    env["PATH"] = f"{venv / 'bin'}{os.pathsep}{env['PATH']}"
     return env
 
 
@@ -47,38 +46,50 @@ def run_trial(task, n, args):
     try:
         cfg = tomllib.loads((task_dir / "task.toml").read_text())
         venv, cwd = work / "venv", work / "work"
-        subprocess.run([sys.executable, "-m", "venv", str(venv)], check=True)
-        py = venv / ("Scripts" if os.name == "nt" else "bin") / "python"
+        env = trial_env(venv)
+        subprocess.run([sys.executable, "-m", "venv", str(venv)], check=True, env=env)
+        py = venv / "bin" / "python"
         if cfg.get("environment", {}).get("install_rand_engine", True):
             subprocess.run([str(py), "-m", "pip", "install", "-q", args.rand_engine],
-                           check=True, stdin=subprocess.DEVNULL)
-        shutil.copytree(task_dir / "environment", cwd) if (task_dir / "environment").is_dir() else cwd.mkdir()
-        env = host_free_env(venv)
+                           check=True, stdin=subprocess.DEVNULL, env=env)
+        if (task_dir / "environment").is_dir():
+            shutil.copytree(task_dir / "environment", cwd)
+        else:
+            cwd.mkdir()
         try:
             p = subprocess.run(["claude", "-p", (task_dir / "instruction.md").read_text(), *FLAGS,
-                                "--model", args.model], cwd=cwd, env=env, text=True,
+                                "--model", args.model], cwd=cwd, text=True,
+                               env={**env, **{k: v for k, v in os.environ.items() if k == "CLAUDE_CODE_OAUTH_TOKEN"}},
                                capture_output=True, stdin=subprocess.DEVNULL,
                                timeout=cfg["agent"]["timeout_sec"])
             stream, res["agent_exit"] = p.stdout, p.returncode
         except subprocess.TimeoutExpired as e:
             stream, res["agent_exit"] = (e.stdout or b"").decode(), "timeout"
-        events = [json.loads(line) for line in stream.splitlines() if line.startswith("{")]
+        events = []
+        for line in stream.splitlines():
+            try:
+                events.append(json.loads(line))
+            except ValueError:  # a timeout can cut the last line
+                pass
         init = next(e for e in events if e.get("subtype") == "init")
         assert_isolated(init)
         res["model"] = init["model"]
         done = next((e for e in events if e.get("type") == "result"), {})
         if done.get("is_error"):
             raise RuntimeError(f"agent run failed: {str(done.get('result'))[:300]}")
-        u = done.get("usage", {})
-        res["input_tokens"] = sum(u.get(k, 0) for k in
-                                  ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"))
-        res["output_tokens"] = u.get("output_tokens", 0)
+        u = done.get("usage")  # no result event (a timeout): tokens and cost are unknown, null
+        res["input_tokens"] = u and sum(u.get(k, 0) for k in
+                                        ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"))
+        res["output_tokens"] = u and u.get("output_tokens", 0)
         res["cost_usd"] = done.get("total_cost_usd")
-        check = subprocess.run([str(py), str(task_dir / "tests" / "check.py")], cwd=cwd, env=env,
-                               stdin=subprocess.DEVNULL, capture_output=True, text=True,
-                               timeout=cfg["verifier"]["timeout_sec"])
-        res["passed"] = check.returncode == 0
-        res["check_output"] = (check.stdout.strip().splitlines() or [""])[-1]
+        try:
+            check = subprocess.run([str(py), str(task_dir / "tests" / "check.py")], cwd=cwd, env=env,
+                                   stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                                   timeout=cfg["verifier"]["timeout_sec"])
+            res["passed"] = check.returncode == 0
+            res["check_output"] = (check.stdout.strip().splitlines() or [""])[-1]
+        except subprocess.TimeoutExpired:
+            res["check_output"] = "timeout"
     except Exception as e:
         res["error"] = f"{type(e).__name__}: {e}"
     finally:

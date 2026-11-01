@@ -8,7 +8,7 @@ python evals/run.py --task e3-fix-by-error --k 3 --rand-engine <requirement or w
 
 - `--out` must be outside this repo; the runner refuses a path inside it (the workflow uses `$RUNNER_TEMP`). One JSON per trial: task, trial, passed, input and output tokens (input counts cache reads and writes), cost, duration, model id.
 - `--rand-engine` is a pip requirement or a wheel path, installed into a fresh venv per trial; `--task` takes folder names under `evals/tasks/`.
-- Each trial runs headless `claude -p` with no settings sources, no MCP servers, no skills; the init event is asserted. A failed isolation or auth is a harness error: the trial records `error` and the run exits 1. A trial with `passed: false` is a result, not an error.
+- Each trial runs headless `claude -p` with no settings sources, no MCP servers, no skills; the init event is asserted. A failed isolation or auth is a harness error: the trial records `error` and the run exits 1; so do API, rate and usage limits. The token reaches only the `claude -p` call, never venv creation, pip or the check. A trial with `passed: false` is a result, not an error.
 
 ## Task contract
 
