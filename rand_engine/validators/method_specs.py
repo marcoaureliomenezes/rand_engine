@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
-from numbers import Real
+from functools import reduce
 from collections.abc import Mapping as MappingABC
 import re
 import sys
@@ -203,40 +203,43 @@ def _mixed_types(values: Iterable[Any]) -> str:
     return ", ".join(sorted(t.__name__ for t in types)) if len(types) > 1 else ""
 
 
-# Exact types: a numpy scalar is not written like its base once pandas holds the column as objects.
-_POOL_ATOMS = {
-    bool: "bool", int: "int", float: "float", Decimal: "Decimal", bytes: "bytes",
-    date: "date", datetime: "datetime", str: "text",
-}
-_WRITTEN_BESIDE_TEXT = {bool, int, float, Decimal, str}
-
-
 def _spark_pool_problem(pool: list[Any]) -> str:
     """Why Spark cannot write the pool into one column, else empty.
 
-    pandas turns a pool of numbers, or of bool and numpy bool without None, into one typed column
-    Spark writes as given; any other numpy scalar stays an object Spark cannot infer.
-    Spark merges the value types in order: two kinds ahead of the first text value fail, and
-    beside text only bool, int, float and Decimal are written faithfully (the other kinds
-    fail or become Java object strings). Numbers alone reach Spark as one numeric column.
+    The column is built as SparkCore.gen_distincts builds it. A typed pandas column is
+    written as given (integers beyond int64 become null); an object column goes through the
+    schema inference createDataFrame folds over its rows, where a raise is a refusal and a
+    text-merged column corrupts any value whose own type is not faithful as text.
     """
-    values = [v for v in pool if v is not None]
-    if not values:
-        return "holds only None"
-    if all(isinstance(v, Real) and not isinstance(v, bool) for v in values) or all(isinstance(v, (bool, np.bool_)) for v in pool):
-        return ""
-    for v in values:
-        if type(v) not in _POOL_ATOMS:
-            module = "" if type(v).__module__ == "builtins" else type(v).__module__ + "."
-            return f"holds {module}{type(v).__name__}, which Spark cannot write unchanged"
-    kinds = [_POOL_ATOMS[type(v)] for v in values]
-    head = kinds[:kinds.index("text")] if "text" in kinds else kinds
-    for kind in head:
-        if kind != head[0]:
-            return f"holds {head[0]} and {kind} ahead of any text value; Spark merges kinds in order and fails unless text comes first"
-    for v in values if "text" in kinds else ():
-        if type(v) not in _WRITTEN_BESIDE_TEXT:
-            return f"holds {_POOL_ATOMS[type(v)]} beside text, which Spark writes as a Java object string"
+    if any(isinstance(v, (list, tuple, dict, set)) for v in pool):
+        return "holds a list, tuple or dict, which Spark writes as another value"
+    column = pd.DataFrame(pool, columns=["c"])["c"]
+    if column.isna().all() and column.dtype.kind != "f":
+        return "holds no value Spark can infer a type from"
+    if column.dtype != object and column.dtype.kind not in "biufMm":
+        return f"holds {column.dtype} values, which Spark cannot write unchanged"
+    if column.dtype == object:
+        # ponytail: pyspark's private inference functions; a rename is an ImportError in every CI row
+        from pyspark.sql.types import StringType, _infer_schema, _merge_type
+        values = [v for v in pool if v is not None]
+        try:
+            kinds = [_infer_schema((v,), ["c"]) for v in values]
+            schema = reduce(_merge_type, kinds)
+            for v in values:
+                schema.toInternal((v,))
+        except Exception as error:
+            named = getattr(error, "getMessageParameters", dict)() or {}
+            if "data_type1" not in named:
+                return "holds a value Spark cannot type or convert"
+            return f"holds {named['data_type1']} and {named['data_type2']}, which Spark merges in order and cannot merge into one column"
+        if isinstance(schema.fields[0].dataType, StringType):
+            for kind in kinds:
+                name = kind.fields[0].dataType.simpleString()
+                if name not in ("boolean", "bigint", "double", "string") and not name.startswith("decimal"):
+                    return f"holds {name} beside text, which Spark writes as a Java object string"
+            return ""
+    if column.dtype.kind in "iuO" and any(isinstance(v, (int, np.integer)) and not isinstance(v, bool) and not -(2**63) <= v < 2**63 for v in pool):
+        return "holds an integer outside int64, which Spark writes as null"
     return ""
 
 

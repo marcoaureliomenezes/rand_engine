@@ -246,12 +246,12 @@ class CommonValidator:
 
     @staticmethod
     def _spark_pool_errors(col_name: str, method: str, kwargs: dict[str, Any]) -> list[str]:
-        """The pool of distincts or distincts_prop (its keys) must be writable into one Spark column."""
+        """The pool of distincts or distincts_prop (its keys of positive weight) must be writable into one Spark column."""
         if method not in ("distincts", "distincts_prop"):
             return []
         pool = kwargs["distincts"]
         if method == "distincts_prop":
-            pool = [key for key, weight in pool.items() if weight > 0]  # SparkCore.gen_distincts_prop's expansion, until the 0.9.0 catalog owns it
+            pool = [key for key, weight in pool.items() if weight > 0]  # the pool SparkCore.gen_distincts_prop expands
         problem = _spark_pool_problem(pool)
         return [f"❌ Column '{col_name}': method '{method}' parameter 'distincts' {problem}"] if problem else []
 
