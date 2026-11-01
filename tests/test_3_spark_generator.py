@@ -187,31 +187,34 @@ class TestSparkGeneratorAllTypes:
             assert isinstance(row["date_col"], str)
 
 
-@pytest.mark.parametrize("method", ["unix_timestamps", "dates"])
-@pytest.mark.parametrize("start,end,date_format", [
-    ("2020-01-01", "2021-01-01", "%d/%m/%Y"),
-    ("0999-12-31", "1000-06-30", "%d/%m/%Y"),
-    ("0999-12-31", "1000-06-30", "%Y-%m-%d"),
+@pytest.mark.parametrize("method,start,end,date_format,low,high", [
+    ("unix_timestamps", "2020-01-01", "2021-01-01", "%d/%m/%Y", 1577836800, 1609459200),
+    ("dates", "2020-01-01", "2021-01-01", "%d/%m/%Y", 1577836800, 1609459200),
+    ("unix_timestamps", "0999-12-31", "1000-06-30", "%d/%m/%Y", -30610310400, -30594672000),
+    ("dates", "0999-12-31", "1000-06-30", "%d/%m/%Y", -30610310400, -30594672000),
+    ("unix_timestamps", "0999-12-31", "1000-06-30", "%Y-%m-%d", -30610310400, -30594672000),
+    ("dates", "0999-12-31", "1000-06-30", "%Y-%m-%d", -30610310400, -30594672000),
+    ("unix_timestamps", "2020-01-01 UTC", "2021-01-01 UTC", "%Y-%m-%d %Z", 1577836800, 1609459200),
+    ("unix_timestamps", "2020-01-01", "2021-01-01", "%m/%d", 1577836800, 1609459200),
+    ("unix_timestamps", "1950-01-01", "2050-01-01", "%d/%m/%y", -631152000, 2524608000),
+    ("dates", "2020-01-01", "2020-01-02", "%H:%M", -2208988800, -2208902400),
 ])
-def test_spark_date_bounds_in_another_format_generate_within_the_numpy_bounds(spark_session, spark_functions, method, start, end, date_format):
-    """Bounds written as %Y-%m-%d, also before year 1000, generate on Spark inside the span DataGenerator uses."""
-    from datetime import datetime
-    from rand_engine.core._np_core import _parse_date_bound, epoch_seconds
+def test_spark_date_bounds_generate_within_the_numpy_bounds(spark_session, spark_functions, method, start, end, date_format, low, high):
+    """Spark and NumPy generate inside the literal epoch span their date bounds denote, in any date_format."""
+    from datetime import datetime, timedelta
 
-    kwargs = {"start": start, "end": end, "date_format": date_format}
-    spec = {"d": {"method": method, "kwargs": kwargs}}
-    low, high = epoch_seconds(*(_parse_date_bound(kwargs[k], kwargs["date_format"]) for k in ("start", "end")))
+    spec = {"d": {"method": method, "kwargs": {"start": start, "end": end, "date_format": date_format}}}
 
     def seconds(value):
         if method == "unix_timestamps":
             return int(value)
-        return epoch_seconds(datetime.strptime(value, kwargs["date_format"]), datetime(1970, 1, 1))[0]
+        return (datetime.strptime(value, date_format) - datetime(1970, 1, 1)) // timedelta(seconds=1)
 
     expected = [seconds(v) for v in DataGenerator(spec, seed=1).size(200).get_df()["d"]]
     actual = [seconds(r["d"]) for r in SparkGenerator(spark_session, spark_functions, spec).size(200).get_df().collect()]
 
-    assert low <= min(expected) and max(expected) < high
-    assert len(actual) == 200 and all(low <= v < high for v in actual)
+    assert len(actual) == 200 and len(set(actual)) > 1
+    assert all(low <= v < high for v in expected) and all(low <= v < high for v in actual)
 
 
 class TestSparkGeneratorDifferentSizes:
