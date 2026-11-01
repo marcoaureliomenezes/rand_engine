@@ -574,6 +574,39 @@ def test_one_type_pool_and_positive_weights_are_accepted(config):
   assert AdvancedValidator.validate({"c": config}) == []
 
 
+_MAP = {"distincts": {"x": ["y"]}}
+_OUT_NAME = "❌ Column '{col}': output name '{name}' is produced twice: by {first} and by {second}"
+
+
+@pytest.mark.parametrize("spec, col, name, first, second", [
+  ({"c": {"method": "distincts_map", "cols": ["a", "a"], "kwargs": _MAP}},
+   "c", "a", "'cols'[0] of column 'c'", "'cols'[1] of column 'c'"),
+  ({"a": {"method": "integers", "kwargs": {"min": 0, "max": 9}},
+    "m": {"method": "distincts_map", "cols": ["a", "b"], "kwargs": _MAP}},
+   "m", "a", "column 'a'", "'cols'[0] of column 'm'"),
+  ({"id": {"method": "pk", "kwargs": {}},
+    "m": {"method": "distincts_map", "cols": ["k", "id"], "kwargs": _MAP}},
+   "m", "id", "column 'id'", "'cols'[1] of column 'm'"),
+  ({"pid": {"method": "fk", "kwargs": {"parent": FK_PARENT, "parent_size": 10}},
+    "m": {"method": "distincts_map", "cols": ["pid", "b"], "kwargs": _MAP}},
+   "m", "pid", "column 'pid'", "'cols'[0] of column 'm'"),
+])
+def test_output_name_produced_twice_is_refused(spec, col, name, first, second):
+  errors = AdvancedValidator.validate(spec)
+  assert len(errors) == 1
+  assert _OUT_NAME.format(col=col, name=name, first=first, second=second) in errors[0]
+
+
+def test_complex_distincts_replacement_longer_than_one_character_is_refused():
+  integers = {"method": "integers", "kwargs": {"min": 0, "max": 9}}
+  spec = {"c": {"method": "complex_distincts",
+                "kwargs": {"pattern": "ab-ab", "replacement": "ab", "templates": [integers, integers]}}}
+  errors = AdvancedValidator.validate(spec)
+  assert len(errors) == 1
+  assert ("❌ Column 'c': method 'complex_distincts' parameter 'replacement' "
+          "must be one character, got 'ab'") in errors[0]
+
+
 @pytest.mark.parametrize("cols, got", [(["k", "l"], "got 2"), (["k", "l", "m", "n"], "got 4")])
 def test_distincts_multi_map_cols_must_be_levels_plus_one(cols, got):
   spec = {"c": {"method": "distincts_multi_map", "kwargs": {"distincts": {"t": [["a", "b"], ["x", "y"]]}}, "cols": cols}}
