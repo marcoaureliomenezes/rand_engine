@@ -9,6 +9,7 @@ from decimal import Decimal
 import numpy as np
 import pytest
 from rand_engine import DataGenerator
+from rand_engine.validators.advanced_validator import AdvancedValidator
 from rand_engine.validators.common_validator import CommonValidator
 from rand_engine.validators.exceptions import SpecValidationError
 
@@ -381,14 +382,14 @@ def test_huge_new_distribution_parameters_are_collected(method, parameter):
     Decimal("1.25"),
 ])
 def test_anomaly_values_accept_the_declared_scalar_family(value):
-    DataGenerator({
+    assert AdvancedValidator.validate({
         "value": {
             "method": "integers",
             "kwargs": {"min": 0, "max": 10},
             "anomaly_rate": 1,
             "anomaly_values": [value],
         }
-    })
+    }) == []
 
 
 def test_anomaly_values_reject_arbitrary_objects():

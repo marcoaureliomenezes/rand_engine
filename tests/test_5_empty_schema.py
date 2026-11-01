@@ -140,8 +140,8 @@ def _null_constant_spec(value):
 def test_determinate_empty_saves_repeat_with_typed_files_and_no_rng(
     tmp_path, monkeypatch, format_type, file_count
 ):
-    requests = _observe_numpy_requests(monkeypatch)
     writer = DataGenerator(EMPTY_SPEC, seed=7).size(0).write.format(format_type)
+    requests = _observe_numpy_requests(monkeypatch)
     if file_count > 1:
         writer.option("numFiles", file_count)
 
@@ -177,7 +177,6 @@ def test_indeterminate_empty_transform_preserves_destination_without_calls(
     ).size(1).write.format("parquet").save(str(path))
     before = path.read_bytes()
     transform_calls = []
-    requests = _observe_numpy_requests(monkeypatch)
 
     def arbitrary_transform(frame):
         transform_calls.append(len(frame))
@@ -190,14 +189,15 @@ def test_indeterminate_empty_transform_preserves_destination_without_calls(
         },
         "label": {"method": "constant", "kwargs": {"value": "x"}},
     }
-    error = _save_error(
+    writer = (
         DataGenerator(indeterminate_spec, seed=11)
         .size(0)
         .transformers([arbitrary_transform])
         .write.format("parquet")
-        .mode("overwrite"),
-        path,
+        .mode("overwrite")
     )
+    requests = _observe_numpy_requests(monkeypatch)
+    error = _save_error(writer, path)
 
     assert (
         type(error),
@@ -402,11 +402,9 @@ def test_empty_callable_parquet_evaluates_one_lazy_schema_without_rng(
         value = "validated" if len(calls) == 1 else 7
         return _null_constant_spec(value)
 
+    writer = DataGenerator(changing_spec, seed=13).size(0).write.format("parquet")
     requests = _observe_numpy_requests(monkeypatch)
-    result = _parquet_result(
-        DataGenerator(changing_spec, seed=13).size(0).write.format("parquet"),
-        tmp_path / "empty-callable",
-    )
+    result = _parquet_result(writer, tmp_path / "empty-callable")
 
     assert (result, calls, requests) == (
         (
