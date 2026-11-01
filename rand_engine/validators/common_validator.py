@@ -12,6 +12,7 @@ from rand_engine.validators.method_specs import (
     MethodSpec,
     ORDINARY,
     SPARK,
+    _spark_pool_problem,
     is_declared_scalar,
     matches_type,
     type_name,
@@ -241,7 +242,13 @@ class CommonValidator:
         if method == "integers" and isinstance(kwargs, dict):
             col_config = {**col_config, "kwargs": {"int_type": "int64", **kwargs}}
         errors = cls.validate_column(col_name, col_config)
-        return errors or cls._spark_width_errors(col_name, method, kwargs)
+        return errors or cls._spark_width_errors(col_name, method, kwargs) or cls._spark_pool_errors(col_name, method, kwargs)
+
+    @staticmethod
+    def _spark_pool_errors(col_name: str, method: str, kwargs: dict[str, Any]) -> list[str]:
+        """The pool of distincts or distincts_prop (its keys) must be writable into one Spark column."""
+        problem = _spark_pool_problem(kwargs["distincts"]) if method in ("distincts", "distincts_prop") else ""
+        return [f"❌ Column '{col_name}': method '{method}' parameter 'distincts' {problem}"] if problem else []
 
     @staticmethod
     def _spark_width_errors(col_name: str, method: str, kwargs: dict[str, Any]) -> list[str]:
