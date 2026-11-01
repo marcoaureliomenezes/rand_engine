@@ -961,3 +961,26 @@ def test_construction_draws_nothing_from_the_seed():
     }
     assert DataGenerator(spec, seed=7).size(5).get_df().to_dict("list") == {
         "id": [1, 2, 3, 4, 5], "p": [4, 4, 2, 3, 3], "x": [945, 625, 684, 898, 578]}
+
+
+@pytest.mark.parametrize("column, expected", [
+    ({"method": "integers", "kwargs": {"min": 0, "max": 9}, "transformers": [lambda v: f"n{v}"], "anomaly_values": ["x"]},
+     ["x", "n5", "x", "n9", "x", "n1", "n8", "x", "n2", "x"]),
+    ({"method": "distincts", "kwargs": {"distincts": ["ab", "cde"]}, "transformers": [len], "anomaly_values": [-1]},
+     [-1, 3, -1, 3, -1, 2, 3, -1, 2, -1]),
+])
+def test_anomaly_values_fitting_only_after_an_embedded_transformer_construct_and_generate(column, expected):
+    spec = {"a": {**column, "anomaly_rate": 0.5}}
+    assert DataGenerator(spec, seed=1).size(10).get_df()["a"].tolist() == expected
+
+
+def test_anomaly_values_fitting_only_after_a_global_transformer_are_refused_at_construction():
+    """R14 residual: global transformers are set after construction, so the net never reaches them."""
+    spec = {"a": {"method": "integers", "kwargs": {"min": 0, "max": 9}, "anomaly_rate": 0.5, "anomaly_values": ["x"]}}
+    transformer = lambda df: pytest.fail("global transformer reached")  # noqa: E731
+    with pytest.raises(SpecValidationError) as error:
+        DataGenerator(spec).transformers([transformer])
+    assert (
+        "❌ Column 'a': method 'integers' cannot generate a row: "
+        "RandEngineError: column 'a' anomaly values cannot preserve dtype int32"
+    ) in str(error.value)
