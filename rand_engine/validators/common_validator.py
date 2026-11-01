@@ -1,5 +1,6 @@
 """Catalog-driven validation shared by DataGenerator and SparkGenerator."""
 
+import difflib
 import json
 from typing import Any
 
@@ -28,6 +29,15 @@ class CommonValidator:
     """Validate ordinary RandSpec methods and adapt them for Spark."""
 
     METHOD_SPECS = COMMON_METHOD_SPECS
+
+    @staticmethod
+    def did_you_mean(names: Any, candidates: Any) -> str:
+        """The added suggestion line for the first of `names` close to a candidate, else ''."""
+        for name in names:
+            match = difflib.get_close_matches(name, candidates, n=1)
+            if match:
+                return f"\n   Did you mean '{match[0]}'?"
+        return ""
 
     @classmethod
     def validate_column(cls, col_name: str, col_config: dict[str, Any]) -> list[str]:
@@ -93,11 +103,13 @@ class CommonValidator:
                 errors.append(
                     f"⚠️  Column '{col_name}': unknown parameters: '{unknown}'\n"
                     f"   Valid parameters for '{method}': {valid}"
+                    + cls.did_you_mean(unknown_parameters, valid_parameters)
                 )
             else:
                 errors.extend(
                     f"⚠️  Column '{col_name}': Unknown parameter '{parameter}' for method '{method}'\n"
                     f"   Valid parameters: {valid}"
+                    + cls.did_you_mean([parameter], valid_parameters)
                     for parameter in unknown_parameters
                 )
 
@@ -114,6 +126,7 @@ class CommonValidator:
         """One collected issue per column key outside the accepted set."""
         return [
             f"❌ Column '{col_name}': unknown column key '{key}'\n   Accepted keys: {', '.join(COLUMN_KEYS)}"
+            + CommonValidator.did_you_mean([key], COLUMN_KEYS)
             for key in col_config
             if key not in COLUMN_KEYS
         ]
@@ -201,6 +214,7 @@ class CommonValidator:
             return [
                 f"❌ Column '{col_name}': method '{method}' does not exist\n"
                 f"   Available methods: {available}"
+                + cls.did_you_mean([method], cls.METHOD_SPECS)
             ]
 
         unknown = cls.unknown_key_errors(col_name, col_config)

@@ -120,6 +120,7 @@ class AdvancedValidator:
             return [
                 f"❌ Column '{col_name}': method '{method}' does not exist\n"
                 f"   Available methods: {available}"
+                + CommonValidator.did_you_mean([method], METHOD_CATALOG)
             ]
 
         if method_spec.kind == ORDINARY:
