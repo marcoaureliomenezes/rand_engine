@@ -84,7 +84,7 @@ methods require `cols`; the global optional modifiers are documented separately 
 `dates` and `unix_timestamps` parse `start` and `end` with `date_format`. A `dates` value is a
 string drawn at whole-second resolution in UTC; its `date_format` may use only the directives
 `%Y %m %d %H %M %S %f` (`%f` renders `000000`). Any other directive fails validation on both
-engines, naming the supported set.
+engines, naming the supported set. A bound that does not parse under `date_format` is read as `%Y-%m-%d`.
 
 ```python
 from rand_engine.validators.exceptions import SpecValidationError
@@ -110,6 +110,12 @@ spec = {
 }
 df = DataGenerator(spec, seed=1).size(1_000).get_df()
 assert df["created_at"].str.match(r"^2024-\d\d-\d\d \d\d:\d\d:\d\d$").all()  # .str.* predicates return bool[pyarrow]
+```
+
+```python
+days = DataGenerator({"day": {"method": "dates", "kwargs": {
+    "start": "2020-01-01", "end": "2021-01-01", "date_format": "%d/%m/%Y"}}}, seed=1).size(100).get_df()
+assert days["day"].str[-4:].isin(["2020", "2021"]).all()  # '2020-01-01' is not %d/%m/%Y, so it is read as %Y-%m-%d
 ```
 
 ```python
