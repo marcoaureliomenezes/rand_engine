@@ -64,14 +64,15 @@ class AdvancedValidator:
 
     @staticmethod
     def _duplicate_output_errors(spec: dict[str, Any]) -> list[str]:
-        seen: dict[str, str] = {}
+        seen: dict[Any, str] = {}
         errors: list[str] = []
         for key, config in spec.items():
             if not isinstance(config, dict) or not _valid_cols(config.get("cols", [key])):
                 continue
-            listed = "cols" in config
-            for index, name in enumerate(map(str, config.get("cols", [key]))):
-                where = f"'cols'[{index}] of column '{key}'" if listed else f"column '{key}'"
+            for index, name in enumerate(config.get("cols", [key])):
+                where = f"'cols'[{index}] of column '{key}'" if "cols" in config else f"column '{key}'"
+                if name.__hash__ is None:
+                    continue
                 if name in seen:
                     errors.append(
                         f"❌ Column '{key}': output name '{name}' is produced twice: by {seen[name]} and by {where}"
