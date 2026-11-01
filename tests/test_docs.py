@@ -660,7 +660,7 @@ def test_changelog_0_7_0_lists_the_new_surface_and_migration(token):
 
 def _public(cls, names):
   return [(n, m) for n, m in inspect.getmembers(cls)
-          if (n in names if names else not n.startswith("_")) and (callable(m) or isinstance(m, property))]
+          if (n in names if names is not None else not n.startswith("_")) and (callable(m) or isinstance(m, property))]
 
 
 def _returns_value(func) -> bool:
@@ -697,11 +697,15 @@ def _gaps(cls, names=None) -> list[str]:
   return gaps
 
 
+_EXCEPTIONS = ["RandEngineError", "SpecValidationError", "ColumnGenerationError", "TransformerError", "FileWriterError"]
+
+
 def _surface():
   from rand_engine import DataGenerator, RandSpecs, SparkGenerator
   from rand_engine.file_handlers._writer_batch import FileBatchWriter
   from rand_engine.file_handlers._writer_stream import FileStreamWriter
   from rand_engine.file_handlers.writer import FileWriter
+  from rand_engine.validators import exceptions as exc
   return {
     "DataGenerator": (DataGenerator, None),
     "SparkGenerator": (SparkGenerator, None),
@@ -709,10 +713,11 @@ def _surface():
     "FileBatchWriter": (FileBatchWriter, {"save"}),
     "FileStreamWriter": (FileStreamWriter, {"trigger", "start"}),
     "RandSpecs": (RandSpecs, None),
+    **{n: (getattr(exc, n), {m for m in vars(getattr(exc, n)) if not m.startswith("_")}) for n in _EXCEPTIONS},
   }
 
 
-@pytest.mark.parametrize("name", ["DataGenerator", "SparkGenerator", "FileWriter", "FileBatchWriter", "FileStreamWriter", "RandSpecs"])
+@pytest.mark.parametrize("name", ["DataGenerator", "SparkGenerator", "FileWriter", "FileBatchWriter", "FileStreamWriter", "RandSpecs", *_EXCEPTIONS])
 def test_public_callables_carry_numpydoc(name):
   """Every public class, callable and property has a summary; callables and classes an Examples section; Parameters/Returns as they apply."""
   cls, names = _surface()[name]
@@ -726,6 +731,7 @@ def test_public_callables_carry_numpydoc(name):
   "rand_engine.file_handlers._writer_batch",
   "rand_engine.file_handlers._writer_stream",
   "rand_engine.examples.common_rand_specs",
+  "rand_engine.validators.exceptions",
 ])
 def test_module_docstring_examples_run(module, tmp_path, monkeypatch):
   """The module has examples; they run under a temporary directory, size at most 10^4 rows, and Spark ones are +SKIP."""
