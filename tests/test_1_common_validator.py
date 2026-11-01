@@ -322,6 +322,40 @@ def test_mixed_type_pool_is_accepted_by_spark_and_refused_by_numpy(pool):
     assert "parameter 'distincts' must hold one type" in errors[0]
 
 
+def _pool_spec(method, pool):
+    return {"c": {"method": method, "kwargs": {"distincts": pool if method == "distincts" else dict.fromkeys(pool, 1)}}}
+
+
+@pytest.mark.parametrize("method", ["distincts", "distincts_prop"])
+@pytest.mark.parametrize(("pool", "kinds"), [
+    ([True, 2.5], "bool and float"),
+    ([True, date(2020, 1, 1)], "bool and date"),
+    ([True, datetime(2020, 1, 1, 3)], "bool and datetime"),
+    ([1, date(2020, 1, 1)], "int and date"),
+    ([2.5, datetime(2020, 1, 1, 3)], "float and datetime"),
+    ([date(2020, 1, 1), datetime(2020, 1, 1, 3)], "date and datetime"),
+    ([date(2020, 1, 1), "x"], "date and text"),
+    ([datetime(2020, 1, 1, 3), "x", None], "datetime and text"),
+    ([1, 2.5, "x"], "int and float"),
+    ([None], "None only"),
+])
+def test_spark_refuses_pool_kinds_it_cannot_write_into_one_column(method, pool, kinds):
+    """Spark fails with CANNOT_MERGE_TYPE or writes a Java calendar string for these pools."""
+    tail = "holds only None" if kinds == "None only" else f"holds {kinds}, which Spark cannot write into one column"
+    assert CommonValidator.validate_spark_spec(_pool_spec(method, pool)) == [
+        f"❌ Column 'c': method '{method}' parameter 'distincts' {tail}"
+    ]
+
+
+@pytest.mark.parametrize("method", ["distincts", "distincts_prop"])
+@pytest.mark.parametrize("pool", [
+    [1, 2.5], ["x", None], [1, "x"], [True, "x"], ["x", 1, 2.5], [True, "x", 2.5],
+    [True, None], [date(2020, 1, 1), None], [1, 2.5, None], [datetime(2020, 1, 1, 3)],
+])
+def test_spark_keeps_pools_it_writes_faithfully(method, pool):
+    assert CommonValidator.validate_spark_spec(_pool_spec(method, pool)) == []
+
+
 def _caught_validation(call):
     try:
         call()
