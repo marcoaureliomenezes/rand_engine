@@ -53,8 +53,31 @@ class TestSparkGeneratorBasic:
         """get_df() without .size(n) raises RandEngineError naming .size(n)."""
         generator = SparkGenerator(spark_session, spark_functions, spark_metadata_simple)
 
-        with pytest.raises(RandEngineError, match=r"\.size\(n\)"):
+        with pytest.raises(RandEngineError) as error:
             generator.get_df()
+
+        assert str(error.value) == "No size set: call .size(n) with an int or a callable returning one."
+
+    @pytest.mark.parametrize("make", [lambda v: v, lambda v: (lambda: v)], ids=["value", "callable"])
+    @pytest.mark.parametrize("bad, message", [
+        (-5, "size must be a non-negative integer, got -5"),
+        (2.5, "size must be a non-negative integer, got 2.5"),
+        ("3", "size must be a non-negative integer, got '3'"),
+        (True, "size must be a non-negative integer, got True"),
+    ])
+    def test_get_df_bad_size_refused(self, spark_session, spark_functions, spark_metadata_simple, bad, message, make):
+        generator = SparkGenerator(spark_session, spark_functions, spark_metadata_simple).size(make(bad))
+
+        with pytest.raises(RandEngineError) as error:
+            generator.get_df()
+
+        assert str(error.value) == message
+
+    def test_get_df_numpy_integer_size_is_accepted(self, spark_session, spark_functions, spark_metadata_simple):
+        import numpy as np
+        generator = SparkGenerator(spark_session, spark_functions, spark_metadata_simple)
+
+        assert generator.size(np.int64(3)).get_df().count() == 3
 
     def test_get_df_simple(self, spark_session, spark_functions, spark_metadata_simple):
         """Test get_df() with simple metadata."""

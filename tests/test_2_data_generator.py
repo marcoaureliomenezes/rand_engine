@@ -667,3 +667,53 @@ def test_stream_dict_text_null_is_python_none():
   rows = list(islice(DataGenerator(spec, seed=2026).size(8).stream_dict(1000, 1000), 8))
 
   assert [r["v"] for r in rows] == [None, "fixed", None, None, None, "fixed", "fixed", None]
+
+
+SIZE_SPEC = {"v": {"method": "constant", "kwargs": {"value": 1}}}
+UNSET_SIZE = "No size set: call .size(n) with an int or a callable returning one."
+BAD_SIZES = [
+  (-5, "size must be a non-negative integer, got -5"),
+  (2.5, "size must be a non-negative integer, got 2.5"),
+  ("3", "size must be a non-negative integer, got '3'"),
+  (True, "size must be a non-negative integer, got True"),
+]
+
+
+def _sized(size, make):
+  return DataGenerator(SIZE_SPEC).size(make(size))
+
+
+@pytest.mark.parametrize("make", [lambda v: v, lambda v: (lambda: v)], ids=["value", "callable"])
+@pytest.mark.parametrize("bad, message", BAD_SIZES)
+def test_bad_size_refused_at_get_df_stream_and_save(bad, message, make, tmp_path):
+  with pytest.raises(RandEngineError) as df_error:
+    _sized(bad, make).get_df()
+  with pytest.raises(RandEngineError) as stream_error:
+    next(_sized(bad, make).stream_dict())
+  out = tmp_path / "out"
+  with pytest.raises(RandEngineError) as save_error:
+    _sized(bad, make).write.format("csv").save(str(out))
+
+  assert [str(df_error.value), str(stream_error.value), str(save_error.value)] == [message] * 3
+  assert not out.exists()
+
+
+def test_numpy_integer_size_is_accepted():
+  assert DataGenerator(SIZE_SPEC).size(np.int64(3)).get_df().shape[0] == 3
+
+
+def test_zero_size_gives_empty_frame():
+  df = DataGenerator(SIZE_SPEC).size(0).get_df()
+
+  assert df.shape == (0, 1)
+
+
+def test_unset_size_raises_the_literal_message_everywhere(tmp_path):
+  with pytest.raises(RandEngineError) as df_error:
+    DataGenerator(SIZE_SPEC).get_df()
+  with pytest.raises(RandEngineError) as stream_error:
+    next(DataGenerator(SIZE_SPEC).stream_dict())
+  with pytest.raises(RandEngineError) as save_error:
+    DataGenerator(SIZE_SPEC).write.format("csv").save(str(tmp_path / "out"))
+
+  assert [str(df_error.value), str(stream_error.value), str(save_error.value)] == [UNSET_SIZE] * 3
