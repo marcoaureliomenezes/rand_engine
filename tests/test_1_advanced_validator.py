@@ -538,6 +538,42 @@ def test_complex_distincts_template_that_validates_generates(template, expected)
   assert set(DataGenerator(spec, seed=1).size(20).get_df()["c"]) == {expected}
 
 
+_PROP = "method 'distincts_prop' parameter 'distincts'"
+_MAP_PROP = "method 'distincts_map_prop' parameter 'distincts'"
+
+
+@pytest.mark.parametrize("config, message", [
+  ({"method": "distincts_prop", "kwargs": {"distincts": {"a": -1, "b": 2}}},
+   f"❌ Column 'c': {_PROP} has negative weight -1 for 'a'"),
+  ({"method": "distincts_prop", "kwargs": {"distincts": {"a": 0, "b": 0}}},
+   f"❌ Column 'c': {_PROP} weights must not all be zero"),
+  ({"method": "distincts_map_prop", "cols": ["x", "k"], "kwargs": {"distincts": {"x": [["y", -1], ["z", 2]]}}},
+   f"❌ Column 'c': {_MAP_PROP} has negative weight -1 for 'y'"),
+  ({"method": "distincts_map_prop", "cols": ["x", "k"], "kwargs": {"distincts": {"x": [["y", 0], ["z", 0]]}}},
+   f"❌ Column 'c': {_MAP_PROP} weights must not all be zero for 'x'"),
+  ({"method": "distincts", "kwargs": {"distincts": ["a", 1]}},
+   "❌ Column 'c': method 'distincts' parameter 'distincts' must hold one type, found int, str"),
+  ({"method": "distincts", "kwargs": {"distincts": [1, 2.5]}},
+   "❌ Column 'c': method 'distincts' parameter 'distincts' must hold one type, found float, int"),
+  ({"method": "distincts", "kwargs": {"distincts": ["a", None]}},
+   "❌ Column 'c': method 'distincts' parameter 'distincts' must hold one type, found NoneType, str"),
+])
+def test_distincts_weights_and_pool_types_are_refused(config, message):
+  errors = AdvancedValidator.validate({"c": config})
+  assert len(errors) == 1
+  assert message in errors[0]
+
+
+@pytest.mark.parametrize("config", [
+  {"method": "distincts", "kwargs": {"distincts": ["a", "b"]}},
+  {"method": "distincts", "kwargs": {"distincts": [1, 2]}},
+  {"method": "distincts_prop", "kwargs": {"distincts": {"a": 0, "b": 2}}},
+  {"method": "distincts_map_prop", "cols": ["x", "k"], "kwargs": {"distincts": {"x": [["y", 0], ["z", 2]]}}},
+])
+def test_one_type_pool_and_positive_weights_are_accepted(config):
+  assert AdvancedValidator.validate({"c": config}) == []
+
+
 @pytest.mark.parametrize("cols, got", [(["k", "l"], "got 2"), (["k", "l", "m", "n"], "got 4")])
 def test_distincts_multi_map_cols_must_be_levels_plus_one(cols, got):
   spec = {"c": {"method": "distincts_multi_map", "kwargs": {"distincts": {"t": [["a", "b"], ["x", "y"]]}}, "cols": cols}}
