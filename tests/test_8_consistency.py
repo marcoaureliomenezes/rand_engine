@@ -192,9 +192,11 @@ def test_event_time_fk_refuses_a_child_with_no_eligible_parent_by_output_column(
     "child_start": 0,
     "child_rate": 1,
   }
-  with pytest.raises(RandEngineError, match="parent_id") as error:
-    _fk(SEQ, 10, 1, born_before=born_after_child)
-  assert not isinstance(error.value, SpecValidationError)
+  spec = {"parent_id": {"method": "fk", "kwargs": {
+    "parent": {"method": "pk", "kwargs": SEQ}, "parent_size": 10, "born_before": born_after_child,
+  }}}
+  with pytest.raises(SpecValidationError, match="parent_id"):
+    DataGenerator(spec, seed=2)
 
 
 @pytest.mark.parametrize("parent_kwargs, skew", [(SEQ, None), (FMT, 1.2)])
