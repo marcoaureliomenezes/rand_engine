@@ -1,6 +1,6 @@
 # SPEC — Release: 0.8.2, candidate 2 (measured public texts; doc drift; discovery metadata)
 
-**Status:** Draft
+**Status:** Approved
 **Release ID:** 0.8.2
 **Owner:** dd-product-engineer
 **Opened:** 2026-11-01
