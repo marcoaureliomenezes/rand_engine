@@ -606,11 +606,11 @@ _INT = {"method": "integers", "kwargs": {"min": 0, "max": 9}}
 
 @pytest.mark.parametrize("spec, message", [
   ({"c": {**_INT, "cols": []}},
-   "❌ Column 'c': 'cols' must be a non-empty list of strings, got []"),
+   "❌ Column 'c': 'cols' must be a non-empty list, got []"),
   ({"a": _INT, "x": {**_INT, "cols": "a"}}, "❌ Column 'x': 'cols' must be list"),
   ({"c": {**_INT, "cols": ("a",)}}, "❌ Column 'c': 'cols' must be list"),
 ])
-def test_cols_of_any_column_is_a_non_empty_list_of_strings(spec, message):
+def test_cols_of_any_column_is_a_non_empty_list(spec, message):
   errors = AdvancedValidator.validate(spec)
   assert len(errors) == 1
   assert message in errors[0]
