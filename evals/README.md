@@ -1,16 +1,14 @@
 # Agent evals
 
-On-demand eval of how an agent uses rand-engine. Outside pytest, the `verify:` line and CI.
+Agent eval of how an agent uses rand-engine. It runs in its own non-blocking workflow, `.github/workflows/eval.yml`, outside pytest and the required checks: on push to `feature/**` touching `evals/**` or the workflow, on pull requests to `development`, and on `workflow_dispatch` (inputs `model`, `k`). The repository secret `CLAUDE_CODE_OAUTH_TOKEN` authenticates the agent; the runner only inherits it from the environment.
 
 ```bash
-python evals/run.py --task e3-fix-by-error --k 3 \
-  --rand-engine rand-engine==0.8.1 --model <full model id> --out ~/eval-results
+python evals/run.py --task e3-fix-by-error --k 3 --rand-engine <requirement or wheel> --model <full model id> --out <dir>
 ```
 
-- `--out` must be outside this repo; the runner refuses a path inside it. One JSON per trial: task, trial, passed, input and output tokens (input counts cache reads and writes), cost, duration, model id.
+- `--out` must be outside this repo; the runner refuses a path inside it (the workflow uses `$RUNNER_TEMP`). One JSON per trial: task, trial, passed, input and output tokens (input counts cache reads and writes), cost, duration, model id.
 - `--rand-engine` is a pip requirement or a wheel path, installed into a fresh venv per trial; `--task` takes folder names under `evals/tasks/`.
-- Trial Bash runs in Claude Code's native sandbox: writes confined to the trial temp directory, network only to PyPI, no unsandboxed fallback (the run fails if the sandbox cannot start); WebSearch and WebFetch stay on, as in a stock session.
-- Each trial runs headless `claude -p` in a fresh temp directory with no settings sources, no MCP servers, no skills; the stream's init event is asserted and a leak fails the trial. Auth is whatever the caller's environment already holds; the runner never reads or stores it.
+- Each trial runs headless `claude -p` with no settings sources, no MCP servers, no skills; the init event is asserted. A failed isolation or auth is a harness error: the trial records `error` and the run exits 1. A trial with `passed: false` is a result, not an error.
 
 ## Task contract
 

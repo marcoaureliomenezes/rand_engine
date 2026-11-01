@@ -19,21 +19,13 @@ FLAGS = ["--output-format", "stream-json", "--verbose", "--setting-sources", "",
 
 
 def host_free_env(venv):
-    """The caller's environment minus the host Claude session variables, with the trial venv active."""
+    """The caller's environment minus the host Claude session variables (the OAuth token kept), with the trial venv active."""
     env = {k: v for k, v in os.environ.items()
-           if not (k.startswith("CLAUDE_CODE_") or k in ("CLAUDECODE", "CLAUDE_PID", "CLAUDE_EFFORT"))}
+           if k == "CLAUDE_CODE_OAUTH_TOKEN"
+           or not (k.startswith("CLAUDE_CODE_") or k in ("CLAUDECODE", "CLAUDE_PID", "CLAUDE_EFFORT"))}
     env["VIRTUAL_ENV"] = str(venv)
     env["PATH"] = f"{venv / ('Scripts' if os.name == 'nt' else 'bin')}{os.pathsep}{env.get('PATH', '')}"
     return env
-
-
-def sandbox_settings(tmp):
-    """--settings JSON: Bash in the native sandbox, writes confined to `tmp`, network to PyPI only, no escape."""
-    return json.dumps({"sandbox": {
-        "enabled": True, "failIfUnavailable": True, "allowUnsandboxedCommands": False,
-        "autoAllowBashIfSandboxed": True,
-        "filesystem": {"allowWrite": [str(tmp)]},
-        "network": {"allowedDomains": ["pypi.org", "files.pythonhosted.org"]}}})
 
 
 def assert_isolated(init):
@@ -64,7 +56,7 @@ def run_trial(task, n, args):
         env = host_free_env(venv)
         try:
             p = subprocess.run(["claude", "-p", (task_dir / "instruction.md").read_text(), *FLAGS,
-                                "--settings", sandbox_settings(work), "--model", args.model], cwd=cwd, env=env, text=True,
+                                "--model", args.model], cwd=cwd, env=env, text=True,
                                capture_output=True, stdin=subprocess.DEVNULL,
                                timeout=cfg["agent"]["timeout_sec"])
             stream, res["agent_exit"] = p.stdout, p.returncode
@@ -75,6 +67,8 @@ def run_trial(task, n, args):
         assert_isolated(init)
         res["model"] = init["model"]
         done = next((e for e in events if e.get("type") == "result"), {})
+        if done.get("is_error"):
+            raise RuntimeError(f"agent run failed: {str(done.get('result'))[:300]}")
         u = done.get("usage", {})
         res["input_tokens"] = sum(u.get(k, 0) for k in
                                   ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"))

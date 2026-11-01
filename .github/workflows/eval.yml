@@ -1,0 +1,91 @@
+name: Agent Eval
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+    paths:
+      - 'evals/**'
+      - '.github/workflows/eval.yml'
+  pull_request:
+    branches:
+      - development
+  workflow_dispatch:
+    inputs:
+      model:
+        description: Full model id
+        default: claude-sonnet-5-5
+      k:
+        description: Trials per task
+        default: '3'
+
+permissions:
+  contents: read
+
+env:
+  MODEL: ${{ inputs.model || 'claude-sonnet-5-5' }}
+  K: ${{ inputs.k || '3' }}
+
+jobs:
+  eval:
+    name: ${{ matrix.task }} on ${{ matrix.install }}
+    runs-on: ubuntu-latest
+    # k x ([agent] + [verifier] timeout_sec) at the default k=3 is 105 minutes
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {task: e1-cold-discovery, install: pypi}
+          - {task: e2-named-related-tables, install: pypi}
+          - {task: e2-named-related-tables, install: wheel}
+          - {task: e3-fix-by-error, install: pypi}
+          - {task: e3-fix-by-error, install: wheel}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install the agent CLI
+        run: npm install -g @anthropic-ai/claude-code@2.1.296
+
+      - name: Build the wheel
+        if: matrix.install == 'wheel'
+        run: |
+          pipx install poetry==2.5.1
+          poetry build --format wheel
+
+      - name: Run the eval
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          TASK: ${{ matrix.task }}
+          INSTALL: ${{ matrix.install }}
+        run: |
+          if [ "$INSTALL" = wheel ]; then ENGINE=$(ls "$PWD"/dist/*.whl); else ENGINE=rand-engine; fi
+          python evals/run.py --task "$TASK" --k "$K" --rand-engine "$ENGINE" \
+            --model "$MODEL" --out "$RUNNER_TEMP/eval-out/$TASK-$INSTALL"
+
+      - name: Job summary
+        if: always()
+        env:
+          OUT: ${{ runner.temp }}/eval-out/${{ matrix.task }}-${{ matrix.install }}
+          LABEL: ${{ matrix.task }} on ${{ matrix.install }}
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, os, pathlib
+          print(f"### {os.environ['LABEL']}\n\n| trial | passed | in tokens | out tokens | cost USD | s | error |\n|---|---|---|---|---|---|---|")
+          for f in sorted(pathlib.Path(os.environ["OUT"]).glob("*.json")):
+              r = json.loads(f.read_text())
+              print(f"| {r['trial']} | {r['passed']} | {r.get('input_tokens', '')} | {r.get('output_tokens', '')} | {r.get('cost_usd', '')} | {r['duration_s']} | {r.get('error', '')} |")
+          PY
+
+      - name: Upload trial results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-${{ matrix.task }}-${{ matrix.install }}
+          path: ${{ runner.temp }}/eval-out/${{ matrix.task }}-${{ matrix.install }}
