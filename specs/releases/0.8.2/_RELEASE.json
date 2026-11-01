@@ -84,6 +84,19 @@
         "rand-spec-grammar",
         "agent-eval"
       ]
+    },
+    {
+      "ts": "2026-11-01T16:34:58Z",
+      "agent": "dd-product-engineer",
+      "kind": "note",
+      "text": "Operator authorization verbatim: R14 residual — \"Keep R14 (Recommended)\"; eval token — \"Scrub child env (Recommended)\" (2026-11-01)."
+    },
+    {
+      "ts": "2026-11-01T16:34:58Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "candidate": "rc-1",
+      "text": "delivered: FR1 one-row construction net and callable validation (validated-specs-fail-in-generation, anomaly-values-dtype-validates-then-raises), FR2 static rules by class and one size decider (distincts-prop-negative-weight-drops-value, correlated-cols-overwrite-existing-column), FR3 did-you-mean lines, FR4 one date-bound decider (date-bound-parse-diverges-numpy-spark), FR7 hygiene deletions, FR8 CI agent eval, FR9 version 0.8.2 and changelog; plus hotfix validator-non-string-kwarg-raises-typeerror and late bugs cols-rule-refuses-non-string-names, spark-mixed-type-pool-refused, eval-token-reaches-agent-shell; carried: none; backlog exits: none"
     }
   ]
 }
