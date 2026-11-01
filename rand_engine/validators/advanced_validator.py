@@ -64,7 +64,7 @@ class AdvancedValidator:
 
     @staticmethod
     def _duplicate_output_errors(spec: dict[str, Any]) -> list[str]:
-        seen: dict[Any, str] = {}
+        seen: dict[Any, tuple[Any, int, str]] = {}
         errors: list[str] = []
         for key, config in spec.items():
             if not isinstance(config, dict) or not _valid_cols(config.get("cols", [key])):
@@ -72,12 +72,12 @@ class AdvancedValidator:
             for index, name in enumerate(config.get("cols", [key])):
                 where = f"'cols'[{index}] of column '{key}'" if "cols" in config else f"column '{key}'"
                 try:
-                    first = seen.setdefault(name, where)
+                    first = seen.setdefault(name, (key, index, where))
                 except TypeError:
                     continue
-                if first != where:
+                if first[:2] != (key, index):
                     errors.append(
-                        f"❌ Column '{key}': output name '{name}' is produced twice: by {first} and by {where}"
+                        f"❌ Column '{key}': output name '{name}' is produced twice: by {first[2]} and by {where}"
                     )
         return errors
 
