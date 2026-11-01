@@ -1,6 +1,6 @@
 # SPEC — Release: 0.8.2, candidate 1 (a spec that validates generates; agent eval baseline)
 
-**Status:** Approved
+**Status:** In review
 **Release ID:** 0.8.2
 **Owner:** dd-product-engineer
 **Opened:** 2026-10-31
@@ -11,7 +11,8 @@
 - Grill: Spark: "Manter como o ADR 0003 (Recomendado)"; "evals/ no repo, sob demanda (Recomendado)".
 - Split, main-thread ruling (size law): FR5 (public texts, doc drift) and FR6 (discovery metadata), with R3, R4, R6, R8 and their Replaces rows, move to rc-2, born by `release.py new` at this candidate's CLOSURE. FR numbers stay stable.
 - R12, operator ruling in IMPLEMENTATION (`.dadaia/handoff/rand-engine/2026-11-01T022537Z-main-ruling-eval-in-ci.handoff.json`): "this eval should be an CI eval, stupid"; rc-1 takes it by amendment, overriding the releases law's "never amended" for this change only: "Amend rc-1 by my order (Recommended)"; the CI credential: "Subscription OAuth token (Recommended)". FR8 and the lines it reaches follow.
-- Invariant 12: no `gen_*` body and no `StreamHandler` change; the grill's by-name approvals (`gen_distincts_prop`, `StreamHandler`, `gen_dates`) are 0.9.0's.
+- R13, operator ruling in IMPLEMENTATION, by the R12 amendment path (`.dadaia/handoff/rand-engine/2026-11-01T035300Z-main-ruling-gen-unix-timestamps.handoff.json`): "The Spark date fix needs one decider. Today `SparkCore.gen_unix_timestamps` (`_spark_core.py:92`) parses bounds with a bare `dt.strptime`, a second decider beside `_parse_date_bound`. Do you approve, by name, editing that line?" — "Approve gen_unix_timestamps edit (Recommended)". `SparkCore.gen_unix_timestamps` (`rand_engine/core/_spark_core.py`) parses `start` and `end` through `_parse_date_bound`; `gen_dates` inherits it. It supersedes D2: the Job 3 review (verdict 2026-11-01T033206Z) found the dispatch re-render lossy (`%Z` raises, `%m/%d` and `%d/%m/%y` fallback years go wrong, `%H:%M` dates collapse).
+- Invariant 12: no `gen_*` body and no `StreamHandler` change, but R13's by-name approval of `SparkCore.gen_unix_timestamps` (one line: the bound parse through `_parse_date_bound`); the grill's by-name approvals (`gen_distincts_prop`, `StreamHandler`, `gen_dates`) are 0.9.0's.
 
 ## Bug window review
 
@@ -62,7 +63,7 @@ Prior candidate: 0.8.1 rc-2 (archived): 3 resolved records, plus this Origin's 5
 - Everything ruled for 0.9.0: the catalog REBUILD of `rand_engine/validators/`, the conformance corpus, structured errors, the renames, removing `FileWriterError`, ADR 0004 and 0005, TypedDict `RandSpec`, the JSON Schema, the gaps (fractional weights, native dates, nullable fk, decimal).
 - Any change to `SpecValidationError`'s type, banner or footer.
 - A net for `SparkGenerator` (a Spark job per construction; ADR 0003): Spark gets the static rules only.
-- Any `gen_*` body or `StreamHandler` change; any new runtime dependency (`difflib` is stdlib).
+- Any `gen_*` body or `StreamHandler` change, except R13's one line; any new runtime dependency (`difflib` is stdlib).
 - Per-file overwrite ownership for streams; Databricks markers in the other starters.
 - Running the eval as any gate (a required check, the `verify:` line or a merge check); any change to the repo `verify:` line (gate law).
 
@@ -101,10 +102,10 @@ Grill, errors: "você quis dizer"; in 0.8.2, one more text line.
 
 ### FR4 — One date-bound decider (`date-bound-parse-diverges-numpy-spark`, MEDIUM)
 
-D2, main-thread ruling, within the version ruling: `_parse_date_bound` is the one bound-parse decider; no `gen_*` body changes. R9, main-thread ruling (pre-mortem): the validator calls it and catches its `ValueError` (`_np_core.py:20`), reporting bound and format; the Spark dispatch (`spark_generator.py:103-106`, `:175`) passes bounds parsed by it, re-rendered as strings in `date_format`; `SparkCore`'s `strptime` (`_spark_core.py:92`, `:98-105`) is untouched.
+D2 (superseded by R13), main-thread ruling, within the version ruling: `_parse_date_bound` is the one bound-parse decider; no `gen_*` body changes. R9, main-thread ruling (pre-mortem): the validator calls it and catches its `ValueError` (`_np_core.py:20`), reporting bound and format; the Spark dispatch (`spark_generator.py:103-106`, `:175`) passes bounds parsed by it, re-rendered as strings in `date_format`; `SparkCore`'s `strptime` (`_spark_core.py:92`, `:98-105`) is untouched.
 
 - AC4.1 (unit, `tests/test_1_advanced_validator.py`, `tests/test_1_common_validator.py`): a `dates` or `unix_timestamps` bound that `_parse_date_bound` cannot parse, or a start after its end, is refused naming the column, the bound and the format, on `DataGenerator` and `SparkGenerator` alike. No validator parses a date by any other path.
-- AC4.2 (integration, `tests/test_3_spark_generator.py`): the record's repro (`start='2020-01-01'`, `date_format='%d/%m/%Y'`) generates on `SparkGenerator` within the same bounds as `DataGenerator`; `git diff` of `rand_engine/core/` is empty.
+- AC4.2 (integration, `tests/test_3_spark_generator.py`): the record's repro (`start='2020-01-01'`, `date_format='%d/%m/%Y'`) generates on `SparkGenerator` within the same bounds as `DataGenerator`; in `rand_engine/core/` only `SparkCore.gen_unix_timestamps`' bound parse changes, to `_parse_date_bound`; the SparkGenerator dispatch passes `date_format` and the bounds unchanged.
 - AC4.3 (integration, `tests/test_docs.py` runs the page): `docs/1_DATA_GENERATOR.md` states that a bound which does not parse under `date_format` is read as `%Y-%m-%d`.
 - AC4.4 (no test; ledger verbs): the fix is a REBUILD, `refactor(bugs)`, `caused_by` the feature task `0.7.0-rc2/J4.T2` (`1b116d8`).
 
