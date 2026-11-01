@@ -3,7 +3,7 @@ Tests for CommonValidator - validates SparkGenerator specs.
 Covers common methods shared between DataGenerator and SparkGenerator.
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 
 import numpy as np
@@ -322,38 +322,74 @@ def test_mixed_type_pool_is_accepted_by_spark_and_refused_by_numpy(pool):
     assert "parameter 'distincts' must hold one type" in errors[0]
 
 
-def _pool_spec(method, pool):
-    return {"c": {"method": method, "kwargs": {"distincts": pool if method == "distincts" else dict.fromkeys(pool, 1)}}}
+_ORDER = "ahead of any text value; Spark merges kinds in order and fails unless text comes first"
 
 
-@pytest.mark.parametrize("method", ["distincts", "distincts_prop"])
-@pytest.mark.parametrize(("pool", "kinds"), [
-    ([True, 2.5], "bool and float"),
-    ([True, date(2020, 1, 1)], "bool and date"),
-    ([True, datetime(2020, 1, 1, 3)], "bool and datetime"),
-    ([1, date(2020, 1, 1)], "int and date"),
-    ([2.5, datetime(2020, 1, 1, 3)], "float and datetime"),
-    ([date(2020, 1, 1), datetime(2020, 1, 1, 3)], "date and datetime"),
-    ([date(2020, 1, 1), "x"], "date and text"),
-    ([datetime(2020, 1, 1, 3), "x", None], "datetime and text"),
-    ([1, 2.5, "x"], "int and float"),
-    ([None], "None only"),
+def _pool_spec(method, distincts):
+    return {"c": {"method": method, "kwargs": {"distincts": distincts}}}
+
+
+@pytest.mark.parametrize(("method", "distincts", "tail"), [
+    ("distincts", [True, 2.5], "holds bool and float " + _ORDER),
+    ("distincts", [True, date(2020, 1, 1)], "holds bool and date " + _ORDER),
+    ("distincts", [True, datetime(2020, 1, 1, 3)], "holds bool and datetime " + _ORDER),
+    ("distincts", [1, date(2020, 1, 1)], "holds int and date " + _ORDER),
+    ("distincts", [2.5, datetime(2020, 1, 1, 3)], "holds float and datetime " + _ORDER),
+    ("distincts", [date(2020, 1, 1), datetime(2020, 1, 1, 3)], "holds date and datetime " + _ORDER),
+    ("distincts", [Decimal("1.5"), 1], "holds Decimal and int " + _ORDER),
+    ("distincts", [b"a", 1], "holds bytes and int " + _ORDER),
+    ("distincts", [1, 2.5, "x"], "holds int and float " + _ORDER),
+    ("distincts", [date(2020, 1, 1), "x"], "holds date beside text, which Spark writes as a Java object string"),
+    ("distincts", [datetime(2020, 1, 1, 3), "x", None], "holds datetime beside text, which Spark writes as a Java object string"),
+    ("distincts", ["x", date(2020, 1, 1)], "holds date beside text, which Spark writes as a Java object string"),
+    ("distincts", [b"a", "x"], "holds bytes beside text, which Spark writes as a Java object string"),
+    ("distincts", ["x", [1]], "holds list, which Spark cannot write unchanged"),
+    ("distincts", [{"a": 1}], "holds dict, which Spark cannot write unchanged"),
+    ("distincts", [(1, 2)], "holds tuple, which Spark cannot write unchanged"),
+    ("distincts", [time(3, 0)], "holds time, which Spark cannot write unchanged"),
+    ("distincts", [np.str_("x")], "holds str_, which Spark cannot write unchanged"),
+    ("distincts", [np.int64(1), "x"], "holds int64, which Spark cannot write unchanged"),
+    ("distincts", [None], "holds only None"),
+    ("distincts_prop", {True: 1, 2.5: 1}, "holds bool and float " + _ORDER),
+    ("distincts_prop", {1: 1, 2.5: 1, "x": 1}, "holds int and float " + _ORDER),
+    ("distincts_prop", {date(2020, 1, 1): 1, "x": 1}, "holds date beside text, which Spark writes as a Java object string"),
+    ("distincts_prop", {b"a": 1, "x": 2}, "holds bytes beside text, which Spark writes as a Java object string"),
+    ("distincts_prop", {time(3, 0): 1}, "holds time, which Spark cannot write unchanged"),
+    ("distincts_prop", {None: 1, "x": 0}, "holds only None"),
+    ("distincts_prop", {True: 1, "x": 0, 2.5: 1}, "holds bool and float " + _ORDER),
 ])
-def test_spark_refuses_pool_kinds_it_cannot_write_into_one_column(method, pool, kinds):
-    """Spark fails with CANNOT_MERGE_TYPE or writes a Java calendar string for these pools."""
-    tail = "holds only None" if kinds == "None only" else f"holds {kinds}, which Spark cannot write into one column"
-    assert CommonValidator.validate_spark_spec(_pool_spec(method, pool)) == [
+def test_spark_refuses_pools_it_cannot_write_into_one_column(method, distincts, tail):
+    """Spark fails (CANNOT_MERGE_TYPE and others) or writes a Java object string for these pools."""
+    assert CommonValidator.validate_spark_spec(_pool_spec(method, distincts)) == [
         f"❌ Column 'c': method '{method}' parameter 'distincts' {tail}"
     ]
 
 
-@pytest.mark.parametrize("method", ["distincts", "distincts_prop"])
-@pytest.mark.parametrize("pool", [
-    [1, 2.5], ["x", None], [1, "x"], [True, "x"], ["x", 1, 2.5], [True, "x", 2.5],
-    [True, None], [date(2020, 1, 1), None], [1, 2.5, None], [datetime(2020, 1, 1, 3)],
+@pytest.mark.parametrize(("method", "distincts"), [
+    ("distincts", [1, 2.5]),
+    ("distincts", ["x", None]),
+    ("distincts", [1, "x"]),
+    ("distincts", [True, "x"]),
+    ("distincts", ["x", 1, 2.5]),
+    ("distincts", [True, "x", 2.5]),
+    ("distincts", [True, None]),
+    ("distincts", [date(2020, 1, 1), None]),
+    ("distincts", [1, 2.5, None]),
+    ("distincts", [datetime(2020, 1, 1, 3)]),
+    ("distincts", [Decimal("1.5")]),
+    ("distincts", [Decimal("1.5"), "x"]),
+    ("distincts", [b"a", b"b"]),
+    ("distincts", [np.int64(1), 1]),
+    ("distincts", [np.float64(2.5), 2.5]),
+    ("distincts", [np.True_]),
+    ("distincts_prop", {"x": 1, 1: 1, 2.5: 1}),
+    ("distincts_prop", {date(2020, 1, 1): 0, "x": 3}),
+    ("distincts_prop", {date(2020, 1, 1): 1, "x": 0, 1: 0}),
+    ("distincts_prop", {True: 0, 2.5: 1, "x": 1}),
 ])
-def test_spark_keeps_pools_it_writes_faithfully(method, pool):
-    assert CommonValidator.validate_spark_spec(_pool_spec(method, pool)) == []
+def test_spark_keeps_pools_it_writes_faithfully(method, distincts):
+    """distincts_prop is judged on the keys of positive weight, the pool Spark merges."""
+    assert CommonValidator.validate_spark_spec(_pool_spec(method, distincts)) == []
 
 
 def _caught_validation(call):
