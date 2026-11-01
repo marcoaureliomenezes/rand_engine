@@ -5,6 +5,7 @@ import pyarrow as pa
 
 from rand_engine.core._keys import Keys
 from rand_engine.core._spark_core import SparkCore
+from rand_engine.main.data_generator import resolve_size
 from rand_engine.validators.advanced_validator import AdvancedValidator
 from rand_engine.validators.common_validator import CommonValidator
 from rand_engine.validators.exceptions import RandEngineError
@@ -157,10 +158,9 @@ class SparkGenerator:
     >>> SparkGenerator(spark, F, spec).size(100).get_df().count()  # doctest: +SKIP
     100
     """
-    if self._size is None:
-      raise RandEngineError("size not set: call .size(n) before get_df()")
+    size = resolve_size(self._size)
     mapped_methods = self.map_methods()
-    dataframe = self.spark.range(self._size)
+    dataframe = self.spark.range(size)
     source_index = next(
       f"__rand_engine_source_index_{index}"
       for index in range(len(self.metadata) + 1)
@@ -176,7 +176,7 @@ class SparkGenerator:
     if self._key_metadata:
       if "id" in self._key_metadata:
         dataframe = dataframe.drop("id")
-      dataframe = self._add_key_columns(dataframe, source_index)
+      dataframe = self._add_key_columns(dataframe, source_index, size)
       return dataframe.select(*(
         self.F.col(f"`{column.replace('`', '``')}`").alias(column)
         for column in self.metadata
@@ -187,14 +187,14 @@ class SparkGenerator:
     return dataframe
 
 
-  def _add_key_columns(self, dataframe, source_index):
+  def _add_key_columns(self, dataframe, source_index, size):
     """Build stateless key columns from the source indexes carried by Spark."""
     from pyspark.sql.types import LongType, StringType, StructField, StructType
 
     key_metadata = self._key_metadata
     key_seed = self._key_seed
     for column, config in key_metadata.items():
-      if config["method"] != "fk" or self._size == 0:
+      if config["method"] != "fk" or size == 0:
         continue
       kwargs = config.get("kwargs", {})
       born_before = kwargs.get("born_before")

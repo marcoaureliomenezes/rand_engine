@@ -1,5 +1,6 @@
 """Generate pandas DataFrames, dict streams and files from one RandSpec and one seed."""
 from functools import partial
+import numbers
 import time
 import pandas as pd
 import numpy as np
@@ -12,6 +13,33 @@ from rand_engine.utils.stream_handler import StreamHandler
 from rand_engine.validators.advanced_validator import AdvancedValidator
 from rand_engine.validators.exceptions import RandEngineError
 from rand_engine.validators.method_specs import METHOD_CATALOG
+
+
+def resolve_size(size) -> int:
+  """
+  Return the row count a size setting resolves to.
+
+  Parameters
+  ----------
+  size : int, callable or None
+      A non-negative integer, or a callable returning one; ``None`` means unset.
+
+  Returns
+  -------
+  int
+      The resolved size.
+
+  Raises
+  ------
+  RandEngineError
+      If ``size`` is unset, or is not a non-negative integer (a callable's return value is judged).
+  """
+  if size is None:
+    raise RandEngineError("No size set: call .size(n) with an int or a callable returning one.")
+  value = size() if callable(size) else size
+  if isinstance(value, bool) or not isinstance(value, numbers.Integral) or value < 0:
+    raise RandEngineError(f"size must be a non-negative integer, got {value!r}")
+  return value
 
 
 class DataGenerator:
@@ -185,9 +213,7 @@ class DataGenerator:
 
 
   def _resolve_size(self) -> int:
-    if self._size is None:
-      raise RandEngineError("No size set: call .size(n) with an int or a callable returning one.")
-    return self._size() if callable(self._size) else self._size
+    return resolve_size(self._size)
 
 
   def _catalog_schema(self, evaluated_spec: dict, exact: bool = False) -> pa.Schema:

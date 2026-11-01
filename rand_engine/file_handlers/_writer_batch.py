@@ -52,13 +52,6 @@ class FileBatchWriter(FileWriter):
 
 
   @staticmethod
-  def _resolved_size(value: object) -> int:
-    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
-      raise RandEngineError("resolved size must be a non-negative integer")
-    return value
-
-
-  @staticmethod
   def _file_sizes(total: int, count: int) -> list[int]:
     rows, extra = divmod(total, count)
     return [rows + (index < extra) for index in range(count)]
@@ -227,7 +220,7 @@ class FileBatchWriter(FileWriter):
     if self.write_mode not in ("overwrite", "append"):
       raise RandEngineError("sqlite mode must be 'overwrite' or 'append'")
 
-    total = self._resolved_size(self.size_def())
+    total = self.size_def()
     _catalog_def, batch = self.file_def()
     columns, types, rows = self._sqlite_frame(batch(total, 0))
     destination = Path(path)
@@ -392,7 +385,7 @@ class FileBatchWriter(FileWriter):
     batch_limit = write_options.pop("maxRowsPerBatch", None)
     if batch_limit is not None:
       batch_limit = self._positive_integer("maxRowsPerBatch", batch_limit)
-    total = self._resolved_size(self.size_def())
+    total = self.size_def()
 
     stem, extension = FileHandler.handle_path(path, self.write_format, write_options)
     destination = Path(stem if num_files > 1 else f"{stem}.{extension}")
