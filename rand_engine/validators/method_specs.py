@@ -222,7 +222,7 @@ def _spark_pool_problem(pool: list[Any]) -> str:
     if column.dtype.kind == "O":
         # ponytail: pyspark's private inference functions; a rename is an ImportError in every CI row
         from pyspark.sql.types import StringType, _infer_schema, _merge_type
-        values = [v for v in pool if v is not None]
+        values = [v for v in column.tolist() if v is not None]
         try:
             kinds = [_infer_schema((v,), ["c"]) for v in values]
             schema = reduce(_merge_type, kinds)
