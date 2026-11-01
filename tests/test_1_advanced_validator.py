@@ -603,6 +603,13 @@ def test_output_name_produced_twice_is_refused(spec, col, name, first, second):
   assert _OUT_NAME.format(col=col, name=name, first=first, second=second) in errors[0]
 
 
+@pytest.mark.parametrize("cols", [[[1], "b"], [(1, [2]), "b"]])
+def test_unhashable_cols_name_is_a_spec_error_naming_the_column(cols):
+  spec = {"c": {"method": "distincts_map", "kwargs": {"distincts": {"x": ["y"]}}, "cols": cols}}
+  with pytest.raises(SpecValidationError, match="'c'"):
+    DataGenerator(spec)
+
+
 _INT = {"method": "integers", "kwargs": {"min": 0, "max": 9}}
 
 
