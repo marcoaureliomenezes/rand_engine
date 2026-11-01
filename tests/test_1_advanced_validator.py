@@ -984,3 +984,13 @@ def test_anomaly_values_fitting_only_after_a_global_transformer_are_refused_at_c
         "❌ Column 'a': method 'integers' cannot generate a row: "
         "RandEngineError: column 'a' anomaly values cannot preserve dtype int32"
     ) in str(error.value)
+
+
+@pytest.mark.parametrize("spec, columns", [
+  ({"c": {**_INT, "cols": [1]}}, [1]),
+  ({"c": {"method": "distincts_map", "cols": [1, 2], "kwargs": _MAP}}, [1, 2]),
+  ({"c": {"method": "distincts_map", "cols": ["a", 2], "kwargs": _MAP}}, ["a", 2]),
+])
+def test_non_string_cols_names_validate_and_generate(spec, columns):
+  assert AdvancedValidator.validate(spec) == []
+  assert list(DataGenerator(spec, seed=1).size(2).get_df().columns) == columns
