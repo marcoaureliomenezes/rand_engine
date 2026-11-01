@@ -10,7 +10,7 @@
 - Sources: the rc-2 grill `.dadaia/handoff/rand-engine/2026-11-01T214516Z-main-grill-0.8.2-rc2.handoff.json`, where the operator confirmed scope: "Confirm scope (Recommended)". The as-is review `2026-11-01T205713Z-dd-sw-engineer-sr-asis-0.8.2-rc2`, anchored at `9c1351e`. The `dd-researcher` consumer pre-mortem of `d0e6fc5` produced the main thread's rulings R17–R25. Every `path:line` below is a `9c1351e` anchor; the PLAN re-greps each one before its task.
 - Version ruling, operator verbatim: "0.8.2 → 0.9.0 → 1.0 (Recomendado)". 0.8.2 carries bug fixes, docs and discovery; every grammar, seed, error-format or default change belongs to 0.9.0. Spark: "Manter como o ADR 0003 (Recomendado)".
 - Dropped because rc-1 already satisfies them (as-is review): the `docs/1_DATA_GENERATOR.md` items (`:25` net, `:32` size, `:270` did-you-mean); R8 (`docs/4_CONSTRAINTS.md:85`); the `rand-spec-grammar.md:27` atom item; and the sitemap half of AC6.6. The live `sitemap.xml` lists the 18 nav pages (Docs run 41316724862).
-- Bug `spark-pool-types-fail-or-corrupt` (HIGH; registration `c35b421` on `feature/0.8.2`) is not rc-2 scope. It is fixed in its own lane, `wt/0.8.2/wt-hotfix-spark-pool-types-fail-or-corrupt` (fix `b5a2c91`, under review), which merges into `feature/0.8.2` before rc-2's jobs start (`specs/bugs/AGENTS.md` §2). rc-2 documents the contract that fix leaves (AC5.3) and lists it in the CHANGELOG (AC10.1).
+- Bug `spark-pool-types-fail-or-corrupt` (HIGH; registration `c35b421` on `feature/0.8.2`) is not rc-2 scope. It is fixed in its own lane, `wt/0.8.2/wt-hotfix-spark-pool-types-fail-or-corrupt` (rework in flight), which merges into `feature/0.8.2` before rc-2's jobs start (`specs/bugs/AGENTS.md` §2). rc-2 documents the contract that fix leaves (AC5.3) and lists it in the CHANGELOG (AC10.1).
 
 ## Bug window review
 
@@ -25,7 +25,7 @@ Prior candidate: 0.8.2 rc-1, with 9 resolved records. rc-1's own review already 
 | `cols-rule-refuses-non-string-names` | REBUILDs `3f52e7f`, `e837492`, `8d4b5fa`, `8963a54` | repetition: four REBUILDs of `_duplicate_output_errors` / `_valid_cols` in one candidate; the final identity is the generator's dict key | KEEP | each REBUILD replaced the previous one; nothing stacked. As a REBUILD chain, it leaves the window after rc-2 if no child bug appears. |
 | `date-bound-parse-diverges-numpy-spark` | REBUILDs `7244f63`, `b4f19c7`, `cc59dc8` (R13) | none; one decider, and the lossy re-render was deleted (net −9) | KEEP | the chain ends in a deletion |
 | `validator-non-string-kwarg-raises-typeerror` | REBUILD `f6672ff` | none; two names are stringified where they are collected | KEEP | the same "non-string name" class as `cols-rule-…`, but in a separate unit; no child bug |
-| `spark-mixed-type-pool-refused` (HIGH) | REBUILD `0479659` | a method-name branch (`method != "distincts"`) in `AdvancedValidator.validate`: a second home for a pool rule beside the semantic slot; net +6 | KEEP | it restored the 0.8.1 Spark contract. The as-is review probed the gaps of `spark-pool-types-fail-or-corrupt` at tag 0.8.1, yet that lane's fix commit names this bug as `caused_by`; the main thread rules the lineage. rc-3's window judges the lane's fix. |
+| `spark-mixed-type-pool-refused` (HIGH) | REBUILD `0479659` | a method-name branch (`method != "distincts"`) in `AdvancedValidator.validate`: a second home for a pool rule beside the semantic slot; net +6 | REBUILD, by its child bug's lane | an incomplete fix in the same surface. The main thread ruled that child bug `spark-pool-types-fail-or-corrupt`'s `caused_by` (this bug) stands, and the reviewer accepted it (verdict 2026-11-01T220131Z, INFO 8): the defect reproduces on 0.8.1, and `0479659` re-exposed it by lifting the whole rule off Spark instead of narrowing it. The child's hotfix lane rebuilds the Spark pool rule, and rc-3's window judges that fix. |
 | `eval-token-reaches-agent-shell` | REBUILD `f29b3e8` | none; one env flag and the pinned CLI | KEEP | operator ruling "Scrub child env (Recommended)" |
 
 ## 1. Problem
@@ -105,20 +105,20 @@ Operator: "Norte interno, público só o medido (Recomendado)". Doc drift is lyi
   - published benchmarks, losses included.
 
   Its one speed figure is "4.8× Faker", with the 100,000-dict workload, "one CI run, three samples, medians" (Q2), and run 39153239357 linked to `docs/comparison.md`. `docs/explanation.md:17` gives the measured Faker figure (0.769 s per 100,000 dicts, `docs/comparison.md:73`) instead of "slow per value" (Q7), and keeps its BENCHMARKS link. `docs/5_RECIPES.md:10` is rewritten the same way (R17). `docs/comparison.md` follows R18.
-- R24, main-thread ruling (pre-mortem): the Spark pool contract is the bug lane's rule as merged (`_spark_pool_problem`, `rand_engine/validators/method_specs.py`, lane fix `b5a2c91`). It covers `distincts` and `distincts_prop` (its keys).
-  - It refuses:
-    - a pool of only `None`;
-    - two distinct kinds among bool, int, float, date and datetime ahead of the first text, so `[1, 2.5, 'x']` is refused and `['x', 1, 2.5]` is accepted;
-    - a date or datetime beside text.
-  - It accepts numbers alone, and text with bool, int, float or `None`.
+- R24, main-thread ruling (pre-mortem): the Spark pool contract is defined by reference: the Spark pool rule as the hotfix lane merges it, for `distincts` and for `distincts_prop`. For `distincts_prop`, the rule applies to its positive-weight keys, in order.
+  - A floor of faithful 0.8.1 pools stays accepted:
+    - `[1, 2.5]` as doubles;
+    - `['x', None]` as text and nulls;
+    - `[1, 'x']` and `[True, 'x']` as text.
 - AC5.3 (integration, `tests/test_3_spark_generator.py` pins the pools; `tests/test_docs.py` runs the page): `docs/2_SPARK_GENERATOR.md` opens with its purpose: one spec runs on a laptop with `DataGenerator` and on Databricks with `SparkGenerator`. It states that dbldatagen is faster on Spark: 0.516 s against 1.341 s at 1M rows, "one CI run, three samples, medians", run 39153239357, linked to `docs/comparison.md`. The pool paragraph (`:76-77`) is replaced by R24's contract.
-  - The page names only pools that `tests/test_3_spark_generator.py` pins by Spark `dataType` and literal values. A set compare cannot tell `1` from `1.0`, which is why the `dataType` is pinned (the set-only case at `:728-736` gains it).
+  - The page names each refused class and each accepted example as the lane merged them, the R24 floor included. Each one is pinned in `tests/test_3_spark_generator.py` by Spark `dataType` and literal values. A set compare cannot tell `1` from `1.0`, which is why the `dataType` is pinned (the set-only case at `:728-736` gains it).
   - "NaN, not null" for a `None` in a numeric pool is measured with Arrow on and off (`arrow_conf`, `:686`) and pinned under both. The page states it as measured, and states each setting's result if they differ.
 - AC5.4 (unit, `tests/test_docs.py`: the pages run and the `exceptions.py` doctests stay): the drift items state 0.8.2 exactly (Q4). R25, main-thread ruling (pre-mortem), sets the partition:
   - a fault that static validation or the one-row net finds is a `SpecValidationError` at construction;
   - `RandEngineError` is raised at generation for:
     - size faults (`rand_engine/main/data_generator.py:39`, `:42`);
     - the fk no-eligible-parent cases still judged at generation (`rand_engine/core/_keys.py:131`, `rand_engine/main/spark_generator.py:207`);
+    - the pk domain and int64 guards (`rand_engine/core/_keys.py:66`, `:70`);
     - columns with embedded transformers (`rand_engine/main/_rand_generator.py:154`, `:156`);
     - the writers;
   - `ColumnGenerationError` wraps a column's generation step: the method call, the conversion and the multi-column unpack (`_rand_generator.py:52-60`).
@@ -126,7 +126,7 @@ Operator: "Norte interno, público só o medido (Recomendado)". Doc drift is lyi
   The drift items:
   - `docs/errors.md:9-14` states R25's partition. `:15-16` loses its time-bound "no current library path raises it".
   - The `exceptions.py` docstrings become contracts checked against the raise sites (`grep 'raise .*Error' rand_engine`):
-    - `RandEngineError` (`:10-17`) names raise families, not lines: size, fk eligibility, modifiers after embedded transformers, the global-transformer row count, the empty-schema derivation, `RandSpecs.faker_pool`, and the writers. Its "a column's failure surfaces as `ColumnGenerationError`" claim narrows to R25's generation step.
+    - `RandEngineError` (`:10-17`) names raise families, not lines: size, fk eligibility, the pk domain and int64 guards, modifiers after embedded transformers, the global-transformer row count, the empty-schema derivation, `RandSpecs.faker_pool`, and the writers. Its "a column's failure surfaces as `ColumnGenerationError`" claim narrows to R25's generation step.
     - `SpecValidationError`'s "lists every problem found" (`:37`) narrows to the validators and the construction net; `RandSpecs.from_schema` reports one problem per raise.
     - `FileWriterError` (`:88-93`) loses its repeated "raised nowhere" sentence and the phrase "in this release".
     - The five exception docstrings keep their summary and their Examples section (`tests/test_docs.py:680-684`, `:700`, `:720-724`), and their doctests still run (`:727-735`), the "No size set" doctest (`exceptions.py:26`) included.
@@ -203,7 +203,7 @@ R6 and R22 change paths and add the wheel byte-equality test. Every other assert
 | risk | control |
 |---|---|
 | Four jobs share `tests/test_docs.py`, and two share `docs/*.md` | the PLAN orders them in one chain or edges them |
-| AC5.3 depends on the bug lane's contract (`b5a2c91`, under review) | the lane merges into `feature/0.8.2` before rc-2's jobs start; the wt-rc syncs before Job 4; the page follows the rule as merged (R24) |
+| AC5.3 depends on the bug lane's contract (rework in flight) | the lane merges into `feature/0.8.2` before rc-2's jobs start; the wt-rc syncs before Job 4; the page follows the rule as merged (R24) |
 | Docs that state more than the code: a repeating class (`docs-overstate-modifier-and-decimals-scope`, the rc-1 pool sentence) | each new sentence names only cases that a test or raise site decides; net lines ≤ 0 per docs unit |
 | `llms.txt` moving, renamed public text | Replaces lists the consumers; the PLAN answers each one |
 | Zensical may not render front-matter `description` | J5.T1 probes it first (Q5); no theme layer |
