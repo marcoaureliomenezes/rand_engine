@@ -1,64 +1,105 @@
-"""
-Exceções customizadas para o Rand Engine.
+"""Exception classes raised by Rand Engine.
 
-Este módulo define exceções específicas para melhorar a experiência
-de debugging e fornecer mensagens de erro mais descritivas.
+The errors Rand Engine raises on purpose are subclasses of ``RandEngineError``,
+so one ``except`` clause covers them. The narrower subclasses name the stage
+that failed: spec validation, column generation, a per-column transformer, or
+file output.
 """
 
 
 class RandEngineError(Exception):
-    """Classe base para todas as exceções do Rand Engine."""
-    pass
+    """Base class of the errors Rand Engine raises on purpose.
+
+    Raised directly when no narrower class applies: a generator or writer
+    used out of order, a writer option with an invalid or unsupported value,
+    a file or SQLite write that fails, a schema that changes between batches,
+    or a primary or foreign key that cannot be generated. A column's failure
+    surfaces as ``ColumnGenerationError``, which is also a ``RandEngineError``.
+
+    Examples
+    --------
+    >>> from rand_engine import DataGenerator
+    >>> from rand_engine.validators.exceptions import RandEngineError
+    >>> try:
+    ...     DataGenerator({"age": {"method": "integers", "kwargs": {"min": 1, "max": 9}}}).get_df()
+    ... except RandEngineError as error:
+    ...     print(error)
+    No size set: call .size(n) with an int or a callable returning one.
+    """
 
 
 class SpecValidationError(RandEngineError):
+    """A RandSpec or Arrow schema failed validation before generation.
+
+    Raised by ``DataGenerator`` and ``SparkGenerator`` when the spec is
+    checked, before any row is generated, and by ``RandSpecs.from_schema``
+    for a non-Arrow schema, a malformed override, or a field with no default
+    recipe. The message lists every problem found.
+
+    Examples
+    --------
+    >>> from rand_engine import DataGenerator
+    >>> from rand_engine.validators.exceptions import SpecValidationError
+    >>> try:
+    ...     DataGenerator({"age": {"method": "invalid"}})
+    ... except SpecValidationError as error:
+    ...     print("Column 'age'" in str(error))
+    True
     """
-    Exceção levantada quando uma especificação (spec) é inválida.
-    
-    Esta exceção é levantada durante a validação da spec antes da
-    geração de dados, permitindo detectar erros de configuração
-    antes do runtime.
-    
-    Examples:
-        >>> spec = {"age": {"method": "invalid"}}
-        >>> DataGenerator(spec)
-        SpecValidationError: Column 'age': 'method' must be callable, got <class 'str'>
-    """
-    pass
 
 
 class ColumnGenerationError(RandEngineError):
+    """A column's generator method failed while its values were built.
+
+    Raised by ``DataGenerator`` when a column's method raises during
+    generation, after the spec passed validation. The message names the
+    column and the original error, which is chained as ``__cause__``.
+
+    Examples
+    --------
+    >>> from rand_engine import DataGenerator
+    >>> from rand_engine.validators.exceptions import ColumnGenerationError
+    >>> spec = {"day": {"method": "dates", "kwargs": {"start": "2020-01-02", "end": "2020-01-01"}}}
+    >>> try:
+    ...     DataGenerator(spec).size(3).get_df()
+    ... except ColumnGenerationError as error:
+    ...     print(error, "|", type(error.__cause__).__name__)
+    Error generating column 'day': ValueError: low >= high | ValueError
     """
-    Exceção levantada quando há erro ao gerar dados para uma coluna.
-    
-    Esta exceção encapsula erros que ocorrem durante a execução
-    do método de geração, fornecendo contexto sobre qual coluna falhou.
-    
-    Examples:
-        >>> spec = {"age": {"method": Core.gen_ints, "kwargs": {"min": "invalid"}}}
-        >>> DataGenerator(spec).generate_pandas_df(100)
-        ColumnGenerationError: Error generating column 'age': ...
-    """
-    pass
 
 
 class TransformerError(RandEngineError):
+    """A per-column transformer raised while transforming its column.
+
+    Raised by ``DataGenerator`` when a transformer in a column's
+    ``transformers`` list raises. The message names the column and the
+    transformer's zero-based position in that list, and the original error
+    is chained as ``__cause__``. Global transformers are not wrapped: their
+    errors propagate unchanged.
+
+    Examples
+    --------
+    >>> from rand_engine import DataGenerator
+    >>> from rand_engine.validators.exceptions import TransformerError
+    >>> spec = {"age": {"method": "integers", "kwargs": {"min": 1, "max": 9}, "transformers": [lambda value: 1 / 0]}}
+    >>> try:
+    ...     DataGenerator(spec).size(3).get_df()
+    ... except TransformerError as error:
+    ...     print(error)
+    Error applying transformer 0 to column 'age': ZeroDivisionError: division by zero
     """
-    Exceção levantada quando há erro ao aplicar transformer.
-    
-    Examples:
-        >>> spec = {"age": {"method": Core.gen_ints, "kwargs": {...}, "transformers": [invalid_func]}}
-        TransformerError: Error applying transformer to column 'age': ...
-    """
-    pass
 
 
 class FileWriterError(RandEngineError):
+    """A file writer failed. Declared, but raised nowhere in this release.
+
+    No code path in this release raises ``FileWriterError``: file and SQLite
+    write failures raise ``RandEngineError``. The class stays importable so
+    callers can name it in their own handlers.
+
+    Examples
+    --------
+    >>> from rand_engine.validators.exceptions import FileWriterError, RandEngineError
+    >>> issubclass(FileWriterError, RandEngineError)
+    True
     """
-    Exceção levantada quando há erro ao escrever dados em arquivo.
-    
-    Examples:
-        >>> engine.write(1000).format("invalid_format").load("path")
-        FileWriterError: Unsupported format 'invalid_format'
-    """
-    pass
