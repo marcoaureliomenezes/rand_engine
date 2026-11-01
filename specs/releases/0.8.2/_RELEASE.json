@@ -1,7 +1,7 @@
 {
   "schema": "release-state-v1",
   "release": "0.8.2",
-  "phase": "CLOSURE",
+  "phase": "DEFINITION",
   "defined": {
     "ts": "2026-10-31T21:41:23Z"
   },
@@ -97,6 +97,12 @@
       "kind": "summary",
       "candidate": "rc-1",
       "text": "delivered: FR1 one-row construction net and callable validation (validated-specs-fail-in-generation, anomaly-values-dtype-validates-then-raises), FR2 static rules by class and one size decider (distincts-prop-negative-weight-drops-value, correlated-cols-overwrite-existing-column), FR3 did-you-mean lines, FR4 one date-bound decider (date-bound-parse-diverges-numpy-spark), FR7 hygiene deletions, FR8 CI agent eval, FR9 version 0.8.2 and changelog; plus hotfix validator-non-string-kwarg-raises-typeerror and late bugs cols-rule-refuses-non-string-names, spark-mixed-type-pool-refused, eval-token-reaches-agent-shell; carried: none; backlog exits: none"
+    },
+    {
+      "ts": "2026-11-01T20:50:14Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.8.2 (stacked on the closed prior candidate)"
     }
   ]
 }
