@@ -920,3 +920,44 @@ def test_unknown_name_with_close_match_adds_did_you_mean_line(spec, expected):
 ])
 def test_unknown_name_without_close_match_adds_no_suggestion(spec, expected):
     assert AdvancedValidator.validate(spec) == [expected]
+
+
+def test_construction_refuses_a_modifier_failure_with_the_engine_error():
+    spec = {"a": {"method": "integers", "kwargs": {"min": 0, "max": 9}, "anomaly_rate": 0.1, "anomaly_values": ["x"]}}
+    with pytest.raises(SpecValidationError) as error:
+        DataGenerator(spec)
+    assert (
+        "❌ Column 'a': method 'integers' cannot generate a row: "
+        "RandEngineError: column 'a' anomaly values cannot preserve dtype int32"
+    ) in str(error.value)
+
+
+def test_construction_refuses_a_method_failure_with_the_engine_error():
+    born_after_child = {"parent_start": 10, "parent_rate": 1, "child_start": 0, "child_rate": 1}
+    spec = {"parent_id": {"method": "fk", "kwargs": {
+        "parent": {"method": "pk", "kwargs": {"start": 1}}, "parent_size": 10, "born_before": born_after_child}}}
+    with pytest.raises(SpecValidationError) as error:
+        DataGenerator(spec)
+    assert (
+        "❌ Column 'parent_id': method 'fk' cannot generate a row: ColumnGenerationError: "
+        "Error generating column 'parent_id': RandEngineError: "
+        "fk column 'parent_id' has a child with no eligible parent"
+    ) in str(error.value)
+
+
+def test_construction_runs_no_transformer():
+    calls = []
+    spec = {"a": {"method": "integers", "kwargs": {"min": 0, "max": 9}, "transformers": [lambda v: calls.append(v) or v]}}
+    DataGenerator(spec).transformers([lambda df: calls.append(len(df)) or df])
+    assert calls == []
+
+
+def test_construction_draws_nothing_from_the_seed():
+    pk = {"method": "pk", "kwargs": {"style": "sequence", "start": 1, "step": 1}}
+    spec = {
+        "id": pk,
+        "p": {"method": "fk", "kwargs": {"parent": pk, "parent_size": 4}},
+        "x": {"method": "integers", "kwargs": {"min": 0, "max": 1000}},
+    }
+    assert DataGenerator(spec, seed=7).size(5).get_df().to_dict("list") == {
+        "id": [1, 2, 3, 4, 5], "p": [4, 4, 2, 3, 3], "x": [945, 625, 684, 898, 578]}
