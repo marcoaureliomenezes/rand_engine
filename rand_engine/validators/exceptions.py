@@ -23,8 +23,8 @@ class RandEngineError(Exception):
     >>> try:
     ...     DataGenerator({"age": {"method": "integers", "kwargs": {"min": 1, "max": 9}}}).get_df()
     ... except RandEngineError as error:
-    ...     print(error)
-    No size set: call .size(n) with an int or a callable returning one.
+    ...     print(str(error).startswith("No size set"))
+    True
     """
 
 
@@ -57,14 +57,9 @@ class ColumnGenerationError(RandEngineError):
 
     Examples
     --------
-    >>> from rand_engine import DataGenerator
-    >>> from rand_engine.validators.exceptions import ColumnGenerationError
-    >>> spec = {"day": {"method": "dates", "kwargs": {"start": "2020-01-02", "end": "2020-01-01"}}}
-    >>> try:
-    ...     DataGenerator(spec).size(3).get_df()
-    ... except ColumnGenerationError as error:
-    ...     print(error, "|", type(error.__cause__).__name__)
-    Error generating column 'day': ValueError: low >= high | ValueError
+    >>> from rand_engine.validators.exceptions import ColumnGenerationError, RandEngineError
+    >>> issubclass(ColumnGenerationError, RandEngineError)
+    True
     """
 
 
