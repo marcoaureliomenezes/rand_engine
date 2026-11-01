@@ -279,6 +279,33 @@ def test_dates_format_outside_supported_directives_is_refused_by_both_engines(fm
         assert "%Y %m %d %H %M %S %f" in errors[0]
 
 
+def _date_spec(method, start, end, fmt="%d/%m/%Y"):
+    return {"d": {"method": method, "kwargs": {"start": start, "end": end, "date_format": fmt}}}
+
+
+@pytest.mark.parametrize("method", ["dates", "unix_timestamps"])
+@pytest.mark.parametrize("start, end, refusal", [
+    ("not-a-date", "2021-01-01", "parameter 'start' 'not-a-date' does not parse under date_format '%d/%m/%Y' nor as '%Y-%m-%d'"),
+    ("2020-01-01", "not-a-date", "parameter 'end' 'not-a-date' does not parse under date_format '%d/%m/%Y' nor as '%Y-%m-%d'"),
+    ("2021-01-01", "2021-01-01", "parameter 'start/end' start '2021-01-01' must be before end '2021-01-01' (date_format '%d/%m/%Y')"),
+    ("2022-01-01", "2021-01-01", "parameter 'start/end' start '2022-01-01' must be before end '2021-01-01' (date_format '%d/%m/%Y')"),
+], ids=["start-unparseable", "end-unparseable", "start-equals-end", "start-after-end"])
+def test_unparseable_or_unordered_date_bounds_are_refused_by_both_engines(method, start, end, refusal):
+    """The bound parse of `_parse_date_bound` (format, then `%Y-%m-%d`) and start < end decide on both engines."""
+    from rand_engine.validators.advanced_validator import AdvancedValidator
+    spec = _date_spec(method, start, end)
+    for errors in (AdvancedValidator.validate(spec), CommonValidator.validate_spark_spec(spec)):
+        assert errors == [f"\u274c Column 'd': method '{method}' {refusal}"]
+
+
+@pytest.mark.parametrize("method", ["dates", "unix_timestamps"])
+def test_date_bound_in_default_format_under_another_date_format_is_accepted_by_both_engines(method):
+    from rand_engine.validators.advanced_validator import AdvancedValidator
+    spec = _date_spec(method, "2020-01-01", "2021-01-01")
+    assert AdvancedValidator.validate(spec) == []
+    assert CommonValidator.validate_spark_spec(spec) == []
+
+
 def test_unix_timestamps_format_is_not_restricted():
     spec = {"t": {"method": "unix_timestamps", "kwargs": {"start": "Jan 01 2020", "end": "Dec 31 2024", "date_format": "%b %d %Y"}}}
     assert CommonValidator.validate_spark_spec(spec) == []
