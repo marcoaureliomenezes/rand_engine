@@ -4,6 +4,7 @@ import pandas as pd
 import pyarrow as pa
 
 from rand_engine.core._keys import Keys
+from rand_engine.core._np_core import _parse_date_bound
 from rand_engine.core._spark_core import SparkCore
 from rand_engine.validators.advanced_validator import AdvancedValidator
 from rand_engine.validators.common_validator import CommonValidator
@@ -172,7 +173,14 @@ class SparkGenerator:
       if v["method"] in ("pk", "fk"):
         continue
       generator_method = mapped_methods[v["method"]]
-      dataframe = generator_method(self.spark, F=self.F, df=dataframe, col_name=k, **v.get("kwargs", {}))
+      kwargs = dict(v.get("kwargs", {}))
+      if v["method"] in ("unix_timestamps", "dates"):
+        date_format = kwargs.get("date_format", "%Y-%m-%d")
+        for bound in ("start", "end"):
+          if bound in kwargs:
+            d = _parse_date_bound(kwargs[bound], date_format)
+            kwargs[bound] = d.strftime(date_format.replace("%Y", f"{d.year:04d}"))
+      dataframe = generator_method(self.spark, F=self.F, df=dataframe, col_name=k, **kwargs)
     if self._key_metadata:
       if "id" in self._key_metadata:
         dataframe = dataframe.drop("id")
