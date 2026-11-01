@@ -209,16 +209,17 @@ def _spark_pool_problem(pool: list[Any]) -> str:
     The column is built as SparkCore.gen_distincts builds it. A typed pandas column is
     written as given (integers beyond int64 become null); an object column goes through the
     schema inference createDataFrame folds over its rows, where a raise is a refusal and a
-    text-merged column corrupts any value whose own type is not faithful as text.
+    text-merged column corrupts any value whose own type is not faithful as text. Object and
+    pandas string columns (kind "O") take the inference path, which needs pyspark.
     """
     if any(isinstance(v, (list, tuple, dict, set)) for v in pool):
         return "holds a list, tuple or dict, which Spark writes as another value"
     column = pd.DataFrame(pool, columns=["c"])["c"]
     if column.isna().all() and column.dtype.kind != "f":
         return "holds no value Spark can infer a type from"
-    if column.dtype != object and column.dtype.kind not in "biufMm":
+    if column.dtype.kind not in "biufMmO":
         return f"holds {column.dtype} values, which Spark cannot write unchanged"
-    if column.dtype == object:
+    if column.dtype.kind == "O":
         # ponytail: pyspark's private inference functions; a rename is an ImportError in every CI row
         from pyspark.sql.types import StringType, _infer_schema, _merge_type
         values = [v for v in pool if v is not None]
