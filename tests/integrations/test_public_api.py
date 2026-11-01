@@ -646,3 +646,39 @@ def test_extracted_wheel_module_cli_writes_agent_context(built_wheel, tmp_path):
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])
+
+
+def _agent_env(monkeypatch, tmp_path):
+    import importlib.util
+    import types
+
+    spec = importlib.util.spec_from_file_location("eval_run", Path(__file__).parents[2] / "evals" / "run.py")
+    run = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(run)
+    seen = []
+
+    def fake(cmd, **kw):
+        seen.append((cmd[0], kw.get("env")))
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "placeholder")
+    monkeypatch.setattr(run.subprocess, "run", fake)
+    monkeypatch.setattr(run.tempfile, "mkdtemp", lambda prefix: str(tmp_path / "w"))
+    (tmp_path / "w").mkdir()
+    task = sorted(p.name for p in (Path(run.HERE) / "tasks").iterdir())[0]
+    run.run_trial(task, 1, types.SimpleNamespace(rand_engine="rand-engine", model="m"))
+    return [env for cmd, env in seen if cmd == "claude"][0]
+
+
+def test_eval_runs_claude_with_the_subprocess_env_scrub(monkeypatch, tmp_path):
+    env = _agent_env(monkeypatch, tmp_path)
+    assert env["CLAUDE_CODE_SUBPROCESS_ENV_SCRUB"] == "1"
+    assert env["CLAUDE_CODE_OAUTH_TOKEN"] == "placeholder"
+
+
+def test_eval_workflow_pins_the_scrub_cli_and_runs_under_bubblewrap():
+    text = (Path(__file__).parents[2] / ".github" / "workflows" / "eval.yml").read_text()
+    assert "@anthropic-ai/claude-code@2.1.316" in text
+    assert "apt-get install -y bubblewrap" in text
+    lift = "sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0"
+    assert text.index(lift) < text.index("python evals/run.py")
