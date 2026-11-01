@@ -33,7 +33,7 @@ Bug history = `git log -E --grep '^(fix|refactor)\(bugs\): ' -- <file>` plus the
 | `docs/1_DATA_GENERATOR.md` date section | the `%Y-%m-%d` fallback is undocumented (`:66-67`) | `date-format-required-but-docs-omit-it` (archived) | UPDATE | AC4.3; the page's fenced blocks run in `tests/test_docs.py` |
 | `pyproject.toml` test group, `poetry.lock`, `benchmarks/comparison-requirements.txt` | setuptools 83.0.0 (GHSA-xmj3-9gf7-h52w) | `unused-runtime-deps-shipped`, two dependabot records | UPDATE | AC7.6; the lock is the check |
 | `pyproject.toml` version, `tests/integrations/test_public_api.py:558`, `CHANGELOG.md` | 0.8.1 | 0 | UPDATE | AC9.1, AC9.2 |
-| `evals/` (new) | absent | 0 | ADD | no unit carries an agent eval; stays out of `tests/`, of `verify:` and of CI |
+| `evals/` and `.github/workflows/eval.yml` (new) | absent | 0 | ADD | no unit carries an agent eval; stays out of `tests/`, of `verify:`, of the merge and of the required checks; only `eval.yml` names `evals/` |
 | `utils/stream_handler.py`, `cli.py`, `templates/`, `examples/`, `core/_keys.py` | untouched by the picked set | cli 2, examples 2 | KEEP | `StreamHandler` is operator code (invariant 12) |
 
 ### 1.1 Authorities
@@ -80,11 +80,11 @@ R3, R4, R6, R8 and their consumers are rc-2's.
 
 ## DAG
 
-Waves follow the SPEC ranking. The SPEC's wave 3 (FR7 hygiene) runs as wave 2 because it is the DELETE and REBUILD set: it shrinks `advanced_validator.py`, `common_validator.py` and `data_generator.py` before the ADD jobs edit them, and the rank is not a dependency. SPEC wave 2 (the foundation) is waves 3-6, one wave per overlap of `W:` (all jobs of a wave write disjoint files). Job 1 is first: its merge is followed by barrier B1, the 0.8.1 baseline, before any behaviour merges.
+Waves follow the SPEC ranking. The SPEC's wave 3 (FR7 hygiene) runs as wave 2 because it is the DELETE and REBUILD set: it shrinks `advanced_validator.py`, `common_validator.py` and `data_generator.py` before the ADD jobs edit them, and the rank is not a dependency. SPEC wave 2 (the foundation) is waves 3-6, one wave per overlap of `W:` (all jobs of a wave write disjoint files). Job 1 is first and Job 2 waits on it only: the first CI run of `eval.yml` at the rc push is the baseline (AC8.5); barrier B1 is retired by the operator's order.
 
 | job | waits on | wave | W: |
 |---|---|---|---|
-| Job 1 | — | 1 | `benchmarks/comparison-requirements.txt`, `evals/README.md`, `evals/run.py`, `evals/tasks/e1-cold-discovery/instruction.md`, `evals/tasks/e1-cold-discovery/task.toml`, `evals/tasks/e1-cold-discovery/tests/check.py`, `evals/tasks/e2-named-related-tables/instruction.md`, `evals/tasks/e2-named-related-tables/task.toml`, `evals/tasks/e2-named-related-tables/tests/check.py`, `evals/tasks/e3-fix-by-error/environment/spec.py`, `evals/tasks/e3-fix-by-error/instruction.md`, `evals/tasks/e3-fix-by-error/task.toml`, `evals/tasks/e3-fix-by-error/tests/check.py`, `poetry.lock`, `pyproject.toml`, `tests/integrations/test_public_api.py` |
+| Job 1 | — | 1 | `benchmarks/comparison-requirements.txt`, `evals/README.md`, `evals/run.py`, `evals/tasks/e1-cold-discovery/instruction.md`, `evals/tasks/e1-cold-discovery/task.toml`, `evals/tasks/e1-cold-discovery/tests/check.py`, `evals/tasks/e2-named-related-tables/instruction.md`, `evals/tasks/e2-named-related-tables/task.toml`, `evals/tasks/e2-named-related-tables/tests/check.py`, `evals/tasks/e3-fix-by-error/environment/spec.py`, `evals/tasks/e3-fix-by-error/instruction.md`, `evals/tasks/e3-fix-by-error/task.toml`, `evals/tasks/e3-fix-by-error/tests/check.py`, `.github/workflows/eval.yml`, `poetry.lock`, `pyproject.toml`, `tests/integrations/test_public_api.py` |
 | Job 2 | Job 1 | 2 | `rand_engine/cases/test-data.py.txt`, `rand_engine/main/data_generator.py`, `rand_engine/validators/advanced_validator.py`, `rand_engine/validators/common_validator.py`, `rand_engine/validators/exceptions.py`, `tests/test_9_cli.py`, `tests/test_docs.py` |
 | Job 3 | Job 2 | 3 | `docs/1_DATA_GENERATOR.md`, `rand_engine/main/spark_generator.py`, `rand_engine/validators/method_specs.py`, `tests/test_1_advanced_validator.py`, `tests/test_1_common_validator.py`, `tests/test_3_spark_generator.py` |
 | Job 4 | Job 3 | 4 | `rand_engine/file_handlers/_writer_batch.py`, `rand_engine/main/data_generator.py`, `rand_engine/main/spark_generator.py`, `tests/test_2_data_generator.py`, `tests/test_3_spark_generator.py` |
@@ -96,17 +96,17 @@ Waves follow the SPEC ranking. The SPEC's wave 3 (FR7 hygiene) runs as wave 2 be
 
 ### Schedule and sizing
 
-- 30 tasks: Job 1 four (3 sr, 1 jr), Job 2 six (2 sr, 4 jr), Job 3 five (4 sr, 1 jr), Job 4 two (2 sr), Job 5 four (4 sr), Job 6 two (2 sr), Job 7 four (4 sr), Job 8 three (3 jr). By `who`: 21 sr, 9 jr. Each behaviour is a RED task then an implementation task, each its own `wt-task-<kkk>`; the new-behaviour implementations are sr (design in the task), jr only where the AC and `W:` state the outcome.
-- Concurrency: tasks of one job with disjoint `W:` run together; the peak is 4 task trees (Job 1; Job 2's first four tasks). Wave 4 runs Jobs 4 and 5 together (peak 3). Every RED to implementation pair and every same-file pair is an edge written in the job file.
+- 31 tasks: Job 1 five (3 sr, 2 jr), Job 2 six (2 sr, 4 jr), Job 3 five (4 sr, 1 jr), Job 4 two (2 sr), Job 5 four (4 sr), Job 6 two (2 sr), Job 7 four (4 sr), Job 8 three (3 jr). By `who`: 21 sr, 10 jr. Each behaviour is a RED task then an implementation task, each its own `wt-task-<kkk>`; the new-behaviour implementations are sr (design in the task), jr only where the AC and `W:` state the outcome.
+- Concurrency: tasks of one job with disjoint `W:` run together; the peak is 4 task trees (Job 1's first four; Job 2's first four tasks). Wave 4 runs Jobs 4 and 5 together (peak 3). Every RED to implementation pair and every same-file pair is an edge written in the job file.
 - Net lines: `rand_engine/` deletes (two printers, the cache, `_resolved_size`, the Spark unset check, the starter markers) against adds (the rules, the net, the helper, `resolve_size`); the product side is net positive by the rules the net cannot see, and each implementation task states its net lines. `evals/` (about 400 new lines outside the package and the tests) is new by demand.
 - Test rulings reserved: D5 and R11 (J2.T5), R2 (J7.T2), each in a `test(…)` commit naming it. Every other assert stays; a fixture a new rule refuses is a finding for the main thread.
 - Spark tests run with the environment the dispatch brief names; no tracked file holds those paths.
 - Fix commits of an Origin bug carry the lineage block (`caused_by:`, `evidence:`, `prior diffs read:`, `rebuild:`); the date unit is a REBUILD under `refactor(bugs)`.
 
-### Barrier B1 and ledger steps (the main thread, no repo task)
+### Ledger steps (the main thread, no repo task)
 
 - P0, before Job 1 opens: the main thread runs `dadaia doctor --fix --specs-dir <wt-rc>/specs` as a `wt-backlog-<slug>` lane on the operator's order (shape 8), then `WT sync <wt-rc path>`; if the operator rules otherwise, memory's one file rides the Reconciliation and the five others stay warnings.
-- B1, after Job 1 merges and before Job 2 opens: the main thread runs `evals/run.py` k=3 on the three tasks against `rand-engine==0.8.1` from PyPI with the operator's `claude` auth, `--out` outside the repo, and reports passes out of 3 per task, tokens and cost in `.dadaia/reports/rand-engine/` (AC8.5). It installs from PyPI and reads no 0.8.2 code, so the main thread may overlap it with Job 2 on its own ruling. A round on the 0.8.2 build runs before promote.
+- B1 is retired (operator order, handoff `2026-11-01T022537Z-main-ruling-eval-in-ci`). Job 2 waits on Job 1 only. The first CI run of `eval.yml` at the rc push is the baseline (AC8.5): its PyPI round on 0.8.1, and its wheel round the rc-1 build. The main thread builds the `.dadaia/reports/rand-engine/` report from that run's artifact. The operator sets the secret `CLAUDE_CODE_OAUTH_TOKEN` from a real terminal; no agent reads it.
 - L1 after Job 3: `bugs.py resolve date-bound-parse-diverges-numpy-spark --caused-by 0.7.0-rc2/J4.T2` on `wt-main` (shape 4).
 - L2 after Job 5: resolve `distincts-prop-negative-weight-drops-value` and `correlated-cols-overwrite-existing-column`, each naming its fix commit.
 - L3 after Job 7: resolve `validated-specs-fail-in-generation` and `anomaly-values-dtype-validates-then-raises`, naming the net and the Job 3 and Job 5 rule commits; the "one source of the method rules" clause of the first record is the 0.9.0 catalog's.
@@ -114,9 +114,9 @@ Waves follow the SPEC ranking. The SPEC's wave 3 (FR7 hygiene) runs as wave 2 be
 
 ## Measured cost
 
-- Gate law: no task adds a step to `verify:`, `verify-task` or the merge. A task's merge runs the repo `verify:` line (poetry install, ruff `D` on six files, `pytest tests/`); the last measured pytest is 55.74-66.58 s per run. The rc runs it 39 times (30 task merges, 8 job merges, the `wt-rc` merge): 2,174-2,597 s, 36.2-43.3 min of pytest at the measured range, install and ruff unmeasured. That is one run of the job gate per merge, the law's own count.
+- Gate law: no task adds a step to `verify:`, `verify-task` or the merge. A task's merge runs the repo `verify:` line (poetry install, ruff `D` on six files, `pytest tests/`); the last measured pytest is 55.74-66.58 s per run. The rc runs it 40 times (31 task merges, 8 job merges, the `wt-rc` merge): 2,230-2,663 s, 37.2-44.4 min of pytest at the measured range, install and ruff unmeasured. That is one run of the job gate per merge, the law's own count.
 - Product cost (AC1.5), measured at `ac30edb` on this host, 20 bundled no-argument specs (10 Common, 10 Advanced), medians of per-spec medians, from the as-is handoff: static validation `AdvancedValidator.validate` 0.026 ms median, 0.050 ms maximum; the 1-row net 0.539 ms median, 0.904 ms maximum (`Adv.healthcare`), 4.98 ms worst single run; `DataGenerator(spec)` construction today 0.055 ms median, 0.082 ms maximum. Per construction: static plus net about 0.57 ms (sum of medians), about 10 times today's construction; per callable evaluation after the first: static validation alone, 0.026 ms median, 0.050 ms maximum. The net costs what generation costs for a pool-expanding method: `distincts_prop` weights of 2x10^4 take 6.7 ms, 2x10^6 take 290 ms, 2x10^7 take 3.1 s, once per `DataGenerator` (D3). The figures are host-bound (the grill read 0.89 ms on the same ten specs), so no test asserts a time; J7.T4 re-measures on the final code and quotes it in its commit body.
-- The eval: 3 tasks x 3 trials is 9 headless agent runs per round, outside `verify:`, CI and every merge; its tokens, cost and duration are unmeasured until B1 records them per trial (AC8.2). The J1.T2 smoke run is one trial.
+- The eval (operator order, CI): one `eval.yml` run is 15 trials (E1 x3, E2 and E3 x3 on two installs), outside `verify:`, the merge and the required checks. Measured: the J1.T2 haiku smoke trials of E3 on `rand-engine==0.8.1` (claude-haiku-4-5) passed at $0.0673-$0.1496 and 72.4-79.6 s each, from the ruling handoff's `metrics`. Every other figure (sonnet tokens, cost, run time, queue) is unmeasured until the first CI run records it per trial (AC8.2, AC8.6).
 
 ## Acceptance map
 
@@ -144,9 +144,9 @@ Waves follow the SPEC ranking. The SPEC's wave 3 (FR7 hygiene) runs as wave 2 be
 | AC7.5 | J2.T1 | — |
 | AC7.6 | J1.T4 | — |
 | AC8.1, AC8.3 | J1.T1 | — |
-| AC8.2 | J1.T2 | — |
-| AC8.4 | J1.T3 | — |
-| AC8.5 | barrier B1 (no repo path to write) | — |
+| AC8.2, AC8.6 | J1.T2 | — |
+| AC8.4 | J1.T3, J1.T5 | — |
+| AC8.5 | the first CI run of `eval.yml` (no repo path to write) | — |
 | AC9.1 | J8.T1 | J8.T2 |
 | AC9.2 | J8.T3 | — |
 | AC9.3 | Reconciliation | — |
