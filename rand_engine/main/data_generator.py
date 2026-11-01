@@ -1,5 +1,5 @@
 """Generate pandas DataFrames, dict streams and files from one RandSpec and one seed."""
-from functools import cache, partial
+from functools import partial
 import time
 import pandas as pd
 import numpy as np
@@ -85,7 +85,7 @@ class DataGenerator:
         raise RandEngineError(f"global transformers must preserve row count {size}; got {actual}")
       return rand_generator.apply_modifiers(frame, self._rng)
 
-    return cache(partial(self._catalog_schema, evaluated_spec)), batch
+    return partial(self._catalog_schema, evaluated_spec), batch
 
 
   def wrapped_df_generator(
