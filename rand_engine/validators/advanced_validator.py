@@ -55,6 +55,28 @@ class AdvancedValidator:
         errors: list[str] = []
         for col_name, col_config in spec.items():
             errors.extend(cls._validate_column_complete(col_name, col_config))
+        errors.extend(cls._duplicate_output_errors(spec))
+        return errors
+
+    @staticmethod
+    def _duplicate_output_errors(spec: dict[str, Any]) -> list[str]:
+        seen: dict[str, str] = {}
+        errors: list[str] = []
+        for key, config in spec.items():
+            if not isinstance(config, dict):
+                continue
+            cols = config.get("cols")
+            names = cols if isinstance(cols, list) else [key]
+            for index, name in enumerate(names):
+                if not isinstance(name, str):
+                    continue
+                where = f"'cols'[{index}] of column '{key}'" if isinstance(cols, list) else f"column '{key}'"
+                if name in seen:
+                    errors.append(
+                        f"❌ Column '{key}': output name '{name}' is produced twice: by {seen[name]} and by {where}"
+                    )
+                else:
+                    seen[name] = where
         return errors
 
     @classmethod
@@ -235,6 +257,11 @@ class AdvancedValidator:
         templates = kwargs.get("templates")
         if not isinstance(pattern, str) or not isinstance(replacement, str) or not isinstance(templates, list):
             return []
+        if len(replacement) != 1:
+            return [
+                f"❌ Column '{col_name}': method 'complex_distincts' parameter 'replacement' "
+                f"must be one character, got {replacement!r}"
+            ]
 
         errors: list[str] = []
         if pattern.count(replacement) != len(templates):
