@@ -162,14 +162,18 @@ CHECKS = {"test-data": check_test_data, "lake": check_lake, "kafka": check_kafka
 
 
 @pytest.mark.parametrize("slug", RUNNABLE_SLUGS)
-def test_scaffold_is_databricks_source_and_runs_producing_its_promise(slug, tmp_path, monkeypatch, capsys, request):
+def test_scaffold_runs_producing_its_promise_and_only_databricks_is_a_notebook(slug, tmp_path, monkeypatch, capsys, request):
   if slug == "databricks":
     request.getfixturevalue("spark_session")
   assert run(["get-started", slug, "--out", str(tmp_path)]) == 0
   capsys.readouterr()
   text = (tmp_path / f"{slug}-example.py").read_text(encoding="utf-8")
-  assert text.splitlines()[0] == "# Databricks notebook source"
-  assert "# COMMAND ----------" in text.splitlines()
+  lines = text.splitlines()
+  if slug == "databricks":
+    assert lines[0] == "# Databricks notebook source"
+    assert "# COMMAND ----------" in lines
+  if slug == "test-data":
+    assert not [l for l in lines if l.startswith(("# Databricks notebook source", "# COMMAND ----------", "# MAGIC"))]
   monkeypatch.chdir(tmp_path)
   monkeypatch.setitem(sys.modules, "kafka", None)
   monkeypatch.setitem(sys.modules, "confluent_kafka", None)
