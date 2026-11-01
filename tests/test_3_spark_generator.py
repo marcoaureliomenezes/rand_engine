@@ -724,3 +724,13 @@ def test_spark_arrow_off_pd_na_text_raises_cannot_merge_type(spark_session, arro
 
     with pytest.raises(PySparkTypeError, match=r"CANNOT_MERGE_TYPE.*StringType.*StructType"):
         spark_session.createDataFrame(pdf)
+
+
+@pytest.mark.parametrize("pool, expected", [
+    (["x", "y", None], {"x", "y", None}),
+    ([1, 2.5], {1.0, 2.5}),
+], ids=["text-with-none", "int-and-float"])
+def test_spark_generates_mixed_type_pools_as_on_0_8_1(spark_session, spark_functions, pool, expected):
+    spec = {"c": {"method": "distincts", "kwargs": {"distincts": pool}}}
+    rows = SparkGenerator(spark_session, spark_functions, spec).size(400).get_df().collect()
+    assert {row["c"] for row in rows} == expected

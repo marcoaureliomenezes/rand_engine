@@ -312,6 +312,16 @@ def test_unix_timestamps_format_is_not_restricted():
     assert CommonValidator.validate_spark_spec(spec) == []
 
 
+@pytest.mark.parametrize("pool", [["x", "y", None], [1, 2.5]], ids=["text-with-none", "int-and-float"])
+def test_mixed_type_pool_is_accepted_by_spark_and_refused_by_numpy(pool):
+    """The one-type rule is the NumPy engine's precondition; the Spark intake keeps the pools 0.8.1 generated."""
+    spec = {"c": {"method": "distincts", "kwargs": {"distincts": pool}}}
+    assert CommonValidator.validate_spark_spec(spec) == []
+    errors = AdvancedValidator.validate(spec)
+    assert len(errors) == 1
+    assert "parameter 'distincts' must hold one type" in errors[0]
+
+
 def _caught_validation(call):
     try:
         call()
