@@ -1,6 +1,5 @@
-from datetime import datetime as dt
 import pandas as pd
-from rand_engine.core._np_core import DATE_DIRECTIVES, DATE_SPLIT, epoch_seconds, float_lattice_bounds, width_beyond_double
+from rand_engine.core._np_core import DATE_DIRECTIVES, DATE_SPLIT, _parse_date_bound, epoch_seconds, float_lattice_bounds, width_beyond_double
 
 
 class SparkCore:
@@ -89,7 +88,7 @@ class SparkCore:
     
     Note: Unified API parameter name matches NPCore.gen_unix_timestamps().
     """
-    timestamp_start, timestamp_end = epoch_seconds(dt.strptime(start, date_format), dt.strptime(end, date_format))
+    timestamp_start, timestamp_end = epoch_seconds(_parse_date_bound(start, date_format), _parse_date_bound(end, date_format))
     df = SparkCore.gen_ints(spark, F, df, col_name, min=timestamp_start, max=timestamp_end - 1)
     return df
 
