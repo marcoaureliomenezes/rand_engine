@@ -18,6 +18,10 @@ from rand_engine.validators.method_specs import (
 )
 
 
+def _valid_cols(cols: Any) -> bool:
+    return isinstance(cols, list) and bool(cols) and all(isinstance(name, str) for name in cols)
+
+
 class AdvancedValidator:
     """Validate a complete DataGenerator RandSpec through the method catalog."""
 
@@ -63,14 +67,11 @@ class AdvancedValidator:
         seen: dict[str, str] = {}
         errors: list[str] = []
         for key, config in spec.items():
-            if not isinstance(config, dict):
+            if not isinstance(config, dict) or not _valid_cols(config.get("cols", [key])):
                 continue
-            cols = config.get("cols")
-            names = cols if isinstance(cols, list) else [key]
-            for index, name in enumerate(names):
-                if not isinstance(name, str):
-                    continue
-                where = f"'cols'[{index}] of column '{key}'" if isinstance(cols, list) else f"column '{key}'"
+            listed = "cols" in config
+            for index, name in enumerate(config.get("cols", [key])):
+                where = f"'cols'[{index}] of column '{key}'" if listed else f"column '{key}'"
                 if name in seen:
                     errors.append(
                         f"❌ Column '{key}': output name '{name}' is produced twice: by {seen[name]} and by {where}"
@@ -124,7 +125,8 @@ class AdvancedValidator:
         if method_spec.kind == ORDINARY:
             errors = CommonValidator.validate_column(col_name, col_config)
         else:
-            errors = cls._validate_catalog_column(col_name, col_config, method_spec)
+            errors = CommonValidator._validate_method_parameters(col_name, col_config, method_spec)
+        errors.extend(cls._cols_errors(col_name, col_config, method_spec))
 
         if method_spec.kind in (CORRELATED, KEY):
             errors.extend(cls._excluded_modifier_errors(col_name, method, col_config))
@@ -145,28 +147,15 @@ class AdvancedValidator:
         return cls._validate_column_complete(col_name, col_config)
 
     @classmethod
-    def _validate_catalog_column(
-        cls,
-        col_name: str,
-        col_config: dict[str, Any],
-        method_spec: MethodSpec,
-    ) -> list[str]:
-        errors = CommonValidator._validate_method_parameters(
-            col_name, col_config, method_spec
-        )
-        errors.extend(cls._cols_errors(col_name, col_config, method_spec))
-        return errors
-
-    @classmethod
     def _cols_errors(
         cls,
         col_name: str,
         col_config: dict[str, Any],
         method_spec: MethodSpec,
     ) -> list[str]:
-        if not method_spec.requires_cols:
-            return []
         if "cols" not in col_config:
+            if not method_spec.requires_cols:
+                return []
             return [
                 f"❌ Column '{col_name}': Method '{col_config['method']}' requires 'cols' field\n"
                 f"   Example:\n{cls._format_example(method_spec.example)}"
@@ -177,6 +166,8 @@ class AdvancedValidator:
                 f"❌ Column '{col_name}': 'cols' must be list\n"
                 f"   Got: {type(cols).__name__}"
             ]
+        if not _valid_cols(cols):
+            return [f"❌ Column '{col_name}': 'cols' must be a non-empty list of strings, got {cols!r}"]
         if method_spec.expected_cols is not None and len(cols) != method_spec.expected_cols:
             return [
                 f"⚠️  Column '{col_name}': Method '{col_config['method']}' expects "
