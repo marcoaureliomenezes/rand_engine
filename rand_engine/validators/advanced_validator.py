@@ -71,14 +71,14 @@ class AdvancedValidator:
                 continue
             for index, name in enumerate(config.get("cols", [key])):
                 where = f"'cols'[{index}] of column '{key}'" if "cols" in config else f"column '{key}'"
-                if name.__hash__ is None:
+                try:
+                    first = seen.setdefault(name, where)
+                except TypeError:
                     continue
-                if name in seen:
+                if first != where:
                     errors.append(
-                        f"❌ Column '{key}': output name '{name}' is produced twice: by {seen[name]} and by {where}"
+                        f"❌ Column '{key}': output name '{name}' is produced twice: by {first} and by {where}"
                     )
-                else:
-                    seen[name] = where
         return errors
 
     @classmethod
