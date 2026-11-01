@@ -590,6 +590,10 @@ _OUT_NAME = "❌ Column '{col}': output name '{name}' is produced twice: by {fir
   ({"pid": {"method": "fk", "kwargs": {"parent": FK_PARENT, "parent_size": 10}},
     "m": {"method": "distincts_map", "cols": ["pid", "b"], "kwargs": _MAP}},
    "m", "pid", "column 'pid'", "'cols'[0] of column 'm'"),
+  ({"c": {"method": "integers", "kwargs": {"min": 0, "max": 9}, "cols": [1, 1]}},
+   "c", "1", "'cols'[0] of column 'c'", "'cols'[1] of column 'c'"),
+  ({"c": {"method": "distincts_map", "cols": [1, 1], "kwargs": _MAP}},
+   "c", "1", "'cols'[0] of column 'c'", "'cols'[1] of column 'c'"),
 ])
 def test_output_name_produced_twice_is_refused(spec, col, name, first, second):
   errors = AdvancedValidator.validate(spec)
@@ -601,10 +605,6 @@ _INT = {"method": "integers", "kwargs": {"min": 0, "max": 9}}
 
 
 @pytest.mark.parametrize("spec, message", [
-  ({"c": {**_INT, "cols": [1, 1]}},
-   "❌ Column 'c': 'cols' must be a non-empty list of strings, got [1, 1]"),
-  ({"c": {"method": "distincts_map", "cols": [1, 1], "kwargs": _MAP}},
-   "❌ Column 'c': 'cols' must be a non-empty list of strings, got [1, 1]"),
   ({"c": {**_INT, "cols": []}},
    "❌ Column 'c': 'cols' must be a non-empty list of strings, got []"),
   ({"a": _INT, "x": {**_INT, "cols": "a"}}, "❌ Column 'x': 'cols' must be list"),
