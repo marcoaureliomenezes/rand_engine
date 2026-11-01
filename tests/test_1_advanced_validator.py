@@ -597,6 +597,53 @@ def test_output_name_produced_twice_is_refused(spec, col, name, first, second):
   assert _OUT_NAME.format(col=col, name=name, first=first, second=second) in errors[0]
 
 
+_INT = {"method": "integers", "kwargs": {"min": 0, "max": 9}}
+
+
+@pytest.mark.parametrize("spec, message", [
+  ({"c": {**_INT, "cols": [1, 1]}},
+   "❌ Column 'c': 'cols' must be a non-empty list of strings, got [1, 1]"),
+  ({"c": {"method": "distincts_map", "cols": [1, 1], "kwargs": _MAP}},
+   "❌ Column 'c': 'cols' must be a non-empty list of strings, got [1, 1]"),
+  ({"c": {**_INT, "cols": []}},
+   "❌ Column 'c': 'cols' must be a non-empty list of strings, got []"),
+  ({"a": _INT, "x": {**_INT, "cols": "a"}}, "❌ Column 'x': 'cols' must be list"),
+  ({"c": {**_INT, "cols": ("a",)}}, "❌ Column 'c': 'cols' must be list"),
+])
+def test_cols_of_any_column_is_a_non_empty_list_of_strings(spec, message):
+  errors = AdvancedValidator.validate(spec)
+  assert len(errors) == 1
+  assert message in errors[0]
+
+
+def test_distincts_map_prop_negative_weight_on_an_unhashable_value_is_refused():
+  config = {"method": "distincts_map_prop", "cols": ["x", "k"],
+            "kwargs": {"distincts": {"x": [[["u"], -1], ["v", 2]]}}}
+  errors = AdvancedValidator.validate({"c": config})
+  assert len(errors) == 1
+  assert f"❌ Column 'c': {_MAP_PROP} has negative weight -1 for ['u']" in errors[0]
+
+
+def test_distincts_map_prop_negative_weight_on_a_repeated_value_is_refused():
+  config = {"method": "distincts_map_prop", "cols": ["x", "k"],
+            "kwargs": {"distincts": {"x": [["y", -1], ["y", 2]]}}}
+  errors = AdvancedValidator.validate({"c": config})
+  assert len(errors) == 1
+  assert f"❌ Column 'c': {_MAP_PROP} has negative weight -1 for 'y'" in errors[0]
+
+
+@pytest.mark.parametrize("config, message", [
+  ({"method": "distincts_map", "cols": ["x", "k"], "kwargs": {"distincts": {1: ["x"], "a": ["y"]}}},
+   "❌ Column 'c': method 'distincts_map' parameter 'distincts' categories must hold one type, found int, str"),
+  ({"method": "distincts", "kwargs": {"distincts": [type("T", (), {})(), type("T", (), {})()]}},
+   "❌ Column 'c': method 'distincts' parameter 'distincts' must hold one type, found T, T"),
+])
+def test_distincts_map_categories_and_same_named_pool_types_are_refused(config, message):
+  errors = AdvancedValidator.validate({"c": config})
+  assert len(errors) == 1
+  assert message in errors[0]
+
+
 def test_complex_distincts_replacement_longer_than_one_character_is_refused():
   integers = {"method": "integers", "kwargs": {"min": 0, "max": 9}}
   spec = {"c": {"method": "complex_distincts",
