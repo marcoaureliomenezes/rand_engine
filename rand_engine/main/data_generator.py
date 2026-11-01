@@ -102,12 +102,14 @@ class DataGenerator:
 
   @staticmethod
   def __refuse_ungeneratable(evaluated_spec: dict):
-    """Generate one row per column on a private generator; raise SpecValidationError for each column that fails (column keys only the message names, so one pass per column)."""
+    """Generate one row per column on a private generator, modifiers included unless the column has embedded transformers; raise SpecValidationError naming each failing column."""
     errors = []
     for column, config in evaluated_spec.items():
       generator = RandGenerator({column: config})
       try:
-        generator.apply_modifiers(generator.generate_first_level(1, np.random.default_rng(0), key_seed=0), np.random.default_rng(0))
+        frame = generator.generate_first_level(1, np.random.default_rng(0), key_seed=0)
+        if "transformers" not in config:
+          generator.apply_modifiers(frame, np.random.default_rng(0))
       except Exception as error:
         errors.append(f"❌ Column '{column}': method '{config['method']}' cannot generate a row: {type(error).__name__}: {error}")
     if errors:
