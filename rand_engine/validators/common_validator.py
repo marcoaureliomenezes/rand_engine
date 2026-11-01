@@ -246,18 +246,6 @@ class CommonValidator:
         if errors:
             cls._raise(errors, "SPARKGENERATOR")
 
-    @classmethod
-    def validate_spark_with_warnings(cls, spec: dict[str, dict[str, Any]]) -> bool:
-        errors = cls.validate_spark_spec(spec)
-        if not errors:
-            print("\n✅ Spark spec validated successfully!\n")
-            return True
-        print(f"\n{'=' * 80}\n❌ SPARK VALIDATION FAILED - {len(errors)} error(s) found\n{'=' * 80}\n")
-        for index, error in enumerate(errors, 1):
-            print(f"{index}. {error}\n")
-        print(f"{'=' * 80}\n")
-        return False
-
     @staticmethod
     def _raise(errors: list[str], engine: str) -> None:
         separator = "\n" + "=" * 80 + "\n"
