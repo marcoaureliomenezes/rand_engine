@@ -3,7 +3,7 @@ Tests for CommonValidator - validates SparkGenerator specs.
 Covers common methods shared between DataGenerator and SparkGenerator.
 """
 
-from datetime import date, datetime, time
+from datetime import date, datetime
 from decimal import Decimal
 from fractions import Fraction
 
@@ -349,7 +349,6 @@ def _pool_spec(method, distincts):
     ("distincts", ["x", [1]], "holds a list, tuple or dict, which Spark writes as another value"),
     ("distincts", [{"a": 1}], "holds a list, tuple or dict, which Spark writes as another value"),
     ("distincts", [(1, 2)], "holds a list, tuple or dict, which Spark writes as another value"),
-    ("distincts", [time(3, 0)], "holds a value Spark cannot type or convert"),
     ("distincts", [Fraction(1, 2)], "holds a value Spark cannot type or convert"),
     ("distincts", [Fraction(1, 2), 1], "holds a value Spark cannot type or convert"),
     ("distincts", [np.str_("x")], "holds a value Spark cannot type or convert"),
@@ -367,7 +366,6 @@ def _pool_spec(method, distincts):
     ("distincts_prop", {1: 1, 2.5: 1, "x": 1}, "holds LongType and DoubleType" + _ORDER),
     ("distincts_prop", {date(2020, 1, 1): 1, "x": 1}, "holds date beside text, which Spark writes as a Java object string"),
     ("distincts_prop", {b"a": 1, "x": 2}, "holds binary beside text, which Spark writes as a Java object string"),
-    ("distincts_prop", {time(3, 0): 1}, "holds a value Spark cannot type or convert"),
     ("distincts_prop", {None: 1, "x": 0}, "holds no value Spark can infer a type from"),
     ("distincts_prop", {True: 1, "x": 0, 2.5: 1}, "holds BooleanType and DoubleType" + _ORDER),
     ("distincts_prop", {np.True_: 1, None: 1}, "holds a value Spark cannot type or convert"),
@@ -415,6 +413,25 @@ def test_spark_refuses_pools_it_cannot_write_into_one_column(method, distincts, 
 def test_spark_keeps_pools_it_writes_faithfully(method, distincts):
     """distincts_prop is judged on the keys of positive weight, the pool Spark merges."""
     assert CommonValidator.validate_spark_spec(_pool_spec(method, distincts)) == []
+
+
+@pytest.mark.parametrize("distincts", [["x", "y"], ["x", None], [1, "x"], [True, "x"], [Decimal("1.5"), "x"], ["x", 2**70]])
+def test_spark_keeps_text_pools_when_pandas_infers_its_string_dtype(distincts):
+    """pandas 3 types a text column as its string dtype; Spark still writes the pool as text."""
+    with pd.option_context("future.infer_string", True):
+        assert CommonValidator.validate_spark_spec(_pool_spec("distincts", distincts)) == []
+
+
+@pytest.mark.parametrize(("distincts", "tail"), [
+    ([date(2020, 1, 1), "x"], "holds date beside text, which Spark writes as a Java object string"),
+    ([b"a", "x"], "holds binary beside text, which Spark writes as a Java object string"),
+    (["x", Fraction(1, 2)], "holds a value Spark cannot type or convert"),
+])
+def test_spark_refuses_pools_beside_text_when_pandas_infers_its_string_dtype(distincts, tail):
+    with pd.option_context("future.infer_string", True):
+        assert CommonValidator.validate_spark_spec(_pool_spec("distincts", distincts)) == [
+            f"❌ Column 'c': method 'distincts' parameter 'distincts' {tail}"
+        ]
 
 
 def _caught_validation(call):
