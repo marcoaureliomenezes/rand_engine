@@ -187,6 +187,28 @@ class TestSparkGeneratorAllTypes:
             assert isinstance(row["date_col"], str)
 
 
+@pytest.mark.parametrize("method", ["unix_timestamps", "dates"])
+def test_spark_date_bounds_in_another_format_generate_within_the_numpy_bounds(spark_session, spark_functions, method):
+    """Bounds written as %Y-%m-%d with a %d/%m/%Y date_format generate on Spark inside the span DataGenerator uses."""
+    from datetime import datetime
+    from rand_engine.core._np_core import _parse_date_bound, epoch_seconds
+
+    kwargs = {"start": "2020-01-01", "end": "2021-01-01", "date_format": "%d/%m/%Y"}
+    spec = {"d": {"method": method, "kwargs": kwargs}}
+    low, high = epoch_seconds(*(_parse_date_bound(kwargs[k], kwargs["date_format"]) for k in ("start", "end")))
+
+    def seconds(value):
+        if method == "unix_timestamps":
+            return int(value)
+        return epoch_seconds(datetime.strptime(value, kwargs["date_format"]), datetime(1970, 1, 1))[0]
+
+    expected = [seconds(v) for v in DataGenerator(spec, seed=1).size(200).get_df()["d"]]
+    actual = [seconds(r["d"]) for r in SparkGenerator(spark_session, spark_functions, spec).size(200).get_df().collect()]
+
+    assert low <= min(expected) and max(expected) < high
+    assert len(actual) == 200 and all(low <= v < high for v in actual)
+
+
 class TestSparkGeneratorDifferentSizes:
     """Test SparkGenerator with different dataset sizes."""
     
