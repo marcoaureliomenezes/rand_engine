@@ -25,7 +25,7 @@ assert orders["customer_id"].isin(customers["customer_id"]).all()
 
 ## `pk`
 
-<!-- derived-from: pk-fk-constraints sha256:324d5cb88eec -->
+<!-- derived-from: pk-fk-constraints sha256:ab5a08f95c80 -->
 
 | kwarg | Default | Meaning |
 |---|---|---|
@@ -53,7 +53,7 @@ assert DataGenerator(spec, seed=99).size(1_000).get_df().equals(df)
 
 ## `fk`
 
-<!-- derived-from: pk-fk-constraints sha256:324d5cb88eec -->
+<!-- derived-from: pk-fk-constraints sha256:ab5a08f95c80 -->
 
 | kwarg | Meaning |
 |---|---|
@@ -82,8 +82,10 @@ assert top_share > 1 / 200 * 10  # a few parents take most of the rows
 `born_before` is an optional FK mapping with exactly four fields: `parent_start`, `parent_rate`,
 `child_start`, and `child_rate`. Each is a finite built-in `int` or `float` (never `bool`), and
 the rates are positive. For child row `i`, every parent born at or before that child's event time
-is eligible, inclusively. If no parent is eligible, generation raises `RandEngineError` naming the
-FK column. The key calculation is stateless and supports exact large integer inputs.
+is eligible, inclusively. Eligibility only grows with the row index, so `DataGenerator` refuses at
+construction, with `SpecValidationError` (a `RandEngineError`) naming the FK column, a spec whose
+first child row has no eligible parent; `SparkGenerator` raises `RandEngineError` naming the FK
+column at generation. The key calculation is stateless and supports exact large integer inputs.
 
 ```python
 from rand_engine.validators.exceptions import RandEngineError
@@ -115,7 +117,7 @@ assert event_time_orders["customer_id"].isin(event_time_parents["customer_id"]).
 
 ## Streams and multi-file writes continue the row index
 
-<!-- derived-from: pk-fk-constraints sha256:324d5cb88eec -->
+<!-- derived-from: pk-fk-constraints sha256:ab5a08f95c80 -->
 
 Each microbatch of `stream_dict`, `writeStream`, and each part of `write` with `numFiles` starts at
 the row index where the previous one ended, so `pk` values never repeat across batches.
@@ -130,7 +132,7 @@ assert [r["event_id"] for r in records] == list(range(1, 26))
 
 ## Spark
 
-<!-- derived-from: spark-generator sha256:b6f588852588 -->
+<!-- derived-from: spark-generator sha256:2e9fdae1166e -->
 
 `SparkGenerator` accepts the same stateless `pk` and `fk` definitions through its key-only adapter.
 An explicit seed controls those keys only; ordinary Spark columns remain native and unseeded.

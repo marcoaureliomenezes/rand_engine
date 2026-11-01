@@ -46,7 +46,7 @@ a scaffolded example ([[get-started-cli]]) and the docs site, `llms.txt` and age
 
 | slug | title | tldr |
 |------|-------|------|
-| `data-generator` | DataGenerator | The pandas generator validates a RandSpec, owns its random generator, and returns DataFrames, files, file streams or an endless lossless record stream. |
+| `data-generator` | DataGenerator | The pandas generator validates a RandSpec, proves one row per column, owns its random generator, and returns DataFrames, files, file streams or record streams. |
 | `generation-methods` | Generation methods | Ten common methods run on pandas and Spark; pk/fk share one indexed authority; distributions, correlated methods, constants and modifiers are pandas-only. |
 | `spark-generator` | SparkGenerator | The Spark generator builds ordinary columns with native expressions and stateless pk/fk columns through the shared indexed key authority. |
 
@@ -67,6 +67,7 @@ a scaffolded example ([[get-started-cli]]) and the docs site, `llms.txt` and age
 
 | slug | title | tldr |
 |------|-------|------|
+| `agent-eval` | Agent eval | A CI-only, non-blocking eval measures how a headless agent discovers and uses rand-engine: three tasks, k trials each, one JSON result per trial. |
 | `benchmarks` | Performance benchmarks | CI enforces same-runner rand-engine regression limits and separately records bounded, validated observations against Faker and dbldatagen. |
 
 ### relations

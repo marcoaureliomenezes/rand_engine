@@ -14,7 +14,8 @@ sources:
 
 - `SparkGenerator(spark, F, spec).size(n).get_df()` builds a Spark DataFrame; PySpark is supplied by the caller and is not a runtime dependency.
 - CI runs the Spark tests on PySpark 3.5 with Python 3.11 and on PySpark 4.x with Python 3.12 to 3.14, on Linux and macOS; on Windows they run with Python 3.11 and skip with Python 3.12 or later.
-- `get_df()` without `.size(n)` raises `RandEngineError` naming `.size(n)`.
+- `get_df()` resolves the size through the decider `DataGenerator` uses: unset, or not a non-negative integer, it raises `RandEngineError` before any Spark work ([[data-generator]]).
+- Construction validates the spec only; unlike `DataGenerator`, it generates no row to check it.
 - Generation starts from `spark.range(size)`, adds one column per spec entry and drops technical source-index columns. A user column named `id` or like an internal helper remains in the declared schema and order.
 
 ## Grammar and refusals
@@ -28,5 +29,5 @@ sources:
 
 - Ordinary values come from native Spark expressions and one broadcast lookup join per `distincts` column. Key-only `mapInPandas` batches call the shared indexed `Keys` methods and join by a collision-safe source index; no row-wise Python UDF, Spark hash approximation or driver parent table is used.
 - `floats` draws on the decimal grid inside `[min, max]`; a grid with more than 2^53 steps, or a grid end (bound times 10^`decimals`) outside `int64`, is drawn uniformly in `[min, max]` ([[generation-methods]]).
-- `dates` translates the supported Python directives `%Y %m %d %H %M %S %f` to Spark patterns and renders UTC wall-clock text whatever the session time zone.
+- `dates` and `unix_timestamps` parse their bounds with the same decider as pandas, so a bound that does not parse under `date_format` is read as `%Y-%m-%d` on both engines. `dates` translates the supported Python directives `%Y %m %d %H %M %S %f` to Spark patterns and renders UTC wall-clock text whatever the session time zone.
 - Ordinary Spark output is not seeded. An explicit `seed` derives the same key seed as `DataGenerator` and affects only `pk` and `fk`; keys remain identical across partition counts and non-contiguous Arrow batches. Writing is delegated to the returned DataFrame's own writer.

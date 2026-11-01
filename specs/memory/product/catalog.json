@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-24T19:48:10Z",
+  "generated_at": "2026-11-01T16:00:06Z",
   "features": [
     {
       "rank": 1,
@@ -14,7 +14,7 @@
         "package",
         "exceptions"
       ],
-      "token_estimate": 575,
+      "token_estimate": 648,
       "depends_on": [
         "data-generator",
         "spark-generator",
@@ -63,8 +63,8 @@
       "slug": "data-generator",
       "title": "DataGenerator",
       "area": "generation",
-      "tldr": "The pandas generator validates a RandSpec, owns its random generator, and returns DataFrames, files, file streams or an endless lossless record stream.",
-      "summary": "DataGenerator(spec, seed) is the pandas composition root; size and transformers feed get_df, stream_dict, write and writeStream, with one owned NumPy generator, a fixed column-to-modifier order, continuous key offsets and one normalized pandas record path that preserves public Python values.",
+      "tldr": "The pandas generator validates a RandSpec, proves one row per column, owns its random generator, and returns DataFrames, files, file streams or record streams.",
+      "summary": "DataGenerator(spec, seed) is the pandas composition root; construction refuses a spec that validates but cannot generate one row; size, resolved by one decider, and transformers feed get_df, stream_dict, write and writeStream, with one owned NumPy generator, a fixed column-to-modifier order, continuous key offsets and one normalized pandas record path that preserves public Python values.",
       "path": "specs/memory/product/generation/data-generator.md",
       "tags": [
         "pandas",
@@ -72,7 +72,7 @@
         "generator",
         "dataframe"
       ],
-      "token_estimate": 495,
+      "token_estimate": 757,
       "depends_on": [
         "writers-and-streaming",
         "templates-and-examples",
@@ -102,7 +102,7 @@
         "distributions",
         "modifiers"
       ],
-      "token_estimate": 1377,
+      "token_estimate": 1420,
       "depends_on": [
         "data-generator",
         "spark-generator",
@@ -128,8 +128,9 @@
         "pyspark",
         "generator"
       ],
-      "token_estimate": 502,
+      "token_estimate": 582,
       "depends_on": [
+        "data-generator",
         "rand-spec-grammar",
         "generation-methods"
       ],
@@ -154,7 +155,7 @@
         "agent-skill",
         "readme"
       ],
-      "token_estimate": 938,
+      "token_estimate": 984,
       "depends_on": [
         "public-api",
         "writers-and-streaming",
@@ -188,7 +189,7 @@
         "scaffolds",
         "examples"
       ],
-      "token_estimate": 603,
+      "token_estimate": 625,
       "depends_on": [
         "public-api",
         "generation-methods",
@@ -222,7 +223,7 @@
         "parquet",
         "sqlite"
       ],
-      "token_estimate": 910,
+      "token_estimate": 992,
       "depends_on": [
         "data-generator"
       ],
@@ -232,6 +233,31 @@
     },
     {
       "rank": 9,
+      "slug": "agent-eval",
+      "title": "Agent eval",
+      "area": "quality",
+      "tldr": "A CI-only, non-blocking eval measures how a headless agent discovers and uses rand-engine: three tasks, k trials each, one JSON result per trial.",
+      "summary": "evals/run.py runs each task under evals/tasks/ k times, each trial in a fresh temporary directory and venv holding the rand-engine under test, with headless claude -p isolated from host settings, skills and MCP servers, then the task's deterministic check. The eval workflow runs it outside pytest and every gating check; a failed trial is a result, only a harness error fails the job.",
+      "path": "specs/memory/product/quality/agent-eval.md",
+      "tags": [
+        "eval",
+        "agents",
+        "ci",
+        "quality"
+      ],
+      "token_estimate": 555,
+      "depends_on": [
+        "pk-fk-constraints",
+        "rand-spec-grammar",
+        "public-api"
+      ],
+      "sources": [
+        "evals/**",
+        ".github/workflows/eval.yml"
+      ]
+    },
+    {
+      "rank": 10,
       "slug": "benchmarks",
       "title": "Performance benchmarks",
       "area": "quality",
@@ -257,7 +283,7 @@
       ]
     },
     {
-      "rank": 10,
+      "rank": 11,
       "slug": "pk-fk-constraints",
       "title": "PK/FK key columns",
       "area": "relations",
@@ -271,8 +297,9 @@
         "pk",
         "fk"
       ],
-      "token_estimate": 459,
+      "token_estimate": 521,
       "depends_on": [
+        "data-generator",
         "spark-generator",
         "rand-spec-grammar",
         "writers-and-streaming"
@@ -284,23 +311,24 @@
       ]
     },
     {
-      "rank": 11,
+      "rank": 12,
       "slug": "rand-spec-grammar",
       "title": "RandSpec grammar",
       "area": "spec",
       "tldr": "A RandSpec maps output columns to a method, named kwargs and optional cols, transformers or modifiers, validated through one method catalog.",
-      "summary": "METHOD_CATALOG is the one authority for method names, parameters, types, engines and Arrow output types; AdvancedValidator validates every DataGenerator method and the Spark key subset, while CommonValidator owns ordinary Spark intake. Structure is checked before semantics, unknown column keys, positional args and top-level constraints are refused, and every issue is collected into one SpecValidationError.",
+      "summary": "METHOD_CATALOG is the one authority for method names, parameters, types, engines and Arrow output types; AdvancedValidator validates every DataGenerator method and the Spark key subset, while CommonValidator owns ordinary Spark intake. Structure is checked before semantics, unknown column keys, positional args, top-level constraints and a repeated output name are refused, an unknown name gets a did-you-mean line, and every issue is collected into one SpecValidationError.",
       "path": "specs/memory/product/spec/rand-spec-grammar.md",
       "tags": [
         "spec",
         "grammar",
         "validation"
       ],
-      "token_estimate": 722,
+      "token_estimate": 1023,
       "depends_on": [
         "pk-fk-constraints",
         "generation-methods",
-        "spark-generator"
+        "spark-generator",
+        "data-generator"
       ],
       "sources": [
         "rand_engine/validators/**"

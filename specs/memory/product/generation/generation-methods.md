@@ -25,7 +25,7 @@ sources:
 | `dates` | `start`, `end`, `date_format` | UTC date strings using `%Y %m %d %H %M %S %f` |
 | `uuid4` | none | RFC 4122 version-4 UUID strings |
 
-- `unix_timestamps` and `dates` draw over the whole `[start, end)` before, across or after 1970; epoch seconds before 1970 are negative. Both engines turn the two parsed bounds into epoch seconds through one shared `epoch_seconds`.
+- `unix_timestamps` and `dates` draw over the whole `[start, end)` before, across or after 1970; epoch seconds before 1970 are negative. Both engines parse each bound through one shared decider — under `date_format`, else as `%Y-%m-%d` — and turn the two bounds into epoch seconds through one shared `epoch_seconds`.
 - On pandas these methods draw from the `numpy.random.Generator` owned by [[data-generator]]. `uuid4`, `int_zfilled` and `dates` build their text as fixed-width Arrow rows from those draws; a date-only format renders each distinct day once.
 - A column whose generated values are all text — `int_zfilled`, `dates`, `uuid4`, and `distincts`, `distincts_prop` or `constant` with text values — is `string[pyarrow]` (`pd.ArrowDtype(pa.string())`) on every pandas; numeric and boolean columns keep the NumPy dtypes the methods return; a datetime column takes the unit the installed pandas gives Python datetimes, `ns` on pandas 2 and `us` on pandas 3.
 - On Spark they are native `SparkCore` expressions; an explicit Spark seed affects key columns only, not these ordinary methods ([[spark-generator]]).
@@ -58,7 +58,7 @@ sources:
 - `null_rate` and `anomaly_rate` with `anomaly_values` are sibling column keys on ordinary pandas columns; `pk`, `fk`, the three map methods, `complex_distincts` and every Spark column refuse them ([[rand-spec-grammar]]).
 - Rates are independent per-row probabilities in `[0, 1]`, not exact counts. A positive `anomaly_rate` replaces rows with a uniform pick from the non-empty scalar list `anomaly_values`; the null mask runs last and wins on a shared row.
 - A rate of 0, or an absent key, consumes no random draw; a seeded configuration reproduces its masks and values.
-- Anomaly values must preserve the column's dtype after transformers or the call raises `RandEngineError`; the write lands in a private copy of the column, never in the caller's or a sibling column's memory.
+- Anomaly values must preserve the column's dtype: a column without embedded transformers is judged on its method's dtype at `DataGenerator` construction (`SpecValidationError`), one with embedded transformers after them at generation (`RandEngineError`) ([[data-generator]]). The write lands in a private copy of the column, never in the caller's or a sibling column's memory.
 - Nulls keep the column's logical type: width-matched pandas nullable integers, nullable boolean, `NaN` for floats, `NaT` for datetimes, `pd.NA` for text, whose column stays `string[pyarrow]`, and `None` for objects.
 
 ## Dispatch

@@ -4,7 +4,7 @@ Short, runnable patterns. Every `python` block runs in CI, in order, in one name
 
 ## Faker pools
 
-<!-- derived-from: generation-methods sha256:e6bc7670d6dc -->
+<!-- derived-from: generation-methods sha256:50d7ec68cbb0 -->
 <!-- derived-from: templates-and-examples sha256:fa66c7f7252b -->
 
 Faker is slow per value; `RandSpecs.faker_pool` draws a pool once and returns a `distincts` spec.
@@ -97,7 +97,7 @@ then run a returned spec with the generator that family supports.
 
 ## Kafka or any queue
 
-<!-- derived-from: data-generator sha256:511ff7f3a370 -->
+<!-- derived-from: data-generator sha256:1c94eb8188d4 -->
 
 `stream_dict` yields Python record dicts at a bounded rate; send them with your client.
 After normalization, every microbatch uses pandas records so its public Python representation is
@@ -128,7 +128,7 @@ for record in events.stream_dict(min_throughput=10, max_throughput=50):
 
 ## Parquet lake
 
-<!-- derived-from: writers-and-streaming sha256:786ab5799347 -->
+<!-- derived-from: writers-and-streaming sha256:2f037389d8e2 -->
 
 One folder per partition value, several files each.
 
@@ -148,7 +148,7 @@ assert len(lake) == 2_000 and lake["sale_id"].is_unique
 
 ## Related tables
 
-<!-- derived-from: pk-fk-constraints sha256:324d5cb88eec -->
+<!-- derived-from: pk-fk-constraints sha256:ab5a08f95c80 -->
 
 Share the parent's `pk` spec with the child's `fk`; see [4_CONSTRAINTS.md](4_CONSTRAINTS.md).
 

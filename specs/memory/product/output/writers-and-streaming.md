@@ -15,11 +15,11 @@ sources:
 
 ## Batch writer
 
-- `generator.write.format(f).mode(m).option(k, v).save(path)` uses the generator's configured size as the total row count.
+- `generator.write.format(f).mode(m).option(k, v).save(path)` uses the generator's configured size as the total row count; both writers resolve it through the generator's one size decider, so an unset or invalid size raises `RandEngineError` before any output ([[data-generator]]).
 - `numFiles` splits that total as evenly as possible across parts; offsets follow the cumulative part sizes, so keys do not repeat between files. A part that receives zero rows is written as an empty file with the schema of the other parts, else of the method catalog.
 - A single file uses the requested path. Multiple files use a directory of `part_<id>` files.
 - `maxRowsPerBatch` (absent or `None` disables it; otherwise a positive integer) generates each final file in contiguous row batches of at most that many rows, so no generated frame exceeds it. Global transformers run once per row batch, and keys keep their row-index semantics across batches. Different batch sizes carry no equality promise for ordinary values.
-- The spec is evaluated once per final file; one schema holds across a final file's batches, and a batch whose columns or types differ raises `RandEngineError` before the destination changes. Typed nulls take the type of the file's schema, else of the method catalog.
+- The spec is evaluated once per final file, and a callable spec's value is validated at each evaluation; one schema holds across a final file's batches, and a batch whose columns or types differ raises `RandEngineError` before the destination changes. Typed nulls take the type of the file's schema, else of the method catalog.
 - Output is staged beside the destination and committed only after every file closes, so a failure in a transformer, modifier, schema check or option leaves any existing output intact.
 - `mode("append")` adds rows: a single file is rebuilt from its existing content plus the new rows, and a multi-file save adds only new part files beside the existing ones, which are never copied or rewritten. Any other mode overwrites, replacing a part directory as a whole.
 - `format("sqlite").option("table", name).mode("overwrite" | "append").save(path)` writes the configured size in one generated frame. `table` is the only option and must be a non-empty NUL-free string; generated labels must be unique NUL-free strings, integers must fit signed 64 bits and unsupported values or modes fail before publication.
@@ -29,6 +29,7 @@ sources:
 ## Stream writer
 
 - `generator.writeStream.trigger(frequency).option("timeout", seconds).start(path)` writes repeated `size`-row microbatches, sleeping `frequency` seconds (a float, default 1) after each write, to `part-<uuid>` files; overwrite mode empties the directory first, and `maxRowsPerBatch` is not an accepted stream option.
+- A relative target, a bare name included, is a directory under the current directory; on Windows a drive-relative target such as `C:out` is under that drive's current directory.
 - Each microbatch advances the row offset; `start` blocks until the timeout (default 20 seconds) expires.
 - SQLite is batch-only: `writeStream.format("sqlite").start(...)` raises before touching its path.
 

@@ -2,7 +2,7 @@
 slug: QUALITY
 title: Quality Assurance
 tldr: QA principles, test architecture and the gates every change passes.
-summary: Principles change only with an accepted ADR; Test architecture and Gates state how rand-engine is verified — a light numbered pytest suite with executable docs and docstrings, a docstring lint in the verify line, CI-only stress and same-runner benchmarks, a non-gating cross-library observation, and the GitHub Actions matrix, security, isolated docs and publish workflows.
+summary: Principles change only with an accepted ADR; Test architecture and Gates state how rand-engine is verified — a light numbered pytest suite with executable docs and docstrings, a docstring lint in the verify line, CI-only stress and same-runner benchmarks, a non-gating cross-library observation, a non-blocking CI agent eval, and the GitHub Actions matrix, security, isolated docs and publish workflows.
 tags:
   - quality-assurance
   - testing
@@ -23,6 +23,7 @@ tags:
 - Spark tests start a local `SparkSession`, with the Java 17 options Spark's Arrow conversion needs, and skip when PySpark is absent or on Windows with Python 3.12 or later, so the Windows legs run them only on Python 3.11.
 - The default selector excludes `stress`; default tests generate at most 10^4 rows, while large-volume tests and benchmarks run in the CI benchmark job.
 - The observational comparison tests use injected factories and clocks, so ordinary collection needs no comparator package and asserts the two workload shapes, alternating samples, complete output validation, provenance and artifact semantics without a timing target. A separate non-required workflow installs its pinned environment and the public non-editable wheel, runs the real Python and Spark contracts on canonical comparison-path pushes or manual dispatch, and always retains its status and evidence; its measurements never enter the internal regression gate.
+- The agent eval under `evals/` is not part of the suite: it runs only in its own non-blocking workflow, `.github/workflows/eval.yml`, outside pytest and every gating check; a contract test keeps every `evals/` path out of pytest collection.
 - Writer and documentation tests write through pytest temporary paths.
 - Documentation contracts run the preparation script in a subprocess and check: isolated input, raw resources and starter files, a byte copy of the canonical skill, untouched tracked sources, ordinary PyPI installs and principal-branch routes. Preparation needs no TOML parser (it runs on the standard library alone), and a workflow contract names `master` as the only Pages-deploying branch.
 - Local runs keep caches out of the repo: `PYTHONDONTWRITEBYTECODE=1 poetry run pytest tests/ -q -p no:cacheprovider`.

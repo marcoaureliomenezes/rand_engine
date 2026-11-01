@@ -24,7 +24,7 @@ assert len(os.listdir("out/clients_json")) == 4
 
 ## Writer contract
 
-<!-- derived-from: writers-and-streaming sha256:786ab5799347 -->
+<!-- derived-from: writers-and-streaming sha256:2f037389d8e2 -->
 
 - `csv` and `parquet` are written by pyarrow; `json` by pandas (`orient="records"`, one record per line).
 - Only the options below are accepted. Any other raises `RandEngineError` naming it and listing the
@@ -58,7 +58,7 @@ Spark: a text column with nulls holds `pd.NA`. To convert such a frame with `spa
 
 ## Batch: `write`
 
-<!-- derived-from: writers-and-streaming sha256:786ab5799347 -->
+<!-- derived-from: writers-and-streaming sha256:2f037389d8e2 -->
 
 - `save(path)` with `numFiles` 1 writes one file at `path`, the format and compression extension
   added when missing (`out/clients.csv` + `gzip` → `out/clients.csv.gz`; parquet never gets one).
@@ -119,11 +119,12 @@ else:
 
 ## Stream: `writeStream`
 
-<!-- derived-from: writers-and-streaming sha256:786ab5799347 -->
+<!-- derived-from: writers-and-streaming sha256:2f037389d8e2 -->
 
 `trigger(frequency)` only configures the pause after each write and returns the stream writer.
 `start(path)` writes one microbatch of `size` rows to `path/part-<uuid>.<ext>`, sleeps the
-configured number of seconds and repeats until `timeout` seconds have passed. `mode("overwrite")`
+configured number of seconds and repeats until `timeout` seconds have passed. A relative `path`, a
+bare name included, is a folder under the current directory. `mode("overwrite")`
 (the default) clears the folder first. `start` blocks until the timeout.
 
 ```python
@@ -134,7 +135,7 @@ assert len(files) >= 2
 
 ## CSV written by pyarrow
 
-<!-- derived-from: writers-and-streaming sha256:786ab5799347 -->
+<!-- derived-from: writers-and-streaming sha256:2f037389d8e2 -->
 
 CSV output differs from `pandas.DataFrame.to_csv`:
 

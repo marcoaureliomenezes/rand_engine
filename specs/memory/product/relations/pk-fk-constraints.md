@@ -21,7 +21,8 @@ sources:
 - The key seed derived from the generator seed, the column name, the full FK definition and the child row index select a parent row. The parent value is rebuilt from its `pk` definition, so parent and child can be generated in separate processes.
 - Uniform selection is the default; positive skew applies a Zipf distribution over permuted parent ranks so hot keys are scattered.
 - Optional `born_before` declares `parent_start`, `parent_rate`, `child_start` and `child_rate`. Starts are finite builtin integers or floats; rates are finite, positive builtin integers or floats; booleans, NumPy scalars, Decimal and Fraction values are refused.
-- For child row `j`, eligible parents are the inclusive, clamped count whose event time `parent_start + i / parent_rate` is at or before `child_start + j / child_rate`. Exact rational arithmetic keeps accepted large integers and small rates defined. A requested child with no eligible parent raises `RandEngineError` naming the FK column.
+- For child row `j`, eligible parents are the inclusive, clamped count whose event time `parent_start + i / parent_rate` is at or before `child_start + j / child_rate`. Exact rational arithmetic keeps accepted large integers and small rates defined.
+- The eligible count never decreases with the row index, so child row 0 is the worst row. `DataGenerator` refuses at construction, with `SpecValidationError` naming the column, a spec whose row 0 has no eligible parent ([[data-generator]]); on `SparkGenerator`, which generates no row at construction, a child with no eligible parent raises `RandEngineError` naming the FK column at generation.
 
 ## Continuity and boundaries
 

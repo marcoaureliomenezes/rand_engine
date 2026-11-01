@@ -27,7 +27,7 @@ commit that carries its accepted ADR.
 - pytest `^9.0`, pytest-cov (test group) — the suite and its fixture data.
 - ruff `>=0.17.1` (test group) — pydocstyle `D` rules with the numpy convention on the public-surface modules.
 - Zensical `==0.0.70` and mkdocstrings-python `==2.0.9` (optional `docs` group, Python `>=3.11`) — the strict docs-site build and its API reference from numpy-style docstrings, over `mkdocs.yml`.
-- GitHub Actions — test matrix, advisory security scans, same-runner A/B regression benchmarks against the latest closed release, a non-gating isolated cross-library observation, publishing of closed releases through PyPI Trusted Publishing after the operator approves the `production` environment, and an isolated docs build with a guarded GitHub Pages deploy.
+- GitHub Actions — test matrix, advisory security scans, same-runner A/B regression benchmarks against the latest closed release, a non-gating isolated cross-library observation, a non-blocking agent eval, publishing of closed releases through PyPI Trusted Publishing after the operator approves the `production` environment, and an isolated docs build with a guarded GitHub Pages deploy.
 
 ## Structure
 
@@ -39,7 +39,7 @@ rand_engine/
   cases/             declared Python or Markdown resources for six get-started starters, shipped as package data
   py.typed           typing marker
   main/              composition roots
-    data_generator.py      DataGenerator — pandas pipeline, writers, normalized pandas stream_dict records
+    data_generator.py      DataGenerator — pandas pipeline, one-row construction check, writers, normalized pandas stream_dict records; resolve_size, the one size decider
     _rand_generator.py     RandGenerator — method dispatch, column assembly, transformers, null/anomaly modifiers
     spark_generator.py     SparkGenerator — native ordinary columns and indexed PK/FK adapter over spark.range(size)
   core/              stateless generation primitives
@@ -61,9 +61,12 @@ scripts/
 benchmarks/
   comparison.py      isolated observational runner for bounded Python and Spark contracts
   comparison-requirements.txt  pinned CI-only environment for that runner
+evals/
+  run.py             CI-only agent eval runner: fresh venv per trial, isolated headless claude -p, the task's check
+  tasks/             one folder per task: instruction.md, task.toml, optional environment/, tests/check.py
 ```
 
-- Dependency direction: `main` -> `core`, `validators`, `file_handlers`, `utils`; `validators.method_specs` -> `core._np_core` for date directives and float-domain predicates, and `validators.common_validator` -> `core._np_core` for `width_beyond_double`, the one Spark width predicate `SparkCore.gen_ints` and `float_lattice_bounds` also call, so grammar and engine decide each numeric rule once; `cli` imports only the standard library and reads `cases/` as package resources; `core._keys` and `file_handlers` import only `validators.exceptions`; `examples.common_rand_specs` runs `AdvancedValidator` on `from_schema` output; `core` imports no generator and `examples` import no engine.
+- Dependency direction: `main` -> `core`, `validators`, `file_handlers`, `utils`, and `main.spark_generator` -> `main.data_generator` for `resolve_size`; `validators.method_specs` -> `core._np_core` for date directives, the one date-bound parse (`_parse_date_bound`, which `SparkCore` also calls) and float-domain predicates, and `validators.common_validator` -> `core._np_core` for `width_beyond_double`, the one Spark width predicate `SparkCore.gen_ints` and `float_lattice_bounds` also call, so grammar and engine decide each numeric rule once; `cli` imports only the standard library and reads `cases/` as package resources; `core._keys` and `file_handlers` import only `validators.exceptions`; `examples.common_rand_specs` runs `AdvancedValidator` on `from_schema` output; `core` imports no generator and `examples` import no engine.
 - A RandSpec is a dict keyed by column name; the NumPy path has one method-name -> function map shared by columns and nested templates, while `METHOD_CATALOG` owns the accepted grammar: names, parameters, engines and Arrow output types.
 - Generation is NumPy-first: every column is one array call; one `RandGenerator` decider makes an all-text column `string[pyarrow]`, then the columns are assembled into one DataFrame and transformed.
 - The Spark path builds ordinary columns as native expressions plus one broadcast join per `distincts` column; a key-only `mapInPandas` adapter applies the shared indexed `Keys` authority, with no row-wise Python UDF or Spark hash substitute.

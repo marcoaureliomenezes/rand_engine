@@ -15,7 +15,7 @@ sources:
 
 - `from rand_engine import DataGenerator, SparkGenerator, RandSpecs` is the public surface (`__all__`) — [[data-generator]], [[spark-generator]], [[templates-and-examples]].
 - `rand_engine.examples` also exposes `CommonRandSpecs` and `AdvancedRandSpecs`; `RandSpecs` is `CommonRandSpecs`, whose helpers `faker_pool` and `from_schema` build specs ([[templates-and-examples]]).
-- Every public class and method of that surface, and of the writer objects `write` and `writeStream` return, carries a numpy-style docstring whose examples run as doctests, Spark ones skipped; the docs site's API reference renders one entry per name in `__all__` — `DataGenerator`, `SparkGenerator` and `CommonRandSpecs` as `RandSpecs` ([[documentation]]).
+- Every public class and method of that surface, of the writer objects `write` and `writeStream` return, and of the exception classes carries a numpy-style docstring whose examples run as doctests, Spark ones skipped; the docs site's API reference renders one entry per name in `__all__` — `DataGenerator`, `SparkGenerator` and `CommonRandSpecs` as `RandSpecs` ([[documentation]]).
 - Cores, validators and writers are internal modules, importable but not part of the contract.
 - The surface hands back DataFrames, record dicts and files — never a sink client; the caller forwards them to any platform.
 - `rand_engine.__version__` is a string read from the installed distribution's metadata, outside `__all__`; where the distribution is not installed, `import rand_engine` still succeeds with a fixed placeholder. `pyproject.toml` holds the one version literal.
@@ -29,11 +29,11 @@ rand_engine.__version__  # the installed rand-engine version, else "0.0.0+unknow
 ## Errors
 
 - The library's own exceptions derive from `RandEngineError` (`rand_engine.validators.exceptions`).
-- `SpecValidationError` — the spec failed validation at generator construction or in `from_schema`; the validators collect every issue into one error whose footer links the docs site ([[rand-spec-grammar]]).
+- `SpecValidationError` — the spec failed validation at generator construction, at a callable spec's evaluation or in `from_schema`, or a `DataGenerator` column could not generate its one-row check at construction; the validators collect every issue into one error whose footer links the docs site ([[rand-spec-grammar]], [[data-generator]]).
 - `ColumnGenerationError` — a method raised while building a named column.
-- `TransformerError` — a per-column transformer raised; the message names the column and the transformer index.
-- Plain `RandEngineError` — a missing `.size(n)`, an invalid writer option, an unwritable schema, an anomaly value that cannot keep its column dtype, or a global transformer that changes the row count ([[writers-and-streaming]], [[data-generator]]).
-- `FileWriterError` — declared; no module raises it.
+- `TransformerError` — a per-column transformer raised; the message names the column and the transformer's zero-based index. Global transformer errors propagate unwrapped.
+- Plain `RandEngineError` — an unset size or one that is not a non-negative integer, an invalid writer option, an unwritable schema, an anomaly value that cannot keep the dtype of a column with embedded transformers, a key that cannot be generated, or a global transformer that changes the row count ([[writers-and-streaming]], [[data-generator]]).
+- `FileWriterError` — declared and importable; no module raises it, and its docstring says so.
 
 ## Distribution
 

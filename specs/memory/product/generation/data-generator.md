@@ -1,8 +1,8 @@
 ---
 slug: data-generator
 title: DataGenerator
-tldr: "The pandas generator validates a RandSpec, owns its random generator, and returns DataFrames, files, file streams or an endless lossless record stream."
-summary: "DataGenerator(spec, seed) is the pandas composition root; size and transformers feed get_df, stream_dict, write and writeStream, with one owned NumPy generator, a fixed column-to-modifier order, continuous key offsets and one normalized pandas record path that preserves public Python values."
+tldr: "The pandas generator validates a RandSpec, proves one row per column, owns its random generator, and returns DataFrames, files, file streams or record streams."
+summary: "DataGenerator(spec, seed) is the pandas composition root; construction refuses a spec that validates but cannot generate one row; size, resolved by one decider, and transformers feed get_df, stream_dict, write and writeStream, with one owned NumPy generator, a fixed column-to-modifier order, continuous key offsets and one normalized pandas record path that preserves public Python values."
 tags: [pandas, numpy, generator, dataframe]
 sources:
   - rand_engine/main/data_generator.py
@@ -18,14 +18,16 @@ sources:
 ## Construction and randomness
 
 - `DataGenerator(random_spec, seed=None)` accepts a RandSpec dict or a zero-argument callable and validates its current value at construction ([[rand-spec-grammar]]).
+- After validation, construction generates one row of every column through its method on a private generator that the instance's seed and key seed never feed, then applies the column's modifiers unless the column has embedded transformers; no transformer runs. A column that cannot generate is refused with `SpecValidationError` naming the column, the method and the engine's error type and text.
+- A column with embedded transformers has its anomaly values judged at generation, after its transformers. Global transformers are set after construction, so anomaly values that fit a column only after a global transformer changes its dtype are refused at construction.
 - Each instance owns one `numpy.random.Generator` and one key seed, both derived from `seed`; generation never reads or resets NumPy's global random state.
 - The same seed, spec, size and writer batch configuration reproduce the same values.
-- A callable spec is evaluated once for each `get_df`, each stream microbatch and each final file of a batch save.
-- Output operations without `.size(n)` raise `RandEngineError`.
+- A callable spec is evaluated once for each `get_df`, each stream microbatch and each final file of a batch save; each evaluation is validated, and an invalid value raises `SpecValidationError` before any row. The one-row check runs only at construction.
 
 ## Builder and pipeline
 
-- `.size(n)` sets the row count; `n` may be a callable evaluated by the output operation.
+- `.size(n)` sets the row count; `n` may be a callable evaluated by the output operation. `.size` checks nothing: one decider, `resolve_size`, judges the value when an output operation resolves it — `get_df`, `stream_dict`, both writers and `SparkGenerator.get_df` alike.
+- An unset size raises `RandEngineError` `No size set: call .size(n) with an int or a callable returning one.`; a value, or a callable's return, that is not a non-negative integer (a bool included; a NumPy integer passes) raises `RandEngineError` `size must be a non-negative integer, got <value>`, before any row. `size(0)` gives an empty frame.
 - `.transformers([fn, ...])` sets DataFrame transformers; a global transformer that returns anything but a DataFrame of the same row count raises `RandEngineError`.
 - A frame is built in a fixed order: each column through the NumPy method map; per-column transformers; global transformers; the `anomaly_rate` write; the `null_rate` mask, which wins on a shared row ([[generation-methods]]).
 - `pk` and `fk` receive the row offset, key seed and column name ([[pk-fk-constraints]]).
