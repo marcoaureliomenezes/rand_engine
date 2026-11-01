@@ -3,12 +3,14 @@
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
+from numbers import Real
 from collections.abc import Mapping as MappingABC
 import re
 import sys
 from types import MappingProxyType
 from typing import Any, Callable, Iterable, Mapping
 
+import numpy as np
 import pandas as pd
 import pyarrow as pa
 
@@ -201,28 +203,38 @@ def _mixed_types(values: Iterable[Any]) -> str:
     return ", ".join(sorted(t.__name__ for t in types)) if len(types) > 1 else ""
 
 
-_POOL_KINDS = ((bool, "bool"), (int, "int"), (float, "float"), (datetime, "datetime"), (date, "date"), (str, "text"))
+# Exact types: a subclass (numpy text, numpy integers) is not written like its base.
+_POOL_ATOMS = {
+    bool: "bool", int: "int", float: "float", Decimal: "Decimal", bytes: "bytes",
+    date: "date", datetime: "datetime", str: "text", np.bool_: "bool",
+}
+_WRITTEN_BESIDE_TEXT = {bool, int, float, Decimal, str}
 
 
-def _spark_pool_problem(pool: Any) -> str:
-    """What stops Spark writing the pool values into one column, else empty.
+def _spark_pool_problem(pool: Iterable[Any]) -> str:
+    """Why Spark cannot write the pool into one column, else empty.
 
-    createDataFrame merges the value types in order and text absorbs any type before it, so
-    two distinct kinds ahead of the first text fail; a date or datetime merged into text is
-    written as a Java calendar string. Numbers alone reach Spark as one float column.
+    Spark merges the value types in order: two kinds ahead of the first text value fail, and
+    beside text only bool, int, float and Decimal are written faithfully (the other kinds
+    fail or become Java object strings). Numbers alone reach Spark as one numeric column.
     """
-    kinds = [next((name for kind, name in _POOL_KINDS if isinstance(v, kind)), type(v).__name__)
-             for v in pool if v is not None]
-    if not kinds:
+    values = [v for v in pool if v is not None]
+    if not values:
         return "holds only None"
-    if set(kinds) <= {"int", "float"}:
+    if all(isinstance(v, Real) and not isinstance(v, bool) for v in values):
         return ""
-    text = "text" in kinds
-    head = kinds[:kinds.index("text")] if text else kinds
-    clash = next((k for k in head if k != head[0]), None)
-    temporal = next((k for k in kinds if k in ("date", "datetime")), None) if text else None
-    pair = (head[0], clash) if clash else (temporal, "text") if temporal else None
-    return f"holds {pair[0]} and {pair[1]}, which Spark cannot write into one column" if pair else ""
+    for v in values:
+        if type(v) not in _POOL_ATOMS:
+            return f"holds {type(v).__name__}, which Spark cannot write unchanged"
+    kinds = [_POOL_ATOMS[type(v)] for v in values]
+    head = kinds[:kinds.index("text")] if "text" in kinds else kinds
+    for kind in head:
+        if kind != head[0]:
+            return f"holds {head[0]} and {kind} ahead of any text value; Spark merges kinds in order and fails unless text comes first"
+    for v in values if "text" in kinds else ():
+        if type(v) not in _WRITTEN_BESIDE_TEXT:
+            return f"holds {_POOL_ATOMS[type(v)]} beside text, which Spark writes as a Java object string"
+    return ""
 
 
 def _distincts(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
