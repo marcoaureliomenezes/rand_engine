@@ -347,7 +347,7 @@ class AdvancedValidator:
                 "e.g. {'method': 'pk', 'kwargs': {'start': 1}}"
             ]
 
-        foreign = sorted(set(parent) - {"method", "kwargs"})
+        foreign = sorted(map(str, set(parent) - {"method", "kwargs"}))
         errors = (
             [f"❌ Column '{col_name}': fk 'parent' ({col_name}.parent) takes only 'method' and 'kwargs', not {foreign}"]
             if foreign

@@ -85,7 +85,7 @@ class CommonValidator:
                 invalid_parameters.add(parameter)
 
         valid_parameters = set(method_spec.required) | set(method_spec.optional)
-        unknown_parameters = sorted(set(kwargs) - valid_parameters)
+        unknown_parameters = sorted(map(str, set(kwargs) - valid_parameters))
         if unknown_parameters:
             valid = ", ".join(f"'{name}'" for name in sorted(valid_parameters))
             if method_spec.kind == ORDINARY:
