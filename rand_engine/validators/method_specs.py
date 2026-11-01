@@ -195,14 +195,18 @@ def _booleans(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
     return (issue,) if issue else ()
 
 
+def _mixed_types(values: Iterable[Any]) -> str:
+    """Names of the types, sorted, when the values are not all one type; else empty."""
+    types = {type(value) for value in values}
+    return ", ".join(sorted(t.__name__ for t in types)) if len(types) > 1 else ""
+
+
 def _distincts(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
     values = kwargs.get("distincts")
     if not values:
         return (("distincts", "must be non-empty"),)
-    types = {type(value) for value in values}
-    if len(types) > 1:
-        return (("distincts", f"must hold one type, found {', '.join(sorted(t.__name__ for t in types))}"),)
-    return ()
+    mixed = _mixed_types(values)
+    return (("distincts", f"must hold one type, found {mixed}"),) if mixed else ()
 
 
 def _weight_issues(pairs: Iterable[tuple[Any, Any]], suffix: str = "") -> list[SemanticIssue]:
@@ -300,6 +304,9 @@ def _mapped_values(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
         for values in pools.values()
         if not values
     ]
+    mixed = _mixed_types(pools)
+    if mixed:
+        issues.append(("distincts", f"categories must hold one type, found {mixed}"))
     return tuple(issues)
 
 
