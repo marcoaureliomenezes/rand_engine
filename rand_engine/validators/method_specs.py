@@ -12,7 +12,7 @@ from typing import Any, Callable, Mapping
 import pandas as pd
 import pyarrow as pa
 
-from rand_engine.core._np_core import DATE_DIRECTIVES, float_decimals_supported, float_lattice_bounds, poisson_lam_supported
+from rand_engine.core._np_core import DATE_DIRECTIVES, _parse_date_bound, float_decimals_supported, float_lattice_bounds, poisson_lam_supported
 
 
 TypeRule = type | tuple[type, ...]
@@ -212,14 +212,24 @@ def _distincts_prop(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
     return tuple(issues)
 
 
+def _date_bounds(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
+    date_format = kwargs.get("date_format", "%Y-%m-%d")
+    parsed = []
+    for name in ("start", "end"):
+        try:
+            parsed.append(_parse_date_bound(kwargs[name], date_format))
+        except ValueError:
+            return ((name, f"'{kwargs[name]}' does not parse under date_format '{date_format}' nor as '%Y-%m-%d'"),)
+    if parsed[0] >= parsed[1]:
+        return (("start/end", f"start '{kwargs['start']}' must be before end '{kwargs['end']}' (date_format '{date_format}')"),)
+    return ()
+
+
 def _dates(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
-    date_format = kwargs.get("date_format")
-    if date_format is None:
-        return ()
-    unsupported = sorted(set(re.findall(r"%.?", date_format)) - set(DATE_DIRECTIVES))
+    unsupported = sorted(set(re.findall(r"%.?", kwargs.get("date_format", ""))) - set(DATE_DIRECTIVES))
     if unsupported:
         return (("date_format", f"contains unsupported directives; supported: {' '.join(DATE_DIRECTIVES)}"),)
-    return ()
+    return _date_bounds(kwargs)
 
 
 def _exponential(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
@@ -374,6 +384,7 @@ METHOD_CATALOG: Mapping[str, MethodSpec] = MappingProxyType(
         "unix_timestamps": _spec(
             required={"start": str, "end": str},
             optional={"date_format": str},
+            semantic=_date_bounds,
             arrow_types=_fixed_arrow_types(pa.int64()),
             example={
                 "method": "unix_timestamps",
