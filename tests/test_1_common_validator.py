@@ -351,7 +351,6 @@ def _pool_spec(method, distincts):
     ("distincts", [(1, 2)], "holds a list, tuple or dict, which Spark writes as another value"),
     ("distincts", [Fraction(1, 2)], "holds a value Spark cannot type or convert"),
     ("distincts", [Fraction(1, 2), 1], "holds a value Spark cannot type or convert"),
-    ("distincts", [np.str_("x")], "holds a value Spark cannot type or convert"),
     ("distincts", [np.int64(1), "x"], "holds a value Spark cannot type or convert"),
     ("distincts", [np.True_, None], "holds a value Spark cannot type or convert"),
     ("distincts", [None, np.True_], "holds a value Spark cannot type or convert"),
@@ -415,7 +414,7 @@ def test_spark_keeps_pools_it_writes_faithfully(method, distincts):
     assert CommonValidator.validate_spark_spec(_pool_spec(method, distincts)) == []
 
 
-@pytest.mark.parametrize("distincts", [["x", "y"], ["x", None], [1, "x"], [True, "x"], [Decimal("1.5"), "x"], ["x", 2**70]])
+@pytest.mark.parametrize("distincts", [["x", "y"], ["x", None], [1, "x"], [True, "x"], [Decimal("1.5"), "x"], ["x", 2**70], [np.str_("y"), "x"], [np.str_("y"), None], [np.str_("y")]])
 def test_spark_keeps_text_pools_when_pandas_infers_its_string_dtype(distincts):
     """pandas 3 types a text column as its string dtype; Spark still writes the pool as text."""
     with pd.option_context("future.infer_string", True):
