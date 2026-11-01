@@ -594,6 +594,8 @@ _OUT_NAME = "❌ Column '{col}': output name '{name}' is produced twice: by {fir
    "c", "1", "'cols'[0] of column 'c'", "'cols'[1] of column 'c'"),
   ({"c": {"method": "distincts_map", "cols": [1, 1], "kwargs": _MAP}},
    "c", "1", "'cols'[0] of column 'c'", "'cols'[1] of column 'c'"),
+  ({"c": {"method": "distincts_map", "cols": [True, 1], "kwargs": _MAP}},
+   "c", "1", "'cols'[0] of column 'c'", "'cols'[1] of column 'c'"),
 ])
 def test_output_name_produced_twice_is_refused(spec, col, name, first, second):
   errors = AdvancedValidator.validate(spec)
@@ -994,3 +996,17 @@ def test_anomaly_values_fitting_only_after_a_global_transformer_are_refused_at_c
 def test_non_string_cols_names_validate_and_generate(spec, columns):
   assert AdvancedValidator.validate(spec) == []
   assert list(DataGenerator(spec, seed=1).size(2).get_df().columns) == columns
+
+
+@pytest.mark.parametrize("spec, expected", [
+  ({"c": {"method": "distincts_map", "cols": [1, "1"], "kwargs": _MAP}},
+   {1: ["x", "x"], "1": ["y", "y"]}),
+  ({"c": {"method": "distincts_map", "cols": [None, "None"], "kwargs": _MAP}},
+   {None: ["x", "x"], "None": ["y", "y"]}),
+  ({1: _INT, "c": {"method": "distincts_map", "cols": ["1", "b"], "kwargs": _MAP}},
+   {1: [4, 5], "1": ["x", "x"], "b": ["y", "y"]}),
+  ({1: _INT, "1": _INT}, {1: [4, 5], "1": [7, 9]}),
+])
+def test_output_names_equal_as_strings_but_distinct_as_keys_validate_and_generate(spec, expected):
+  assert AdvancedValidator.validate(spec) == []
+  assert DataGenerator(spec, seed=1).size(2).get_df().to_dict("list") == expected
