@@ -884,6 +884,17 @@ _DYM_METHODS = "'booleans', 'complex_distincts', 'constant', 'dates', 'distincts
         "❌ Column 'c': unknown column key 'null_rat'\n   Accepted keys: " + _DYM_KEYS
         + "\n   Did you mean 'null_rate'?",
     ),
+    (
+        {"c": {"method": "integers", "kwargs": {"min": 0, "max": 9, "mni": 5, 7: 1}}},
+        "⚠️  Column 'c': unknown parameters: '7', 'mni'\n   Valid parameters for 'integers': " + _DYM_PARAMS
+        + "\n   Did you mean 'min'?",
+    ),
+    (
+        {"c": {"method": "pk", "kwargs": {"strat": 1}}},
+        "⚠️  Column 'c': Unknown parameter 'strat' for method 'pk'\n"
+        "   Valid parameters: 'domain', 'format', 'key', 'start', 'step', 'style'"
+        "\n   Did you mean 'start'?",
+    ),
 ])
 def test_unknown_name_with_close_match_adds_did_you_mean_line(spec, expected):
     assert AdvancedValidator.validate(spec) == [expected]
@@ -901,6 +912,10 @@ def test_unknown_name_with_close_match_adds_did_you_mean_line(spec, expected):
     (
         {"c": {**_DYM_INT, "qqqqzz": 1}},
         "❌ Column 'c': unknown column key 'qqqqzz'\n   Accepted keys: " + _DYM_KEYS,
+    ),
+    (
+        {"c": {**_DYM_INT, 1: 2}},
+        "❌ Column 'c': unknown column key '1'\n   Accepted keys: " + _DYM_KEYS,
     ),
 ])
 def test_unknown_name_without_close_match_adds_no_suggestion(spec, expected):
