@@ -371,6 +371,8 @@ def test_constraints_key_is_refused_naming_pk_and_fk(constraints):
 
 @pytest.mark.parametrize("config, message", [
     ({"method": "integers", "kwargs": {"min": 1, "max": 5, "dtype": "int"}}, "unknown parameters: 'dtype'"),
+    ({"method": "integers", "kwargs": {"min": 0, "max": 9, 7: 1}}, "unknown parameters: '7'"),
+    ({"method": "integers", "kwargs": {"min": 0, "max": 9, "zz": 1, 7: 1}}, "unknown parameters: '7', 'zz'"),
     ({"method": "distincts_external", "kwargs": {"name": "t", "fields": ["id"], "watermark": "1 DAY"}}, "does not exist"),
     ({"method": "distincts_map", "cols": ["device", "os"]}, "requires parameter 'distincts'"),
 ])
@@ -442,6 +444,7 @@ FK_PARENT = {"method": "pk", "kwargs": {"style": "permuted", "domain": 100}}
   ({"parent": FK_PARENT, "parent_size": 10, "skew": float("inf")}, r"skew.*finite"),
   ({"parent": FK_PARENT, "parent_size": True}, r"parent_size.*integer"),
   ({"parent": FK_PARENT, "parent_size": 10, "seed": 1}, r"Unknown parameter 'seed'"),
+  ({"parent": {"method": "pk", "kwargs": {}, "x": 1, 7: 1}, "parent_size": 10}, r"takes only 'method' and 'kwargs', not \['7', 'x'\]"),
 ])
 def test_fk_spec_is_refused(kwargs, match):
   """AC2.6."""

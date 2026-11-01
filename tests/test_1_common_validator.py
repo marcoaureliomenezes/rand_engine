@@ -235,6 +235,8 @@ class TestValidateAndRaise:
     @pytest.mark.parametrize("config, message", [
         ({"method": "distincts_external", "kwargs": {}}, "does not exist"),
         ({"method": "integers", "kwargs": {"min": 1, "max": 5, "dtype": "int"}}, "unknown parameters: 'dtype'"),
+        ({"method": "integers", "kwargs": {"min": 0, "max": 9, 7: 1}}, "unknown parameters: '7'"),
+        ({"method": "integers", "kwargs": {"min": 0, "max": 9, "zz": 1, 7: 1}}, "unknown parameters: '7', 'zz'"),
         ({"method": "uuid4", "args": []}, "does not support 'args'"),
     ])
     def test_validate_and_raise_unsupported_advanced_spec(self, config, message):
