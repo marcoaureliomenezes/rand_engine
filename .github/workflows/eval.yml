@@ -16,7 +16,7 @@ on:
         description: Full model id
         default: claude-sonnet-5-5
       k:
-        description: Trials per task
+        description: Trials per task (the job timeout fits k up to 3)
         default: '3'
 
 permissions:
@@ -30,8 +30,8 @@ jobs:
   eval:
     name: ${{ matrix.task }} on ${{ matrix.install }}
     runs-on: ubuntu-latest
-    # 35 minutes per trial: the largest [agent] + [verifier] timeout_sec is 2100 s
-    timeout-minutes: ${{ fromJSON(inputs.k || '3') * 40 }}
+    # 3 trials x 2100 s (the largest [agent] + [verifier] timeout_sec) fit in 120 minutes
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
