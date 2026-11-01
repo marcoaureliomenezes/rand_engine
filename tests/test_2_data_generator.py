@@ -6,7 +6,7 @@ import pyarrow as pa
 import time
 import pytest
 from rand_engine.main.data_generator import DataGenerator
-from rand_engine.validators.exceptions import RandEngineError
+from rand_engine.validators.exceptions import RandEngineError, SpecValidationError
 from tests.conftest import natural_datetime_unit
 from tests.fixtures.f1_right_specs import (
     rand_spec_with_kwargs,
@@ -717,3 +717,49 @@ def test_unset_size_raises_the_literal_message_everywhere(tmp_path):
     DataGenerator(SIZE_SPEC).write.format("csv").save(str(tmp_path / "out"))
 
   assert [str(df_error.value), str(stream_error.value), str(save_error.value)] == [UNSET_SIZE] * 3
+
+
+_TWO = {"method": "distincts", "kwargs": {"distincts": ["1", "2"]}}
+VALIDATED_BUT_UNGENERABLE = {
+  "dates_bad_format": {"d": {"method": "dates", "kwargs": {"start": "01/01/2020", "end": "2023-01-01"}}},
+  "dates_start_after_end": {"d": {"method": "dates", "kwargs": {"start": "2024-01-01", "end": "2023-01-01"}}},
+  "unix_bad_date": {"u": {"method": "unix_timestamps", "kwargs": {"start": "2020-13-45", "end": "2021-01-01"}}},
+  "prop_all_zero": {"c": {"method": "distincts_prop", "kwargs": {"distincts": {"a": 0, "b": 0}}}},
+  "distincts_mixed_types": {"c": {"method": "distincts", "kwargs": {"distincts": ["a", 1]}}},
+  "complex_multichar_replacement": {"c": {"method": "complex_distincts", "kwargs": {
+    "pattern": "ab-ab", "replacement": "ab", "templates": [_TWO, _TWO]}}},
+}
+ANOMALY_SPEC = {"a": {"method": "integers", "kwargs": {"min": 0, "max": 9},
+                      "anomaly_rate": 0.1, "anomaly_values": ["x"]}}
+FK_NO_PARENT_AT_ROW_0 = {"parent_id": {"method": "fk", "kwargs": {
+  "parent": {"method": "pk", "kwargs": {"start": 1}}, "parent_size": 10,
+  "born_before": {"parent_start": 10, "parent_rate": 1, "child_start": 0, "child_rate": 1}}}}
+CONSTRUCTION_REFUSALS = {
+  **{name: (spec, next(iter(spec))) for name, spec in VALIDATED_BUT_UNGENERABLE.items()},
+  "anomaly_values_dtype": (ANOMALY_SPEC, "a"),
+  "fk_born_before_no_parent_at_row_0": (FK_NO_PARENT_AT_ROW_0, "parent_id"),
+}
+VALID_SPEC = {"v": {"method": "constant", "kwargs": {"value": 1}}}
+
+
+@pytest.mark.parametrize("spec, column", CONSTRUCTION_REFUSALS.values(), ids=CONSTRUCTION_REFUSALS)
+def test_validated_spec_that_cannot_generate_is_refused_at_construction(spec, column):
+  with pytest.raises(SpecValidationError, match=column):
+    DataGenerator(spec, seed=1)
+
+
+@pytest.mark.parametrize("bad, column", [CONSTRUCTION_REFUSALS[n] for n in VALIDATED_BUT_UNGENERABLE], ids=list(VALIDATED_BUT_UNGENERABLE))
+def test_callable_spec_gone_bad_is_refused_at_each_call_that_evaluates_it(bad, column, tmp_path):
+  current = {"spec": VALID_SPEC}
+  generator = DataGenerator(lambda: current["spec"], seed=1).size(3)
+  assert len(generator.get_df()) == 3
+  current["spec"] = bad
+  out = tmp_path / "out.csv"
+
+  with pytest.raises(SpecValidationError, match=column):
+    generator.get_df()
+  with pytest.raises(SpecValidationError, match=column):
+    generator.write.format("csv").save(str(out))
+  with pytest.raises(SpecValidationError, match=column):
+    next(generator.stream_dict(1000, 1000))
+  assert not out.exists()
