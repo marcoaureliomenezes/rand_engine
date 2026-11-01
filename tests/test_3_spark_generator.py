@@ -188,12 +188,17 @@ class TestSparkGeneratorAllTypes:
 
 
 @pytest.mark.parametrize("method", ["unix_timestamps", "dates"])
-def test_spark_date_bounds_in_another_format_generate_within_the_numpy_bounds(spark_session, spark_functions, method):
-    """Bounds written as %Y-%m-%d with a %d/%m/%Y date_format generate on Spark inside the span DataGenerator uses."""
+@pytest.mark.parametrize("start,end,date_format", [
+    ("2020-01-01", "2021-01-01", "%d/%m/%Y"),
+    ("0999-12-31", "1000-06-30", "%d/%m/%Y"),
+    ("0999-12-31", "1000-06-30", "%Y-%m-%d"),
+])
+def test_spark_date_bounds_in_another_format_generate_within_the_numpy_bounds(spark_session, spark_functions, method, start, end, date_format):
+    """Bounds written as %Y-%m-%d, also before year 1000, generate on Spark inside the span DataGenerator uses."""
     from datetime import datetime
     from rand_engine.core._np_core import _parse_date_bound, epoch_seconds
 
-    kwargs = {"start": "2020-01-01", "end": "2021-01-01", "date_format": "%d/%m/%Y"}
+    kwargs = {"start": start, "end": end, "date_format": date_format}
     spec = {"d": {"method": method, "kwargs": kwargs}}
     low, high = epoch_seconds(*(_parse_date_bound(kwargs[k], kwargs["date_format"]) for k in ("start", "end")))
 
