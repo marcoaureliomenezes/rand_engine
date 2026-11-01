@@ -205,8 +205,7 @@ def _distincts(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
     values = kwargs.get("distincts")
     if not values:
         return (("distincts", "must be non-empty"),)
-    mixed = _mixed_types(values)
-    return (("distincts", f"must hold one type, found {mixed}"),) if mixed else ()
+    return ()
 
 
 def _weight_issues(pairs: Iterable[tuple[Any, Any]], suffix: str = "") -> list[SemanticIssue]:

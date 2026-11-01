@@ -15,6 +15,7 @@ from rand_engine.validators.method_specs import (
     NUMPY,
     ORDINARY,
     MethodSpec,
+    _mixed_types,
 )
 
 
@@ -126,6 +127,12 @@ class AdvancedValidator:
 
         if method_spec.kind == ORDINARY:
             errors = CommonValidator.validate_column(col_name, col_config)
+            mixed = "" if errors or method != "distincts" else _mixed_types(col_config["kwargs"]["distincts"])
+            if mixed:
+                errors.append(
+                    f"❌ Column '{col_name}': method 'distincts' parameter 'distincts' "
+                    f"must hold one type, found {mixed}"
+                )
         else:
             errors = CommonValidator._validate_method_parameters(col_name, col_config, method_spec)
         errors.extend(cls._cols_errors(col_name, col_config, method_spec))
