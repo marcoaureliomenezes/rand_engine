@@ -127,7 +127,7 @@ class CommonValidator:
         return [
             f"❌ Column '{col_name}': unknown column key '{key}'\n   Accepted keys: {', '.join(COLUMN_KEYS)}"
             + CommonValidator.did_you_mean([key], COLUMN_KEYS)
-            for key in col_config
+            for key in map(str, col_config)
             if key not in COLUMN_KEYS
         ]
 
