@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.8.2] - 2026-11-01
+
+### Fixed
+
+- `dates` and `unix_timestamps` read a date bound the same way on NumPy and Spark; a bound that does not parse under the format is read as `%Y-%m-%d`.
+- `distincts_prop` and `distincts_map_prop` refuse a negative weight and an all-zero weight set at validation, instead of silently dropping a value or failing in generation.
+- A correlated column whose `cols` repeat another column's name (or each other) is refused at validation instead of overwriting that column.
+- A spec that validates now generates: `DataGenerator` generates one row of every column at construction, on a private generator that never touches your seed, and refuses a column that cannot generate with `SpecValidationError` naming the column, the method and the engine's error. A callable spec is validated at every evaluation.
+- `anomaly_values` that the column's dtype cannot keep are refused at construction with `SpecValidationError`, for a column with no embedded transformer; a column with embedded transformers is still judged at generation, after its transformers.
+- A non-string kwarg name, column key or fk parent key is refused with `SpecValidationError` instead of a raw `TypeError`.
+- On Windows, a drive-relative stream target (for example `C:out`) is written under that drive's current directory, not at the drive root.
+
+### Changed
+
+- An unknown method, parameter or column key adds a `Did you mean '<name>'?` line when a close match exists.
+- `size` must be a non-negative integer or a callable returning one; anything else is refused when the size is resolved, with `size must be a non-negative integer, got <value>`; generating with no size set raises `No size set: call .size(n) with an int or a callable returning one.`
+- Specs 0.8.1 accepted and then failed on are now refused at validation or construction: a date bound that is not a date, a start after its end, the weight and correlated-cols cases above, `distincts` with mixed value types, `distincts_map` categories of mixed types, `complex_distincts` with a multi-character replacement, an fk `born_before` whose first row has no eligible parent.
+- One spec 0.8.1 generated is now refused at construction: `anomaly_values` that fit a column only after a global transformer changes its dtype (a global transformer is applied after construction, so construction judges the method's dtype).
+
+### Removed
+
+- `validate_with_warnings` and `validate_spark_with_warnings`.
+
+---
+
 ## [0.8.1] - 2026-10-20
 
 ### Changed
