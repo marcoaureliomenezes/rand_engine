@@ -1,6 +1,6 @@
 # SPEC — Release: 0.8.2, candidate 1 (a spec that validates generates; agent eval baseline)
 
-**Status:** Approved
+**Status:** In review
 **Release ID:** 0.8.2
 **Owner:** dd-product-engineer
 **Opened:** 2026-10-31
@@ -10,6 +10,7 @@
 - Version ruling, operator verbatim: "0.8.2 → 0.9.0 → 1.0 (Recomendado)". 0.8.2 carries bug fixes, docs and discovery; every grammar, seed, error-format or default change is 0.9.0's.
 - Grill: Spark: "Manter como o ADR 0003 (Recomendado)"; "evals/ no repo, sob demanda (Recomendado)".
 - Split, main-thread ruling (size law): FR5 (public texts, doc drift) and FR6 (discovery metadata), with R3, R4, R6, R8 and their Replaces rows, move to rc-2, born by `release.py new` at this candidate's CLOSURE. FR numbers stay stable.
+- R12, operator ruling in IMPLEMENTATION (`.dadaia/handoff/rand-engine/2026-11-01T022537Z-main-ruling-eval-in-ci.handoff.json`): "this eval should be an CI eval, stupid"; rc-1 takes it by amendment, overriding the releases law's "never amended" for this change only: "Amend rc-1 by my order (Recommended)"; the CI credential: "Subscription OAuth token (Recommended)". FR8 and the lines it reaches follow.
 - Invariant 12: no `gen_*` body and no `StreamHandler` change; the grill's by-name approvals (`gen_distincts_prop`, `StreamHandler`, `gen_dates`) are 0.9.0's.
 
 ## Bug window review
@@ -63,7 +64,7 @@ Prior candidate: 0.8.1 rc-2 (archived): 3 resolved records, plus this Origin's 5
 - A net for `SparkGenerator` (a Spark job per construction; ADR 0003): Spark gets the static rules only.
 - Any `gen_*` body or `StreamHandler` change; any new runtime dependency (`difflib` is stdlib).
 - Per-file overwrite ownership for streams; Databricks markers in the other starters.
-- Running the eval in CI or as any gate; any change to the repo `verify:` line (gate law).
+- Running the eval as any gate (a required check, the `verify:` line or a merge check); any change to the repo `verify:` line (gate law).
 
 ## 4. Requirements
 
@@ -118,13 +119,14 @@ D2, main-thread ruling, within the version ruling: `_parse_date_bound` is the on
 
 ### FR8 — Agent eval harness and its 0.8.1 baseline
 
-E1: an agent finds rand-engine cold. E2: given the name, it generates correct related tables. E3: it fixes a wrong spec from the error alone.
+The eval runs in GitHub Actions, in its own non-blocking workflow (R12). E1: an agent finds rand-engine cold. E2: given the name, it generates correct related tables. E3: it fixes a wrong spec from the error alone.
 
 - AC8.1 (no test; a tree): `evals/tasks/{e1-cold-discovery,e2-named-related-tables,e3-fix-by-error}/` follow `repos/dadaia-workspace/evals/tasks/*`: `instruction.md`, `task.toml` (`schema_version`, `[metadata] description`, `[verifier]`, `[agent] timeout_sec`), `tests/` with the deterministic check.
-- AC8.2 (no test; the baseline exercises it): `evals/run.py` (stdlib) runs each task k=3 times by default, each trial in a fresh temporary directory and virtual environment holding the rand-engine under test (`--rand-engine <requirement or wheel>`). The agent is headless `claude -p` with none of the host's `CLAUDE.md`, settings, skills, plugins, hooks or MCP servers (the init event lists none), one pinned model id recorded per result. Results go only to a caller-named `--out`, one JSON per trial: task, trial, passed, input and output tokens, cost, duration. No credential is printed or persisted.
+- AC8.2 (no test; the baseline exercises it): `evals/run.py` (stdlib) runs each task k=3 times by default, each trial in a fresh temporary directory and virtual environment holding the rand-engine under test (`--rand-engine <requirement or wheel>`). The agent is headless `claude -p` with none of the host's `CLAUDE.md`, settings, skills, plugins, hooks or MCP servers (the init event lists none), one pinned model id recorded per result. Results go only to a caller-named `--out`, one JSON per trial: task, trial, passed, input and output tokens, cost, duration. The trial agent authenticates with the repository secret `CLAUDE_CODE_OAUTH_TOKEN`, passed only through the environment and never printed, persisted or copied. A trial whose auth or isolation fails is a harness error (exit 1).
 - AC8.3 (no test; the checks are the tests): E1 records whether the agent installed or imported `rand-engine`, never a pass target. E2 passes when parent and child tables have the requested row counts and every fk value is in the parent pk set. E3 passes when the fixed spec generates the requested rows and columns.
-- AC8.4 (integration, `tests/test_docs.py` or the wheel test): no file under `.github/workflows/` names `evals/`; `pytest --collect-only -q` at the repo root collects no `evals/` path; the built wheel lists no `evals/` entry.
-- AC8.5 (E2E, manual, on demand): one baseline round on `rand-engine==0.8.1` from PyPI, reported in `.dadaia/reports/rand-engine/` with passes out of 3 per task and its measured tokens and cost; the closure summary quotes it; a round on the 0.8.2 build runs before promote.
+- AC8.4 (integration, `tests/test_docs.py` or the wheel test): no workflow but `.github/workflows/eval.yml` names `evals/`; `pytest --collect-only -q` at the repo root collects no `evals/` path; the built wheel lists no `evals/` entry.
+- AC8.5 (E2E, the first CI run of `eval.yml`): that run is the baseline. Its PyPI round is 0.8.1, the latest release at that run; its build round is the rc-1 build. Its artifact makes the report in `.dadaia/reports/rand-engine/`, with passes out of 3 per task and measured tokens and cost; the closure summary quotes it. The 0.8.2 build round before promote is the run on the PR to `development`.
+- AC8.6 (no test; integration-free, the first run exercises it): `.github/workflows/eval.yml` runs on push to `feature/**` touching `evals/**` or the workflow, on pull_request to `development`, and on workflow_dispatch with `model` and `k` inputs. Each run evaluates E1 once (cold), and E2 and E3 on the latest PyPI release and on the wheel built from the checkout, k=3. The model id is pinned (default `claude-sonnet-5-5`, overridable on dispatch), and so is the CLI version. A trial with passed=false never fails the job; a harness error does. Each trial's JSON is a run artifact, and the job summary carries a table. It is never a required check.
 
 ### FR9 — Version, changelog and closure memory
 
@@ -133,7 +135,7 @@ E1: an agent finds rand-engine cold. E2: given the name, it generates correct re
   - **Fixed**: the five Origin bugs; the Windows drive-relative stream target that landed on the work branch;
   - **Changed**: did-you-mean lines, size refused at resolution, the newly refused specs;
   - **Removed**: `validate_with_warnings`, `validate_spark_with_warnings`.
-- AC9.3 (closure memory pass, `pe`): the atoms `rand-spec-grammar`, `data-generator`, `writers-and-streaming`, `documentation` and `public-api` state FR1–FR4 and FR7 as they leave them; `ARCHITECTURE.md` `## Structure` names `evals/`; `QUALITY.md` `## Test architecture` states that the eval runs on demand, outside pytest and CI. The same pass re-stamps the derived-from sha256 markers in `docs/1_DATA_GENERATOR.md:21,36` and `docs/5_RECIPES.md:7,8,39,100,131,151`.
+- AC9.3 (closure memory pass, `pe`): the atoms `rand-spec-grammar`, `data-generator`, `writers-and-streaming`, `documentation` and `public-api` state FR1–FR4 and FR7 as they leave them; `ARCHITECTURE.md` `## Structure` names `evals/`; `QUALITY.md` `## Test architecture` states that the eval runs in its own non-blocking workflow, outside pytest and the gating checks. The same pass re-stamps the derived-from sha256 markers in `docs/1_DATA_GENERATOR.md:21,36` and `docs/5_RECIPES.md:7,8,39,100,131,151`.
 
 ### Test changes the rulings carry
 
@@ -157,10 +159,10 @@ D5+R11 and R2 each change asserts in a `test(...)` commit naming the ruling. The
 | FR2 adds hand rules the 0.9.0 catalog REBUILDs | ruled ("Catálogo declarativo + rede (Recomendado)"); they become catalog data |
 | FR1–FR4 share `rand_engine/validators/`; FR4, FR7 and FR8 share `tests/test_docs.py` | the PLAN orders or edges those jobs |
 | Deleted names | Replaces lists the pre-mortem's consumers; the PLAN answers each |
-| `claude -p` needs the operator's auth | read from the operator's environment, never printed, copied or persisted |
+| the CI eval needs the operator's subscription token | a repository secret the operator sets; the workflow passes it as env; never printed, persisted or copied |
 
 - At promote the operator approves the PyPI publish in the GitHub environment `production` (invariant 13).
 
 ## 6. Open questions
 
-- None. D1–D5 answer the as-is review's decisions, R1–R11 the pre-mortem's hits (R3, R4, R6, R8 with rc-2).
+- None. D1–D5 answer the as-is review's decisions, R1–R11 the pre-mortem's hits (R3, R4, R6, R8 with rc-2), R12 the operator's FR8 order.
