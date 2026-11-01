@@ -4,7 +4,7 @@ Short, runnable patterns. Every `python` block runs in CI, in order, in one name
 
 ## Faker pools
 
-<!-- derived-from: generation-methods sha256:50d7ec68cbb0 -->
+<!-- derived-from: generation-methods sha256:1f05c8237a5e -->
 <!-- derived-from: templates-and-examples sha256:fa66c7f7252b -->
 
 Faker is slow per value; `RandSpecs.faker_pool` draws a pool once and returns a `distincts` spec.
@@ -97,7 +97,7 @@ then run a returned spec with the generator that family supports.
 
 ## Kafka or any queue
 
-<!-- derived-from: data-generator sha256:1c94eb8188d4 -->
+<!-- derived-from: data-generator sha256:59bf93827df7 -->
 
 `stream_dict` yields Python record dicts at a bounded rate; send them with your client.
 After normalization, every microbatch uses pandas records so its public Python representation is

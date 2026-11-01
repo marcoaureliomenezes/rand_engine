@@ -32,7 +32,7 @@ rand_engine.__version__  # the installed rand-engine version, else "0.0.0+unknow
 - `SpecValidationError` — the spec failed validation at generator construction, at a callable spec's evaluation or in `from_schema`, or a `DataGenerator` column could not generate its one-row check at construction; the validators collect every issue into one error whose footer links the docs site ([[rand-spec-grammar]], [[data-generator]]).
 - `ColumnGenerationError` — a method raised while building a named column.
 - `TransformerError` — a per-column transformer raised; the message names the column and the transformer's zero-based index. Global transformer errors propagate unwrapped.
-- Plain `RandEngineError` — an unset size or one that is not a non-negative integer, an invalid writer option, an unwritable schema, an anomaly value that cannot keep the dtype of a column with embedded transformers, a key that cannot be generated, or a global transformer that changes the row count ([[writers-and-streaming]], [[data-generator]]).
+- Plain `RandEngineError` — an unset size or one that is not a non-negative integer, an invalid writer option, an unwritable schema, anomaly values a column cannot keep after its transformers at generation, a key that cannot be generated, or a global transformer that changes the row count ([[writers-and-streaming]], [[data-generator]]).
 - `FileWriterError` — declared and importable; no module raises it, and its docstring says so.
 
 ## Distribution

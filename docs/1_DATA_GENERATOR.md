@@ -18,7 +18,7 @@ assert df["age"].between(18, 80).all()
 
 ## API
 
-<!-- derived-from: data-generator sha256:1c94eb8188d4 -->
+<!-- derived-from: data-generator sha256:59bf93827df7 -->
 
 | Call | Does |
 |---|---|
@@ -33,7 +33,7 @@ Calling `get_df` without `.size` raises `RandEngineError`; so does a size, or a 
 
 ## Seeds
 
-<!-- derived-from: data-generator sha256:1c94eb8188d4 -->
+<!-- derived-from: data-generator sha256:59bf93827df7 -->
 
 A seed fixes the output: the same spec, seed and size give the same frame. Each generator owns
 its own `numpy.random.Generator` (PCG64), so generators never share or reset NumPy's global state.
@@ -50,7 +50,7 @@ assert not gen.get_df().equals(gen.get_df())
 
 ## Methods
 
-<!-- derived-from: generation-methods sha256:50d7ec68cbb0 -->
+<!-- derived-from: generation-methods sha256:1f05c8237a5e -->
 
 Each column is `{"method": <name>, "kwargs": {...}}`. Bounds of `integers` are inclusive. A method that generates text gives a `string[pyarrow]` column (`pd.ArrowDtype(pa.string())`) whose nulls are `pd.NA`; numeric, boolean and datetime columns keep their pandas dtype. An embedded transformer's output dtype is pandas' inference of what the transformer returns.
 
@@ -164,7 +164,8 @@ for bad in ({"method": "floats", "kwargs": {"min": 0, "max": 1, "decimals": 309}
 Any single-column NumPy-engine method may carry `null_rate` (share of rows set to null) and `anomaly_rate` (share
 replaced by a draw from `anomaly_values`, a non-empty list of scalars required when the rate is
 above 0). Both are in [0, 1]; anomalies apply first, then nulls. Anomaly values that the column's dtype
-cannot keep are refused at construction; for a column with embedded transformers, at generation, after them. `pk`, `fk` and the multi-column methods
+cannot keep are refused at construction (`SpecValidationError`) for a column with no embedded transformers;
+at generation, after the embedded and global transformers, they raise `RandEngineError` for any column. `pk`, `fk` and the multi-column methods
 (`distincts_map`, `distincts_map_prop`, `distincts_multi_map`, `complex_distincts`) refuse them, and so does SparkGenerator.
 
 ```python
@@ -237,7 +238,7 @@ for key in ("args", "splitable", "sep", "pk"):
 
 ## Transformers
 
-<!-- derived-from: data-generator sha256:1c94eb8188d4 -->
+<!-- derived-from: data-generator sha256:59bf93827df7 -->
 
 A column may carry `"transformers"`: functions applied value by value. `.transformers([...])` takes
 whole-frame functions, run after the column ones.
@@ -263,7 +264,7 @@ assert df["name"].dtype == pd.Series([str.upper("ana")]).dtype  # a transformer'
 
 ## Validation
 
-<!-- derived-from: rand-spec-grammar sha256:9c95cb86e4a0 -->
+<!-- derived-from: rand-spec-grammar sha256:51e3f59b9bf8 -->
 
 An invalid spec raises `SpecValidationError` (a `RandEngineError`) on construction, listing every
 error with a corrected example; a misspelled method, kwarg or column key adds a `Did you mean '<name>'?` line.
@@ -279,7 +280,7 @@ else:
 
 ## Streaming dicts
 
-<!-- derived-from: data-generator sha256:1c94eb8188d4 -->
+<!-- derived-from: data-generator sha256:59bf93827df7 -->
 
 `stream_dict` never ends: it generates `size` rows per microbatch, converts datetime columns to
 strings and adds `timestamp_created` (epoch seconds) to each record. Stop it yourself.

@@ -23,6 +23,7 @@ sources:
 - The common validator accepts ordinary Spark methods and named `kwargs`; `SparkGenerator` extracts `pk` and `fk` columns and applies the same advanced key validation as `DataGenerator` ([[rand-spec-grammar]], [[generation-methods]]).
 - `exponential`, `lognormal`, `poisson`, `zipf`, `constant` and the four correlated methods `distincts_map`, `distincts_multi_map`, `distincts_map_prop` and `complex_distincts` are refused as NumPy engine only, with the fix line to use `DataGenerator`; so are `null_rate` and `anomaly_rate`; `anomaly_values` alone is accepted and has no effect.
 - `args` and unknown column keys are refused.
+- A `distincts` pool may mix value types: Spark coerces it, so `['x', 'y', None]` yields text and nulls — the in-spec way to get nulls on Spark — and `[1, 2.5]` yields doubles; `DataGenerator` refuses such pools ([[rand-spec-grammar]]).
 - `integers` refuses `uint64` and any width `max - min + 1` above 2^53, at validation and in `SparkCore` alike; `int_zfilled` refuses `length` above 15. Every other accepted integer domain, width 2^53 included, is exact and inclusive.
 
 ## Behaviour

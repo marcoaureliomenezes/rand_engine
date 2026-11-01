@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-01T16:00:06Z",
+  "generated_at": "2026-11-01T16:34:11Z",
   "features": [
     {
       "rank": 1,
@@ -14,7 +14,7 @@
         "package",
         "exceptions"
       ],
-      "token_estimate": 648,
+      "token_estimate": 644,
       "depends_on": [
         "data-generator",
         "spark-generator",
@@ -72,7 +72,7 @@
         "generator",
         "dataframe"
       ],
-      "token_estimate": 757,
+      "token_estimate": 795,
       "depends_on": [
         "writers-and-streaming",
         "templates-and-examples",
@@ -102,7 +102,7 @@
         "distributions",
         "modifiers"
       ],
-      "token_estimate": 1420,
+      "token_estimate": 1401,
       "depends_on": [
         "data-generator",
         "spark-generator",
@@ -128,7 +128,7 @@
         "pyspark",
         "generator"
       ],
-      "token_estimate": 582,
+      "token_estimate": 634,
       "depends_on": [
         "data-generator",
         "rand-spec-grammar",
@@ -245,7 +245,7 @@
         "ci",
         "quality"
       ],
-      "token_estimate": 555,
+      "token_estimate": 599,
       "depends_on": [
         "pk-fk-constraints",
         "rand-spec-grammar",
@@ -323,7 +323,7 @@
         "grammar",
         "validation"
       ],
-      "token_estimate": 1023,
+      "token_estimate": 1058,
       "depends_on": [
         "pk-fk-constraints",
         "generation-methods",

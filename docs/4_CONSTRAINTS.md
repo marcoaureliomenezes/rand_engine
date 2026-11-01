@@ -132,7 +132,7 @@ assert [r["event_id"] for r in records] == list(range(1, 26))
 
 ## Spark
 
-<!-- derived-from: spark-generator sha256:2e9fdae1166e -->
+<!-- derived-from: spark-generator sha256:30fb02489a06 -->
 
 `SparkGenerator` accepts the same stateless `pk` and `fk` definitions through its key-only adapter.
 An explicit seed controls those keys only; ordinary Spark columns remain native and unseeded.

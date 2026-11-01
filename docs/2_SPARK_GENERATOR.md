@@ -26,7 +26,7 @@ assert df.columns == ["user_id", "age", "is_active", "signup"]
 
 ## API
 
-<!-- derived-from: spark-generator sha256:2e9fdae1166e -->
+<!-- derived-from: spark-generator sha256:30fb02489a06 -->
 
 | Call | Does |
 |---|---|
@@ -39,8 +39,8 @@ assert df.columns == ["user_id", "age", "is_active", "signup"]
 
 ## Methods
 
-<!-- derived-from: spark-generator sha256:2e9fdae1166e -->
-<!-- derived-from: generation-methods sha256:50d7ec68cbb0 -->
+<!-- derived-from: spark-generator sha256:30fb02489a06 -->
+<!-- derived-from: generation-methods sha256:1f05c8237a5e -->
 
 The table records validation's current outcome for every RandSpec method. `yes` means Spark produces
 the column; `refused` means use `DataGenerator`.
@@ -73,6 +73,8 @@ The accepted ordinary methods use the same kwargs as [1_DATA_GENERATOR.md](1_DAT
 `pk` and `fk` use the same stateless definitions as `DataGenerator`; a Spark `seed` affects those
 key columns only. A `dates` `date_format` is limited to `%Y %m %d %H %M %S %f`, as on the NumPy
 engine. The five NumPy-only distributions/constants, and `null_rate` / `anomaly_rate`, are refused.
+A `distincts` pool may mix value types on Spark, which coerces it: `["x", None]` gives text and
+nulls, `[1, 2.5]` gives doubles. `DataGenerator` refuses a mixed pool.
 `kwargs` is the only parameter key; `args`, `splitable`, `sep` and `pk` as column keys are also
 refused.
 Spark accepts `int_zfilled` only through length 15, refuses `uint64`, and refuses integer domains
@@ -139,6 +141,6 @@ else:
 
 ## Writing
 
-<!-- derived-from: spark-generator sha256:2e9fdae1166e -->
+<!-- derived-from: spark-generator sha256:30fb02489a06 -->
 
 Use Spark's own `df.write`; rand-engine does not own Spark writing.

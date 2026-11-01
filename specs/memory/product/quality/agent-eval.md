@@ -23,11 +23,11 @@ sources:
 
 - `python evals/run.py --task <names> --k 3 --rand-engine <requirement or wheel> --model <full model id> --out <dir>` uses the standard library only. `--out` must lie outside the repo.
 - Each trial creates a temporary directory with a venv and a separate work directory, installs the rand-engine under test unless the task opts out, and runs headless `claude -p` with no settings sources, MCP servers, slash commands or skills; the init event is asserted to list none.
-- The OAuth token reaches only the `claude -p` call. A failed isolation, auth, API, rate or usage limit is a harness error: the trial records `error` and the run exits 1. A trial with `passed: false` is a result.
+- The OAuth token reaches only the `claude -p` call, which runs with `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1`, so the agent's own shell and tool subprocesses do not inherit it; the scrub needs bubblewrap. A failed isolation, auth, API, rate or usage limit is a harness error: the trial records `error` and the run exits 1. A trial with `passed: false` is a result.
 - One JSON per trial records the task, trial, passed, the check's last output line, the model id, input tokens (cache reads and writes included), output tokens, cost and duration.
 
 ## CI
 
-- `.github/workflows/eval.yml` runs on push to `feature/**` touching `evals/**` or the workflow, on pull requests to `development`, and on manual dispatch with `model` and `k` inputs. It pins the model id and the agent CLI version.
+- `.github/workflows/eval.yml` runs on push to `feature/**` touching `evals/**` or the workflow, on pull requests to `development`, and on manual dispatch with `model` and `k` inputs. It pins the model id and the agent CLI version, and installs bubblewrap with the runner's unprivileged user-namespace restriction lifted, for the scrub.
 - Its matrix runs E1 on the PyPI release, and E2 and E3 on both the PyPI release and the wheel built from the checkout, k = 3 by default. Each leg writes a job-summary table and uploads its trial results as an artifact.
 - The eval runs outside pytest and is never a required check; `pytest` collects no `evals/` path and the wheel ships none of it ([[public-api]]).
