@@ -536,9 +536,11 @@ def test_wheel_holds_only_the_rand_engine_package(built_wheel):
     assert [n for n in names if "skills/" in n] == []
 
 
-def test_no_workflow_names_the_evals_folder():
+def test_no_workflow_but_eval_yml_names_the_evals_folder():
     workflows = Path(__file__).parents[2] / ".github" / "workflows"
-    assert [w.name for w in workflows.glob("*") if "evals/" in w.read_text()] == []
+    assert [
+        w.name for w in workflows.glob("*") if w.name != "eval.yml" and "evals/" in w.read_text()
+    ] == []
 
 
 def test_evals_folder_holds_no_file_pytest_collects():
