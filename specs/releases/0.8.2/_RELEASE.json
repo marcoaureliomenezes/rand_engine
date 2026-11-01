@@ -54,6 +54,13 @@
         "rand-spec-grammar",
         "agent-eval"
       ]
+    },
+    {
+      "ts": "2026-11-01T16:01:03Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "candidate": "rc-1",
+      "text": "delivered: FR1 one-row construction net and callable validation (validated-specs-fail-in-generation, anomaly-values-dtype-validates-then-raises), FR2 static rules by class (distincts-prop-negative-weight-drops-value, correlated-cols-overwrite-existing-column), FR3 one size decider, FR4 one date-bound decider (date-bound-parse-diverges-numpy-spark), FR7 hygiene deletions, FR8 CI agent eval, FR9 version 0.8.2 and changelog; plus hotfix validator-non-string-kwarg-raises-typeerror and bug cols-rule-refuses-non-string-names; carried: none; backlog exits: none"
     }
   ]
 }
