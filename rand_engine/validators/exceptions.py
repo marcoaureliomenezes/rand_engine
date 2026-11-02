@@ -2,8 +2,7 @@
 
 The errors Rand Engine raises on purpose are subclasses of ``RandEngineError``,
 so one ``except`` clause covers them. The narrower subclasses name the stage
-that failed: spec validation, column generation, a per-column transformer, or
-file output.
+that failed: spec validation, column generation, or a per-column transformer.
 """
 
 
@@ -11,7 +10,8 @@ class RandEngineError(Exception):
     """Base class of the errors Rand Engine raises on purpose.
 
     Raised directly for size faults, an fk column with no eligible parent, a
-    modifier column missing after embedded transformers, a global transformer
+    modifier column that a global transformer dropped, anomaly values that
+    cannot keep the dtype an embedded transformer left, a global transformer
     that changes the row count, an empty schema that cannot be derived, the pk
     index and sequence guards, ``RandSpecs.faker_pool``, and the writers. A
     failure in the generation step (the method call, the conversion, the
