@@ -76,7 +76,7 @@ def test_list_prints_six_slugs_in_order_with_descriptions(capsys):
     "lake  pk/fk related tables written to a Parquet lake",
     "kafka  an event stream for Kafka: JSON lines to stdout by default, a producer block ready",
     "databricks  a Spark/Databricks notebook on native SparkGenerator",
-    "faker  Faker pools sampled at NumPy speed through RandSpecs.faker_pool",
+    "faker  Faker pools drawn once and sampled by NumPy through RandSpecs.faker_pool",
   ]
   for line, slug in zip(lines, ALL_SLUGS):
     assert line.startswith(slug)

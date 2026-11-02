@@ -1021,3 +1021,17 @@ def test_docs_workflow_deploys_pages_from_master_only():
   gate = re.search(r"^    if: (.*)$", deploy, re.M).group(1)
   assert gate == "github.event_name == 'push' && github.ref == 'refs/heads/master'"
   assert set(re.findall(r"refs/heads/[\w./-]+", text)) == {"refs/heads/master"}
+
+
+SPEED_SCAN = ["README.md", "rand_engine/llms.txt", "rand_engine/cli.py", "rand_engine/cases/faker.py.txt",
+              "docs/explanation.md", "docs/5_RECIPES.md", "docs/comparison.md", "mkdocs.yml",
+              "skills/rand-engine/SKILL.md", "pyproject.toml", "rand_engine/__init__.py", "AGENTS.md"]
+SPEED_WORDS = re.compile(r"\bfastest\b|\bvery fast\b|\bfast\b|numpy speed|\bslow\b", re.I)
+
+
+def test_public_texts_carry_no_unmeasured_speed_claim():
+  hits = []
+  for name in SPEED_SCAN:
+    prose = re.sub(r"`[^`\n]*`", "", re.sub(r"^```.*?^```", "", _text(ROOT / name), flags=re.M | re.S))
+    hits += [f"{name}:{n}: {line.strip()}" for n, line in enumerate(prose.splitlines(), 1) if SPEED_WORDS.search(line)]
+  assert hits == []
