@@ -1035,3 +1035,20 @@ def test_public_texts_carry_no_unmeasured_speed_claim():
     prose = re.sub(r"`[^`\n]*`", "", re.sub(r"^```.*?^```", "", _text(ROOT / name), flags=re.M | re.S))
     hits += [f"{name}:{n}: {line.strip()}" for n, line in enumerate(prose.splitlines(), 1) if SPEED_WORDS.search(line)]
   assert hits == []
+
+
+def nav_pages() -> list[str]:
+  text = (ROOT / "mkdocs.yml").read_text(encoding="utf-8")
+  return sorted(set(re.findall(r"^\s+- [^:\n]+: ([\w/-]+\.md)(?:#\S*)?$", text, re.M)) - {"index.md"})
+
+
+def test_every_nav_page_but_home_has_its_own_search_description():
+  site = re.search(r"^site_description: (.+)$", (ROOT / "mkdocs.yml").read_text(encoding="utf-8"), re.M).group(1)
+  pages = nav_pages()
+  assert len(pages) == 17
+  descriptions = {}
+  for page in pages:
+    front = re.match(r"---\n(.*?)\n---\n", (DOCS / page).read_text(encoding="utf-8"), re.S).group(1)
+    descriptions[page] = re.search(r"^description: (.+)$", front, re.M).group(1).strip("\"'")
+  assert {page: 50 <= len(text) <= 160 for page, text in descriptions.items()} == dict.fromkeys(pages, True)
+  assert len(set(descriptions.values()) | {site}) == 18
