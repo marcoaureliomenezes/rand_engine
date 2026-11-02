@@ -6,6 +6,8 @@ These tests validate end-to-end workflow: metadata → DataFrame generation.
 
 Note: PySpark is a test-only dependency.
 """
+import datetime
+
 import pandas as pd
 import pytest
 from rand_engine import DataGenerator
@@ -727,18 +729,56 @@ def test_spark_arrow_off_pd_na_text_raises_cannot_merge_type(spark_session, arro
         spark_session.createDataFrame(pdf)
 
 
-@pytest.mark.parametrize("pool, expected", [
-    (["x", "y", None], {"x", "y", None}),
-    ([1, 2.5], {1.0, 2.5}),
-], ids=["text-with-none", "int-and-float"])
-def test_spark_generates_mixed_type_pools_as_on_0_8_1(spark_session, spark_functions, pool, expected):
-    spec = {"c": {"method": "distincts", "kwargs": {"distincts": pool}}}
-    rows = SparkGenerator(spark_session, spark_functions, spec).size(400).get_df().collect()
-    assert {row["c"] for row in rows} == expected
+def _pool_column(spark_session, spark_functions, pool, name="c"):
+    spec = {name: {"method": "distincts", "kwargs": {"distincts": pool}}}
+    df = SparkGenerator(spark_session, spark_functions, spec).size(400).get_df()
+    return df.dtypes, {repr(row[name]) for row in df.collect()}
+
+
+@pytest.mark.parametrize("pool, dtype, expected", [
+    (["x", "y", None], "string", {"'x'", "'y'", "None"}),
+    ([1, 2.5], "double", {"1.0", "2.5"}),
+    ([1, "x"], "string", {"'1'", "'x'"}),
+    ([True, "x"], "string", {"'true'", "'x'"}),
+    (["x", 1, 2.5], "string", {"'x'", "'1'", "'2.5'"}),
+], ids=["text-with-none", "int-and-float", "int-and-text", "bool-and-text", "text-then-numbers"])
+def test_spark_generates_mixed_type_pools_as_on_0_8_1(spark_session, spark_functions, pool, dtype, expected):
+    """The pools the docs name; repr tells 1 from 1.0 and '1' from 1, dtypes is Spark's own type."""
+    dtypes, values = _pool_column(spark_session, spark_functions, pool)
+    assert dtypes == [("c", dtype)]
+    assert values == expected
+
+
+@pytest.mark.parametrize("arrow, expected", [
+    (True, {"1.0", "2.0", "None"}),
+    (False, {"1.0", "2.0", "nan"}),
+], ids=["arrow-on-null", "arrow-off-nan"])
+def test_spark_int_pool_with_none_is_double_with_each_arrow_setting_result(spark_session, spark_functions, arrow_conf, arrow, expected):
+    """pandas turns [1, 2, None] into float64 NaN; Arrow on reads NaN as null, Arrow off keeps NaN."""
+    arrow_conf(arrow)
+    dtypes, values = _pool_column(spark_session, spark_functions, [1, 2, None])
+    assert dtypes == [("c", "double")]
+    assert values == expected
+
+
+@pytest.mark.parametrize("pool", [
+    [[1, 2], 3],
+    [None],
+    [1, True],
+    [1, 2.5, "x"],
+    ["x", datetime.date(2020, 1, 1)],
+    ["x", datetime.datetime(2020, 1, 1)],
+    ["x", b"y"],
+    [2**70, 1],
+], ids=["container", "no-inferable-value", "bool-after-int", "two-kinds-before-text", "date-beside-text", "timestamp-beside-text", "binary-beside-text", "beyond-int64"])
+def test_spark_refuses_unwritable_pool_at_construction_naming_the_column(spark_session, spark_functions, pool):
+    spec = {"pool_col": {"method": "distincts", "kwargs": {"distincts": pool}}}
+    with pytest.raises(SpecValidationError, match="pool_col"):
+        SparkGenerator(spark_session, spark_functions, spec)
 
 
 def test_spark_text_pool_keeps_none_as_null_under_string_inference(spark_session, spark_functions):
-    spec = {"c": {"method": "distincts", "kwargs": {"distincts": ["x", "y", None]}}}
     with pd.option_context("future.infer_string", True):
-        rows = SparkGenerator(spark_session, spark_functions, spec).size(400).get_df().collect()
-    assert {row["c"] for row in rows} == {"x", "y", None}
+        dtypes, values = _pool_column(spark_session, spark_functions, ["x", "y", None])
+    assert dtypes == [("c", "string")]
+    assert values == {"'x'", "'y'", "None"}
