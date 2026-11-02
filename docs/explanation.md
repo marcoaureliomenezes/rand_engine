@@ -14,7 +14,7 @@ The generator produces frames and record streams; where they go is yours: Kafka 
 
 ## Faker on top, through pools
 
-Faker is slow per value. Draw a small pool once, then let rand-engine sample it at [NumPy speed](BENCHMARKS.md). Faker complements the core and is never required.
+Faker takes 0.769 s per 100,000 dicts. Draw a small pool once, then let rand-engine sample it ([benchmarks](BENCHMARKS.md)). Faker complements the core and is never required.
 
 ```python
 from rand_engine import DataGenerator

@@ -1,6 +1,6 @@
 # rand-engine
 
-Synthetic data, very fast, from a declarative `RandSpec` — for batch and streaming, on any platform. The core is Python + NumPy; Spark is supported, never required, and Faker composes on top.
+rand-engine generates synthetic data from a declarative `RandSpec`, validated before generation: related `pk`/`fk` tables without a database, a reproducible seed, NumPy-vectorized generation, and published benchmarks, losses included. Its one figure: 4.8× Faker on a 100,000-dict workload (one CI run, three samples, medians; [run 39153239357](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/comparison.md)).
 
 [![PyPI](https://img.shields.io/pypi/v/rand-engine)](https://pypi.org/project/rand-engine/)
 [![Python](https://img.shields.io/pypi/pyversions/rand-engine)](https://pypi.org/project/rand-engine/)
@@ -36,7 +36,7 @@ assert df.shape == (1_000, 4) and df["age"].between(18, 80).all()
 
 - Test data for pipelines, with nulls and anomalies on demand.
 - Related tables whose `pk` and `fk` keys stay consistent across batches, streams and files.
-- Event streams and files for queues, lakes, databases or Spark, at NumPy speed.
+- Event streams and files for queues, lakes, databases or Spark.
 
 ## Get-started starters
 
@@ -46,7 +46,7 @@ assert df.shape == (1_000, 4) and df["age"].between(18, 80).all()
 - `lake`: `pk`/`fk` related tables written to a Parquet lake.
 - `kafka`: an event stream for Kafka, JSON lines to stdout by default.
 - `databricks`: a Spark/Databricks notebook on native `SparkGenerator`.
-- `faker`: Faker pools sampled at NumPy speed through `RandSpecs.faker_pool`.
+- `faker`: Faker pools sampled through `RandSpecs.faker_pool`.
 
 The optional `agent` starter writes `AGENTS.md` with package-use context for an existing project:
 
