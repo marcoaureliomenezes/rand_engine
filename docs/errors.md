@@ -6,11 +6,11 @@ specific classes identify where the operation failed.
 
 - `SpecValidationError` reports a fault that static validation or the one-row
   check finds, at construction, before generation starts.
-- `RandEngineError` is raised at generation for a missing or invalid size, a
-  foreign key with no eligible parent, a column with embedded transformers, and
-  the writers.
-- `ColumnGenerationError` wraps the method call, the conversion and the
-  multi-column unpack of a named column.
+- `RandEngineError` is raised at generation for size faults, a foreign key with
+  no eligible parent, a pk outside its domain or past int64, a global transformer
+  that changes the row count or drops a modifier column, anomaly values that
+  cannot keep their dtype after embedded transformers, and the writers.
+- `ColumnGenerationError` wraps the method call, conversion and multi-column unpack.
 - `TransformerError` wraps an exception from a per-column transformer and names
   its column and position.
 - `FileWriterError` is declared for callers that need the exception taxonomy.
