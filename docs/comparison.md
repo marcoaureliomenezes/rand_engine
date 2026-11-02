@@ -23,9 +23,10 @@ measurements, not a Faker or dbldatagen speed comparison.
 
 ## Bounded CI observations
 
-The following observations come from one successful, validated [GitHub Actions
+These observations measure a 100,000-dictionary Python workload and a 1,000,000-row Spark workload,
+three timed samples per side, reported as medians, in one [GitHub Actions
 run](https://github.com/marcoaureliomenezes/rand_engine/actions/runs/39153239357)
-at harness commit `bff8526cc6a5d76cb2cb8a454b69971cbf0876a5`. Its retained
+(39153239357) on one runner, at harness commit `bff8526cc6a5d76cb2cb8a454b69971cbf0876a5`. Its retained
 [artifact](https://github.com/marcoaureliomenezes/rand_engine/actions/runs/39153239357/artifacts/12146450195)
 contains the machine-readable record and derived summary. The artifact was 74,765 bytes, had
 SHA-256 `6cd6cd39239839fc38b8d021c9bc19ea33b451d5f5db21f820ba55c0c3e90a0f`,
@@ -84,5 +85,4 @@ interpreter.
 | Spark workload setup / validation | 3.1340523949999977 / 32.52120048800002 |
 
 These observations apply only to these two contracts, pins, runner, and three-repetition run.
-They are not production-throughput measurements or claims of universal speed, adoption, causal
-architecture, or statistical ranking. No winner is inferred.
+They are not production-throughput measurements or claims of adoption, causal architecture, or ranking.
