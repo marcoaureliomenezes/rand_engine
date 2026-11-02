@@ -1,0 +1,5 @@
+{
+  "projectTitle": "rand-engine",
+  "folders": ["docs"],
+  "excludeFolders": ["specs", "tests", "benchmarks", "evals"]
+}
