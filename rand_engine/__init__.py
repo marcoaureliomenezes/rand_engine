@@ -1,4 +1,4 @@
-"""Sink-agnostic synthetic data at NumPy speed from declarative specs, with related tables through pk/fk key columns; Faker composes on top."""
+"""Sink-agnostic synthetic data from declarative specs, with related tables through pk/fk key columns; Faker composes on top."""
 import importlib.metadata
 
 from rand_engine.main.data_generator import DataGenerator

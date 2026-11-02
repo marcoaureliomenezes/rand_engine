@@ -1,6 +1,6 @@
 # rand-engine
 
-> Python + NumPy library that generates synthetic data very fast from a declarative spec (a dict of column -> method + kwargs): pandas DataFrames, infinite dict streams, csv/json/parquet files, Spark DataFrames, and related tables through `pk`/`fk` key columns. Seeded per generator; Faker pools compose on top.
+> Python + NumPy library that generates synthetic data from a declarative spec (a dict of column -> method + kwargs): pandas DataFrames, infinite dict streams, csv/json/parquet files, Spark DataFrames, and related tables through `pk`/`fk` key columns. Seeded per generator; Faker pools compose on top.
 
 ## Docs
 
@@ -26,7 +26,7 @@
 - [Lake](https://marcoaureliomenezes.github.io/rand_engine/tutorials/lake/): pk/fk related tables written to a Parquet lake
 - [Kafka](https://marcoaureliomenezes.github.io/rand_engine/tutorials/kafka/): an event stream for Kafka
 - [Databricks](https://marcoaureliomenezes.github.io/rand_engine/tutorials/databricks/): a Spark/Databricks notebook on SparkGenerator
-- [Faker](https://marcoaureliomenezes.github.io/rand_engine/tutorials/faker/): Faker pools sampled at NumPy speed
+- [Faker](https://marcoaureliomenezes.github.io/rand_engine/tutorials/faker/): Faker pools sampled by NumPy
 
 ## Recipes
 

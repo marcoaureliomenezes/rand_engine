@@ -19,7 +19,7 @@ CASES = {
   "lake": Case("pk/fk related tables written to a Parquet lake", "lake.py.txt", "lake-example.py", "runnable"),
   "kafka": Case("an event stream for Kafka: JSON lines to stdout by default, a producer block ready", "kafka.py.txt", "kafka-example.py", "runnable"),
   "databricks": Case("a Spark/Databricks notebook on native SparkGenerator", "databricks.py.txt", "databricks-example.py", "runnable"),
-  "faker": Case("Faker pools sampled at NumPy speed through RandSpecs.faker_pool", "faker.py.txt", "faker-example.py", "runnable"),
+  "faker": Case("Faker pools drawn once and sampled by NumPy through RandSpecs.faker_pool", "faker.py.txt", "faker-example.py", "runnable"),
   "agent": Case("a project AGENTS.md with rand-engine package-use guidance", "agent.md.txt", "AGENTS.md", "agent"),
 }
 

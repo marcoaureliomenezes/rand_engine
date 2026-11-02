@@ -1,5 +1,5 @@
 # Databricks notebook source
-# Faker: small realistic value pools drawn once, then sampled at NumPy speed into many rows. Needs the faker extra; install it through the [Getting started](https://marcoaureliomenezes.github.io/rand_engine/getting-started/) guide.
+# Faker: small realistic value pools drawn once, then sampled by NumPy into many rows. Needs the faker extra; install it through the [Getting started](https://marcoaureliomenezes.github.io/rand_engine/getting-started/) guide.
 
 # COMMAND ----------
 

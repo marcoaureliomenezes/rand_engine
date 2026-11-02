@@ -1,6 +1,6 @@
 ---
 name: rand-engine
-description: Generates synthetic data fast from a declarative RandSpec (a dict of column -> method + kwargs) with the rand-engine Python library. Use it for fake or test data, mock pandas DataFrames, stress-test data, Kafka-style event streams, related tables with pk/fk, Spark DataFrames or Faker pools, and whenever rand-engine or RandSpec is mentioned.
+description: Generates synthetic data from a declarative RandSpec (a dict of column -> method + kwargs) with the rand-engine Python library. Use it for fake or test data, mock pandas DataFrames, stress-test data, Kafka-style event streams, related tables with pk/fk, Spark DataFrames or Faker pools, and whenever rand-engine or RandSpec is mentioned.
 ---
 
 # rand-engine
