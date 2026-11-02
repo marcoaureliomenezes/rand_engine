@@ -1,7 +1,7 @@
 {
   "schema": "release-state-v1",
   "release": "0.8.2",
-  "phase": "CLOSURE",
+  "phase": "DEFINITION",
   "defined": {
     "ts": "2026-11-01T23:35:00Z"
   },
@@ -144,6 +144,12 @@
       "kind": "summary",
       "candidate": "rc-2",
       "text": "delivered: FR5 measured public texts, doc drift and the SparkGenerator purpose and pool contract (R24) and error-class partition (R25), FR6 discovery metadata (llms.txt and Agent skill Project-URLs, 17 keywords, two classifiers, rand_engine/llms.txt shipped in the wheel, context7.json, page descriptions), FR10 CHANGELOG and closure memory; plus bugs spark-pool-types-fail-or-corrupt and spark-text-pool-none-written-as-nan; carried: none; backlog exits: none"
+    },
+    {
+      "ts": "2026-11-02T23:39:33Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.8.2 (stacked on the closed prior candidate)"
     }
   ]
 }
