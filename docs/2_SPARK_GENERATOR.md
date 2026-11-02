@@ -1,5 +1,9 @@
 # SparkGenerator — Spark DataFrames from a RandSpec
 
+One spec runs on a laptop with `DataGenerator` and on Databricks with `SparkGenerator`. On Spark,
+dbldatagen is faster: 0.516 s against 1.341 s at 1M rows (one CI run, three samples, medians; run
+39153239357, see [comparison.md](comparison.md)).
+
 `SparkGenerator` builds ordinary columns with native Spark expressions over `spark.range(size)`.
 For `pk` and `fk`, it passes source row indexes to the same stateless key authority as
 `DataGenerator` through a key-only `mapInPandas` adapter. PySpark is not a dependency of
@@ -73,8 +77,12 @@ The accepted ordinary methods use the same kwargs as [1_DATA_GENERATOR.md](1_DAT
 `pk` and `fk` use the same stateless definitions as `DataGenerator`; a Spark `seed` affects those
 key columns only. A `dates` `date_format` is limited to `%Y %m %d %H %M %S %f`, as on the NumPy
 engine. The five NumPy-only distributions/constants, and `null_rate` / `anomaly_rate`, are refused.
-A `distincts` pool may mix value types on Spark, which coerces it: `["x", None]` gives text and
-nulls, `[1, 2.5]` gives doubles. `DataGenerator` refuses a mixed pool.
+`DataGenerator` refuses a mixed `distincts` pool; Spark accepts these: `["x", None]` gives text
+and null; `[1, 2.5]` gives doubles; `[1, "x"]` and `[True, "x"]` give text (`"1"`, `"true"`);
+`["x", 1, 2.5]` gives text. Ints with `None` give a double column: null with Arrow on, NaN with
+Arrow off (Spark's default). Construction refuses, naming the column: container values, a pool
+with no inferable value, kinds Spark cannot merge in order (`[1, True]`, `[1, 2.5, "x"]`), date,
+timestamp or binary beside text, and integers outside int64.
 `kwargs` is the only parameter key; `args`, `splitable`, `sep` and `pk` as column keys are also
 refused.
 Spark accepts `int_zfilled` only through length 15, refuses `uint64`, and refuses integer domains
