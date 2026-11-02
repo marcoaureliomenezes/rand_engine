@@ -9,6 +9,7 @@ from decimal import Decimal
 from fractions import Fraction
 
 import numpy as np
+import pandas as pd
 import pytest
 from rand_engine.main._rand_generator import RandGenerator
 from rand_engine.main.data_generator import DataGenerator
@@ -1019,4 +1020,4 @@ def test_non_string_cols_names_validate_and_generate(spec, columns):
 ])
 def test_output_names_equal_as_strings_but_distinct_as_keys_validate_and_generate(spec, expected):
   assert AdvancedValidator.validate(spec) == []
-  assert DataGenerator(spec, seed=1).size(2).get_df().to_dict("list") == expected
+  assert DataGenerator(spec, seed=1).size(2).get_df().to_dict("list") == pd.DataFrame(expected).to_dict("list")
