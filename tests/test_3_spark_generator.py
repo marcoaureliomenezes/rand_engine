@@ -6,6 +6,7 @@ These tests validate end-to-end workflow: metadata → DataFrame generation.
 
 Note: PySpark is a test-only dependency.
 """
+import pandas as pd
 import pytest
 from rand_engine import DataGenerator
 from rand_engine.main.spark_generator import SparkGenerator
@@ -734,3 +735,10 @@ def test_spark_generates_mixed_type_pools_as_on_0_8_1(spark_session, spark_funct
     spec = {"c": {"method": "distincts", "kwargs": {"distincts": pool}}}
     rows = SparkGenerator(spark_session, spark_functions, spec).size(400).get_df().collect()
     assert {row["c"] for row in rows} == expected
+
+
+def test_spark_text_pool_keeps_none_as_null_under_string_inference(spark_session, spark_functions):
+    spec = {"c": {"method": "distincts", "kwargs": {"distincts": ["x", "y", None]}}}
+    with pd.option_context("future.infer_string", True):
+        rows = SparkGenerator(spark_session, spark_functions, spec).size(400).get_df().collect()
+    assert {row["c"] for row in rows} == {"x", "y", None}
