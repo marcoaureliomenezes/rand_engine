@@ -6,7 +6,7 @@ authors = [{name = "marcoaureliomenezes", email = "marcoaurelioreislima@gmail.co
 license = "MIT"
 readme = "README.md"
 requires-python = ">=3.11"
-keywords = ["synthetic-data", "random-data", "mock-data", "test-data", "numpy", "data-engineering", "faker", "fake-data", "pyspark", "spark", "pandas", "kafka", "parquet", "data-generator"]
+keywords = ["synthetic-data", "random-data", "mock-data", "test-data", "numpy", "data-engineering", "faker", "fake-data", "pyspark", "spark", "pandas", "kafka", "parquet", "data-generator", "data-generation", "python", "test-fixtures"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -16,6 +16,8 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Testing",
+    "Topic :: Software Development :: Testing :: Mocking",
+    "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Scientific/Engineering",
     "Typing :: Typed",
 ]
@@ -33,6 +35,8 @@ Repository = "https://github.com/marcoaureliomenezes/rand_engine"
 Documentation = "https://marcoaureliomenezes.github.io/rand_engine/"
 Issues = "https://github.com/marcoaureliomenezes/rand_engine/issues"
 Changelog = "https://github.com/marcoaureliomenezes/rand_engine/blob/master/CHANGELOG.md"
+"llms.txt" = "https://marcoaureliomenezes.github.io/rand_engine/llms.txt"
+"Agent skill" = "https://marcoaureliomenezes.github.io/rand_engine/skills/rand-engine/SKILL.md"
 
 [tool.poetry.dependencies]
 numpy = ">=1.26"
