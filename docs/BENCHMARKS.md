@@ -1,3 +1,7 @@
+---
+description: Same-runner A/B timing table for each generation method and sink, with base and head columns, ratios and peak memory
+---
+
 # Speed benchmark (same-runner A/B)
 
 head `d577ed0297e4e31760f118a26401a661421026b7` · base `cb47f70cd3a4c52225c16d2fe8fe1945adbe31bf` · Python 3.12.15 · NumPy 2.1.1 · GitHub Actions 1000039411

@@ -257,6 +257,7 @@ def render(report, absent, error):
            f"base rows {len(baseline(records))}/{len(base_candidates)}" + (f" · base pass failed: {error}" if error else ""),
            *(f"- `{k}`: {why}" for k, why in absent.items()), "",
            "| method / sink | rows | rows/µs | base s | head s | ratio (modifier: overhead ÷ unmodified column) | peak MiB |", "|---|---|---|---|---|---|---|"]
+  lines.insert(0, "---\ndescription: Same-runner A/B timing table for each generation method and sink, with base and head columns, ratios and peak memory\n---\n")
   for r in records:
     k, b = key(r), r.get("base_" + field(r))
     if "modifier" in r:
