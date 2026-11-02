@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.8.2] - 2026-11-01
+## [0.8.2] - 2026-11-02
+
+### Added
+
+- `llms.txt` and `Agent skill` Project-URLs in the package metadata, pointing at the published `llms.txt` and `skills/rand-engine/SKILL.md`.
+- `context7.json` at the repository root: `docs` is the indexed folder; `specs`, `tests`, `benchmarks` and `evals` are excluded.
+- A front-matter `description` of 50 to 160 characters on each of the 17 docs pages, each one distinct.
 
 ### Fixed
 
@@ -19,15 +25,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A non-string kwarg name or fk parent key is refused with `SpecValidationError` instead of a raw `TypeError`.
 - A stream target given as a bare name (for example `start('tmp')`) is written under the current directory. On 0.8.1 it resolved to the filesystem root (`/tmp`), and `overwrite` deleted the files of that directory.
 - On Windows, a drive-relative stream target (for example `C:out`) is written under that drive's current directory, not at the drive root.
+- `SparkGenerator` refuses at construction, naming the column, a `distincts` or `distincts_prop` pool that Spark cannot write unchanged, instead of failing at `get_df` or writing corrupt values. Refused: container values (lists, tuples, dicts, sets); a pool with no value Spark can infer a type from; kinds Spark cannot merge in order, such as `[1, True]` and `[1, 2.5, 'x']`; a date, timestamp or binary value beside text, which used to be written as Java object strings; an integer outside int64, which used to be written as null. Pools that Spark writes faithfully stay accepted, such as `['x', None]`, `[1, 2.5]`, `[1, 'x']` and `[True, 'x']`.
+- On pandas 3, a `None` in a `SparkGenerator` text pool is written as null, not the text `'NaN'`.
 
 ### Changed
 
 - An unknown method, parameter or column key adds a `Did you mean '<name>'?` line when a close match exists.
 - `size` must be a non-negative integer or a callable returning one; anything else is refused when the size is resolved, with `size must be a non-negative integer, got <value>`; generating with no size set raises `No size set: call .size(n) with an int or a callable returning one.`
-- Specs 0.8.1 accepted and then failed on are now refused at validation or construction: a date bound that is not a date, a start after its end, an all-zero weight, `distincts_map` categories of mixed types, `complex_distincts` with a multi-character replacement; on `DataGenerator` also an ordinary method with `cols: []` or with several `cols` names, `distincts` with mixed value types, and an fk `born_before` whose first row has no eligible parent. `SparkGenerator` keeps generating `distincts` pools of mixed types, such as `['x', None]` or `[1, 2.5]`.
+- Specs 0.8.1 accepted and then failed on are now refused at validation or construction: a date bound that is not a date, a start after its end, an all-zero weight, `distincts_map` categories of mixed types, `complex_distincts` with a multi-character replacement; on `DataGenerator` also an ordinary method with `cols: []` or with several `cols` names, `distincts` with mixed value types, and an fk `born_before` whose first row has no eligible parent. `SparkGenerator` keeps generating the `distincts` pools of mixed types that it writes faithfully, such as `['x', None]` or `[1, 2.5]`; the Fixed entry names the refused ones.
 - Specs 0.8.1 accepted and generated wrong data for are now refused at validation: a negative weight, and a `cols` name that repeats a column.
 - One spec 0.8.1 generated is now refused at construction: `anomaly_values` that fit a column only after a global transformer changes its dtype (a global transformer is applied after construction, so construction judges the method's dtype).
 - The `get-started test-data` starter no longer writes Databricks notebook markers (`# Databricks notebook source`, `# COMMAND ----------`).
+- Public texts state only measured facts: unmeasured performance adjectives are removed or replaced by the measured figures they stood for, and the README opening carries one measured figure, a 4.8× lower median time than Faker on a 100,000-dict workload (one CI run, three samples, medians).
+- `llms.txt` moves from the repository root to `rand_engine/llms.txt`; the wheel ships it, and the docs site serves it byte-equal to that file.
+- Package keywords are 17 terms, with `data-generation`, `python` and `test-fixtures` added; the classifiers add `Topic :: Software Development :: Testing :: Mocking` and `Topic :: Software Development :: Libraries :: Python Modules`.
+- The SparkGenerator guide states the pool contract: the mixed pools Spark writes faithfully and the classes construction refuses. `docs/errors.md` states which errors come from construction and which from generation.
 
 ### Removed
 
