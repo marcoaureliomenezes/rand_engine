@@ -6,7 +6,7 @@
 
 ## Repo Purpose
 
-`rand-engine` is a Python library for fast synthetic data generation. It serves
+`rand-engine` is a Python library for synthetic data generation. It serves
 engineers, data teams, QA engineers, and demo builders who need deterministic
 Pandas dataframes, Spark dataframes, files, streams, and relation-aware test data
 without hand-building fixtures.
