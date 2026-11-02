@@ -11,7 +11,7 @@ files = [
     p for p in Path(".").rglob("*")
     if p.is_file() and p.suffix == ".py" and "site-packages" not in p.parts
 ]
-py = "\n".join(p.read_text(errors="ignore") for p in files)
+py = "\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in files)
 installed = importlib.util.find_spec("rand_engine") is not None or any(
     Path(".").rglob("site-packages/rand_engine/__init__.py")
 )

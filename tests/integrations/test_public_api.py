@@ -564,7 +564,7 @@ def test_wheel_holds_only_the_rand_engine_package(built_wheel):
 def test_no_workflow_but_eval_yml_names_the_evals_folder():
     workflows = Path(__file__).parents[2] / ".github" / "workflows"
     assert [
-        w.name for w in workflows.glob("*") if w.name != "eval.yml" and "evals/" in w.read_text()
+        w.name for w in workflows.glob("*") if w.name != "eval.yml" and "evals/" in w.read_text(encoding="utf-8")
     ] == []
 
 
@@ -702,7 +702,7 @@ def test_eval_runs_claude_with_the_subprocess_env_scrub(monkeypatch, tmp_path):
 
 
 def test_eval_workflow_pins_the_scrub_cli_and_runs_under_bubblewrap():
-    text = (Path(__file__).parents[2] / ".github" / "workflows" / "eval.yml").read_text()
+    text = (Path(__file__).parents[2] / ".github" / "workflows" / "eval.yml").read_text(encoding="utf-8")
     assert "@anthropic-ai/claude-code@2.1.316" in text
     assert "apt-get install -y bubblewrap" in text
     lift = "sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0"

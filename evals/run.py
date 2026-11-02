@@ -44,7 +44,7 @@ def run_trial(task, n, args):
     work = Path(tempfile.mkdtemp(prefix=f"eval-{task}-"))
     t0 = time.monotonic()
     try:
-        cfg = tomllib.loads((task_dir / "task.toml").read_text())
+        cfg = tomllib.loads((task_dir / "task.toml").read_text(encoding="utf-8"))
         venv, cwd = work / "venv", work / "work"
         env = trial_env(venv)
         subprocess.run([sys.executable, "-m", "venv", str(venv)], check=True, env=env)
@@ -57,7 +57,7 @@ def run_trial(task, n, args):
         else:
             cwd.mkdir()
         try:
-            p = subprocess.run(["claude", "-p", (task_dir / "instruction.md").read_text(), *FLAGS,
+            p = subprocess.run(["claude", "-p", (task_dir / "instruction.md").read_text(encoding="utf-8"), *FLAGS,
                                 "--model", args.model], cwd=cwd, text=True,
                                env={**env, "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1",
                                     **{k: v for k, v in os.environ.items() if k == "CLAUDE_CODE_OAUTH_TOKEN"}},
