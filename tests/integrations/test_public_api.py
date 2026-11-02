@@ -465,8 +465,17 @@ def test_package_docstring_first_line_is_the_wheel_summary(built_wheel):
 def test_wheel_project_urls_carry_the_llms_txt_and_the_agent_skill(built_wheel):
     urls = _wheel_metadata(built_wheel).get_all("Project-URL", [])
 
-    assert "llms.txt, https://marcoaureliomenezes.github.io/rand_engine/llms.txt" in urls
-    assert "Agent skill, https://marcoaureliomenezes.github.io/rand_engine/skills/rand-engine/SKILL.md" in urls
+    site = "https://marcoaureliomenezes.github.io/rand_engine/"
+    repo = "https://github.com/marcoaureliomenezes/rand_engine"
+    assert sorted(urls) == sorted([
+        "Homepage, " + repo,
+        "Repository, " + repo,
+        "Documentation, " + site,
+        "Issues, " + repo + "/issues",
+        "Changelog, " + repo + "/blob/master/CHANGELOG.md",
+        "llms.txt, " + site + "llms.txt",
+        "Agent skill, " + site + "skills/rand-engine/SKILL.md",
+    ])
 
 
 def test_wheel_keywords_are_the_seventeen_search_terms(built_wheel):
@@ -536,6 +545,13 @@ def test_version_falls_back_when_distribution_is_not_installed(monkeypatch):
 def test_wheel_ships_py_typed(built_wheel):
     with ZipFile(built_wheel) as wheel:
         assert "rand_engine/py.typed" in wheel.namelist()
+
+
+def test_wheel_ships_llms_txt_equal_to_the_tracked_file(built_wheel):
+    tracked = Path(__file__).parents[2] / "rand_engine" / "llms.txt"
+    with ZipFile(built_wheel) as wheel:
+        assert "rand_engine/llms.txt" in wheel.namelist()
+        assert wheel.read("rand_engine/llms.txt") == tracked.read_bytes()
 
 
 def test_wheel_holds_only_the_rand_engine_package(built_wheel):
