@@ -44,7 +44,7 @@ def prepare(output: Path) -> None:
   write_text(input_root / "docs" / "index.md", (input_root / "README.md").read_text(encoding="utf-8"))
 
   shutil.copytree(input_root / "docs", public_root / "docs")
-  shutil.copy2(input_root / "llms.txt", public_root / "llms.txt")
+  shutil.copy2(input_root / "rand_engine" / "llms.txt", public_root / "llms.txt")
   public_skill = public_root / "skills" / "rand-engine" / "SKILL.md"
   public_skill.parent.mkdir(parents=True, exist_ok=True)
   shutil.copy2(input_root / "skills" / "rand-engine" / "SKILL.md", public_skill)
