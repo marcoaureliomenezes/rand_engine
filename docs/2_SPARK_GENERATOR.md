@@ -80,7 +80,7 @@ engine. The five NumPy-only distributions/constants, and `null_rate` / `anomaly_
 `DataGenerator` refuses a mixed `distincts` pool; Spark accepts these: `["x", None]` gives text
 and null; `[1, 2.5]` gives doubles; `[1, "x"]` and `[True, "x"]` give text (`"1"`, `"true"`);
 `["x", 1, 2.5]` gives text. Ints with `None` give a double column: null with Arrow on, NaN with
-Arrow off (Spark's default). Construction refuses, naming the column: container values, a pool
+Arrow off. Construction refuses, naming the column: container values, a pool
 with no inferable value, kinds Spark cannot merge in order (`[1, True]`, `[1, 2.5, "x"]`), date,
 timestamp or binary beside text, and integers outside int64.
 `kwargs` is the only parameter key; `args`, `splitable`, `sep` and `pk` as column keys are also
