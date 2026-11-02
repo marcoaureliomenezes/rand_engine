@@ -14,7 +14,7 @@ The generator produces frames and record streams; where they go is yours: Kafka 
 
 ## Faker on top, through pools
 
-Faker takes 0.769 s per 100,000 dicts. Draw a small pool once, then let rand-engine sample it ([benchmarks](BENCHMARKS.md)). Faker complements the core and is never required.
+In one CI run (three samples, medians; [comparison](comparison.md)), Faker took 0.769 s for 100,000 dicts and rand-engine 0.159 s. Draw a small pool once, then let rand-engine sample it ([benchmarks](BENCHMARKS.md)). Faker complements the core and is never required.
 
 ```python
 from rand_engine import DataGenerator

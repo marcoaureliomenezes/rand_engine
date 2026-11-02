@@ -7,7 +7,7 @@ Short, runnable patterns. Every `python` block runs in CI, in order, in one name
 <!-- derived-from: generation-methods sha256:1f05c8237a5e -->
 <!-- derived-from: templates-and-examples sha256:fa66c7f7252b -->
 
-Faker takes 0.769 s per 100,000 dicts; `RandSpecs.faker_pool` draws a pool once and returns a `distincts` spec.
+In one CI run (three samples, medians; [comparison](comparison.md)), Faker took 0.769 s for 100,000 dicts against rand-engine's 0.159 s; `RandSpecs.faker_pool` draws a pool once and returns a `distincts` spec.
 Install the optional extra first: `pip install "rand-engine[faker]"`. It accepts a Faker provider
 such as `name` or `email`, a locale (default `en_US`), a positive `pool_size` (default 100), and
 an optional seed. The seed fixes the materialized pool, then NumPy samples that pool for every row.
