@@ -49,9 +49,10 @@ from rand_engine import DataGenerator, RandSpecs, SparkGenerator
 ```
 
 Then run your existing RandSpecs through construction before a production job. Version 0.8
-makes several invalid inputs fail earlier, including `int_zfilled` lengths outside 1..18.
-Use the [errors guide](errors.md) to correct a complete validation report rather than retrying
-one message at a time.
+makes several invalid inputs fail earlier, including `int_zfilled` lengths outside 1..18. Use
+the [errors guide](errors.md) to correct each problem the validators report, not one message at a time.
+
+Version 0.8.2 refuses several specs that 0.8.1 accepted; the [CHANGELOG](https://github.com/marcoaureliomenezes/rand_engine/blob/master/CHANGELOG.md) `### Changed` entries for 0.8.2 name each refusal.
 
 For new work, use the CLI starters and rendered reference: `rand-engine list` shows six
 starters, of which five are runnable Python tutorials; `rand-engine get-started agent --out

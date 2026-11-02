@@ -45,7 +45,7 @@ class SparkGenerator:
   """
 
   def __init__(self, spark, F, metadata, seed=None):
-    # Validação obrigatória - sempre executada
+    # Mandatory validation - always runs
     key_metadata = {}
     if isinstance(metadata, dict):
       key_metadata = {

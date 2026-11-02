@@ -4,16 +4,16 @@ Import errors from `rand_engine.validators.exceptions` and catch
 `RandEngineError` when one recovery path covers the library's errors. More
 specific classes identify where the operation failed.
 
-- `SpecValidationError` reports RandSpec problems at construction or in a
-  builder, before generation starts.
-- `ColumnGenerationError` wraps an exception raised while a validated generator
-  method builds a named column.
+- `SpecValidationError` reports a fault that static validation or the one-row
+  check finds, at construction, before generation starts.
+- `RandEngineError` is raised at generation for a missing or invalid size, a
+  foreign key with no eligible parent, a column with embedded transformers, and
+  the writers.
+- `ColumnGenerationError` wraps the method call, the conversion and the
+  multi-column unpack of a named column.
 - `TransformerError` wraps an exception from a per-column transformer and names
   its column and position.
-- `RandEngineError` also covers output setup and writer failures such as a
-  missing size, invalid writer option, schema mismatch or incompatible modifier.
-- `FileWriterError` is declared for callers that need the exception taxonomy,
-  but no current library path raises it.
+- `FileWriterError` is declared for callers that need the exception taxonomy.
 
 ```python
 from rand_engine import DataGenerator
