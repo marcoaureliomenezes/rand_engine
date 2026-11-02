@@ -193,12 +193,12 @@ def test_agent_context_is_linked_from_every_agent_onboarding_authority():
   assert set(runnable_cases()) == RUNNABLE_SLUGS
   assert case.resource == "agent.md.txt"
   assert case.filename == "AGENTS.md"
-  authorities = [README, DOCS / "getting-started.md", ROOT / "llms.txt", SKILL]
+  authorities = [README, DOCS / "getting-started.md", ROOT / "rand_engine" / "llms.txt", SKILL]
   for authority in authorities:
     text = _text(authority)
     assert "rand-engine get-started agent" in text
     assert "AGENTS.md" in text
-  links = set(LINK.findall(_text(ROOT / "llms.txt")))
+  links = set(LINK.findall(_text(ROOT / "rand_engine" / "llms.txt")))
   assert f"{REPO_BLOB}{PRINCIPAL}/rand_engine/cases/{case.resource}" in links
   assert set(CASES) == RUNNABLE_SLUGS | {"agent"}
 
@@ -214,7 +214,7 @@ def test_readme_python_blocks_execute_in_order(tmp_path, monkeypatch):
       exec(compile(body, f"README.md[{i}]", "exec"), namespace)
 
 
-@pytest.mark.parametrize("name", ["README.md", "llms.txt"])
+@pytest.mark.parametrize("name", ["README.md", "rand_engine/llms.txt"])
 def test_links_resolve(name):
   """No relative link (PyPI breaks them); a link into this repo targets the principal branch and a file that exists."""
   links = LINK.findall((ROOT / name).read_text(encoding="utf-8"))
@@ -227,7 +227,7 @@ def test_links_resolve(name):
 
 def test_published_docs_name_no_release_candidate_version():
   """No release-candidate version string in what docs_site.py publishes: docs/ (data files too), README.md, llms.txt, skills/."""
-  files = [p for top in (DOCS, ROOT / "skills") for p in top.rglob("*") if p.is_file()] + [ROOT / "README.md", ROOT / "llms.txt"]
+  files = [p for top in (DOCS, ROOT / "skills") for p in top.rglob("*") if p.is_file()] + [ROOT / "README.md", ROOT / "rand_engine" / "llms.txt"]
   rc = re.compile(r"\d+\.\d+\.\d+rc\d+")
   hits = [f"{p.relative_to(ROOT)}:{n}" for p in files for n, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1) if rc.search(line)]
   assert hits == []
@@ -417,7 +417,7 @@ def test_spark_doc_refuses_the_four_correlated_methods(tmp_path, monkeypatch, sp
 
 def test_no_doc_promises_null_columns_for_correlated_methods():
   """The published surface holds no "NULL + warning" outcome for any method."""
-  files = [p for top in (DOCS, ROOT / "skills") for p in top.rglob("*") if p.is_file()] + [ROOT / "README.md", ROOT / "llms.txt"]
+  files = [p for top in (DOCS, ROOT / "skills") for p in top.rglob("*") if p.is_file()] + [ROOT / "README.md", ROOT / "rand_engine" / "llms.txt"]
   assert [str(p.relative_to(ROOT)) for p in files if "NULL + warning" in p.read_text(encoding="utf-8", errors="ignore")] == []
 
 
@@ -638,7 +638,7 @@ def test_comparison_route_is_sourced_and_marks_benchmarks_as_internal_only():
   assert "BENCHMARKS.md" in links
   assert any("benchmarks/speed.py" in link for link in links)
   nav = _text(ROOT / "mkdocs.yml")
-  llms = _text(ROOT / "llms.txt")
+  llms = _text(ROOT / "rand_engine" / "llms.txt")
   assert "comparison.md" in nav
   assert f"{SITE}comparison/" in llms
 
@@ -874,7 +874,7 @@ def _changelog():
 
 
 def _llms():
-  text = _text(ROOT / "llms.txt")
+  text = _text(ROOT / "rand_engine" / "llms.txt")
   links = LINK.findall(text)
   pages = [u[len(SITE):] for u in links if u.startswith(SITE)]
   assert pages and [u for u in links if u.startswith(REPO_BLOB) and "/docs/" in u] == []
@@ -889,7 +889,7 @@ def _llms():
 
 def test_llms_points_agents_at_the_api_writer_error_builder_domain_and_case_destinations():
   """llms.txt advertises rendered destinations for each discovery route and every runnable case file."""
-  links = set(LINK.findall(_text(ROOT / "llms.txt")))
+  links = set(LINK.findall(_text(ROOT / "rand_engine" / "llms.txt")))
   assert {
       f"{SITE}reference/",
       f"{SITE}3_WRITING_FILES/",
@@ -943,7 +943,7 @@ def _prepared_texts(input_root: Path, public_root: Path) -> dict[str, str]:
 
 def test_docs_preparation_stable_keeps_ordinary_install_and_principal_routes(tmp_path):
   """Stable preparation retains ordinary package installation and the principal source authority."""
-  source_paths = [README, ROOT / "llms.txt", SKILL, ROOT / "mkdocs.yml", *sorted(DOCS.glob("**/*.md"))]
+  source_paths = [README, ROOT / "rand_engine" / "llms.txt", SKILL, ROOT / "mkdocs.yml", *sorted(DOCS.glob("**/*.md"))]
   before = {path: path.read_bytes() for path in source_paths}
   input_root, public_root = _prepare_docs(tmp_path)
   assert {path: path.read_bytes() for path in source_paths} == before
@@ -954,6 +954,15 @@ def test_docs_preparation_stable_keeps_ordinary_install_and_principal_routes(tmp
   assert any(REPO_MASTER in text for text in texts.values())
   mirror = public_root / "skills" / "rand-engine" / "SKILL.md"
   assert mirror.read_bytes() == SKILL.read_bytes()
+  assert (public_root / "llms.txt").read_bytes() == (ROOT / "rand_engine" / "llms.txt").read_bytes()
+
+
+def test_context7_json_scopes_the_indexed_folders():
+  """`context7.json` at the root names the project and indexes docs only."""
+  config = json.loads((ROOT / "context7.json").read_text(encoding="utf-8"))
+  assert config["projectTitle"] == "rand-engine"
+  assert "docs" in config["folders"]
+  assert {"specs", "tests", "benchmarks", "evals"} <= set(config["excludeFolders"])
 
 
 def _docs_site_module():
