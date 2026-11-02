@@ -119,6 +119,31 @@
       "candidate": "rc-2",
       "milestone": "implemented",
       "text": "Candidate implemented; phase CLOSURE."
+    },
+    {
+      "ts": "2026-11-02T04:06:33Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over d44d9802380f1a3972e43d51514d2cd8876256b9..290af1eae5df: 0 reviewed, 7 changed.",
+      "since": "d44d9802380f1a3972e43d51514d2cd8876256b9",
+      "until": "290af1eae5df796961c9eda768c5744ddaea63b0",
+      "reviewed": [],
+      "changed": [
+        "public-api",
+        "generation-methods",
+        "spark-generator",
+        "documentation",
+        "get-started-cli",
+        "benchmarks",
+        "rand-spec-grammar"
+      ]
+    },
+    {
+      "ts": "2026-11-02T04:06:54Z",
+      "agent": "dd-product-engineer",
+      "kind": "summary",
+      "candidate": "rc-2",
+      "text": "delivered: FR5 measured public texts, doc drift and the SparkGenerator purpose and pool contract (R24) and error-class partition (R25), FR6 discovery metadata (llms.txt and Agent skill Project-URLs, 17 keywords, two classifiers, rand_engine/llms.txt shipped in the wheel, context7.json, page descriptions), FR10 CHANGELOG and closure memory; plus bugs spark-pool-types-fail-or-corrupt and spark-text-pool-none-written-as-nan; carried: none; backlog exits: none"
     }
   ]
 }
