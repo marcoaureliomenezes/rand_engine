@@ -1,3 +1,6 @@
+---
+description: Stateless pk and fk keys, covering pk kwargs, foreign keys with skew, born_before event-time eligibility, and row-index continuation across streams and Spark.
+---
 # Keys — related tables with `pk` and `fk`
 
 Relations are two column methods. A `pk` value is a pure function of its kwargs and the row index;

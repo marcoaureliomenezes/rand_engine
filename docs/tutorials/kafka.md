@@ -1,3 +1,6 @@
+---
+description: Print seeded JSON event lines from stream_dict, then enable the optional kafka-python producer that sends them to a configured broker.
+---
 # Kafka
 
 For engineers who feed a Kafka topic. It teaches an event stream as JSON lines, and the producer block that sends events to a broker. Each `stream_dict` call continues the seeded sequence, so a second call yields different payloads under the same `event_id` range.

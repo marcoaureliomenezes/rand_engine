@@ -1,3 +1,6 @@
+---
+description: Draw a Faker name, email and city pool once, sample it with NumPy into a 10,000-row DataFrame, and count the distinct names.
+---
 # Faker
 
 For anyone who needs realistic names, emails or cities at volume. It teaches `RandSpecs.faker_pool`: Faker draws a small pool once, and NumPy samples it into many rows.

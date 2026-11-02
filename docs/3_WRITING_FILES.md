@@ -1,3 +1,6 @@
+---
+description: Batch write and writeStream for csv, json, parquet and SQLite, with accepted options, numFiles and append rules, CSV output details and writer classes.
+---
 # Writing files — `write` and `writeStream`
 
 `DataGenerator.write` writes a batch once; `DataGenerator.writeStream` writes a microbatch per

@@ -1,3 +1,6 @@
+---
+description: Supported Python, pandas, pyarrow, NumPy and Spark bounds, what SparkGenerator refuses, the 0.7 to 0.8 migration, and fixes for common errors.
+---
 # Compatibility, migration and recovery
 
 ## Choose an environment

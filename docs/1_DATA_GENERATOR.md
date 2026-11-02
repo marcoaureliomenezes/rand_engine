@@ -1,3 +1,6 @@
+---
+description: DataGenerator guide with the call table, seeds, every column method and kwargs, float, null and anomaly rules, multi-column maps, transformers and streaming.
+---
 # DataGenerator — pandas DataFrames from a RandSpec
 
 `DataGenerator` turns a RandSpec (a dict, or a callable returning one) into a pandas DataFrame,

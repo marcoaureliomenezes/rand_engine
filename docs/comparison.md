@@ -1,3 +1,6 @@
+---
+description: Capability table of rand-engine, Faker and dbldatagen by execution, inputs, repeatability and deployment, with recorded CI observations and their limits.
+---
 # Scope comparison
 
 rand-engine, [Faker](https://faker.readthedocs.io/en/stable/), and

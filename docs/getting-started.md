@@ -1,3 +1,6 @@
+---
+description: Install rand-engine, run a first seeded DataFrame, scaffold one of six CLI starters, and choose the tutorial or guide for each use case.
+---
 # Getting started
 
 ## Install

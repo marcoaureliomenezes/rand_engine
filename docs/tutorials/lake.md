@@ -1,3 +1,6 @@
+---
+description: Write customer and order tables as Parquet with pk and fk, read them back, and join them to check that every order finds its customer.
+---
 # Lake
 
 For data engineers who need related tables. It teaches `pk` and `fk`: orders point at customers, and a join proves every order finds its customer.

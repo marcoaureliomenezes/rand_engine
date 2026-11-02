@@ -1,3 +1,6 @@
+---
+description: Design model covering RandSpec as a plain dict, a NumPy core with optional Spark, sink-agnostic output, Faker through pools, seeds and stateless keys.
+---
 # Explanation
 
 ## The RandSpec model

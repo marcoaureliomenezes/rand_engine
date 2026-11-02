@@ -1,3 +1,6 @@
+---
+description: Runnable recipes for Faker pools, specs from an Arrow schema, ready-made spec factories, a Kafka-style record stream, a Parquet lake and related tables.
+---
 # Recipes
 
 Short, runnable patterns. Every `python` block runs in CI, in order, in one namespace.

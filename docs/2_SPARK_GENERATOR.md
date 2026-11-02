@@ -1,3 +1,6 @@
+---
+description: SparkGenerator guide with the call table, the supported and refused method table, mixed-type pools, int_zfilled and integer width limits, and key columns.
+---
 # SparkGenerator — Spark DataFrames from a RandSpec
 
 One spec runs on a laptop with `DataGenerator` and on Databricks with `SparkGenerator`. On Spark,

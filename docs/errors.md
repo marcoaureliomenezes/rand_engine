@@ -1,3 +1,6 @@
+---
+description: Exception reference covering which library errors come from construction and which from generation, the wrapper errors, and a catch example.
+---
 # Errors
 
 Import errors from `rand_engine.validators.exceptions` and catch

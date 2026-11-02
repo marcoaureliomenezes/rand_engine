@@ -1,3 +1,6 @@
+---
+description: Scaffold and run a 1,000-row pipeline test DataFrame where one column carries null_rate and anomaly_rate, built from a seeded DataGenerator.
+---
 # Test data
 
 For pipeline tests that need a DataFrame with nulls and extreme values. It teaches `null_rate` and `anomaly_rate` on a column.

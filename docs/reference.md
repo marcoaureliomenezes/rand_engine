@@ -1,3 +1,6 @@
+---
+description: API reference for DataGenerator, SparkGenerator and CommonRandSpecs, rendered from their import lines and source docstrings.
+---
 # Reference
 
 Import as `from rand_engine import DataGenerator`.

@@ -1,3 +1,6 @@
+---
+description: Build a 1,000-row users table natively with SparkGenerator, view its schema, and wrap a pandas frame for the distributions Spark refuses.
+---
 # Databricks
 
 For Spark and Databricks users. It teaches `SparkGenerator`, which builds a users table natively in Spark.
