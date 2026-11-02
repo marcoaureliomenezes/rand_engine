@@ -212,6 +212,14 @@ def test_run_alternates_six_timed_calls_per_row_then_head_extras_after_the_last_
   assert "base rows 5/5\n" in md
 
 
+def test_rendered_report_starts_with_front_matter_holding_a_50_to_160_character_description(tmp_path):
+  _, md = ab([], Fake("B", []), out=tmp_path)
+  head, sep, _ = md.removeprefix("---\n").partition("\n---\n")
+  assert md.startswith("---\ndescription: ") and sep
+  description = head.removeprefix("description: ").strip("\"'")
+  assert "\n" not in head and 50 <= len(description) <= 160
+
+
 def test_run_times_a_head_only_key_after_every_shared_row_with_no_base_request(tmp_path, monkeypatch):
   log = []
   monkeypatch.setattr("benchmarks.speed.SINKS", ())
