@@ -462,13 +462,20 @@ def test_package_docstring_first_line_is_the_wheel_summary(built_wheel):
     assert rand_engine.__doc__.splitlines()[0] == _wheel_metadata(built_wheel)["Summary"]
 
 
-def test_wheel_keywords_are_the_fourteen_search_terms(built_wheel):
+def test_wheel_project_urls_carry_the_llms_txt_and_the_agent_skill(built_wheel):
+    urls = _wheel_metadata(built_wheel).get_all("Project-URL", [])
+
+    assert "llms.txt, https://marcoaureliomenezes.github.io/rand_engine/llms.txt" in urls
+    assert "Agent skill, https://marcoaureliomenezes.github.io/rand_engine/skills/rand-engine/SKILL.md" in urls
+
+
+def test_wheel_keywords_are_the_seventeen_search_terms(built_wheel):
     keywords = _wheel_metadata(built_wheel)["Keywords"].split(",")
 
     assert sorted(keywords) == [
-        "data-engineering", "data-generator", "fake-data", "faker", "kafka", "mock-data",
-        "numpy", "pandas", "parquet", "pyspark", "random-data", "spark", "synthetic-data",
-        "test-data",
+        "data-engineering", "data-generation", "data-generator", "fake-data", "faker", "kafka",
+        "mock-data", "numpy", "pandas", "parquet", "pyspark", "python", "random-data", "spark",
+        "synthetic-data", "test-data", "test-fixtures",
     ]
 
 
@@ -478,6 +485,8 @@ def test_wheel_advertises_typed_and_exactly_the_tested_python_set(built_wheel):
     prefix = "Programming Language :: Python :: 3."
 
     assert "Typing :: Typed" in classifiers
+    assert "Topic :: Software Development :: Testing :: Mocking" in classifiers
+    assert "Topic :: Software Development :: Libraries :: Python Modules" in classifiers
     assert sorted(c for c in classifiers if c.startswith(prefix)) == [
         prefix + "11", prefix + "12", prefix + "13", prefix + "14",
     ]
