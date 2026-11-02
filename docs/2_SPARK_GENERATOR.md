@@ -33,7 +33,7 @@ assert df.columns == ["user_id", "age", "is_active", "signup"]
 
 ## API
 
-<!-- derived-from: spark-generator sha256:30fb02489a06 -->
+<!-- derived-from: spark-generator sha256:74f84215e13e -->
 
 | Call | Does |
 |---|---|
@@ -46,8 +46,8 @@ assert df.columns == ["user_id", "age", "is_active", "signup"]
 
 ## Methods
 
-<!-- derived-from: spark-generator sha256:30fb02489a06 -->
-<!-- derived-from: generation-methods sha256:1f05c8237a5e -->
+<!-- derived-from: spark-generator sha256:74f84215e13e -->
+<!-- derived-from: generation-methods sha256:79e2694810ad -->
 
 The table records validation's current outcome for every RandSpec method. `yes` means Spark produces
 the column; `refused` means use `DataGenerator`.
@@ -85,7 +85,7 @@ and null; `[1, 2.5]` gives doubles; `[1, "x"]` and `[True, "x"]` give text (`"1"
 `["x", 1, 2.5]` gives text. Ints with `None` give a double column: null with Arrow on, NaN with
 Arrow off. Construction refuses, naming the column: container values, a pool
 with no inferable value, kinds Spark cannot merge in order (`[1, True]`, `[1, 2.5, "x"]`), date,
-timestamp or binary beside text, and integers outside int64.
+timestamp or binary beside text, and integers outside int64 in a numeric pool.
 `kwargs` is the only parameter key; `args`, `splitable`, `sep` and `pk` as column keys are also
 refused.
 Spark accepts `int_zfilled` only through length 15, refuses `uint64`, and refuses integer domains
@@ -152,6 +152,6 @@ else:
 
 ## Writing
 
-<!-- derived-from: spark-generator sha256:30fb02489a06 -->
+<!-- derived-from: spark-generator sha256:74f84215e13e -->
 
 Use Spark's own `df.write`; rand-engine does not own Spark writing.

@@ -37,6 +37,7 @@ rand_engine/
   __main__.py        python -m rand_engine -> cli.main
   cli.py             the rand-engine console script: list, get-started
   cases/             declared Python or Markdown resources for six get-started starters, shipped as package data
+  llms.txt           the machine-readable docs index, shipped as package data; the docs site serves it byte-equal at /llms.txt
   py.typed           typing marker
   main/              composition roots
     data_generator.py      DataGenerator — pandas pipeline, one-row construction check, writers, normalized pandas stream_dict records; resolve_size, the one size decider
@@ -46,7 +47,7 @@ rand_engine/
     _keys.py               stateless PK/FK sequence, permutation and parent selection
     _np_core.py            NPCore — vectorized NumPy methods, fixed-width and pool Arrow text builders, alias samplers, float grid helpers
     _py_core.py            PyCore — correlated level columns and pattern text; METHODS, the NumPy method map
-    _spark_core.py         SparkCore — native Spark column expressions
+    _spark_core.py         SparkCore — native Spark column expressions; spark_pool_column, the one Spark pool column builder
   validators/        RandSpec grammar
     method_specs.py        METHOD_CATALOG — the one method authority
     common_validator.py    CommonValidator — ordinary methods, column keys, Spark intake
@@ -66,13 +67,13 @@ evals/
   tasks/             one folder per task: instruction.md, task.toml, optional environment/, tests/check.py
 ```
 
-- Dependency direction: `main` -> `core`, `validators`, `file_handlers`, `utils`, and `main.spark_generator` -> `main.data_generator` for `resolve_size`; `validators.method_specs` -> `core._np_core` for date directives, the one date-bound parse (`_parse_date_bound`, which `SparkCore` also calls) and float-domain predicates, and `validators.common_validator` -> `core._np_core` for `width_beyond_double`, the one Spark width predicate `SparkCore.gen_ints` and `float_lattice_bounds` also call, so grammar and engine decide each numeric rule once; `cli` imports only the standard library and reads `cases/` as package resources; `core._keys` and `file_handlers` import only `validators.exceptions`; `examples.common_rand_specs` runs `AdvancedValidator` on `from_schema` output; `core` imports no generator and `examples` import no engine.
+- Dependency direction: `main` -> `core`, `validators`, `file_handlers`, `utils`, and `main.spark_generator` -> `main.data_generator` for `resolve_size`; `validators.method_specs` -> `core._np_core` for date directives, the one date-bound parse (`_parse_date_bound`, which `SparkCore` also calls) and float-domain predicates, `validators.method_specs` -> `core._spark_core` for `spark_pool_column`, the one Spark pool column builder that `SparkCore.gen_distincts` and the Spark pool rule share, and `validators.common_validator` -> `core._np_core` for `width_beyond_double`, the one Spark width predicate `SparkCore.gen_ints` and `float_lattice_bounds` also call, so grammar and engine decide each numeric rule once; `cli` imports only the standard library and reads `cases/` as package resources; `core._keys` and `file_handlers` import only `validators.exceptions`; `examples.common_rand_specs` runs `AdvancedValidator` on `from_schema` output; `core` imports no generator and `examples` import no engine.
 - A RandSpec is a dict keyed by column name; the NumPy path has one method-name -> function map shared by columns and nested templates, while `METHOD_CATALOG` owns the accepted grammar: names, parameters, engines and Arrow output types.
 - Generation is NumPy-first: every column is one array call; one `RandGenerator` decider makes an all-text column `string[pyarrow]`, then the columns are assembled into one DataFrame and transformed.
 - The Spark path builds ordinary columns as native expressions plus one broadcast join per `distincts` column; a key-only `mapInPandas` adapter applies the shared indexed `Keys` authority, with no row-wise Python UDF or Spark hash substitute.
 - Relations are stateless `pk` and `fk` column methods; no database read, lookup SQL, checkpoint or retained key state participates in generation. The SQLite integration persists generated rows only.
 - File writers stage output beside the destination and commit it only after every file closes; with `maxRowsPerBatch` a final file is generated one row batch at a time. SQLite overwrite stages an adjacent database and replaces only the selected table; append uses one transaction.
-- Documentation preparation copies tracked sources into a caller-owned isolated input and emits raw Markdown, `llms.txt`, all starter resources and a byte copy of the canonical Agent Skill. The workflow renders that isolated input with Zensical and combines its HTML with those prepared resources.
+- Documentation preparation copies tracked sources into a caller-owned isolated input and emits raw Markdown, a site-root byte copy of `rand_engine/llms.txt`, all starter resources and a byte copy of the canonical Agent Skill. The workflow renders that isolated input with Zensical and combines its HTML with those prepared resources.
 - Only a push to `master` uploads the site and deploys it to GitHub Pages, through one bounded `pages-public-site` queue.
 
 <!-- dadaia:fixed slop-code -->

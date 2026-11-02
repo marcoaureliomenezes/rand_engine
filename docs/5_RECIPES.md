@@ -7,7 +7,7 @@ Short, runnable patterns. Every `python` block runs in CI, in order, in one name
 
 ## Faker pools
 
-<!-- derived-from: generation-methods sha256:1f05c8237a5e -->
+<!-- derived-from: generation-methods sha256:79e2694810ad -->
 <!-- derived-from: templates-and-examples sha256:fa66c7f7252b -->
 
 In one CI run (three samples, medians; [comparison](comparison.md)), Faker took 0.769 s for 100,000 dicts against rand-engine's 0.159 s; `RandSpecs.faker_pool` draws a pool once and returns a `distincts` spec.

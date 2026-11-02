@@ -1,6 +1,6 @@
 # rand-engine
 
-rand-engine generates synthetic data from a declarative `RandSpec`, validated before generation: related `pk`/`fk` tables without a database, a reproducible seed, NumPy-vectorized generation, and published benchmarks, losses included. On a 100,000-dict workload, rand-engine 0.8.0 had a 4.8× lower median time than Faker (one CI run, three samples, medians; [Actions run 39153239357](https://github.com/marcoaureliomenezes/rand_engine/actions/runs/39153239357)).
+rand-engine generates synthetic data from a declarative `RandSpec`, validated before generation: related `pk`/`fk` tables without a database, a reproducible seed, NumPy-vectorized generation, and published benchmarks, losses included. On a 100,000-dict workload, rand-engine 0.8.0 had a 4.8× lower median time than Faker (one CI run, three samples, medians; [Actions run 39153239357](https://github.com/marcoaureliomenezes/rand_engine/actions/runs/39153239357), [comparison](https://github.com/marcoaureliomenezes/rand_engine/blob/master/docs/comparison.md)).
 
 [![PyPI](https://img.shields.io/pypi/v/rand-engine)](https://pypi.org/project/rand-engine/)
 [![Python](https://img.shields.io/pypi/pyversions/rand-engine)](https://pypi.org/project/rand-engine/)

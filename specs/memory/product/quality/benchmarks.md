@@ -37,10 +37,10 @@ sources:
 - A distinct observational workflow uses a pinned CI-only environment and the installed public, non-editable `rand-engine` wheel; its dedicated requirements do not modify the package dependency declarations or the project lock.
 - One contract materializes 100,000 three-field Python dictionaries from rand-engine and Faker. The other fully evaluates 1,000,000 three-field Spark rows at eight partitions from rand-engine and dbldatagen, retaining schemas, null and domain checks, aggregates and executed plans that hash every payload column.
 - Each side warms once, then runs three timed samples in AB/BA/AB order. Setup, warm-up and complete output validation stay outside those sample clocks; the versioned JSON retains raw samples, medians, environment and package identity, wheel and harness hashes, validations and plans.
-- The workflow is unscheduled and non-required, carries no limit or ranking field and cannot change the internal 1.3 regression authority. The public comparison guide records the actual bounded observations and their limits without inferring a universal winner ([[documentation]]).
+- The workflow is unscheduled and non-required, carries no limit or ranking field and cannot change the internal 1.3 regression authority. The public comparison guide records the bounded observations, each workload's median result and their limits, without a universal-speed or production-throughput claim ([[documentation]]).
 
 ## Benchmark record
 
 - A candidate whose code touches a measured path records the CI artifact of its last measured head byte for byte as `docs/benchmarks.json` and `docs/BENCHMARKS.md`; the record commit adds only `docs/` and `tests/`, so the measured paths stay at the recorded head.
 - The committed JSON names its head and base commits; tests check that it names the recorded commits, holds every inventory row at both sizes and passes every repo limit.
-- The docs site serves `docs/BENCHMARKS.md` as its Benchmarks page ([[documentation]]).
+- The renderer opens `docs/BENCHMARKS.md` with its front-matter search description, and the docs site serves it as its Benchmarks page ([[documentation]]).

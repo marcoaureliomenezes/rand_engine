@@ -26,7 +26,7 @@ sources:
 | `lake` | `pk`/`fk` related tables written as Parquet under `lake/` in the run directory, read back and joined ([[pk-fk-constraints]], [[writers-and-streaming]]) |
 | `kafka` | an event stream printed as JSON lines; a Kafka producer block runs only when the file's `SEND_TO_KAFKA` constant is set to `True`, so no broker or client is needed by default ([[data-generator]]) |
 | `databricks` | a Spark notebook on native `SparkGenerator`, with a note on `DataGenerator`-only features and the `spark.createDataFrame` path, which enables Spark's Arrow option first so `pd.NA` text nulls convert ([[spark-generator]]) |
-| `faker` | Faker pools sampled at NumPy speed through `RandSpecs.faker_pool`; needs the `rand-engine[faker]` extra ([[templates-and-examples]]) |
+| `faker` | Faker pools drawn once and sampled by NumPy through `RandSpecs.faker_pool`; needs the `rand-engine[faker]` extra ([[templates-and-examples]]) |
 | `agent` | concise rand-engine package-use guidance written to `AGENTS.md` for a consuming project; it is context for an agent, not an executable tutorial ([[documentation]]) |
 
 ## Scaffold format

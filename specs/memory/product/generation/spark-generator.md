@@ -23,7 +23,8 @@ sources:
 - The common validator accepts ordinary Spark methods and named `kwargs`; `SparkGenerator` extracts `pk` and `fk` columns and applies the same advanced key validation as `DataGenerator` ([[rand-spec-grammar]], [[generation-methods]]).
 - `exponential`, `lognormal`, `poisson`, `zipf`, `constant` and the four correlated methods `distincts_map`, `distincts_multi_map`, `distincts_map_prop` and `complex_distincts` are refused as NumPy engine only, with the fix line to use `DataGenerator`; so are `null_rate` and `anomaly_rate`; `anomaly_values` alone is accepted and has no effect.
 - `args` and unknown column keys are refused.
-- A `distincts` pool may mix value types: Spark coerces it, so `['x', 'y', None]` yields text and nulls — the in-spec way to get nulls on Spark — and `[1, 2.5]` yields doubles; `DataGenerator` refuses such pools ([[rand-spec-grammar]]).
+- A `distincts` pool, and the positive-weight keys of a `distincts_prop` pool, may mix value types; `DataGenerator` refuses such pools ([[rand-spec-grammar]]). Spark accepts `['x', None]` as text and null — the in-spec way to get nulls on Spark — `[1, 2.5]` as doubles, and `[1, 'x']`, `[True, 'x']` and `['x', 1, 2.5]` as text (`'1'`, `'true'`). Integers with `None` give a double column: null with Arrow on, NaN with Arrow off.
+- Construction refuses, naming the column, a pool Spark cannot write into one column unchanged: container values, no inferable value, kinds Spark cannot merge in order (`[1, True]`, `[1, 2.5, 'x']`), a date, timestamp or binary value beside text, and, in a numeric pool, an integer outside int64; the pandas column Spark receives is built by the one builder generation uses.
 - `integers` refuses `uint64` and any width `max - min + 1` above 2^53, at validation and in `SparkCore` alike; `int_zfilled` refuses `length` above 15. Every other accepted integer domain, width 2^53 included, is exact and inclusive.
 
 ## Behaviour

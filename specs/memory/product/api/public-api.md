@@ -2,7 +2,7 @@
 slug: public-api
 title: Public API
 tldr: "rand_engine exports DataGenerator, SparkGenerator, RandSpecs and __version__, is typed and ships the rand-engine CLI; every other module is internal."
-summary: "The supported import surface is the three names in rand_engine.__all__, the RandEngineError exception family a caller catches, the __version__ string read from installed metadata and the rand-engine console script; the wheel ships only the rand_engine package, typed, with its get-started scaffolds."
+summary: "The supported import surface is the three names in rand_engine.__all__, the RandEngineError exception family a caller catches, the __version__ string read from installed metadata and the rand-engine console script; the wheel ships only the rand_engine package, typed, with its get-started scaffolds and llms.txt."
 tags: [api, package, exceptions]
 sources:
   - rand_engine/__init__.py
@@ -29,15 +29,15 @@ rand_engine.__version__  # the installed rand-engine version, else "0.0.0+unknow
 ## Errors
 
 - The library's own exceptions derive from `RandEngineError` (`rand_engine.validators.exceptions`).
-- `SpecValidationError` — the spec failed validation at generator construction, at a callable spec's evaluation or in `from_schema`, or a `DataGenerator` column could not generate its one-row check at construction; the validators collect every issue into one error whose footer links the docs site ([[rand-spec-grammar]], [[data-generator]]).
-- `ColumnGenerationError` — a method raised while building a named column.
+- `SpecValidationError` — the spec failed validation at generator construction, at a callable spec's evaluation or in `from_schema`, or a `DataGenerator` column could not generate its one-row check at construction; the validators and the construction check collect every issue into one error whose footer links the docs site, while `from_schema` reports one problem per raise ([[rand-spec-grammar]], [[data-generator]]).
+- `ColumnGenerationError` — a named column's generation step raised: the method call, the conversion or the multi-column unpack.
 - `TransformerError` — a per-column transformer raised; the message names the column and the transformer's zero-based index. Global transformer errors propagate unwrapped.
-- Plain `RandEngineError` — an unset size or one that is not a non-negative integer, an invalid writer option, an unwritable schema, anomaly values a column cannot keep after its transformers at generation, a key that cannot be generated, or a global transformer that changes the row count ([[writers-and-streaming]], [[data-generator]]).
-- `FileWriterError` — declared and importable; no module raises it, and its docstring says so.
+- Plain `RandEngineError` — an unset size or one that is not a non-negative integer, an invalid writer option, an unwritable schema, anomaly values a column cannot keep after its transformers at generation, a modifier column a global transformer dropped, a key that cannot be generated, or a global transformer that changes the row count ([[writers-and-streaming]], [[data-generator]]).
+- `FileWriterError` — declared and importable; no module raises it, and its docstring says writers raise `RandEngineError` instead.
 
 ## Distribution
 
-- PyPI distribution `rand-engine`, import package `rand_engine`; the wheel holds only `rand_engine/` — the `py.typed` marker and the `cases/*.py.txt` scaffolds included, the agent skill excluded — and declares the `rand-engine` console script.
-- The metadata is a static PEP 621 `[project]` table; only the runtime dependencies stay dynamic, from Poetry. It declares `Requires-Python: >=3.11`, the Python classifiers 3.11 to 3.14 that CI tests, `Typing :: Typed`, 14 keywords and `License-Expression: MIT`. The Summary is `project.description`, and the package docstring's first line repeats it.
-- The metadata's `Documentation` project URL is the docs site, the same URL the validators' error footer names ([[documentation]]).
+- PyPI distribution `rand-engine`, import package `rand_engine`; the wheel holds only `rand_engine/` — the `py.typed` marker, the `cases/` starter resources and `llms.txt` included, the agent skill excluded — and declares the `rand-engine` console script.
+- The metadata is a static PEP 621 `[project]` table; only the runtime dependencies stay dynamic, from Poetry. It declares `Requires-Python: >=3.11`, the Python classifiers 3.11 to 3.14 that CI tests, `Typing :: Typed`, the `Topic` classifiers `Software Development :: Testing`, `Software Development :: Testing :: Mocking`, `Software Development :: Libraries :: Python Modules` and `Scientific/Engineering`, 17 keywords and `License-Expression: MIT`. The Summary is `project.description`, which states no speed claim, and the package docstring's first line repeats it.
+- The project URLs are `Homepage`, `Repository`, `Documentation`, `Issues`, `Changelog`, `llms.txt` and `Agent skill`; `Documentation` is the docs site, the same URL the validators' error footer names, and the last two are the site's published copies of `llms.txt` and the skill ([[documentation]]).
 - Mandatory dependencies are NumPy `>=1.26`, pandas `>=2.2,<4` and PyArrow `>=19.0.0`, with no other cap. Faker is the optional extra `rand-engine[faker]`, `>=28.4.1` and uncapped; without it only `RandSpecs.faker_pool` fails, with a `RandEngineError` naming the extra.

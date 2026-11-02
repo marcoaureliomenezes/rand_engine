@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-01T16:34:11Z",
+  "generated_at": "2026-11-02T04:05:30Z",
   "features": [
     {
       "rank": 1,
@@ -7,14 +7,14 @@
       "title": "Public API",
       "area": "api",
       "tldr": "rand_engine exports DataGenerator, SparkGenerator, RandSpecs and __version__, is typed and ships the rand-engine CLI; every other module is internal.",
-      "summary": "The supported import surface is the three names in rand_engine.__all__, the RandEngineError exception family a caller catches, the __version__ string read from installed metadata and the rand-engine console script; the wheel ships only the rand_engine package, typed, with its get-started scaffolds.",
+      "summary": "The supported import surface is the three names in rand_engine.__all__, the RandEngineError exception family a caller catches, the __version__ string read from installed metadata and the rand-engine console script; the wheel ships only the rand_engine package, typed, with its get-started scaffolds and llms.txt.",
       "path": "specs/memory/product/api/public-api.md",
       "tags": [
         "api",
         "package",
         "exceptions"
       ],
-      "token_estimate": 644,
+      "token_estimate": 752,
       "depends_on": [
         "data-generator",
         "spark-generator",
@@ -102,7 +102,7 @@
         "distributions",
         "modifiers"
       ],
-      "token_estimate": 1401,
+      "token_estimate": 1442,
       "depends_on": [
         "data-generator",
         "spark-generator",
@@ -128,7 +128,7 @@
         "pyspark",
         "generator"
       ],
-      "token_estimate": 634,
+      "token_estimate": 760,
       "depends_on": [
         "data-generator",
         "rand-spec-grammar",
@@ -146,7 +146,7 @@
       "title": "Documentation site, llms.txt and agent skill",
       "area": "onboarding",
       "tldr": "Strict-built docs, README, llms.txt and Agent guidance cover APIs, tutorials, compatibility, migration, support and security routes.",
-      "summary": "Zensical builds an isolated site from Markdown and public docstrings, deployed to GitHub Pages from master only; README becomes the site home; rendered references and five tutorials cover package use; one compatibility guide covers tested boundaries, migration and recovery; llms.txt indexes rendered guides, the mirrored canonical skill and all six starter resources; and canonical contribution and security files route support and private reports.",
+      "summary": "Zensical builds an isolated site from Markdown and public docstrings, deployed to GitHub Pages from master only; README becomes the site home; every other page carries its own search description; rendered references and five tutorials cover package use; one compatibility guide covers tested boundaries, migration and recovery; llms.txt indexes rendered guides, the mirrored canonical skill and all six starter resources; and canonical contribution and security files route support and private reports.",
       "path": "specs/memory/product/onboarding/documentation.md",
       "tags": [
         "docs",
@@ -155,7 +155,7 @@
         "agent-skill",
         "readme"
       ],
-      "token_estimate": 984,
+      "token_estimate": 1307,
       "depends_on": [
         "public-api",
         "writers-and-streaming",
@@ -168,7 +168,8 @@
       "sources": [
         "docs/**",
         "mkdocs.yml",
-        "llms.txt",
+        "rand_engine/llms.txt",
+        "context7.json",
         "README.md",
         "skills/**",
         ".github/workflows/docs.yml",
@@ -189,7 +190,7 @@
         "scaffolds",
         "examples"
       ],
-      "token_estimate": 625,
+      "token_estimate": 628,
       "depends_on": [
         "public-api",
         "generation-methods",
@@ -270,7 +271,7 @@
         "ci",
         "regression"
       ],
-      "token_estimate": 764,
+      "token_estimate": 783,
       "depends_on": [
         "documentation"
       ],
@@ -323,7 +324,7 @@
         "grammar",
         "validation"
       ],
-      "token_estimate": 1058,
+      "token_estimate": 1103,
       "depends_on": [
         "pk-fk-constraints",
         "generation-methods",

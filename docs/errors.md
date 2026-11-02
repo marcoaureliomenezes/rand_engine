@@ -11,8 +11,8 @@ specific classes identify where the operation failed.
   check finds, at construction, before generation starts.
 - `RandEngineError` is raised at generation for size faults, a foreign key with
   no eligible parent, a pk outside its domain or past int64, a global transformer
-  that changes the row count or drops a modifier column, anomaly values that
-  cannot keep their dtype after embedded transformers, and the writers.
+  that changes the row count or drops a modifier column, anomaly values that cannot
+  keep the dtype the column's transformers (embedded or global) left, and the writers.
 - `ColumnGenerationError` wraps the method call, conversion and multi-column unpack.
 - `TransformerError` wraps an exception from a per-column transformer and names
   its column and position.
