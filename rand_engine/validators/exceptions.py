@@ -10,11 +10,12 @@ file output.
 class RandEngineError(Exception):
     """Base class of the errors Rand Engine raises on purpose.
 
-    Raised directly when no narrower class applies: a generator or writer
-    used out of order, a writer option with an invalid or unsupported value,
-    a file or SQLite write that fails, a schema that changes between batches,
-    or a primary or foreign key that cannot be generated. A column's failure
-    surfaces as ``ColumnGenerationError``, which is also a ``RandEngineError``.
+    Raised directly for size faults, an fk column with no eligible parent, a
+    modifier column missing after embedded transformers, a global transformer
+    that changes the row count, an empty schema that cannot be derived, the pk
+    index and sequence guards, ``RandSpecs.faker_pool``, and the writers. A
+    failure in the generation step (the method call, the conversion, the
+    multi-column unpack) surfaces as ``ColumnGenerationError``.
 
     Examples
     --------
@@ -31,10 +32,10 @@ class RandEngineError(Exception):
 class SpecValidationError(RandEngineError):
     """A RandSpec or Arrow schema failed validation before generation.
 
-    Raised by ``DataGenerator`` and ``SparkGenerator`` when the spec is
-    checked, before any row is generated, and by ``RandSpecs.from_schema``
-    for a non-Arrow schema, a malformed override, or a field with no default
-    recipe. The message lists every problem found.
+    Raised by the validators of ``DataGenerator`` and ``SparkGenerator``
+    before any row is generated, and by the construction net; the message
+    lists every problem found. ``RandSpecs.from_schema`` reports one problem
+    per raise.
 
     Examples
     --------
@@ -86,11 +87,9 @@ class TransformerError(RandEngineError):
 
 
 class FileWriterError(RandEngineError):
-    """A file writer failed. Declared, but raised nowhere in this release.
+    """A file writer failed. Writers raise ``RandEngineError`` instead.
 
-    No code path in this release raises ``FileWriterError``: file and SQLite
-    write failures raise ``RandEngineError``. The class stays importable so
-    callers can name it in their own handlers.
+    The class stays importable so callers can name it in their own handlers.
 
     Examples
     --------
