@@ -2,6 +2,12 @@ import pandas as pd
 from rand_engine.core._np_core import DATE_DIRECTIVES, DATE_SPLIT, _parse_date_bound, epoch_seconds, float_lattice_bounds, width_beyond_double
 
 
+def spark_pool_column(values):
+  """The pandas column Spark receives for a distincts pool; text pools are object so None stays None."""
+  column = pd.DataFrame(values, columns=["c"])["c"]
+  return column.astype(object).where(column.notna(), None) if isinstance(column.dtype, pd.StringDtype) else column
+
+
 class SparkCore:
 
   _INTEGER_DOMAINS = {
@@ -60,7 +66,7 @@ class SparkCore:
   def gen_distincts(spark, F, df, col_name, distincts=[]):
     values = distincts if distincts else []
     aux_col = f"aux_col{col_name}"
-    df_pd = pd.DataFrame(values, columns=[col_name])
+    df_pd = spark_pool_column(values).rename(col_name).to_frame()
     df_pd[aux_col] = range(len(values))
     df_spark = spark.createDataFrame(df_pd)
     df_columns = df.columns

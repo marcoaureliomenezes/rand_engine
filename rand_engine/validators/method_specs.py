@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 
+from rand_engine.core._spark_core import spark_pool_column
 from rand_engine.core._np_core import DATE_DIRECTIVES, _parse_date_bound, float_decimals_supported, float_lattice_bounds, poisson_lam_supported
 
 
@@ -214,7 +215,7 @@ def _spark_pool_problem(pool: list[Any]) -> str:
     """
     if any(isinstance(v, (list, tuple, dict, set)) for v in pool):
         return "holds a list, tuple or dict, which Spark writes as another value"
-    column = pd.DataFrame(pool, columns=["c"])["c"]
+    column = spark_pool_column(pool)
     if column.isna().all() and column.dtype.kind != "f":
         return "holds no value Spark can infer a type from"
     if column.dtype.kind not in "biufMmO":
