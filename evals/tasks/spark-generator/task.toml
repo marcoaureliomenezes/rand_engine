@@ -1,0 +1,17 @@
+schema_version = "1.4"
+
+[metadata]
+description = "Usage: build a seeded Spark DataFrame from a spec on local[1] and save it as one parquet file"
+
+[task]
+round = "usage"
+legs = ["pypi", "wheel"]
+
+[agent]
+timeout_sec = 1200.0
+
+[verifier]
+timeout_sec = 600.0
+
+[environment]
+requirements = ["pyspark>=3.5,<4"]
