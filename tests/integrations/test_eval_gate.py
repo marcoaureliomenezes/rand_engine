@@ -158,7 +158,7 @@ def test_calibrate_writes_ceil_of_twice_the_median_of_passing_usage_trials(env, 
     write_task(tasks, "beta", "usage", ["pypi", "wheel"])  # no ceiling: calibrate still runs
     for leg in ("pypi", "wheel"):
         for n in (1, 2, 3):
-            write_trial(results, "beta", leg, n, tokens=1001 if n == 1 else 1000)
+            write_trial(results, "beta", leg, n, tokens=1001 if leg == "wheel" else 1000)
     for n, tokens in ((1, 1000), (2, 90000), (3, 3000)):
         write_trial(results, "alpha", "wheel", n, tokens=tokens, passed=n != 2)
     for n, tokens in ((1, 1000), (2, 2000), (3, 5000)):
