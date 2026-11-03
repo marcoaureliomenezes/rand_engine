@@ -134,7 +134,7 @@ def provenance(workdir, script, artifacts, python=sys.executable, specs=None):
     """None when every artifact column equals a column the script generated through rand_engine on a re-run, else a "provenance: ..." line.
 
     The re-run happens in a scratch copy of `workdir` without the artifacts, so the originals are only read.
-    An artifact the agent did not deliver is read from what the re-run wrote.
+    A listed artifact the agent did not deliver fails.
     When `specs` is a list, each generator's evaluated spec dict is appended to it.
     """
     if (msg := _static(script)):
@@ -167,10 +167,10 @@ def provenance(workdir, script, artifacts, python=sys.executable, specs=None):
             specs.extend(data["specs"])
         recorded = {(c, f["rows"], h) for f in data["frames"] for c, h in f["cols"].items()}
         for art in artifacts:
-            # the agent's own file when it delivered one, else what the re-run itself wrote
-            source = workdir / art if (workdir / art).exists() else scratch / art
+            if not (workdir / art).exists():
+                return f"provenance: artifact {art} was not delivered"
             try:
-                df = read_artifact(source)
+                df = read_artifact(workdir / art)
             except Exception as e:
                 return f"provenance: cannot read artifact {art}: {type(e).__name__}"
             for col in df.columns:
