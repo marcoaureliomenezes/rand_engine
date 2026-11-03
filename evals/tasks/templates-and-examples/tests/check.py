@@ -1,4 +1,4 @@
-"""Usage check, run in the trial directory: layer 1 the artifacts, layer 2 provenance, layer 3 the named RandSpecs entries."""
+"""Usage check, run in the trial directory: layer 1 the artifacts, layer 2 provenance, layer 3 the shipped template entries."""
 import json
 import os
 import sys
@@ -7,10 +7,26 @@ from pathlib import Path
 import _check
 import pandas as pd
 
+from rand_engine import DataGenerator, RandSpecs
+from rand_engine.examples import AdvancedRandSpecs
+
+CUSTOMERS = [RandSpecs.customers()]
+ORDERS = [RandSpecs.orders(), AdvancedRandSpecs.orders()]
+
+
+def normal(spec):
+    return json.loads(json.dumps(spec))
+
+
+def column_sets(entries):
+    """The column set each shipped entry generates; a split column such as `currency_country` yields its parts."""
+    return [set(DataGenerator(entry, seed=1).size(1).get_df().columns) for entry in entries]
+
+
 TABLES = {
-    "customers.parquet": (200, ["customer_id", "age", "city", "total_spent", "is_premium", "registration_date"]),
-    "orders.parquet": (1000, ["order_id", "customer_id", "amount", "order_timestamp", "status", "payment_method"]),
-    "cities.parquet": (500, ["city"]),
+    "customers.parquet": (200, column_sets(CUSTOMERS)),
+    "orders.parquet": (1000, column_sets(ORDERS)),
+    "cities.parquet": (500, [{"city"}]),
 }
 specs = []
 
@@ -23,30 +39,23 @@ def fail(layer, message):
 events = _check.tool_events(os.environ["RAND_EVAL_TRANSCRIPT"]) if "RAND_EVAL_TRANSCRIPT" in os.environ else []
 surfaces = _check.surfaces(events)
 
-# Layer 1: the three artifacts with the asked rows and columns.
-for name, (rows, columns) in TABLES.items():
+# Layer 1: the three artifacts with the asked rows and one of the shipped column sets.
+for name, (rows, allowed) in TABLES.items():
     try:
         df = pd.read_parquet(name)
     except Exception as e:
         fail("1", f"{name} unreadable: {type(e).__name__}")
-    if len(df) != rows or list(df.columns) != columns:
-        fail("1", f"{name}: expected {rows} rows and columns {columns}, got {len(df)} rows and {list(df.columns)}")
+    if len(df) != rows or set(df.columns) not in allowed:
+        fail("1", f"{name}: expected {rows} rows and one of the column sets {[sorted(s) for s in allowed]}, got {len(df)} rows and {list(df.columns)}")
 
 # Layer 2: the script's re-run regenerates every column through rand_engine.
 if (msg := _check.provenance(".", "solve.py", list(TABLES), python=sys.executable, specs=specs)):
     fail("2", msg)
 
-# Layer 3: the recorded specs are the named RandSpecs entries, evaluated in this venv, plus no legacy names, token ceiling, no web.
-from rand_engine import RandSpecs  # noqa: E402  (rand-engine and faker are installed in the trial venv)
-
-
-def normal(spec):
-    return json.loads(json.dumps(spec))
-
-
-for label, entry in (("customers", RandSpecs.customers()), ("orders", RandSpecs.orders())):
-    if normal(entry) not in specs:
-        fail("3", f"no recorded spec equals RandSpecs.{label}() as evaluated here")
+# Layer 3: the recorded specs are shipped template entries, evaluated in this venv, plus the city pool, no legacy names, token ceiling, no web.
+for label, entries in (("customers", CUSTOMERS), ("orders", ORDERS)):
+    if not any(normal(entry) in specs for entry in entries):
+        fail("3", f"no recorded spec equals a shipped {label} template (RandSpecs or AdvancedRandSpecs) as evaluated here")
 city_pool = normal(RandSpecs.faker_pool("city", locale="en_US", pool_size=50, seed=7))
 if not any(isinstance(spec, dict) and normal(column) == city_pool for spec in specs for column in spec.values()):
     fail("3", "no recorded column equals RandSpecs.faker_pool('city', locale='en_US', pool_size=50, seed=7) as evaluated here")
