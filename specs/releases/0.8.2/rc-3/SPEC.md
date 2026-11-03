@@ -1,6 +1,6 @@
 # SPEC — Release: 0.8.2, candidate 3 (the agent eval becomes the deploy gate)
 
-**Status:** Draft
+**Status:** Approved
 **Release ID:** 0.8.2
 **Owner:** dd-product-engineer
 **Opened:** 2026-11-02
