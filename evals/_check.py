@@ -1,16 +1,21 @@
-"""Shared helper of the agent-eval task checks (layers 1 and 2).
+"""Shared helper of the agent-eval task checks (layers 1 to 3).
 
 `provenance(workdir, script, artifacts, python)` -> None | "provenance: ..."; `value_hash(values)` -> str;
 `tool_events(path)` -> [{"name", "input"}]; `web_tool_uses(events)` -> [tool names].
+Layer 3: `legacy_hits(text)` -> [names]; `documented_method(spec, method, kwargs)` -> bool;
+`token_ceiling(task_toml, env)` -> None | "ceiling: ..."; `surfaces(events)` -> [tokens];
+`result_text(layer, message, surfaces)` -> the failure line and the `RESULT {json}` line.
 Side effects: `provenance` runs `script` once as a subprocess in `workdir`.
 """
 import ast
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
+import tomllib
 from pathlib import Path
 
 import pandas as pd
@@ -164,3 +169,51 @@ def tool_events(path):
 def web_tool_uses(events):
     """Names of the web tools the events used."""
     return [e["name"] for e in events if e["name"] in WEB_TOOLS]
+
+
+SURFACES = ("llms.txt", "help(", "get-started", "cases/", "examples/", "method_specs", "SpecValidationError")
+
+# The legacy names and syntax the CHANGELOG marks removed or renamed; each item is one pattern.
+LEGACY = {
+    "ExampleSpecs": r"\bExampleSpecs\b",
+    "constraints": r"""["']constraints["']\s*:""",
+    "db_checkpoint": r"\.db_checkpoint\(",
+    "option": r"DataGenerator\([^()]*\)\.option\(",
+    "uuid4 length": r"""uuid4[^\n]*["']length["']\s*:""",
+    "args": r"""["']args["']\s*:""",
+    "splitable": r"""["'](?:splitable|sep)["']\s*:""",
+    "validate_with_warnings": r"\bvalidate(?:_spark)?_with_warnings\b",
+}
+
+
+def legacy_hits(text):
+    """Names of the LEGACY items the text uses, in LEGACY order."""
+    return [name for name, pattern in LEGACY.items() if re.search(pattern, text)]
+
+
+def documented_method(spec, method, kwargs):
+    """True when some spec entry documents `method` with every name in `kwargs`."""
+    return any(e.get("method") == method and set(kwargs) <= set(e.get("kwargs", {})) for e in spec.values())
+
+
+def token_ceiling(task_toml, env):
+    """None when within the ceiling or skipped (no RAND_EVAL_TOKENS), else a "ceiling: ..." line."""
+    if "RAND_EVAL_TOKENS" not in env:
+        return None
+    ceiling = tomllib.loads(Path(task_toml).read_text(encoding="utf-8")).get("limits", {}).get("ceiling_tokens")
+    tokens = int(env["RAND_EVAL_TOKENS"])
+    if ceiling is not None and tokens > ceiling:
+        return f"ceiling: {tokens} tokens exceed the task.toml ceiling of {ceiling}"
+    return None
+
+
+def surfaces(events):
+    """The SURFACES tokens any tool_use input holds, in SURFACES order."""
+    blobs = [json.dumps(e["input"]) for e in events]
+    return [t for t in SURFACES if any(t in b for b in blobs)]
+
+
+def result_text(layer, message, surfaces=()):
+    """The failure line, naming its layer, then the D2 `RESULT {json}` line."""
+    line = message if message.startswith(layer) else f"{layer}: {message}"
+    return f"{line}\nRESULT {json.dumps({'layer': layer, 'surfaces': list(surfaces)})}\n"
