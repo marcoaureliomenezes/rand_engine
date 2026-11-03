@@ -217,3 +217,25 @@ def test_calibrate_prints_the_fail_lines_and_still_exits_0(env, capsys):
     assert code == 0
     assert "FAIL beta: no ceiling_tokens in task.toml" in out
     assert json.loads((results / "ceilings.json").read_text()) == {"alpha": 3000, "beta": 3000}
+
+
+def test_a_passing_trial_with_unknown_tokens_is_not_a_pass_and_never_crashes(env, capsys):
+    tasks, results = env
+    for leg in ("pypi", "wheel"):
+        for n in (1, 2, 3):
+            write_trial(results, "alpha", leg, n, input_tokens=None, output_tokens=None)
+    code, out = run_gate(env, capsys)
+    assert code == 1
+    assert "FAIL alpha: wheel passed 0 of 3 (need 2)" in out
+    assert "alpha | 0 | 0 | - | 1.50 | - | -" in out
+
+
+def test_calibrate_skips_passing_trials_with_unknown_tokens(env, capsys):
+    tasks, results = env
+    for leg in ("pypi", "wheel"):
+        for n in (1, 2, 3):
+            write_trial(results, "alpha", leg, n, input_tokens=None, output_tokens=None)
+    code, out = run_gate(env, capsys, "--calibrate")
+    assert code == 0
+    assert json.loads((results / "ceilings.json").read_text()) == {}
+    assert not any(line.startswith("ceiling") for line in out)
