@@ -675,16 +675,28 @@ if __name__ == "__main__":
 
 
 USAGE_TOOLS = "Bash,Read,Write,Edit,Glob,Grep"
+# the init `tools` of CLI 2.1.316 recorded with `--allowedTools` alone: every built-in tool
+DEFAULT_INIT_TOOLS = [
+    "Task", "Bash", "CronCreate", "CronDelete", "CronList", "DesignSync", "Edit", "EnterWorktree", "ExitWorktree",
+    "Glob", "Grep", "ListAgents", "Monitor", "NotebookEdit", "PushNotification", "Read", "RemoteTrigger",
+    "ReportFindings", "ScheduleWakeup", "SendMessage", "SendToProject", "SendToProjectContext", "TaskStop",
+    "ToolSearch", "WebFetch", "WebSearch", "Workflow", "Write"]
 
 
-def _trial(monkeypatch, tmp_path, rnd="usage", init=None, check_out="", requirements=()):
-    """Run one trial of a fixture task through `run_trial`, every subprocess faked; return (result, calls, out)."""
+def _load_run():
     import importlib.util
-    import types
 
     spec = importlib.util.spec_from_file_location("eval_run", Path(__file__).parents[2] / "evals" / "run.py")
     run = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(run)
+    return run
+
+
+def _trial(monkeypatch, tmp_path, rnd="usage", init=None, check_out="", requirements=()):
+    """Run one trial of a fixture task through `run_trial`, every subprocess faked; return (result, calls, out)."""
+    import types
+
+    run = _load_run()
     repo = tmp_path / "repo"
     task_dir = repo / "evals" / "tasks" / "t"
     (task_dir / "tests").mkdir(parents=True)
@@ -702,11 +714,12 @@ def _trial(monkeypatch, tmp_path, rnd="usage", init=None, check_out="", requirem
         calls.append((cmd, kw))
         out = ""
         if cmd[0] == "claude":
-            allowed = cmd[cmd.index("--allowedTools") + 1]
+            tools = cmd[cmd.index("--tools") + 1].split(",") if "--tools" in cmd else DEFAULT_INIT_TOOLS
             events = [{"type": "system", "subtype": "init", "model": "m", "permissionMode": "default",
-                       "tools": allowed.split(","), **(init or {})},
+                       "tools": tools, **(init or {})},
                       {"type": "result", "usage": {"input_tokens": 10, "cache_creation_input_tokens": 5,
-                                                   "cache_read_input_tokens": 20, "output_tokens": 7}}]
+                                                   "cache_read_input_tokens": 20, "output_tokens": 7},
+                       "total_cost_usd": 0.5}]
             out = "\n".join(json.dumps(e) for e in events) + "\n"
         elif str(cmd[-1]).endswith("check.py"):
             out = check_out
@@ -729,15 +742,12 @@ def _flag(cmd, name):
     return cmd[cmd.index(name) + 1]
 
 
-def _agent_env(monkeypatch, tmp_path):
-    return _claude(_trial(monkeypatch, tmp_path)[1])[1]["env"]
-
-
 def test_eval_usage_round_runs_sandboxed_without_web_tools(monkeypatch, tmp_path):
     res, calls, _ = _trial(monkeypatch, tmp_path, "usage")
     cmd = _claude(calls)[0]
     assert "error" not in res
     assert _flag(cmd, "--setting-sources") == ""
+    assert _flag(cmd, "--tools") == USAGE_TOOLS
     assert _flag(cmd, "--allowedTools") == USAGE_TOOLS
     assert _flag(cmd, "--disallowedTools") == "WebSearch,WebFetch"
     sandbox = json.loads(_flag(cmd, "--settings"))["sandbox"]
@@ -761,13 +771,23 @@ def test_eval_discovery_round_keeps_web_tools_and_no_settings(monkeypatch, tmp_p
     assert "error" not in res
     assert _flag(cmd, "--setting-sources") == ""
     assert "--settings" not in cmd
+    assert _flag(cmd, "--tools") == f"{USAGE_TOOLS},WebSearch,WebFetch"
     assert {"WebSearch", "WebFetch"} <= set(_flag(cmd, "--allowedTools").split(","))
+    assert "--disallowedTools" not in cmd
 
 
 @pytest.mark.parametrize("init", [{"permissionMode": "acceptEdits"}, {"tools": ["Bash", "WebFetch"]}])
 def test_eval_assert_isolated_raises_on_a_mode_or_tools_mismatch(monkeypatch, tmp_path, init):
     res, _, _ = _trial(monkeypatch, tmp_path, "usage", init=init)
     assert res["error"].startswith("RuntimeError: ")
+
+
+def test_eval_assert_isolated_rejects_the_default_tool_list_and_accepts_the_round_set():
+    run = _load_run()
+    tools = USAGE_TOOLS.split(",")
+    with pytest.raises(RuntimeError, match="isolation violated"):
+        run.assert_isolated({"permissionMode": "default", "tools": DEFAULT_INIT_TOOLS}, "default", tools)
+    run.assert_isolated({"permissionMode": "default", "tools": tools}, "default", tools)
 
 
 def test_eval_trial_keeps_the_transcript_and_hands_the_check_its_env(monkeypatch, tmp_path):
@@ -788,6 +808,23 @@ def test_eval_trial_json_merges_the_check_result_line(monkeypatch, tmp_path):
     assert res["check_output"] == stdout
 
 
+def test_eval_check_result_cannot_overwrite_runner_keys(monkeypatch, tmp_path):
+    stdout = ('RESULT {"task": "x", "trial": 9, "leg": "w", "round": "r", "k": 99, "model": "z", "input_tokens": 1,'
+              ' "output_tokens": 1, "cost_usd": 1, "passed": null, "check_output": "y", "layer": 2}\n')
+    res, _, _ = _trial(monkeypatch, tmp_path, "usage", check_out=stdout)
+    assert (res["task"], res["trial"], res["leg"], res["round"], res["k"], res["model"]) == (
+        "t", 2, "pypi", "usage", 3, "m")
+    assert (res["input_tokens"], res["output_tokens"], res["cost_usd"]) == (35, 7, 0.5)
+    assert (res["passed"], res["check_output"], res["layer"]) == (True, stdout, 2)
+
+
+def test_eval_malformed_result_line_keeps_check_output_and_records_an_error(monkeypatch, tmp_path):
+    stdout = "why it failed\nRESULT {not json\n"
+    res, _, _ = _trial(monkeypatch, tmp_path, "usage", check_out=stdout)
+    assert res["check_output"] == stdout
+    assert res["error"].startswith("ValueError: ")
+
+
 def test_eval_discovery_trial_records_passed_null(monkeypatch, tmp_path):
     res, _, _ = _trial(monkeypatch, tmp_path, "discovery", check_out='RESULT {"adopted": true, "surface": "s"}\n')
     assert res["passed"] is None
@@ -802,9 +839,13 @@ def test_eval_trial_installs_task_requirements_before_the_agent(monkeypatch, tmp
 
 
 def test_eval_runs_claude_with_the_subprocess_env_scrub(monkeypatch, tmp_path):
-    env = _agent_env(monkeypatch, tmp_path)
+    _, calls, _ = _trial(monkeypatch, tmp_path)
+    env = _claude(calls)[1]["env"]
     assert env["CLAUDE_CODE_SUBPROCESS_ENV_SCRUB"] == "1"
     assert env["CLAUDE_CODE_OAUTH_TOKEN"] == "placeholder"
+    others = [kw["env"] for cmd, kw in calls if cmd[0] != "claude"]
+    assert len(others) >= 2  # venv, check
+    assert all("CLAUDE_CODE_OAUTH_TOKEN" not in e for e in others)
 
 
 def test_eval_workflow_pins_the_scrub_cli_and_runs_under_bubblewrap():
