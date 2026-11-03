@@ -53,12 +53,15 @@ def pythonpath(monkeypatch):
     monkeypatch.setenv("PYTHONPATH", f"{REPO}{os.pathsep}{REPO / 'evals'}")
 
 
-def provenance(check, tmp_path, body, artifacts=("out.csv",)):
-    return check.provenance(tmp_path, script(tmp_path, body), list(artifacts), python=sys.executable)
-
-
 def run_script(tmp_path, body):
-    subprocess.run([sys.executable, str(script(tmp_path, body))], cwd=tmp_path, check=True, capture_output=True)
+    """Deliver the artifacts the way a trial does: the agent's own run, in the workdir."""
+    subprocess.run([sys.executable, str(script(tmp_path, body))], cwd=tmp_path, capture_output=True)
+
+
+def provenance(check, tmp_path, body, artifacts=("out.csv",), deliver=True, specs=None):
+    if deliver:
+        run_script(tmp_path, body)
+    return check.provenance(tmp_path, script(tmp_path, body), list(artifacts), python=sys.executable, specs=specs)
 
 
 SEEDED = f"from rand_engine import DataGenerator\nDataGenerator({SPEC}, seed=1).size(10).get_df().to_csv('out.csv', index=False)\n"
@@ -77,22 +80,22 @@ def test_zero_padded_column_passes(check, tmp_path):
 def test_replaced_artifact_fails(check, tmp_path):
     run_script(tmp_path, SEEDED)
     (tmp_path / "out.csv").write_text("age\n" + "\n".join(str(i) for i in range(100, 110)) + "\n")
-    assert provenance(check, tmp_path, SEEDED).startswith("provenance")
+    assert provenance(check, tmp_path, SEEDED, deliver=False).startswith("provenance")
 
 
 def test_unseeded_script_fails(check, tmp_path):
     body = f"from rand_engine import DataGenerator\nDataGenerator({SPEC}).size(10).get_df().to_csv('out.csv', index=False)\n"
     run_script(tmp_path, body)
-    assert provenance(check, tmp_path, body).startswith("provenance")
+    assert provenance(check, tmp_path, body, deliver=False).startswith("provenance")
 
 
 def test_agent_artifact_is_never_modified(check, tmp_path):
     run_script(tmp_path, SEEDED)
     before = (tmp_path / "out.csv").read_bytes()
-    assert provenance(check, tmp_path, SEEDED) is None
+    assert provenance(check, tmp_path, SEEDED, deliver=False) is None
     assert (tmp_path / "out.csv").read_bytes() == before
     (tmp_path / "out.csv").write_text("age\n999\n")
-    provenance(check, tmp_path, SEEDED)
+    provenance(check, tmp_path, SEEDED, deliver=False)
     assert (tmp_path / "out.csv").read_text() == "age\n999\n"
 
 
@@ -130,6 +133,11 @@ def test_numpy_file_beside_decorative_call_fails(check, tmp_path):
 def test_script_that_cannot_rerun_fails_as_provenance(check, tmp_path):
     msg = provenance(check, tmp_path, "from rand_engine import DataGenerator\nraise SystemExit(3)\n")
     assert msg.startswith("provenance")
+
+
+def test_absent_artifact_fails(check, tmp_path):
+    msg = provenance(check, tmp_path, SEEDED, deliver=False)
+    assert msg.startswith("provenance") and "out.csv" in msg
 
 
 def test_missing_script_fails_as_provenance(check, tmp_path):
@@ -196,7 +204,7 @@ def test_documented_method_never_raises_on_a_non_dict_column_value(check, value)
 def test_recorded_specs_are_judged(check, tmp_path):
     body = f"from rand_engine import DataGenerator\nDataGenerator({SPEC}, seed=1).size(10).get_df().to_csv('out.csv', index=False)\n"
     specs = []
-    msg = check.provenance(tmp_path, script(tmp_path, body), ["out.csv"], python=sys.executable, specs=specs)
+    msg = provenance(check, tmp_path, body, specs=specs)
     assert msg is None
     assert check.documented_method(specs, "integers", {"min", "max"})
     assert not check.documented_method(specs, "floats", {"min", "max"})
@@ -206,7 +214,7 @@ def test_callable_spec_is_judged_by_its_evaluated_dict(check, tmp_path):
     body = (f"from rand_engine import DataGenerator\nDataGenerator(lambda: {SPEC}, seed=1).size(10).get_df()"
             ".to_csv('out.csv', index=False)\n")
     specs = []
-    msg = check.provenance(tmp_path, script(tmp_path, body), ["out.csv"], python=sys.executable, specs=specs)
+    msg = provenance(check, tmp_path, body, specs=specs)
     assert msg is None
     assert check.documented_method(specs, "integers", {"min", "max"})
 
