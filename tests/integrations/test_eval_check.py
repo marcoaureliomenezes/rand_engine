@@ -273,3 +273,10 @@ def test_failing_result_names_layer_and_ends_with_result_line(check):
     assert "provenance" in lines[0]
     assert lines[-1].startswith("RESULT ")
     assert json.loads(lines[-1][len("RESULT "):]) == {"layer": "2", "surfaces": ["llms.txt"]}
+
+
+def test_check_imports_without_pandas():
+    env = {**os.environ, "PYTHONPATH": str(REPO / "evals")}
+    done = subprocess.run([sys.executable, "-c", "import sys; sys.modules['pandas'] = None; import _check"],
+                          env=env, capture_output=True, text=True)
+    assert done.returncode == 0, done.stderr
