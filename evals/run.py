@@ -12,10 +12,24 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
-FLAGS = ["--output-format", "stream-json", "--verbose", "--setting-sources", "",
-         "--strict-mcp-config", '--mcp-config={"mcpServers":{}}', "--disable-slash-commands",
-         "--no-session-persistence", "--permission-mode", "dontAsk",
-         "--allowedTools", "Bash,Read,Write,Edit,Glob,Grep,WebSearch,WebFetch"]
+BASE = ["--output-format", "stream-json", "--verbose", "--setting-sources", "",
+        "--strict-mcp-config", '--mcp-config={"mcpServers":{}}', "--disable-slash-commands",
+        "--no-session-persistence", "--permission-mode", "dontAsk"]
+USAGE = {"tools": ["Bash", "Read", "Write", "Edit", "Glob", "Grep"], "web": False}
+ROUNDS = {"usage": USAGE, "canary": USAGE,
+          "discovery": {"tools": [*USAGE["tools"], "WebSearch", "WebFetch"], "web": True}}
+
+
+def round_flags(rnd, work):
+    """The claude flags of a round; the sandbox block (usage, canary) rides `--settings` as a JSON string."""
+    r = ROUNDS[rnd]
+    flags = [*BASE, "--allowedTools", ",".join(r["tools"])]
+    if not r["web"]:
+        sandbox = {"enabled": True, "failIfUnavailable": True, "allowUnsandboxedCommands": False,
+                   "network": {"allowedDomains": []},
+                   "filesystem": {"denyRead": [str(Path.home())], "allowRead": [str(work)]}}
+        flags += ["--disallowedTools", "WebSearch,WebFetch", "--settings", json.dumps({"sandbox": sandbox})]
+    return flags
 
 
 def trial_env(venv):
@@ -27,12 +41,17 @@ def trial_env(venv):
     return env
 
 
-def assert_isolated(init):
-    """Raise unless the init event lists no skill, slash command, MCP server or non-builtin plugin."""
+def assert_isolated(init, mode, tools):
+    """Raise unless the init event lists no skill, slash command, MCP server or non-builtin plugin,
+    reports permission mode `mode` and exactly the tools `tools`."""
     leaks = {"skills": init.get("skills"), "slash_commands": init.get("slash_commands"),
              "mcp_servers": init.get("mcp_servers"),
              "plugins": [p for p in init.get("plugins", []) if p.get("path") != "builtin"]}
     leaks = {k: v for k, v in leaks.items() if v}
+    if init.get("permissionMode") != mode:
+        leaks["permissionMode"] = init.get("permissionMode")
+    if sorted(init.get("tools", [])) != sorted(tools):
+        leaks["tools"] = init.get("tools")
     if leaks:
         raise RuntimeError(f"isolation violated: {leaks}")
 
@@ -45,6 +64,7 @@ def run_trial(task, n, args):
     t0 = time.monotonic()
     try:
         cfg = tomllib.loads((task_dir / "task.toml").read_text(encoding="utf-8"))
+        rnd = cfg["task"]["round"]
         venv, cwd = work / "venv", work / "work"
         env = trial_env(venv)
         subprocess.run([sys.executable, "-m", "venv", str(venv)], check=True, env=env)
@@ -57,8 +77,8 @@ def run_trial(task, n, args):
         else:
             cwd.mkdir()
         try:
-            p = subprocess.run(["claude", "-p", (task_dir / "instruction.md").read_text(encoding="utf-8"), *FLAGS,
-                                "--model", args.model], cwd=cwd, text=True,
+            prompt = (task_dir / "instruction.md").read_text(encoding="utf-8")
+            p = subprocess.run(["claude", "-p", prompt, *round_flags(rnd, work), "--model", args.model], cwd=cwd, text=True,
                                env={**env, "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1",
                                     **{k: v for k, v in os.environ.items() if k == "CLAUDE_CODE_OAUTH_TOKEN"}},
                                capture_output=True, stdin=subprocess.DEVNULL,
@@ -73,7 +93,7 @@ def run_trial(task, n, args):
             except ValueError:  # a timeout can cut the last line
                 pass
         init = next(e for e in events if e.get("subtype") == "init")
-        assert_isolated(init)
+        assert_isolated(init, "default", ROUNDS[rnd]["tools"])
         res["model"] = init["model"]
         done = next((e for e in events if e.get("type") == "result"), {})
         if done.get("is_error"):
