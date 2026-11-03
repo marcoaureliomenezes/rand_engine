@@ -2,16 +2,18 @@
 
 `provenance(workdir, script, artifacts, python)` -> None | "provenance: ..."; `value_hash(values)` -> str;
 `tool_events(path)` -> [{"name", "input"}]; `web_tool_uses(events)` -> [tool names].
-Layer 3: `legacy_hits(text)` -> [names]; `documented_method(spec, method, kwargs)` -> bool;
+Layer 3: `legacy_hits(text)` -> [names]; `documented_method(specs, method, kwargs)` -> bool;
 `token_ceiling(task_toml, env)` -> None | "ceiling: ..."; `surfaces(events)` -> [tokens];
 `result_text(layer, message, surfaces)` -> the failure line and the `RESULT {json}` line.
 Side effects: `provenance` runs `script` once as a subprocess in `workdir`.
 """
 import ast
+import gzip
 import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -22,28 +24,34 @@ import pandas as pd
 
 API_CALLS = {"DataGenerator", "SparkGenerator", "get_df", "save", "start", "stream_dict"}
 WEB_TOOLS = ("WebFetch", "WebSearch")
+RERUN_ENV = ("PATH", "HOME", "TMPDIR", "TEMP", "TMP", "LANG", "SYSTEMROOT")
 
-# Runs first in the re-run interpreter: records each produced frame as (columns, rows, per-column hash).
+# Runs first in the re-run interpreter: records each produced frame (rows, per-column hash) and each generator's spec.
 SHIM = '''
-import atexit, json, os, sys
-sys.path.insert(0, os.environ["RAND_EVAL_EVALS"])
-sys.path.append(os.path.dirname(os.environ["RAND_EVAL_EVALS"]))  # ponytail: last-resort source tree for a venv without the package
+import atexit, glob, json, os
+import pandas as pd
 import _check
 
-frames, streams = [], []
+frames, specs, streams = [], [], []
 
 def record(df):
     frames.append({"rows": len(df), "cols": {str(c): _check.value_hash(df[c].tolist()) for c in df.columns}})
 
+def record_spec(gen):
+    spec = getattr(gen, "metadata", None) if hasattr(gen, "metadata") else gen.lazy_random_spec
+    spec = spec() if callable(spec) else spec
+    specs.append(json.loads(json.dumps(spec, default=str)))
+
 def read(path):
-    p = path if os.path.exists(path) else next(iter(sorted(__import__("glob").glob(path + ".*"))), path)
+    p = path if os.path.exists(path) else next(iter(sorted(glob.glob(path + ".*"))), path)
     return _check.read_artifact(p)
 
 def wrap_get_df(cls):
     orig = cls.get_df
     def get_df(self, *a, **k):
         out = orig(self, *a, **k)
-        record(out if hasattr(out, "columns") and not hasattr(out, "toPandas") else out.toPandas())
+        record_spec(self)
+        record(out.toPandas() if hasattr(out, "toPandas") else out)
         return out
     cls.get_df = get_df
 
@@ -60,22 +68,21 @@ def wrap_stream(cls):
     def stream_dict(self, *a, **k):
         rows = []
         streams.append(rows)
+        record_spec(self)
         for row in orig(self, *a, **k):
             rows.append(row)
             yield row
     cls.stream_dict = stream_dict
 
-try:
-    from rand_engine import DataGenerator
-    from rand_engine.file_handlers._writer_batch import FileBatchWriter
-    wrap_get_df(DataGenerator); wrap_save(FileBatchWriter); wrap_stream(DataGenerator)
-except Exception:
-    pass
+from rand_engine import DataGenerator
+from rand_engine.file_handlers._writer_batch import FileBatchWriter
+wrap_get_df(DataGenerator); wrap_save(FileBatchWriter); wrap_stream(DataGenerator)
 try:
     from rand_engine.main.spark_generator import SparkGenerator
-    wrap_get_df(SparkGenerator)
-except Exception:
+except ImportError:
     pass
+else:
+    wrap_get_df(SparkGenerator)
 
 @atexit.register
 def dump():
@@ -83,8 +90,8 @@ def dump():
         if rows:
             record(pd.DataFrame(rows))
     with open(os.environ["RAND_EVAL_RECORD"], "w") as f:
-        json.dump(frames, f)
-'''.replace("import atexit,", "import pandas as pd, atexit,")
+        json.dump({"frames": frames, "specs": specs}, f)
+'''
 
 
 def value_hash(values):
@@ -94,7 +101,7 @@ def value_hash(values):
 
 
 def read_artifact(path):
-    """DataFrame of a csv, json (lines), or parquet file, or of a directory of such parts (gzip decompressed)."""
+    """DataFrame of a csv or json-lines file as written (text, no inference), a parquet file, or a directory of parts; gzip is decompressed."""
     path = Path(path)
     if path.is_dir():
         return pd.concat([read_artifact(p) for p in sorted(path.iterdir()) if p.is_file()], ignore_index=True)
@@ -102,8 +109,10 @@ def read_artifact(path):
     if name.endswith(".parquet"):
         return pd.read_parquet(path)
     if name.endswith((".json", ".jsonl")):
-        return pd.read_json(path, lines=True)
-    return pd.read_csv(path)
+        opener = gzip.open if path.suffix == ".gz" else open
+        with opener(path, "rt", encoding="utf-8") as f:
+            return pd.DataFrame([json.loads(line) for line in f if line.strip()], dtype=object)
+    return pd.read_csv(path, dtype=str, keep_default_na=False)
 
 
 def _static(script):
@@ -121,33 +130,52 @@ def _static(script):
     return None
 
 
-def provenance(workdir, script, artifacts, python=sys.executable):
-    """None when every artifact column equals a column the re-run script generated through rand_engine, else a "provenance: ..." line."""
+def provenance(workdir, script, artifacts, python=sys.executable, specs=None):
+    """None when every artifact column equals a column the script generated through rand_engine on a re-run, else a "provenance: ..." line.
+
+    The re-run happens in a scratch copy of `workdir` without the artifacts, so the originals are only read.
+    An artifact the agent did not deliver is read from what the re-run wrote.
+    When `specs` is a list, each generator's evaluated spec dict is appended to it.
+    """
     if (msg := _static(script)):
         return msg
+    workdir, script = Path(workdir).resolve(), Path(script).resolve()
     with tempfile.TemporaryDirectory() as tmp:
-        (Path(tmp) / "sitecustomize.py").write_text(SHIM)
-        record = Path(tmp) / "record.json"
-        env = {**os.environ, "PYTHONPATH": tmp, "RAND_EVAL_RECORD": str(record),
-               "RAND_EVAL_EVALS": str(Path(__file__).resolve().parent)}
+        tmp = Path(tmp)
+        (tmp / "shim").mkdir()
+        (tmp / "shim" / "sitecustomize.py").write_text(SHIM)
+        shutil.copy(__file__, tmp / "shim" / "_check.py")
+        scratch = tmp / "work"
+        shutil.copytree(workdir, scratch)
+        for art in artifacts:
+            (shutil.rmtree if (scratch / art).is_dir() else Path.unlink)(scratch / art) if (scratch / art).exists() else None
+        record = tmp / "record.json"
+        env = {k: os.environ[k] for k in RERUN_ENV if k in os.environ}
+        env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(tmp / "shim"), os.environ.get("PYTHONPATH")]))
+        env["RAND_EVAL_RECORD"] = str(record)
+        target = scratch / script.relative_to(workdir) if script.is_relative_to(workdir) else script
         try:
-            run = subprocess.run([python, str(Path(script).resolve())], cwd=workdir, env=env,
-                                 capture_output=True, text=True, timeout=300)
+            run = subprocess.run([python, str(target)], cwd=scratch, env=env, capture_output=True, text=True, timeout=300)
         except (OSError, subprocess.TimeoutExpired) as e:
             return f"provenance: the script could not re-run: {type(e).__name__}"
         if run.returncode != 0:
             return f"provenance: the script exited {run.returncode} on re-run: {run.stderr.strip()[-300:]}"
         if not record.exists():
             return "provenance: the re-run recorded no generated frame"
-        recorded = {(c, f["rows"], h) for f in json.loads(record.read_text()) for c, h in f["cols"].items()}
-    for art in artifacts:
-        try:
-            df = read_artifact(Path(workdir) / art)
-        except Exception as e:
-            return f"provenance: cannot read artifact {art}: {type(e).__name__}"
-        for col in df.columns:
-            if (str(col), len(df), value_hash(df[col].tolist())) not in recorded:
-                return f"provenance: column {col!r} of {art} matches no frame rand_engine generated"
+        data = json.loads(record.read_text())
+        if specs is not None:
+            specs.extend(data["specs"])
+        recorded = {(c, f["rows"], h) for f in data["frames"] for c, h in f["cols"].items()}
+        for art in artifacts:
+            # the agent's own file when it delivered one, else what the re-run itself wrote
+            source = workdir / art if (workdir / art).exists() else scratch / art
+            try:
+                df = read_artifact(source)
+            except Exception as e:
+                return f"provenance: cannot read artifact {art}: {type(e).__name__}"
+            for col in df.columns:
+                if (str(col), len(df), value_hash(df[col].tolist())) not in recorded:
+                    return f"provenance: column {col!r} of {art} matches no frame rand_engine generated"
     return None
 
 
@@ -191,9 +219,10 @@ def legacy_hits(text):
     return [name for name, pattern in LEGACY.items() if re.search(pattern, text)]
 
 
-def documented_method(spec, method, kwargs):
-    """True when some spec entry documents `method` with every name in `kwargs`."""
-    return any(e.get("method") == method and set(kwargs) <= set(e.get("kwargs", {})) for e in spec.values())
+def documented_method(specs, method, kwargs):
+    """True when some recorded spec dict has a column of `method` whose kwargs hold every name in `kwargs`; non-dict columns are skipped."""
+    return any(isinstance(e, dict) and e.get("method") == method and isinstance(e.get("kwargs", {}), dict)
+               and set(kwargs) <= set(e.get("kwargs", {})) for spec in specs if isinstance(spec, dict) for e in spec.values())
 
 
 def token_ceiling(task_toml, env):
@@ -214,6 +243,6 @@ def surfaces(events):
 
 
 def result_text(layer, message, surfaces=()):
-    """The failure line, naming its layer, then the D2 `RESULT {json}` line."""
+    """The failure line, naming its layer, then the `RESULT {json}` line."""
     line = message if message.startswith(layer) else f"{layer}: {message}"
     return f"{line}\nRESULT {json.dumps({'layer': layer, 'surfaces': list(surfaces)})}\n"
