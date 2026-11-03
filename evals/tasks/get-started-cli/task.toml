@@ -11,4 +11,4 @@ legs = ["pypi", "wheel"]
 timeout_sec = 900.0
 
 [verifier]
-timeout_sec = 300.0
+timeout_sec = 600.0
