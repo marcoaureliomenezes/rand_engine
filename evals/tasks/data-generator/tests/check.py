@@ -31,17 +31,17 @@ if not ((df["salary"] / 1000 - df["salary_k"]).abs() < 0.01).all():
     fail("1", "salary_k is not salary / 1000")
 
 # Layer 2: the script's re-run (same seed, same frames) regenerates every column through rand_engine.
-if (msg := _check.provenance(".", "make.py", ["users.parquet"], python=sys.executable, specs=specs)):
+if (msg := _check.provenance(".", "solve.py", ["users.parquet"], python=sys.executable, specs=specs)):
     fail("2", msg)
 
 # Layer 3: documented features, no legacy names, token ceiling, no web.
-script = Path("make.py").read_text(encoding="utf-8")
+script = Path("solve.py").read_text(encoding="utf-8")
 if not any(isinstance(c, dict) and c.get("null_rate") for spec in specs for c in spec.values()):
     fail("3", "the recorded spec has no column with null_rate")
 if "transformers" not in script:
-    fail("3", "make.py does not use transformers for the derived column")
+    fail("3", "solve.py does not use transformers for the derived column")
 if (hits := _check.legacy_hits(script)):
-    fail("3", f"legacy names in make.py: {hits}")
+    fail("3", f"legacy names in solve.py: {hits}")
 if (msg := _check.token_ceiling(Path(__file__).parent.parent / "task.toml", os.environ)):
     fail("3", msg)
 if (web := _check.web_tool_uses(events)):
