@@ -20,8 +20,6 @@ import tempfile
 import tomllib
 from pathlib import Path
 
-import pandas as pd
-
 API_CALLS = {"DataGenerator", "SparkGenerator", "get_df", "save", "start", "stream_dict"}
 WEB_TOOLS = ("WebFetch", "WebSearch")
 RERUN_ENV = ("PATH", "HOME", "TMPDIR", "TEMP", "TMP", "LANG", "SYSTEMROOT")
@@ -59,9 +57,17 @@ def wrap_save(cls):
     orig = cls.save
     def save(self, path, *a, **k):
         out = orig(self, path, *a, **k)
+        record_spec(self.size_def.__self__)
         record(read(str(path)))
         return out
     cls.save = save
+
+def wrap_start(cls):
+    orig = cls.start
+    def start(self, *a, **k):
+        record_spec(self.size_def.__self__)
+        return orig(self, *a, **k)
+    cls.start = start
 
 def wrap_stream(cls):
     orig = cls.stream_dict
@@ -77,6 +83,8 @@ def wrap_stream(cls):
 from rand_engine import DataGenerator
 from rand_engine.file_handlers._writer_batch import FileBatchWriter
 wrap_get_df(DataGenerator); wrap_save(FileBatchWriter); wrap_stream(DataGenerator)
+from rand_engine.file_handlers._writer_stream import FileStreamWriter
+wrap_start(FileStreamWriter)
 try:
     from rand_engine.main.spark_generator import SparkGenerator
 except ImportError:
@@ -96,12 +104,14 @@ def dump():
 
 def value_hash(values):
     """SHA-256 of the values as strings; None, NaN and NaT hash as the empty string, order counts."""
+    import pandas as pd
     text = ["" if pd.isna(v) else str(v) for v in values]
     return hashlib.sha256(json.dumps(text).encode()).hexdigest()
 
 
 def read_artifact(path):
     """DataFrame of a csv or json-lines file as written (text, no inference), a parquet file, or a directory of parts; gzip is decompressed."""
+    import pandas as pd
     path = Path(path)
     if path.is_dir():
         return pd.concat([read_artifact(p) for p in sorted(path.iterdir()) if p.is_file()], ignore_index=True)
@@ -243,6 +253,6 @@ def surfaces(events):
 
 
 def result_text(layer, message, surfaces=()):
-    """The failure line, naming its layer, then the `RESULT {json}` line."""
+    """The failure line, naming its layer, then the `RESULT {json}` line; `layer` is the string "1", "2" or "3"."""
     line = message if message.startswith(layer) else f"{layer}: {message}"
     return f"{line}\nRESULT {json.dumps({'layer': layer, 'surfaces': list(surfaces)})}\n"
