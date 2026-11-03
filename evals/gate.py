@@ -2,7 +2,7 @@
 
 Inputs: `--results DIR` (`{task}-{leg}-{n}.json`), `--tasks DIR` (`<task>/task.toml`), `--k N`.
 `--calibrate` also writes `<results>/ceilings.json`.
-Output: `FAIL ...` lines, then the usage table, on stdout.
+Output: `FAIL ...` lines, then (with `--calibrate`) a `ceiling <task> <n>` line per ceiling, then the usage table, on stdout.
 Exit: 1 on usage below 2 of 3, a regression against PyPI, a red canary, a canary or usage harness
 error, a missing file, or a usage task without a ceiling; 0 otherwise. Calibrate exits 0 once written.
 """
@@ -91,12 +91,11 @@ def main(argv=None):
         if s["ceiling"] is None:
             fails.append(f"FAIL {name}: no ceiling_tokens in task.toml")
 
-        all_tokens = [t for leg in raw for t in tokens[leg]]
-        calib = [t for leg in raw if leg not in voided for t in tokens[leg]]
-        if calib:
-            ceilings[name] = math.ceil(2 * statistics.median(calib))
+        passes = [t for leg in raw if leg not in voided for t in tokens[leg]]
+        if passes:
+            ceilings[name] = math.ceil(2 * statistics.median(passes))
         layer = ", ".join(sorted(str(x) for x in layers if x is not None)) or "-"
-        tok = round(statistics.median(all_tokens)) if all_tokens else "-"
+        tok = round(statistics.median(passes)) if passes else "-"
         rows.append(f"{name} | {wheel} | {pypi} | {tok} | {cost:.2f} | {layer} | "
                     f"{', '.join(sorted(surfaces)) or '-'}")
 
