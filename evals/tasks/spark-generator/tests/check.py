@@ -32,22 +32,22 @@ def verdict():
     seen = _check.surfaces(events)
     path = Path(ARTIFACT)
     if not path.is_file():
-        return "layer1", f"{ARTIFACT} is not a single file{harness_hint(transcript)}", seen
+        return "1", f"{ARTIFACT} is not a single file{harness_hint(transcript)}", seen
     df = pd.read_parquet(path)
     if len(df) != 1000 or list(df.columns) != ["order_id", "order_ref"]:
-        return "layer1", f"{ARTIFACT} has {len(df)} rows and columns {list(df.columns)}", seen
+        return "1", f"{ARTIFACT} has {len(df)} rows and columns {list(df.columns)}", seen
     specs = []
     if msg := _check.provenance(".", "make.py", [ARTIFACT], specs=specs):
-        return "layer2", msg, seen
+        return "2", msg, seen
     if not _check.documented_method(specs, "pk", ["format"]):
-        return "layer3", "the recorded spec has no pk column with a format", seen
+        return "3", "the recorded spec has no pk column with a format", seen
     hits = {name for p in Path(".").glob("*.py") for name in _check.legacy_hits(p.read_text(encoding="utf-8"))}
     if hits:
-        return "layer3", f"legacy names in the agent's code: {sorted(hits)}", seen
+        return "3", f"legacy names in the agent's code: {sorted(hits)}", seen
     if web := _check.web_tool_uses(events):
-        return "layer3", f"web tools used: {web}", seen
+        return "3", f"web tools used: {web}", seen
     if msg := _check.token_ceiling(TASK_TOML, os.environ):
-        return "layer3", msg, seen
+        return "3", msg, seen
     return None, None, seen
 
 
