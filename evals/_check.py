@@ -1,6 +1,6 @@
 """Shared helper of the agent-eval task checks (layers 1 to 3).
 
-`provenance(workdir, script, artifacts, python)` -> None | "provenance: ..."; `value_hash(values)` -> str;
+`provenance(workdir, script, artifacts, python, specs, calls)` -> None | "provenance: ..."; `value_hash(values)` -> str;
 `tool_events(path)` -> [{"name", "input"}]; `web_tool_uses(events)` -> [tool names].
 Layer 3: `legacy_hits(text)` -> [names]; `documented_method(specs, method, kwargs)` -> bool;
 `token_ceiling(task_toml, env)` -> None | "ceiling: ..."; `surfaces(events)` -> [tokens];
@@ -22,7 +22,7 @@ from pathlib import Path
 
 API_CALLS = {"DataGenerator", "SparkGenerator", "get_df", "save", "start", "stream_dict"}
 WEB_TOOLS = ("WebFetch", "WebSearch")
-RERUN_ENV = ("PATH", "HOME", "TMPDIR", "TEMP", "TMP", "LANG", "SYSTEMROOT")
+RERUN_ENV = ("PATH", "HOME", "TMPDIR", "TEMP", "TMP", "LANG", "SYSTEMROOT", "JAVA_HOME")
 
 # Runs first in the re-run interpreter: records each produced frame (rows, per-column hash) and each generator's spec.
 SHIM = '''
@@ -30,7 +30,7 @@ import atexit, glob, json, os
 import pandas as pd
 import _check
 
-frames, specs, streams = [], [], []
+frames, specs, streams, calls = [], [], [], []
 
 def record(df):
     frames.append({"rows": len(df), "cols": {str(c): _check.value_hash(df[c].tolist()) for c in df.columns}})
@@ -56,6 +56,7 @@ def wrap_get_df(cls):
 def wrap_save(cls):
     orig = cls.save
     def save(self, path, *a, **k):
+        calls.append("save")
         out = orig(self, path, *a, **k)
         record_spec(self.size_def.__self__)
         record(read(str(path)))
@@ -65,6 +66,7 @@ def wrap_save(cls):
 def wrap_start(cls):
     orig = cls.start
     def start(self, *a, **k):
+        calls.append("start")
         record_spec(self.size_def.__self__)
         return orig(self, *a, **k)
     cls.start = start
@@ -98,7 +100,7 @@ def dump():
         if rows:
             record(pd.DataFrame(rows))
     with open(os.environ["RAND_EVAL_RECORD"], "w") as f:
-        json.dump({"frames": frames, "specs": specs}, f)
+        json.dump({"frames": frames, "specs": specs, "calls": calls}, f)
 '''
 
 
@@ -140,12 +142,12 @@ def _static(script):
     return None
 
 
-def provenance(workdir, script, artifacts, python=sys.executable, specs=None):
+def provenance(workdir, script, artifacts, python=sys.executable, specs=None, calls=None):
     """None when every artifact column equals a column the script generated through rand_engine on a re-run, else a "provenance: ..." line.
 
     The re-run happens in a scratch copy of `workdir` without the artifacts, so the originals are only read.
     A listed artifact the agent did not deliver fails.
-    When `specs` is a list, each generator's evaluated spec dict is appended to it.
+    When `specs` is a list, each generator's evaluated spec dict is appended to it; when `calls` is a list, the name ("save", "start") of each writer entry point that ran is appended.
     """
     if (msg := _static(script)):
         return msg
@@ -163,6 +165,7 @@ def provenance(workdir, script, artifacts, python=sys.executable, specs=None):
         env = {k: os.environ[k] for k in RERUN_ENV if k in os.environ}
         env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(tmp / "shim"), os.environ.get("PYTHONPATH")]))
         env["RAND_EVAL_RECORD"] = str(record)
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
         target = scratch / script.relative_to(workdir) if script.is_relative_to(workdir) else script
         try:
             run = subprocess.run([python, str(target)], cwd=scratch, env=env, capture_output=True, text=True, timeout=300)
@@ -175,6 +178,8 @@ def provenance(workdir, script, artifacts, python=sys.executable, specs=None):
         data = json.loads(record.read_text())
         if specs is not None:
             specs.extend(data["specs"])
+        if calls is not None:
+            calls.extend(data["calls"])
         recorded = {(c, f["rows"], h) for f in data["frames"] for c, h in f["cols"].items()}
         for art in artifacts:
             if not (workdir / art).exists():
