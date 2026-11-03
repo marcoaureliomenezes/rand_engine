@@ -41,7 +41,7 @@ def verdict():
         return "2", msg, seen
     if not _check.documented_method(specs, "pk", ["format"]):
         return "3", "the recorded spec has no pk column with a format", seen
-    hits = {name for p in Path(".").glob("*.py") for name in _check.legacy_hits(p.read_text(encoding="utf-8"))}
+    hits = {name for p in Path(".").glob("*.py") for name in _check.legacy_hits(p.read_text(encoding="utf-8", errors="ignore"))}
     if hits:
         return "3", f"legacy names in the agent's code: {sorted(hits)}", seen
     if web := _check.web_tool_uses(events):
