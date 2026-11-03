@@ -239,3 +239,27 @@ def test_calibrate_skips_passing_trials_with_unknown_tokens(env, capsys):
     assert code == 0
     assert json.loads((results / "ceilings.json").read_text()) == {}
     assert not any(line.startswith("ceiling") for line in out)
+
+
+def _discovery(results, adopted_surfaces):
+    for n, (adopted, surface) in enumerate(adopted_surfaces, 1):
+        write_trial(results, "discovery", "pypi", n, passed=None, adopted=adopted, surface=surface)
+
+
+def test_discovery_adoption_and_leading_surface_are_printed_without_failing(env, capsys):
+    tasks, results = env
+    code0, out0 = run_gate(env, capsys)
+    _discovery(results, [(True, "readme"), (True, "readme"), (False, "other")])
+    code, out = run_gate(env, capsys)
+    assert code == code0 == 0
+    assert "discovery pypi: adopted 2 of 3, leading surface readme" in out
+    assert not [line for line in out if line.startswith("FAIL")]
+
+
+def test_discovery_missing_trial_file_is_reported_in_its_line_not_failed(env, capsys):
+    tasks, results = env
+    _discovery(results, [(False, "other"), (True, "other"), (False, "other")])
+    (results / "discovery-pypi-3.json").unlink()
+    code, out = run_gate(env, capsys)
+    assert code == 0
+    assert "discovery pypi: adopted 1 of 3, leading surface other, missing discovery-pypi-3.json" in out
