@@ -4,12 +4,14 @@ on:
   push:
     branches:
       - 'feature/**'
+      - 'wt/*/rc-*/wt-rc'
     paths:
       - 'evals/**'
       - '.github/workflows/eval.yml'
   pull_request:
     branches:
       - development
+      - master
   workflow_dispatch:
     inputs:
       model:
@@ -27,20 +29,67 @@ env:
   K: ${{ inputs.k || '3' }}
 
 jobs:
-  eval:
+  selfcheck:
+    name: Eval self-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Temurin Java 17
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build the wheel
+        run: |
+          pipx install poetry==2.5.1
+          poetry build --format wheel
+
+      - name: Run the self-check
+        env:
+          TMPDIR: ${{ runner.temp }}
+        run: python evals/selfcheck.py
+
+  trials:
     name: ${{ matrix.task }} on ${{ matrix.install }}
     runs-on: ubuntu-latest
-    # 3 trials x 2100 s (the largest [agent] + [verifier] timeout_sec) fit in 120 minutes
+    # each job runs up to 3 trials of one task and leg, 2100 s each at most
     timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
         include:
-          - {task: e1-cold-discovery, install: pypi}
-          - {task: e2-named-related-tables, install: pypi}
-          - {task: e2-named-related-tables, install: wheel}
-          - {task: e3-fix-by-error, install: pypi}
-          - {task: e3-fix-by-error, install: wheel}
+          - {task: canary, install: pypi}
+          - {task: canary, install: wheel}
+          - {task: discovery, install: pypi}
+          - {task: data-generator, install: pypi}
+          - {task: data-generator, install: wheel}
+          - {task: public-api, install: pypi}
+          - {task: public-api, install: wheel}
+          - {task: templates-and-examples, install: pypi}
+          - {task: templates-and-examples, install: wheel}
+          - {task: generation-methods, install: pypi}
+          - {task: generation-methods, install: wheel}
+          - {task: pk-fk-constraints, install: pypi}
+          - {task: pk-fk-constraints, install: wheel}
+          - {task: documentation, install: pypi}
+          - {task: documentation, install: wheel}
+          - {task: get-started-cli, install: pypi}
+          - {task: get-started-cli, install: wheel}
+          - {task: writers-and-streaming, install: pypi}
+          - {task: writers-and-streaming, install: wheel}
+          - {task: spark-generator, install: pypi}
+          - {task: spark-generator, install: wheel}
+          - {task: rand-spec-grammar, install: pypi}
+          - {task: rand-spec-grammar, install: wheel}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -54,6 +103,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+
+      - name: Set up Temurin Java 17
+        if: matrix.task == 'spark-generator'
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: '17'
 
       - name: Install the agent CLI
         run: npm install -g @anthropic-ai/claude-code@2.1.316
@@ -76,22 +132,19 @@ jobs:
           INSTALL: ${{ matrix.install }}
         run: |
           if [ "$INSTALL" = wheel ]; then ENGINE=$(ls "$PWD"/dist/*.whl); else ENGINE=rand-engine; fi
-          python evals/run.py --task "$TASK" --k "$K" --rand-engine "$ENGINE" \
+          python evals/run.py --task "$TASK" --leg "$INSTALL" --k "$K" --rand-engine "$ENGINE" \
             --model "$MODEL" --out "$RUNNER_TEMP/eval-out/$TASK-$INSTALL"
 
-      - name: Job summary
+      - name: Scan the results for the token
         if: always()
         env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           OUT: ${{ runner.temp }}/eval-out/${{ matrix.task }}-${{ matrix.install }}
-          LABEL: ${{ matrix.task }} on ${{ matrix.install }}
         run: |
-          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
-          import json, os, pathlib
-          print(f"### {os.environ['LABEL']}\n\n| trial | passed | in tokens | out tokens | cost USD | s | error |\n|---|---|---|---|---|---|---|")
-          for f in sorted(pathlib.Path(os.environ["OUT"]).glob("*.json")):
-              r = json.loads(f.read_text())
-              print(f"| {r['trial']} | {r['passed']} | {r.get('input_tokens', '')} | {r.get('output_tokens', '')} | {r.get('cost_usd', '')} | {r['duration_s']} | {r.get('error', '')} |")
-          PY
+          if [ -d "$OUT" ] && grep -rqF -- "$CLAUDE_CODE_OAUTH_TOKEN" "$OUT"; then
+            rm -rf "$OUT"
+            exit 1
+          fi
 
       - name: Upload trial results
         if: always()
@@ -99,3 +152,38 @@ jobs:
         with:
           name: eval-${{ matrix.task }}-${{ matrix.install }}
           path: ${{ runner.temp }}/eval-out/${{ matrix.task }}-${{ matrix.install }}
+
+  gate:
+    name: Agent eval gate
+    if: always()
+    needs: [selfcheck, trials]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download every trial artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: eval-*
+          path: ${{ runner.temp }}/results
+          merge-multiple: true
+
+      - name: Calibrate the ceilings
+        run: |
+          python evals/gate.py --calibrate --results "$RUNNER_TEMP/results" --tasks evals/tasks --k "$K" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the ceilings
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-ceilings
+          path: ${{ runner.temp }}/results/ceilings.json
+
+      - name: Gate verdict
+        run: python evals/gate.py --results "$RUNNER_TEMP/results" --tasks evals/tasks --k "$K" >> "$GITHUB_STEP_SUMMARY"
