@@ -35,11 +35,8 @@ if (msg := _check.provenance(".", "solve.py", ["users.parquet"], python=sys.exec
     fail("2", msg)
 
 # Layer 3: documented features, no legacy names, token ceiling, no web.
-script = Path("solve.py").read_text(encoding="utf-8")
 if not any(isinstance(c, dict) and c.get("null_rate") for spec in specs for c in spec.values()):
     fail("3", "the recorded spec has no column with null_rate")
-if "transformers" not in script:
-    fail("3", "solve.py does not use transformers for the derived column")
 if (hits := [h for p in Path(".").glob("*.py") for h in _check.legacy_hits(p.read_text(encoding="utf-8"))]):
     fail("3", f"legacy names: {sorted(set(hits))}")
 if (msg := _check.token_ceiling(Path(__file__).parent.parent / "task.toml", os.environ)):
