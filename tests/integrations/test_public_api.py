@@ -7,6 +7,7 @@ and that internal modules are properly hidden from external users.
 Run these tests after installing the package: pip install -e .
 """
 
+import json
 from email.parser import BytesParser
 import os
 from pathlib import Path
@@ -673,26 +674,124 @@ if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])
 
 
-def _agent_env(monkeypatch, tmp_path):
+USAGE_TOOLS = "Bash,Read,Write,Edit,Glob,Grep"
+
+
+def _trial(monkeypatch, tmp_path, rnd="usage", init=None, check_out="", requirements=()):
+    """Run one trial of a fixture task through `run_trial`, every subprocess faked; return (result, calls, out)."""
     import importlib.util
     import types
 
     spec = importlib.util.spec_from_file_location("eval_run", Path(__file__).parents[2] / "evals" / "run.py")
     run = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(run)
-    seen = []
+    repo = tmp_path / "repo"
+    task_dir = repo / "evals" / "tasks" / "t"
+    (task_dir / "tests").mkdir(parents=True)
+    reqs = f"requirements = {json.dumps(list(requirements))}\n"
+    (task_dir / "task.toml").write_text(
+        f'[task]\nround = "{rnd}"\n[agent]\ntimeout_sec = 5.0\n[verifier]\ntimeout_sec = 5.0\n'
+        f"[environment]\ninstall_rand_engine = false\n{reqs}", encoding="utf-8")
+    (task_dir / "instruction.md").write_text("do it", encoding="utf-8")
+    (task_dir / "tests" / "check.py").write_text("", encoding="utf-8")
+    monkeypatch.setattr(run, "HERE", repo / "evals")
+    monkeypatch.setattr(run, "REPO", repo)
+    calls = []
 
     def fake(cmd, **kw):
-        seen.append((cmd[0], kw.get("env")))
-        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+        calls.append((cmd, kw))
+        out = ""
+        if cmd[0] == "claude":
+            allowed = cmd[cmd.index("--allowedTools") + 1]
+            events = [{"type": "system", "subtype": "init", "model": "m", "permissionMode": "default",
+                       "tools": allowed.split(","), **(init or {})},
+                      {"type": "result", "usage": {"input_tokens": 10, "cache_creation_input_tokens": 5,
+                                                   "cache_read_input_tokens": 20, "output_tokens": 7}}]
+            out = "\n".join(json.dumps(e) for e in events) + "\n"
+        elif str(cmd[-1]).endswith("check.py"):
+            out = check_out
+        return subprocess.CompletedProcess(cmd, 0, stdout=out, stderr="")
 
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "placeholder")
     monkeypatch.setattr(run.subprocess, "run", fake)
     monkeypatch.setattr(run.tempfile, "mkdtemp", lambda prefix: str(tmp_path / "w"))
     (tmp_path / "w").mkdir()
-    task = sorted(p.name for p in (Path(run.HERE) / "tasks").iterdir())[0]
-    run.run_trial(task, 1, types.SimpleNamespace(rand_engine="rand-engine", model="m"))
-    return [env for cmd, env in seen if cmd == "claude"][0]
+    out = tmp_path / "out"
+    args = types.SimpleNamespace(rand_engine="rand-engine", model="m", leg="pypi", k=3, out=out)
+    return run.run_trial("t", 2, args), calls, out
+
+
+def _claude(calls):
+    return [c for c in calls if c[0][0] == "claude"][0]
+
+
+def _flag(cmd, name):
+    return cmd[cmd.index(name) + 1]
+
+
+def _agent_env(monkeypatch, tmp_path):
+    return _claude(_trial(monkeypatch, tmp_path)[1])[1]["env"]
+
+
+def test_eval_usage_round_runs_sandboxed_without_web_tools(monkeypatch, tmp_path):
+    res, calls, _ = _trial(monkeypatch, tmp_path, "usage")
+    cmd = _claude(calls)[0]
+    assert "error" not in res
+    assert _flag(cmd, "--setting-sources") == ""
+    assert _flag(cmd, "--allowedTools") == USAGE_TOOLS
+    assert _flag(cmd, "--disallowedTools") == "WebSearch,WebFetch"
+    sandbox = json.loads(_flag(cmd, "--settings"))["sandbox"]
+    assert sandbox["enabled"] is True
+    assert sandbox["failIfUnavailable"] is True
+    assert sandbox["allowUnsandboxedCommands"] is False
+    assert not sandbox.get("network", {}).get("allowedDomains")
+    assert any(d in ("/", str(Path.home())) for d in sandbox["filesystem"]["denyRead"])
+
+
+def test_eval_discovery_round_keeps_web_tools_and_no_settings(monkeypatch, tmp_path):
+    res, calls, _ = _trial(monkeypatch, tmp_path, "discovery")
+    cmd = _claude(calls)[0]
+    assert "error" not in res
+    assert _flag(cmd, "--setting-sources") == ""
+    assert "--settings" not in cmd
+    assert {"WebSearch", "WebFetch"} <= set(_flag(cmd, "--allowedTools").split(","))
+
+
+@pytest.mark.parametrize("init", [{"permissionMode": "acceptEdits"}, {"tools": ["Bash", "WebFetch"]}])
+def test_eval_assert_isolated_raises_on_a_mode_or_tools_mismatch(monkeypatch, tmp_path, init):
+    res, _, _ = _trial(monkeypatch, tmp_path, "usage", init=init)
+    assert res["error"].startswith("RuntimeError: ")
+
+
+def test_eval_trial_keeps_the_transcript_and_hands_the_check_its_env(monkeypatch, tmp_path):
+    res, calls, out = _trial(monkeypatch, tmp_path, "usage", check_out="probe:x\nRESULT {}\n")
+    transcript = out / "t-pypi-2" / "transcript.jsonl"
+    env = [kw["env"] for cmd, kw in calls if str(cmd[-1]).endswith("check.py")][0]
+    assert env["RAND_EVAL_TRANSCRIPT"] == str(transcript)
+    assert env["RAND_EVAL_TOKENS"] == "42"
+    assert env["PYTHONPATH"] == str(tmp_path / "repo" / "evals")
+    assert json.loads(transcript.read_text(encoding="utf-8").splitlines()[-1])["type"] == "result"
+
+
+def test_eval_trial_json_merges_the_check_result_line(monkeypatch, tmp_path):
+    stdout = 'probe:x\nRESULT {"layer": 2, "surfaces": ["a"]}\n'
+    res, _, _ = _trial(monkeypatch, tmp_path, "usage", check_out=stdout)
+    assert (res["leg"], res["round"], res["k"], res["trial"]) == ("pypi", "usage", 3, 2)
+    assert (res["layer"], res["surfaces"]) == (2, ["a"])
+    assert res["check_output"] == stdout
+
+
+def test_eval_discovery_trial_records_passed_null(monkeypatch, tmp_path):
+    res, _, _ = _trial(monkeypatch, tmp_path, "discovery", check_out='RESULT {"adopted": true, "surface": "s"}\n')
+    assert res["passed"] is None
+    assert (res["adopted"], res["surface"]) == (True, "s")
+
+
+def test_eval_trial_installs_task_requirements_before_the_agent(monkeypatch, tmp_path):
+    _, calls, _ = _trial(monkeypatch, tmp_path, "usage", requirements=["pkg-x>=1"])
+    cmds = [c for c, _ in calls]
+    pip = [i for i, c in enumerate(cmds) if "pip" in c and "install" in c and "pkg-x>=1" in c]
+    assert pip and pip[0] < [i for i, c in enumerate(cmds) if c[0] == "claude"][0]
 
 
 def test_eval_runs_claude_with_the_subprocess_env_scrub(monkeypatch, tmp_path):
