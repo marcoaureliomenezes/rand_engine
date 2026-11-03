@@ -58,10 +58,10 @@ def run_script(tmp_path, body):
     subprocess.run([sys.executable, str(script(tmp_path, body))], cwd=tmp_path, capture_output=True)
 
 
-def provenance(check, tmp_path, body, artifacts=("out.csv",), deliver=True, specs=None):
+def provenance(check, tmp_path, body, artifacts=("out.csv",), deliver=True, specs=None, **extra):
     if deliver:
         run_script(tmp_path, body)
-    return check.provenance(tmp_path, script(tmp_path, body), list(artifacts), python=sys.executable, specs=specs)
+    return check.provenance(tmp_path, script(tmp_path, body), list(artifacts), python=sys.executable, specs=specs, **extra)
 
 
 SEEDED = f"from rand_engine import DataGenerator\nDataGenerator({SPEC}, seed=1).size(10).get_df().to_csv('out.csv', index=False)\n"
@@ -128,6 +128,35 @@ def test_inherited_pythonpath_entry_is_kept(check, tmp_path, monkeypatch):
 def test_writer_made_file_passes(check, tmp_path):
     body = f'from rand_engine import DataGenerator\nDataGenerator({SPEC}, seed=1).size(10).write.format("csv").save("out.csv")\n'
     assert provenance(check, tmp_path, body) is None
+
+
+BATCH_VIA_VARIABLE = (f"from rand_engine import DataGenerator\nw = DataGenerator({SPEC}, seed=1).size(10).write.format('csv')\n"
+                      "w.save('out.csv')\n")
+STREAM_VIA_VARIABLE = (f"from rand_engine import DataGenerator\n"
+                       f"w = DataGenerator({SPEC}, seed=1).size(10).writeStream.format('csv').trigger(frequency=0.2).option('timeout', 1)\n"
+                       "w.start('sink')\n")
+UNCALLED_WRITERS = SEEDED + "def unused(g):\n    g.write.save('x')\n    g.writeStream.start('y')\n"
+
+
+@pytest.mark.parametrize("body, artifacts, expected", [
+    (BATCH_VIA_VARIABLE, ["out.csv"], ["save"]),
+    (STREAM_VIA_VARIABLE, [], ["start"]),
+    (UNCALLED_WRITERS, ["out.csv"], []),
+], ids=["batch-via-variable", "stream-via-variable", "never-called"])
+def test_provenance_reports_the_writer_entry_points_that_ran(check, tmp_path, body, artifacts, expected):
+    calls = []
+    assert provenance(check, tmp_path, body, artifacts, calls=calls) is None
+    assert calls == expected
+
+
+def test_rerun_env_keeps_java_home(check, tmp_path, monkeypatch):
+    monkeypatch.setenv("JAVA_HOME", "/opt/jh")
+    assert provenance(check, tmp_path, SEEDED + "import os\nassert os.environ.get('JAVA_HOME') == '/opt/jh'\n") is None
+
+
+def test_rerun_writes_no_bytecode(check, tmp_path, monkeypatch):
+    monkeypatch.delenv("PYTHONDONTWRITEBYTECODE", raising=False)
+    assert provenance(check, tmp_path, SEEDED + "import sys\nassert sys.dont_write_bytecode\n") is None
 
 
 def test_numpy_file_beside_decorative_call_fails(check, tmp_path):
