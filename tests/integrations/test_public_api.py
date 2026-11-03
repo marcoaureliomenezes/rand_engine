@@ -854,3 +854,79 @@ def test_eval_workflow_pins_the_scrub_cli_and_runs_under_bubblewrap():
     assert "apt-get install -y bubblewrap" in text
     lift = "sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0"
     assert text.index(lift) < text.index("python evals/run.py")
+
+
+def _workflow():
+    """Return (text, {job key: block text}, {trigger key: block text}) of the eval workflow, split by indentation."""
+    import re
+
+    text = (Path(__file__).parents[2] / ".github" / "workflows" / "eval.yml").read_text(encoding="utf-8")
+    on, jobs = text.split("\non:\n")[1].split("\njobs:\n")[0], text.split("\njobs:\n")[1]
+    pieces = lambda s, pat: {m[1]: m[2] for m in re.findall(pat, s, re.S)}  # noqa: E731
+    triggers = pieces(on, r"(^|\n)  (\w+):\n(.*?)(?=\n  \w+:|\Z)")
+    blocks = pieces(jobs, r"(^|\n)  ([\w-]+):\n(.*?)(?=\n  [\w-]+:\n|\Z)")
+    return text, blocks, triggers
+
+
+def _job(key):
+    blocks = _workflow()[1]
+    assert key in blocks, f"no job {key!r} in {sorted(blocks)}"
+    return blocks[key]
+
+
+def _gate():
+    block = next((b for b in _workflow()[1].values() if "name: Agent eval gate" in b), None)
+    assert block is not None, "no job named 'Agent eval gate'"
+    return block
+
+
+def test_eval_workflow_trials_job_pins_the_cli_and_lifts_the_sandbox_before_the_run():
+    trials = _job("trials")
+    assert "@anthropic-ai/claude-code@2.1.316" in trials
+    assert "apt-get install -y bubblewrap" in trials
+    lift = "sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0"
+    assert trials.index(lift) < trials.index("python evals/run.py")
+
+
+def test_eval_workflow_push_trigger_keeps_the_eval_paths_and_adds_the_rc_branches():
+    push = _workflow()[2]["push"]
+    for line in ("'feature/**'", "'wt/*/rc-*/wt-rc'", "'evals/**'"):
+        assert line in push
+    assert push.index("branches:") < push.index("paths:")
+
+
+def test_eval_workflow_pull_request_covers_development_and_master_without_paths():
+    pr = _workflow()[2]["pull_request"]
+    assert "- development" in pr and "- master" in pr
+    assert "paths" not in pr
+
+
+def test_eval_workflow_gate_job_always_runs_after_selfcheck_and_trials():
+    gate = _gate()
+    assert "if: always()" in gate
+    needs = __import__("re").split(r"\n    \w", gate.split("needs:")[1])[0]
+    assert "selfcheck" in needs and "trials" in needs
+
+
+def test_eval_workflow_matrix_is_not_the_five_leg_include_and_has_no_job_summary_step():
+    text = _workflow()[0]
+    assert "- {task: e1-cold-discovery, install: pypi}" not in text
+    assert "Job summary" not in text
+
+
+def test_eval_workflow_timeout_comment_states_one_task_and_leg_per_job():
+    trials = _job("trials")
+    assert "each job runs up to 3 trials of one task and leg, 2100 s each at most" in trials
+
+
+def test_eval_workflow_scans_for_the_token_before_the_upload():
+    trials = _job("trials")
+    scan = trials.index('grep -rqF -- "$CLAUDE_CODE_OAUTH_TOKEN"')
+    assert scan < trials.index("actions/upload-artifact")
+
+
+def test_eval_workflow_calibrates_before_the_verdict_step():
+    gate = _gate()
+    calibrate = gate.index("gate.py --calibrate")
+    verdict = gate.index("gate.py", calibrate + 1)
+    assert calibrate < verdict
