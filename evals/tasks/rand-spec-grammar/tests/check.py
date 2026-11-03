@@ -18,26 +18,26 @@ COLUMNS = ["id", "name", "amount", "status"]
 
 def verdict():
     if not Path("out.parquet").is_file():
-        return "layer1", "out.parquet does not exist", ()
+        return "1", "out.parquet does not exist", ()
     df = pd.read_parquet("out.parquet")
     if len(df) != 1000 or list(df.columns) != COLUMNS:
-        return "layer1", f"out.parquet has {len(df)} rows and columns {list(df.columns)}, expected 1000 rows and {COLUMNS}", ()
+        return "1", f"out.parquet has {len(df)} rows and columns {list(df.columns)}, expected 1000 rows and {COLUMNS}", ()
     if not Path("make.py").is_file():
-        return "layer2", "make.py does not exist", ()
+        return "2", "make.py does not exist", ()
     specs = []
     if msg := _check.provenance(".", "make.py", ["out.parquet"], specs=specs):
-        return "layer2", msg, ()
+        return "2", msg, ()
     transcript = os.environ.get("RAND_EVAL_TRANSCRIPT")
     events = _check.tool_events(transcript) if transcript else []
     seen = _check.surfaces(events)
     if not _check.documented_method(specs, "integers", ["min", "max"]):
-        return "layer3", "the recorded spec has no `integers` column with min and max", seen
+        return "3", "the recorded spec has no `integers` column with min and max", seen
     if hits := _check.legacy_hits("\n".join(p.read_text(encoding="utf-8") for p in Path(".").glob("*.py"))):
-        return "layer3", f"legacy names used: {hits}", seen
+        return "3", f"legacy names used: {hits}", seen
     if web := _check.web_tool_uses(events):
-        return "layer3", f"web tools used: {web}", seen
+        return "3", f"web tools used: {web}", seen
     if msg := _check.token_ceiling(TASK_TOML, os.environ):
-        return "layer3", msg, seen
+        return "3", msg, seen
     return None, None, seen
 
 
