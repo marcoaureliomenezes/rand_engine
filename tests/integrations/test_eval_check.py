@@ -219,6 +219,21 @@ def test_callable_spec_is_judged_by_its_evaluated_dict(check, tmp_path):
     assert check.documented_method(specs, "integers", {"min", "max"})
 
 
+def test_batch_save_records_the_spec(check, tmp_path):
+    body = f"from rand_engine import DataGenerator\nDataGenerator({SPEC}, seed=1).size(10).write.format('csv').save('out.csv')\n"
+    specs = []
+    assert provenance(check, tmp_path, body, specs=specs) is None
+    assert check.documented_method(specs, "integers", {"min", "max"})
+
+
+def test_stream_start_records_the_spec(check, tmp_path):
+    body = (f"from rand_engine import DataGenerator\nDataGenerator({SPEC}, seed=1).size(10).writeStream.format('csv')"
+            ".trigger(frequency=0.1).option('timeout', 0.3).start('out')\n")
+    specs = []
+    provenance(check, tmp_path, body, artifacts=("out",), specs=specs)
+    assert check.documented_method(specs, "integers", {"min", "max"})
+
+
 def stream(*tool_uses):
     return "\n".join(json.dumps({"type": "assistant", "message": {"content": [
         {"type": "text", "text": "x"}, {"type": "tool_use", "name": n, "input": i}]}}) for n, i in tool_uses) + "\n"
@@ -253,8 +268,8 @@ def test_surfaces_read_any_input_field(check):
 
 
 def test_failing_result_names_layer_and_ends_with_result_line(check):
-    out = check.result_text("provenance", "provenance: no rand_engine import", ["llms.txt"])
+    out = check.result_text("2", "provenance: no rand_engine import", ["llms.txt"])
     lines = out.strip().splitlines()
     assert "provenance" in lines[0]
     assert lines[-1].startswith("RESULT ")
-    assert json.loads(lines[-1][len("RESULT "):]) == {"layer": "provenance", "surfaces": ["llms.txt"]}
+    assert json.loads(lines[-1][len("RESULT "):]) == {"layer": "2", "surfaces": ["llms.txt"]}
