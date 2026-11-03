@@ -1,17 +1,25 @@
 """evals/_check.py: the three check layers' shared helper, on 10-row scripts written under tmp_path.
 
-Contract under test (loaded by path, no Spark, no network, no agent):
-  provenance(workdir, script, artifacts, python=sys.executable) -> None | str   (layer 2; str starts "provenance")
-  value_hash(values) -> str                                                      (D7)
-  legacy_hits(text) -> list[str]                                                 (layer 3, the seven legacy items)
-  documented_method(spec, method, kwargs) -> bool                                (layer 3, the task's method and kwargs)
-  token_ceiling(task_toml, env) -> None | str                                    (None: within, or skipped with no env)
-  tool_events(transcript) -> list[{"name", "input"}]                             (the one transcript reader)
+Contract under test (loaded by path, no Spark, no network, no agent; the re-run's interpreter gets
+`rand_engine` and `evals` through the PYTHONPATH the test sets, as the runner does):
+  provenance(workdir, script, artifacts, python=sys.executable, specs=None) -> None | str   (layer 2)
+      The re-run happens in a scratch copy of workdir without the artifacts; the agent's artifacts are never
+      modified. A failure string starts "provenance". When `specs` is a list, the spec each recorded
+      `DataGenerator` got is appended to it (the choice for F6: the re-run's records feed `documented_method`).
+      Csv and json-lines artifacts are read as written text, with no dtype or NA inference.
+  value_hash(values) -> str                                           (nulls hash as the empty string)
+  legacy_hits(text) -> list[str]                                      (layer 3, the seven legacy items)
+  documented_method(specs, method, kwargs) -> bool                    (layer 3: judges the recorded specs; True when
+      some dict spec has a column of `method` whose kwargs hold every name in `kwargs`; any other value is False)
+  token_ceiling(task_toml, env) -> None | str                         (None: within, or skipped with no env)
+  tool_events(transcript) -> list[{"name", "input"}]                  (the one transcript reader)
   web_tool_uses(events) -> list[str]; surfaces(events) -> list[str]
-  result_text(layer, message, surfaces=()) -> str                                (failure line, then the D2 RESULT line)
+  result_text(layer, message, surfaces=()) -> str                     (failure line, then the `RESULT {json}` line)
 """
 import importlib.util
 import json
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -36,12 +44,70 @@ def script(tmp_path, body):
     return tmp_path / "make.py"
 
 
-def provenance(check, tmp_path, body):
-    return check.provenance(tmp_path, script(tmp_path, body), ["out.csv"], python=sys.executable)
+REPO = Path(__file__).resolve().parents[2]
+
+
+@pytest.fixture(autouse=True)
+def pythonpath(monkeypatch):
+    monkeypatch.setenv("PYTHONPATH", f"{REPO}{os.pathsep}{REPO / 'evals'}")
+
+
+def provenance(check, tmp_path, body, artifacts=("out.csv",)):
+    return check.provenance(tmp_path, script(tmp_path, body), list(artifacts), python=sys.executable)
+
+
+def run_script(tmp_path, body):
+    subprocess.run([sys.executable, str(script(tmp_path, body))], cwd=tmp_path, check=True, capture_output=True)
+
+
+SEEDED = f"from rand_engine import DataGenerator\nDataGenerator({SPEC}, seed=1).size(10).get_df().to_csv('out.csv', index=False)\n"
 
 
 def test_generator_made_file_passes(check, tmp_path):
-    body = f"from rand_engine import DataGenerator\nDataGenerator({SPEC}, seed=1).size(10).get_df().to_csv('out.csv', index=False)\n"
+    assert provenance(check, tmp_path, SEEDED) is None
+
+
+def test_zero_padded_column_passes(check, tmp_path):
+    spec = '{"uid": {"method": "int_zfilled", "kwargs": {"length": 8}}}'
+    body = f"from rand_engine import DataGenerator\nDataGenerator({spec}, seed=1).size(10).get_df().to_csv('out.csv', index=False)\n"
+    assert provenance(check, tmp_path, body) is None
+
+
+def test_replaced_artifact_fails(check, tmp_path):
+    run_script(tmp_path, SEEDED)
+    (tmp_path / "out.csv").write_text("age\n" + "\n".join(str(i) for i in range(100, 110)) + "\n")
+    assert provenance(check, tmp_path, SEEDED).startswith("provenance")
+
+
+def test_unseeded_script_fails(check, tmp_path):
+    body = f"from rand_engine import DataGenerator\nDataGenerator({SPEC}).size(10).get_df().to_csv('out.csv', index=False)\n"
+    run_script(tmp_path, body)
+    assert provenance(check, tmp_path, body).startswith("provenance")
+
+
+def test_agent_artifact_is_never_modified(check, tmp_path):
+    run_script(tmp_path, SEEDED)
+    before = (tmp_path / "out.csv").read_bytes()
+    assert provenance(check, tmp_path, SEEDED) is None
+    assert (tmp_path / "out.csv").read_bytes() == before
+    (tmp_path / "out.csv").write_text("age\n999\n")
+    provenance(check, tmp_path, SEEDED)
+    assert (tmp_path / "out.csv").read_text() == "age\n999\n"
+
+
+def test_jsonl_artifact_read_as_written(check, tmp_path):
+    spec = '{"uid": {"method": "int_zfilled", "kwargs": {"length": 8}}}'
+    body = ("from rand_engine import DataGenerator\n"
+            f"DataGenerator({spec}, seed=1).size(10).get_df().to_json('out.jsonl', orient='records', lines=True)\n")
+    assert provenance(check, tmp_path, body, ["out.jsonl"]) is None
+
+
+def test_inherited_pythonpath_entry_is_kept(check, tmp_path, monkeypatch):
+    fixtures = tmp_path / "fixtures"
+    fixtures.mkdir()
+    (fixtures / "helper_mod.py").write_text("SIZE = 10\n")
+    monkeypatch.setenv("PYTHONPATH", os.pathsep.join([str(REPO), str(fixtures)]))
+    body = f"from rand_engine import DataGenerator\nimport helper_mod\nDataGenerator({SPEC}, seed=1).size(helper_mod.SIZE).get_df().to_csv('out.csv', index=False)\n"
     assert provenance(check, tmp_path, body) is None
 
 
@@ -71,7 +137,12 @@ def test_missing_script_fails_as_provenance(check, tmp_path):
 
 def test_static_check_names_the_missing_import(check, tmp_path):
     msg = provenance(check, tmp_path, "import pandas as pd\npd.DataFrame({'age': [1]}).to_csv('out.csv', index=False)\n")
-    assert msg.startswith("provenance") and "rand_engine" in msg
+    assert msg == "provenance: the script does not import rand_engine"
+
+
+def test_static_check_names_the_missing_call(check, tmp_path):
+    msg = provenance(check, tmp_path, "import rand_engine\nopen('out.csv', 'w').write('age\\n1\\n')\n")
+    assert msg == "provenance: the script imports rand_engine but calls none of its generating API"
 
 
 def test_null_rule(check):
@@ -108,10 +179,35 @@ def test_current_names_are_not_caught(check, text):
 
 
 def test_documented_method_and_kwargs(check):
-    spec = json.loads(SPEC)
-    assert check.documented_method(spec, "integers", {"min", "max"})
-    assert not check.documented_method(spec, "floats", {"min"})
-    assert not check.documented_method(spec, "integers", {"min", "step"})
+    specs = [json.loads(SPEC)]
+    assert check.documented_method(specs, "integers", {"min", "max"})
+    assert check.documented_method(specs, "integers", {"min"})
+    assert not check.documented_method(specs, "floats", {"min"})
+    assert not check.documented_method(specs, "integers", {"min", "step"})
+    assert not check.documented_method([], "integers", {"min"})
+
+
+@pytest.mark.parametrize("value", [lambda: {"a": {"method": "integers", "kwargs": {"min": 1}}}, "text", [1], None, 3])
+def test_documented_method_never_raises_on_a_non_dict_spec(check, value):
+    assert check.documented_method([value], "integers", {"min"}) is False
+
+
+def test_recorded_specs_are_judged(check, tmp_path):
+    body = f"from rand_engine import DataGenerator\nDataGenerator({SPEC}, seed=1).size(10).get_df().to_csv('out.csv', index=False)\n"
+    specs = []
+    msg = check.provenance(tmp_path, script(tmp_path, body), ["out.csv"], python=sys.executable, specs=specs)
+    assert msg is None
+    assert check.documented_method(specs, "integers", {"min", "max"})
+    assert not check.documented_method(specs, "floats", {"min", "max"})
+
+
+def test_callable_spec_script_does_not_raise(check, tmp_path):
+    body = (f"from rand_engine import DataGenerator\nDataGenerator(lambda: {SPEC}, seed=1).size(10).get_df()"
+            ".to_csv('out.csv', index=False)\n")
+    specs = []
+    msg = check.provenance(tmp_path, script(tmp_path, body), ["out.csv"], python=sys.executable, specs=specs)
+    assert msg is None
+    assert check.documented_method(specs, "integers", {"min", "max"}) is False
 
 
 def stream(*tool_uses):
