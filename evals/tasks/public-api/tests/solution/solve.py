@@ -1,7 +1,8 @@
 import rand_engine
 from rand_engine import DataGenerator
 
-print(rand_engine.__version__)
+with open("version.txt", "w", encoding="utf-8") as f:
+    f.write(rand_engine.__version__ + "\n")
 
 spec = {
     "id": {"method": "integers", "kwargs": {"min": 1, "max": 100000}},
