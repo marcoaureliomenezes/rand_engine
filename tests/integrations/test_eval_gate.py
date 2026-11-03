@@ -115,6 +115,24 @@ def test_probes_are_unioned_over_the_legs_canary_trials(env, capsys):
     assert code == 0
 
 
+def test_canary_harness_error_has_its_own_message_and_keeps_the_legs_usage_passes(env, capsys):
+    tasks, results = env
+    write_trial(results, "canary", "wheel", 2, check_output="", error="RuntimeError: boom")
+    code, out = run_gate(env, capsys)
+    assert code == 1
+    assert "FAIL canary wheel: trial 2 harness error: RuntimeError: boom" in out
+    assert not any("sandbox" in line or "need 2" in line or line.startswith("FAIL alpha") for line in out)
+
+
+def test_missing_canary_file_has_its_own_message_and_keeps_the_legs_usage_passes(env, capsys):
+    tasks, results = env
+    (results / "canary-wheel-3.json").unlink()
+    code, out = run_gate(env, capsys)
+    assert code == 1
+    assert "FAIL canary wheel: trial 3 missing file canary-wheel-3.json" in out
+    assert not any("sandbox" in line or "need 2" in line or line.startswith("FAIL alpha") for line in out)
+
+
 def test_usage_harness_error_fails(env, capsys):
     tasks, results = env
     write_trial(results, "alpha", "pypi", 2, passed=False, error="RuntimeError: boom")
@@ -153,18 +171,48 @@ def test_discovery_failure_error_and_missing_file_change_nothing(env, capsys):
     assert not any(line.startswith("FAIL") for line in out)
 
 
-def test_calibrate_writes_ceil_of_twice_the_median_of_passing_usage_trials(env, capsys):
+HEADER = "task | wheel | pypi | tokens | cost_usd | layer | surface"
+
+
+def test_calibrate_writes_ceil_of_twice_the_plain_median_and_prints_each_ceiling_before_the_table(env, capsys):
     tasks, results = env
-    write_task(tasks, "beta", "usage", ["pypi", "wheel"])  # no ceiling: calibrate still runs
+    write_task(tasks, "beta", "usage", ["pypi", "wheel"], ceiling=1)
     for leg in ("pypi", "wheel"):
         for n in (1, 2, 3):
             write_trial(results, "beta", leg, n, tokens=1001 if leg == "wheel" else 1000)
-    for n, tokens in ((1, 1000), (2, 90000), (3, 3000)):
-        write_trial(results, "alpha", "wheel", n, tokens=tokens, passed=n != 2)
-    for n, tokens in ((1, 1000), (2, 2000), (3, 5000)):
-        write_trial(results, "alpha", "pypi", n, tokens=tokens)
+    # alpha passes with 1000 and 3000: median 2000, median_grouped 2999.5; the failed 90000 is excluded
+    for n, tokens in ((1, 1000), (2, 3000), (3, 90000)):
+        write_trial(results, "alpha", "wheel", n, tokens=tokens, passed=n != 3)
+    for n in (1, 2, 3):
+        write_trial(results, "alpha", "pypi", n, passed=False)
     code, out = run_gate(env, capsys, "--calibrate")
     assert code == 0
+    # beta: median 1000.5, ceil(2001.0) pins the round-up
     assert json.loads((results / "ceilings.json").read_text()) == {"alpha": 4000, "beta": 2001}
-    assert "task | wheel | pypi | tokens | cost_usd | layer | surface" in out
-    assert "alpha | 2 | 3 | 2000 | 1.50 | 2 | generators" in out
+    assert "ceiling alpha 4000" in out and "ceiling beta 2001" in out
+    assert max(out.index("ceiling alpha 4000"), out.index("ceiling beta 2001")) < out.index(HEADER)
+    assert "alpha | 2 | 0 | 2000 | 1.50 | 2 | generators" in out
+
+
+def test_calibrate_excludes_the_passing_trials_of_a_canary_voided_leg(env, capsys):
+    tasks, results = env
+    for n in (1, 2, 3):
+        write_trial(results, "canary", "wheel", n, check_output="probe:import\nprobe:pip")
+        write_trial(results, "alpha", "wheel", n, tokens=9000)
+        write_trial(results, "alpha", "pypi", n, tokens=1000)
+    code, out = run_gate(env, capsys, "--calibrate")
+    assert code == 0
+    assert json.loads((results / "ceilings.json").read_text()) == {"alpha": 2000}
+    assert "ceiling alpha 2000" in out
+
+
+def test_calibrate_prints_the_fail_lines_and_still_exits_0(env, capsys):
+    tasks, results = env
+    write_task(tasks, "beta", "usage", ["pypi", "wheel"])
+    for leg in ("pypi", "wheel"):
+        for n in (1, 2, 3):
+            write_trial(results, "beta", leg, n)
+    code, out = run_gate(env, capsys, "--calibrate")
+    assert code == 0
+    assert "FAIL beta: no ceiling_tokens in task.toml" in out
+    assert (results / "ceilings.json").exists()
