@@ -15,24 +15,29 @@ REPO = HERE.parent
 BASE = ["--output-format", "stream-json", "--verbose", "--setting-sources", "",
         "--strict-mcp-config", '--mcp-config={"mcpServers":{}}', "--disable-slash-commands",
         "--no-session-persistence", "--permission-mode", "dontAsk"]
-USAGE = {"tools": ["Bash", "Read", "Write", "Edit", "Glob", "Grep"], "web": False}
-ROUNDS = {"usage": USAGE, "canary": USAGE,
-          "discovery": {"tools": [*USAGE["tools"], "WebSearch", "WebFetch"], "web": True}}
+TOOLS = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"]
+
+
+def _usage_flags(work):
+    """Usage and canary: no web tools, and the sandbox and permissions deny of the trial dir `work`."""
+    sandbox = {"enabled": True, "failIfUnavailable": True, "allowUnsandboxedCommands": False,
+               "network": {"allowedDomains": []},
+               "filesystem": {"denyRead": [str(Path.home())], "allowRead": [str(work)]}}
+    # sandbox denyRead covers Bash only; the permissions deny covers the Read, Glob and Grep tools
+    settings = {"sandbox": sandbox, "permissions": {"deny": ["Read(~/**)", "Glob(~/**)", "Grep(~/**)"]}}
+    return ["--disallowedTools", "WebSearch,WebFetch", "--settings", json.dumps(settings)]
+
+
+ROUNDS = {"usage": {"tools": TOOLS, "flags": _usage_flags},
+          "canary": {"tools": TOOLS, "flags": _usage_flags},
+          "discovery": {"tools": [*TOOLS, "WebSearch", "WebFetch"], "flags": lambda work: []}}
 
 
 def round_flags(rnd, work):
-    """The claude flags of a round; the sandbox block (usage, canary) rides `--settings` as a JSON string."""
+    """The claude flags of a round: `--tools` sets the init tool list, `--allowedTools` the permission."""
     r = ROUNDS[rnd]
-    flags = [*BASE, "--allowedTools", ",".join(r["tools"])]
-    if not r["web"]:
-        sandbox = {"enabled": True, "failIfUnavailable": True, "allowUnsandboxedCommands": False,
-                   "network": {"allowedDomains": []},
-                   "filesystem": {"denyRead": [str(Path.home())], "allowRead": [str(work)]}}
-        # sandbox denyRead covers Bash only; the permissions deny covers the Read, Glob and Grep tools
-        settings = {"sandbox": sandbox,
-                    "permissions": {"deny": ["Read(~/**)", "Glob(~/**)", "Grep(~/**)"]}}
-        flags += ["--disallowedTools", "WebSearch,WebFetch", "--settings", json.dumps(settings)]
-    return flags
+    tools = ",".join(r["tools"])
+    return [*BASE, "--tools", tools, "--allowedTools", tools, *r["flags"](work)]
 
 
 def trial_env(venv):
@@ -79,9 +84,17 @@ def prepare_trial(task_dir, cfg, work, rand_engine):
 
 
 def check_result(stdout):
-    """The JSON object on the check's last `RESULT ` line; {} when it prints none."""
+    """The JSON object on the check's last `RESULT ` line; {} when it prints none; ValueError when malformed."""
     lines = [line for line in stdout.splitlines() if line.startswith("RESULT ")]
-    return json.loads(lines[-1][len("RESULT "):]) if lines else {}
+    if not lines:
+        return {}
+    try:
+        result = json.loads(lines[-1][len("RESULT "):])
+    except json.JSONDecodeError as e:
+        raise ValueError(f"malformed RESULT line: {e}") from e
+    if not isinstance(result, dict):
+        raise ValueError("RESULT line is not a JSON object")
+    return result
 
 
 def run_trial(task, n, args):
@@ -133,9 +146,9 @@ def run_trial(task, n, args):
             check = subprocess.run([str(py), str(task_dir / "tests" / "check.py")], cwd=cwd, env=check_env,
                                    stdin=subprocess.DEVNULL, capture_output=True, text=True,
                                    timeout=cfg["verifier"]["timeout_sec"])
-            res.update(check_result(check.stdout))
             res["passed"] = check.returncode == 0
             res["check_output"] = check.stdout
+            res.update({k: v for k, v in check_result(check.stdout).items() if k not in res})
         except subprocess.TimeoutExpired:
             res["check_output"] = "timeout"
     except Exception as e:
