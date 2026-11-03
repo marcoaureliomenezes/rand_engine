@@ -3,4 +3,4 @@ Use the Python library `rand-engine` (already installed) to generate fake custom
 1. Write 1,000 rows as a gzip-compressed CSV file at `customers.csv.gz` in the current directory.
 2. Write a short file stream of the same columns (10 rows per file, for about 1 second) into the directory `stream_out` in the current directory.
 
-Save one re-runnable Python script with a fixed seed in the current directory, `make.py`, that produces both.
+Save one re-runnable Python script with a fixed seed in the current directory, `solve.py`, that produces both.
