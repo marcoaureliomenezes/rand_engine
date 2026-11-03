@@ -1,8 +1,8 @@
 """Check of get-started-cli, run in the trial directory with the trial venv's python.
 
 Layer 1: `starter/lake-example.py` exists. Layer 2: it is byte-equal to the packaged `cases/lake.py.txt` and,
-when the transcript is given, a Bash call ran the package CLI's `get-started`, in any option order. Layer 3: no web tool,
-within the ceiling.
+when the transcript is given, a Bash call ran the package CLI's `get-started lake`, options in any order. Layer 3: no web
+tool, within the ceiling.
 """
 import os
 import re
@@ -14,7 +14,7 @@ import _check
 
 TASK_TOML = Path(__file__).resolve().parents[1] / "task.toml"
 SCAFFOLD = Path("starter") / "lake-example.py"
-GET_STARTED = re.compile(r"\brand[-_]engine\b.*\bget-started\b")
+GET_STARTED = re.compile(r"\brand[-_]engine\b.*\bget-started\b.*\blake\b")
 
 
 def verdict():
@@ -28,7 +28,7 @@ def verdict():
         return "2", f"{SCAFFOLD} is not byte-equal to the packaged cases/lake.py.txt", seen
     if transcript and not any(e["name"] == "Bash" and GET_STARTED.search(e["input"].get("command", ""))
                               for e in events):
-        return "2", "the transcript shows no Bash call of the package CLI's get-started", seen
+        return "2", "the transcript shows no Bash call of the package CLI's get-started lake", seen
     if web := _check.web_tool_uses(events):
         return "3", f"web tools used: {web}", seen
     if msg := _check.token_ceiling(TASK_TOML, os.environ):
