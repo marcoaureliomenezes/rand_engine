@@ -1,0 +1,1 @@
+I am using the Python library `rand-engine` (already installed) and I need to know which documentation page explains the options accepted when writing generated data to files. Use only what the installed package ships, not the web. Write the full URL of that page, alone on one line, to `answer.txt` in the current directory.
