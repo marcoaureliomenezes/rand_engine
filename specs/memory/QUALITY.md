@@ -2,7 +2,7 @@
 slug: QUALITY
 title: Quality Assurance
 tldr: QA principles, test architecture and the gates every change passes.
-summary: Principles change only with an accepted ADR; Test architecture and Gates state how rand-engine is verified — a light numbered pytest suite with executable docs and docstrings, a docstring lint in the verify line, CI-only stress and same-runner benchmarks, a non-gating cross-library observation, a non-blocking CI agent eval, and the GitHub Actions matrix, security, isolated docs and publish workflows.
+summary: Principles change only with an accepted ADR; Test architecture and Gates state how rand-engine is verified — a light numbered pytest suite with executable docs and docstrings, a docstring lint in the verify line, CI-only stress and same-runner benchmarks, a non-gating cross-library observation, a CI agent eval gate, and the GitHub Actions matrix, security, isolated docs and publish workflows.
 tags:
   - quality-assurance
   - testing
@@ -23,7 +23,7 @@ tags:
 - Spark tests start a local `SparkSession`, with the Java 17 options Spark's Arrow conversion needs, and skip when PySpark is absent or on Windows with Python 3.12 or later, so the Windows legs run them only on Python 3.11.
 - The default selector excludes `stress`; default tests generate at most 10^4 rows, while large-volume tests and benchmarks run in the CI benchmark job.
 - The observational comparison tests use injected factories and clocks, so ordinary collection needs no comparator package and asserts the two workload shapes, alternating samples, complete output validation, provenance and artifact semantics without a timing target. A separate non-required workflow installs its pinned environment and the public non-editable wheel, runs the real Python and Spark contracts on canonical comparison-path pushes or manual dispatch, and always retains its status and evidence; its measurements never enter the internal regression gate.
-- The agent eval under `evals/` is not part of the suite: it runs only in its own non-blocking workflow, `.github/workflows/eval.yml`, outside pytest and every gating check; a contract test keeps every `evals/` path out of pytest collection.
+- The agent eval under `evals/` is not part of the suite: it runs only in its own workflow, `.github/workflows/eval.yml`, outside pytest; a contract test keeps every `evals/` path out of pytest collection, and the eval's own harness, gate and task-check contracts run as integration tests in the suite.
 - Writer and documentation tests write through pytest temporary paths.
 - Documentation contracts run the preparation script in a subprocess and check: isolated input, raw resources and starter files, a byte copy of the canonical skill, untouched tracked sources, ordinary PyPI installs and principal-branch routes. Preparation needs no TOML parser (it runs on the standard library alone), and a workflow contract names `master` as the only Pages-deploying branch.
 - Local runs keep caches out of the repo: `PYTHONDONTWRITEBYTECODE=1 poetry run pytest tests/ -q -p no:cacheprovider`.
@@ -35,6 +35,7 @@ tags:
 - PR to `development`: source must not be `master`; the matrix with `--cov-fail-under=60`; Bandit, Semgrep, Safety and Trivy run advisory (they never fail the job); CodeQL analyzes.
 - PR to `master`: source must be `development`; the matrix with coverage.
 - PR to `master` or `development`: the benchmark workflow runs stress tests and a same-runner A/B speed comparison against the latest closed-release tag, publishes its summary/comment/artifact and fails a comparable row above the base ratio, a distribution method above its sibling or a modifier above its overhead limit.
+- Push to `feature/**` or an rc `wt-rc` branch touching `evals/**` or the workflow, every PR to `development` or `master`, and manual dispatch: the agent eval workflow runs a no-agent self-check, the canary, ten offline usage tasks on the PyPI release and the built wheel and an online discovery record, k = 3 trials each; its `Agent eval gate` job fails on a red self-check or canary, a harness error, a usage task below `k // 2 + 1` wheel passes or below its PyPI passes, or a usage task without a token ceiling. Discovery never gates.
 - Merge to `master`: tests (Ubuntu, Python 3.11–3.14, the same fresh-resolve legs), build of the `pyproject.toml` version (a version with an rc suffix fails the workflow), PyPI publish once the operator approves the `production` environment, then the tag, then a GitHub release. No workflow publishes, tags or releases a release candidate.
 - The repo `verify:` line (the local job gate) runs `ruff check --select D` (numpy convention) on the six public-surface modules before the suite. No type checker is configured, and CI runs no lint.
 - Inside every pytest run: an `inspect` check that each public callable of `DataGenerator`, `SparkGenerator`, `RandSpecs` and the writer objects carries a numpydoc docstring (it covers the `_`-prefixed writer modules ruff skips), and the doctest examples of those modules. A full suite run takes 45–93 s on each Ubuntu and macOS leg of Tests on Push run 38973485937.

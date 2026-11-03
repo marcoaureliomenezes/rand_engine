@@ -67,7 +67,7 @@ a scaffolded example ([[get-started-cli]]) and the docs site, `llms.txt` and age
 
 | slug | title | tldr |
 |------|-------|------|
-| `agent-eval` | Agent eval | A CI-only, non-blocking eval measures how a headless agent discovers and uses rand-engine: three tasks, k trials each, one JSON result per trial. |
+| `agent-eval` | Agent eval | A CI gate on whether rand-engine's shipped docs let a headless agent use each feature: ten offline usage tasks, a sandbox canary, k trials per leg. |
 | `benchmarks` | Performance benchmarks | CI enforces same-runner rand-engine regression limits and separately records bounded, validated observations against Faker and dbldatagen. |
 
 ### relations

@@ -27,7 +27,7 @@ commit that carries its accepted ADR.
 - pytest `^9.0`, pytest-cov (test group) — the suite and its fixture data.
 - ruff `>=0.17.1` (test group) — pydocstyle `D` rules with the numpy convention on the public-surface modules.
 - Zensical `==0.0.70` and mkdocstrings-python `==2.0.9` (optional `docs` group, Python `>=3.11`) — the strict docs-site build and its API reference from numpy-style docstrings, over `mkdocs.yml`.
-- GitHub Actions — test matrix, advisory security scans, same-runner A/B regression benchmarks against the latest closed release, a non-gating isolated cross-library observation, a non-blocking agent eval, publishing of closed releases through PyPI Trusted Publishing after the operator approves the `production` environment, and an isolated docs build with a guarded GitHub Pages deploy.
+- GitHub Actions — test matrix, advisory security scans, same-runner A/B regression benchmarks against the latest closed release, a non-gating isolated cross-library observation, an agent eval gate, publishing of closed releases through PyPI Trusted Publishing after the operator approves the `production` environment, and an isolated docs build with a guarded GitHub Pages deploy.
 
 ## Structure
 
@@ -63,8 +63,11 @@ benchmarks/
   comparison.py      isolated observational runner for bounded Python and Spark contracts
   comparison-requirements.txt  pinned CI-only environment for that runner
 evals/
-  run.py             CI-only agent eval runner: fresh venv per trial, isolated headless claude -p, the task's check
-  tasks/             one folder per task: instruction.md, task.toml, optional environment/, tests/check.py
+  run.py             CI-only agent eval runner: fresh venv per trial, isolated headless claude -p per round, the task's check
+  _check.py          the usage checks' shared layers: artifact, provenance re-run under a recording shim, documented use
+  gate.py            the gate verdict over every trial file, and the ceiling calibration
+  selfcheck.py       no-agent check: each usage task's reference passes, its decoy fails at provenance
+  tasks/             one folder per task: instruction.md, task.toml, optional environment/, tests/check.py, a usage task's tests/solution/ and tests/decoy/
 ```
 
 - Dependency direction: `main` -> `core`, `validators`, `file_handlers`, `utils`, and `main.spark_generator` -> `main.data_generator` for `resolve_size`; `validators.method_specs` -> `core._np_core` for date directives, the one date-bound parse (`_parse_date_bound`, which `SparkCore` also calls) and float-domain predicates, `validators.method_specs` -> `core._spark_core` for `spark_pool_column`, the one Spark pool column builder that `SparkCore.gen_distincts` and the Spark pool rule share, and `validators.common_validator` -> `core._np_core` for `width_beyond_double`, the one Spark width predicate `SparkCore.gen_ints` and `float_lattice_bounds` also call, so grammar and engine decide each numeric rule once; `cli` imports only the standard library and reads `cases/` as package resources; `core._keys` and `file_handlers` import only `validators.exceptions`; `examples.common_rand_specs` runs `AdvancedValidator` on `from_schema` output; `core` imports no generator and `examples` import no engine.
