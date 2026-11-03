@@ -18,8 +18,7 @@ HEADER = "task | wheel | pypi | tokens | cost_usd | layer | surface"
 
 
 def median(values):
-    # Token counts are discrete: each count stands for an interval one token wide.
-    return statistics.median_grouped(values, interval=1)
+    return statistics.median(values)
 
 
 def main(argv=None):
