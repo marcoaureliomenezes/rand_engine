@@ -28,7 +28,10 @@ def round_flags(rnd, work):
         sandbox = {"enabled": True, "failIfUnavailable": True, "allowUnsandboxedCommands": False,
                    "network": {"allowedDomains": []},
                    "filesystem": {"denyRead": [str(Path.home())], "allowRead": [str(work)]}}
-        flags += ["--disallowedTools", "WebSearch,WebFetch", "--settings", json.dumps({"sandbox": sandbox})]
+        # sandbox denyRead covers Bash only; the permissions deny covers the Read, Glob and Grep tools
+        settings = {"sandbox": sandbox,
+                    "permissions": {"deny": ["Read(~/**)", "Glob(~/**)", "Grep(~/**)"]}}
+        flags += ["--disallowedTools", "WebSearch,WebFetch", "--settings", json.dumps(settings)]
     return flags
 
 
@@ -56,26 +59,42 @@ def assert_isolated(init, mode, tools):
         raise RuntimeError(f"isolation violated: {leaks}")
 
 
+def prepare_trial(task_dir, cfg, work, rand_engine):
+    """The trial venv with the rand-engine requirement and the task's `[environment] requirements`
+    pip-installed, then the task's `environment/` as the agent's cwd; returns (env, python, cwd)."""
+    venv, cwd = work / "venv", work / "work"
+    env = trial_env(venv)
+    subprocess.run([sys.executable, "-m", "venv", str(venv)], check=True, env=env)
+    py = venv / "bin" / "python"
+    envcfg = cfg.get("environment", {})
+    pkgs = ([rand_engine] if envcfg.get("install_rand_engine", True) else []) + list(envcfg.get("requirements", []))
+    if pkgs:
+        subprocess.run([str(py), "-m", "pip", "install", "-q", *pkgs],
+                       check=True, stdin=subprocess.DEVNULL, env=env)
+    if (task_dir / "environment").is_dir():
+        shutil.copytree(task_dir / "environment", cwd)
+    else:
+        cwd.mkdir()
+    return env, py, cwd
+
+
+def check_result(stdout):
+    """The JSON object on the check's last `RESULT ` line; {} when it prints none."""
+    lines = [line for line in stdout.splitlines() if line.startswith("RESULT ")]
+    return json.loads(lines[-1][len("RESULT "):]) if lines else {}
+
+
 def run_trial(task, n, args):
     """Run one trial and return its result dict; any failure lands in `error`, never raises."""
     task_dir = HERE / "tasks" / task
-    res = {"task": task, "trial": n, "passed": False}
+    res = {"task": task, "trial": n, "leg": args.leg, "k": args.k, "passed": False}
     work = Path(tempfile.mkdtemp(prefix=f"eval-{task}-"))
     t0 = time.monotonic()
     try:
         cfg = tomllib.loads((task_dir / "task.toml").read_text(encoding="utf-8"))
         rnd = cfg["task"]["round"]
-        venv, cwd = work / "venv", work / "work"
-        env = trial_env(venv)
-        subprocess.run([sys.executable, "-m", "venv", str(venv)], check=True, env=env)
-        py = venv / "bin" / "python"
-        if cfg.get("environment", {}).get("install_rand_engine", True):
-            subprocess.run([str(py), "-m", "pip", "install", "-q", args.rand_engine],
-                           check=True, stdin=subprocess.DEVNULL, env=env)
-        if (task_dir / "environment").is_dir():
-            shutil.copytree(task_dir / "environment", cwd)
-        else:
-            cwd.mkdir()
+        res["round"] = rnd
+        env, py, cwd = prepare_trial(task_dir, cfg, work, args.rand_engine)
         try:
             prompt = (task_dir / "instruction.md").read_text(encoding="utf-8")
             p = subprocess.run(["claude", "-p", prompt, *round_flags(rnd, work), "--model", args.model], cwd=cwd, text=True,
@@ -86,6 +105,10 @@ def run_trial(task, n, args):
             stream, res["agent_exit"] = p.stdout, p.returncode
         except subprocess.TimeoutExpired as e:
             stream, res["agent_exit"] = (e.stdout or b"").decode(), "timeout"
+        trial_dir = args.out / f"{task}-{args.leg}-{n}"
+        trial_dir.mkdir(parents=True, exist_ok=True)
+        transcript = trial_dir / "transcript.jsonl"
+        transcript.write_text(stream, encoding="utf-8")
         events = []
         for line in stream.splitlines():
             try:
@@ -103,18 +126,24 @@ def run_trial(task, n, args):
                                         ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"))
         res["output_tokens"] = u and u.get("output_tokens", 0)
         res["cost_usd"] = done.get("total_cost_usd")
+        check_env = {**env, "PYTHONPATH": str(HERE), "RAND_EVAL_TRANSCRIPT": str(transcript)}
+        if u:
+            check_env["RAND_EVAL_TOKENS"] = str(res["input_tokens"] + res["output_tokens"])
         try:
-            check = subprocess.run([str(py), str(task_dir / "tests" / "check.py")], cwd=cwd, env=env,
+            check = subprocess.run([str(py), str(task_dir / "tests" / "check.py")], cwd=cwd, env=check_env,
                                    stdin=subprocess.DEVNULL, capture_output=True, text=True,
                                    timeout=cfg["verifier"]["timeout_sec"])
+            res.update(check_result(check.stdout))
             res["passed"] = check.returncode == 0
-            res["check_output"] = (check.stdout.strip().splitlines() or [""])[-1]
+            res["check_output"] = check.stdout
         except subprocess.TimeoutExpired:
             res["check_output"] = "timeout"
     except Exception as e:
         res["error"] = f"{type(e).__name__}: {e}"
     finally:
         res["duration_s"] = round(time.monotonic() - t0, 1)
+        if res.get("round") == "discovery":
+            res["passed"] = None
         shutil.rmtree(work, ignore_errors=True)
     return res
 
@@ -124,6 +153,7 @@ def main():
     ap.add_argument("--task", nargs="+", required=True, help="folder names under evals/tasks")
     ap.add_argument("--k", type=int, default=3)
     ap.add_argument("--rand-engine", default="rand-engine", help="pip requirement or wheel path")
+    ap.add_argument("--leg", required=True, choices=["pypi", "wheel"], help="install leg, named in the results")
     ap.add_argument("--model", required=True, help="pinned full model id")
     ap.add_argument("--out", required=True, type=Path, help="result directory, outside the repo")
     args = ap.parse_args()
@@ -131,11 +161,12 @@ def main():
     if out == REPO or REPO in out.parents:
         ap.error(f"--out must be outside the repo ({REPO})")
     out.mkdir(parents=True, exist_ok=True)
+    args.out = out
     errors = 0
     for task in args.task:
         for n in range(1, args.k + 1):
             res = run_trial(task, n, args)
-            (out / f"{task}-{n}.json").write_text(json.dumps(res, indent=2))
+            (out / f"{task}-{args.leg}-{n}.json").write_text(json.dumps(res, indent=2))
             print(f"{task} trial {n}: passed={res['passed']} error={res.get('error')}")
             errors += "error" in res
     sys.exit(1 if errors else 0)
