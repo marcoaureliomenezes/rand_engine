@@ -6,6 +6,7 @@ tool, within the ceiling.
 """
 import os
 import re
+import shlex
 import sys
 from importlib import resources
 from pathlib import Path
@@ -14,7 +15,21 @@ import _check
 
 TASK_TOML = Path(__file__).resolve().parents[1] / "task.toml"
 SCAFFOLD = Path("starter") / "lake-example.py"
-GET_STARTED = re.compile(r"\brand[-_]engine\b.*\bget-started\b.*\blake\b")
+SEPARATORS = re.compile(r";|&&|\|\||\||\n")
+
+
+def ran_get_started_lake(command):
+    """True when one shell segment of the command runs rand-engine get-started with `lake` as a whole token after it."""
+    for segment in SEPARATORS.split(command):
+        try:
+            tokens = shlex.split(segment)
+        except ValueError:
+            tokens = segment.split()
+        for i, tok in enumerate(tokens):
+            if tok in ("rand-engine", "rand_engine") and "get-started" in tokens[i + 1:]:
+                if "lake" in tokens[tokens.index("get-started", i) + 1:]:
+                    return True
+    return False
 
 
 def verdict():
@@ -26,7 +41,7 @@ def verdict():
     packaged = (resources.files("rand_engine") / "cases" / "lake.py.txt").read_bytes()
     if SCAFFOLD.read_bytes() != packaged:
         return "2", f"{SCAFFOLD} is not byte-equal to the packaged cases/lake.py.txt", seen
-    if transcript and not any(e["name"] == "Bash" and GET_STARTED.search(e["input"].get("command", ""))
+    if transcript and not any(e["name"] == "Bash" and ran_get_started_lake(e["input"].get("command", ""))
                               for e in events):
         return "2", "the transcript shows no Bash call of the package CLI's get-started lake", seen
     if web := _check.web_tool_uses(events):
