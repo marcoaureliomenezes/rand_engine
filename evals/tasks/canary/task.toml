@@ -1,0 +1,14 @@
+schema_version = "1.4"
+
+[task]
+round = "canary"
+legs = ["pypi", "wheel"]
+
+[metadata]
+description = "Canary: the sandbox lets an agent import rand_engine and run pip, and blocks the network"
+
+[verifier]
+timeout_sec = 300.0
+
+[agent]
+timeout_sec = 300.0
