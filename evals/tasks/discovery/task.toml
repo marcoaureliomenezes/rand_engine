@@ -1,5 +1,9 @@
 schema_version = "1.4"
 
+[task]
+round = "discovery"
+legs = ["pypi"]
+
 [metadata]
 description = "Cold discovery: a real data-generation need with no library named; the check records what the agent used and never fails"
 
