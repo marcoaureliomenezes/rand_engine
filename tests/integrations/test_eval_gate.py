@@ -176,7 +176,7 @@ HEADER = "task | wheel | pypi | tokens | cost_usd | layer | surface"
 
 def test_calibrate_writes_ceil_of_twice_the_plain_median_and_prints_each_ceiling_before_the_table(env, capsys):
     tasks, results = env
-    write_task(tasks, "beta", "usage", ["pypi", "wheel"], ceiling=1)
+    write_task(tasks, "beta", "usage", ["pypi", "wheel"])  # no ceiling: calibrate still writes one
     for leg in ("pypi", "wheel"):
         for n in (1, 2, 3):
             write_trial(results, "beta", leg, n, tokens=1001 if leg == "wheel" else 1000)
@@ -204,6 +204,7 @@ def test_calibrate_excludes_the_passing_trials_of_a_canary_voided_leg(env, capsy
     assert code == 0
     assert json.loads((results / "ceilings.json").read_text()) == {"alpha": 2000}
     assert "ceiling alpha 2000" in out
+    assert "alpha | 0 | 3 | 1000 | 1.50 | - | -" in out
 
 
 def test_calibrate_prints_the_fail_lines_and_still_exits_0(env, capsys):
@@ -215,4 +216,4 @@ def test_calibrate_prints_the_fail_lines_and_still_exits_0(env, capsys):
     code, out = run_gate(env, capsys, "--calibrate")
     assert code == 0
     assert "FAIL beta: no ceiling_tokens in task.toml" in out
-    assert (results / "ceilings.json").exists()
+    assert json.loads((results / "ceilings.json").read_text()) == {"alpha": 3000, "beta": 3000}
