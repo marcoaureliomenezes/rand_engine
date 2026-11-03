@@ -1,0 +1,1 @@
+I want a starter script for a data lake built with rand-engine: related tables written to Parquet. Use the package's own onboarding tooling to scaffold it, not a hand-written script, and put it in a new directory called `starter` in the current directory.

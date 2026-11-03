@@ -1,0 +1,14 @@
+schema_version = "1.4"
+
+[metadata]
+description = "Usage: find and use the package CLI to scaffold the data-lake starter into a named directory"
+
+[task]
+round = "usage"
+legs = ["pypi", "wheel"]
+
+[agent]
+timeout_sec = 900.0
+
+[verifier]
+timeout_sec = 300.0
