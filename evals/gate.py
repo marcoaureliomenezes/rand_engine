@@ -3,7 +3,8 @@
 Inputs: `--results DIR` (`{task}-{leg}-{n}.json`), `--tasks DIR` (`<task>/task.toml`), `--k N`.
 `--calibrate` also writes `<results>/ceilings.json`.
 Output: `FAIL ...` lines, then the usage table, on stdout.
-Exit: 0 when every usage task passes; 1 otherwise. Calibrate exits 0 once written.
+Exit: 1 on usage below 2 of 3, a regression against PyPI, a red canary, a canary or usage harness
+error, a missing file, or a usage task without a ceiling; 0 otherwise. Calibrate exits 0 once written.
 """
 import argparse
 import json
@@ -15,10 +16,6 @@ from pathlib import Path
 LEGS = ("pypi", "wheel")
 PROBES = ("import", "pip", "network")
 HEADER = "task | wheel | pypi | tokens | cost_usd | layer | surface"
-
-
-def median(values):
-    return statistics.median(values)
 
 
 def main(argv=None):
@@ -45,7 +42,7 @@ def main(argv=None):
     fails, rows, ceilings, voided = [], [], {}, set()
 
     for leg in LEGS:
-        seen, red = set(), False
+        seen = set()
         for name, s in specs.items():
             if s["round"] != "canary" or leg not in s["legs"]:
                 continue
@@ -53,27 +50,23 @@ def main(argv=None):
                 data, missing = read(name, leg, n)
                 if missing:
                     fails.append(f"FAIL canary {leg}: trial {n} missing file {missing}")
-                    red = True
                     continue
                 if data.get("error"):
                     fails.append(f"FAIL canary {leg}: trial {n} harness error: {data['error']}")
-                    red = True
                 seen |= {line[len("probe:"):] for line in (data.get("check_output") or "").splitlines()
                          if line.startswith("probe:")}
         lost = [p for p in PROBES if p not in seen]
         if lost:
             fails.append(f"FAIL canary {leg}: the sandbox blocked a probe, missing: {', '.join(lost)}")
-            red = True
-        if red:
             voided.add(leg)
 
     need = a.k // 2 + 1
     for name, s in specs.items():
         if s["round"] != "usage":
             continue
-        raw, eff, cost, tokens, layers, surfaces = {}, {}, 0.0, [], set(), set()
+        raw, tokens, cost, layers, surfaces = {}, {}, 0.0, set(), set()
         for leg in s["legs"]:
-            raw[leg] = 0
+            raw[leg], tokens[leg] = 0, []
             for n in range(1, a.k + 1):
                 data, missing = read(name, leg, n)
                 if missing:
@@ -84,12 +77,12 @@ def main(argv=None):
                     fails.append(f"FAIL {name}: {leg} trial {n} harness error: {data['error']}")
                 if data.get("passed") and not data.get("error"):
                     raw[leg] += 1
-                    tokens.append(data["input_tokens"] + data["output_tokens"])
+                    tokens[leg].append(data["input_tokens"] + data["output_tokens"])
                 else:
                     layers.add(data.get("layer"))
                     surfaces |= set(data.get("surfaces") or [])
-            eff[leg] = 0 if leg in voided else raw[leg]
 
+        eff = {leg: 0 if leg in voided else raw[leg] for leg in raw}
         wheel, pypi = eff.get("wheel", 0), eff.get("pypi", 0)
         if wheel < need:
             fails.append(f"FAIL {name}: wheel passed {wheel} of {a.k} (need {need})")
@@ -97,20 +90,27 @@ def main(argv=None):
             fails.append(f"FAIL {name}: wheel passed {wheel} of {a.k}, below pypi {pypi} of {a.k}")
         if s["ceiling"] is None:
             fails.append(f"FAIL {name}: no ceiling_tokens in task.toml")
-        if tokens:
-            ceilings[name] = math.ceil(2 * median(tokens))
-        layer = ", ".join(sorted(str(x) for x in layers if x is not None)) or "-"
-        rows.append(f"{name} | {wheel} | {pypi} | {round(median(tokens)) if tokens else '-'} | "
-                    f"{cost:.2f} | {layer} | {', '.join(sorted(surfaces)) or '-'}")
 
+        all_tokens = [t for leg in raw for t in tokens[leg]]
+        calib = [t for leg in raw if leg not in voided for t in tokens[leg]]
+        if calib:
+            ceilings[name] = math.ceil(2 * statistics.median(calib))
+        layer = ", ".join(sorted(str(x) for x in layers if x is not None)) or "-"
+        tok = round(statistics.median(all_tokens)) if all_tokens else "-"
+        rows.append(f"{name} | {wheel} | {pypi} | {tok} | {cost:.2f} | {layer} | "
+                    f"{', '.join(sorted(surfaces)) or '-'}")
+
+    for line in fails:
+        print(line)
     if a.calibrate:
         (a.results / "ceilings.json").write_text(json.dumps(ceilings, indent=2, sort_keys=True), encoding="utf-8")
-        print(HEADER)
-        print("\n".join(rows))
-        return 0
-
-    for line in [*fails, HEADER, *rows]:
+        for name, c in ceilings.items():
+            print(f"ceiling {name} {c}")
+    print(HEADER)
+    for line in rows:
         print(line)
+    if a.calibrate:
+        return 0
     return 1 if fails else 0
 
 
