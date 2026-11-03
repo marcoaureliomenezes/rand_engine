@@ -35,29 +35,35 @@ def trial(task_dir, cfg, rand_engine, variant):
 
 
 def selfcheck(task_dir, rand_engine):
-    """Raises AssertionError or any trial error when the reference or the decoy misbehaves."""
+    """Raises RuntimeError or any trial error when the reference or the decoy misbehaves."""
     cfg = tomllib.loads((task_dir / "task.toml").read_text(encoding="utf-8"))
     code, _, out = trial(task_dir, cfg, rand_engine, "solution")
-    assert code == 0, f"reference check exited {code}: {out[-300:]}"
+    if code != 0:
+        raise RuntimeError(f"reference check exited {code}: {out[-300:]}")
     code, result, out = trial(task_dir, cfg, rand_engine, "decoy")
-    assert code != 0 and result.get("layer") == 2, f"decoy: exit {code}, RESULT {result}: {out[-300:]}"
+    if code == 0 or result.get("layer") != "2":
+        raise RuntimeError(f"decoy: exit {code}, RESULT {result}: {out[-300:]}")
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--rand-engine", required=True, help="the rand-engine wheel (or requirement) to install")
     args = ap.parse_args()
-    bad = 0
+    bad = ran = 0
     for toml in sorted((HERE / "tasks").glob("*/task.toml")):
         task_dir = toml.parent
         try:
             if tomllib.loads(toml.read_text(encoding="utf-8")).get("task", {}).get("round") != "usage":
                 continue
             selfcheck(task_dir, args.rand_engine)
+            ran += 1
             print(f"{task_dir.name}: ok", flush=True)
         except Exception as e:
             bad += 1
             print(f"{task_dir.name}: HARNESS ERROR {type(e).__name__}: {e}", flush=True)
+    if not ran:
+        print("HARNESS ERROR: no usage task found", flush=True)
+        bad += 1
     sys.exit(1 if bad else 0)
 
 
