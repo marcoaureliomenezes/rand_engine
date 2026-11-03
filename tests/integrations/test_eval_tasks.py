@@ -11,14 +11,14 @@ USAGE_SLUGS = {
 
 
 def catalog_usage_slugs():
-    features = json.loads((ROOT / "specs/memory/product/catalog.json").read_text())["features"]
+    features = json.loads((ROOT / "specs/memory/product/catalog.json").read_text(encoding="utf-8"))["features"]
     return {f["slug"] for f in features if f["area"] != "quality"}
 
 
 def usage_folders():
     return {
         p.parent.name for p in (ROOT / "evals/tasks").glob("*/task.toml")
-        if tomllib.loads(p.read_text())["task"]["round"] == "usage"
+        if tomllib.loads(p.read_text(encoding="utf-8"))["task"]["round"] == "usage"
     }
 
 
