@@ -1,0 +1,14 @@
+schema_version = "1.4"
+
+[metadata]
+description = "Usage: a seeded parquet dataset from a declarative spec, with nulls and a derived column"
+
+[task]
+round = "usage"
+legs = ["pypi", "wheel"]
+
+[verifier]
+timeout_sec = 300.0
+
+[agent]
+timeout_sec = 900.0
