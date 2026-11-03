@@ -8,8 +8,6 @@ import os
 import sys
 from pathlib import Path
 
-import pandas as pd
-
 import _check
 
 TASK_TOML = Path(__file__).resolve().parents[1] / "task.toml"
@@ -20,9 +18,10 @@ def verdict():
     transcript = os.environ.get("RAND_EVAL_TRANSCRIPT")
     events = _check.tool_events(transcript) if transcript else []
     seen = _check.surfaces(events)
-    if not Path("out.parquet").is_file():
-        return "1", "out.parquet does not exist", seen
-    df = pd.read_parquet("out.parquet")
+    try:
+        df = _check.read_artifact("out.parquet")
+    except Exception as e:
+        return "1", f"cannot read out.parquet: {type(e).__name__}", seen
     if len(df) != 1000 or list(df.columns) != COLUMNS:
         return "1", f"out.parquet has {len(df)} rows and columns {list(df.columns)}, expected 1000 rows and {COLUMNS}", seen
     if not Path("make.py").is_file():
@@ -32,7 +31,7 @@ def verdict():
         return "2", msg, seen
     if not _check.documented_method(specs, "integers", ["min", "max"]):
         return "3", "the recorded spec has no `integers` column with min and max", seen
-    if hits := _check.legacy_hits("\n".join(p.read_text(encoding="utf-8") for p in Path(".").glob("*.py"))):
+    if hits := _check.legacy_hits("\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in Path(".").glob("*.py"))):
         return "3", f"legacy names used: {hits}", seen
     if web := _check.web_tool_uses(events):
         return "3", f"web tools used: {web}", seen
