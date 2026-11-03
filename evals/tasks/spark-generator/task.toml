@@ -15,3 +15,6 @@ timeout_sec = 600.0
 
 [environment]
 requirements = ["pyspark>=3.5,<4", "setuptools>=84.1.0"]
+
+[limits]
+ceiling_tokens = 297510

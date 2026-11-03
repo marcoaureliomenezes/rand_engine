@@ -12,3 +12,6 @@ timeout_sec = 900.0
 
 [verifier]
 timeout_sec = 600.0
+
+[limits]
+ceiling_tokens = 120486
