@@ -9,7 +9,7 @@ from pathlib import Path
 import _check
 
 NAME = re.compile(r"rand[-_]engine", re.I)
-INSTALL = re.compile(r"(pip|uv|poetry|pipx)\b[^\n]*\b(install|add)\b[^\n]*rand[-_]engine", re.I)
+INSTALL = re.compile(r"(pip|uv|poetry|pipx)\b[^\n;&|]*\b(install|add)\b[^\n;&|]*rand[-_]engine", re.I)
 IMPORT = re.compile(r"^\s*(from|import)\s+rand_engine", re.M)
 
 
@@ -32,7 +32,7 @@ py = "\n".join(
     p.read_text(encoding="utf-8", errors="ignore") for p in Path(".").rglob("*.py")
     if "site-packages" not in p.parts and ".venv" not in p.parts
 )
-installed = any(INSTALL.search(json.dumps(e["input"])) for e in events)
+installed = any(INSTALL.search(e["input"].get("command", "")) for e in events)
 print("RESULT " + json.dumps({
     "adopted": installed and bool(IMPORT.search(py)),
     "surface": surface(named[0]) if named else "other",
