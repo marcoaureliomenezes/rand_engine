@@ -964,3 +964,9 @@ def test_eval_workflow_selfcheck_runs_against_the_built_wheel():
     check = _job("selfcheck")
     assert "python evals/selfcheck.py --rand-engine" in check
     assert "dist/*.whl" in check
+
+
+def test_every_eval_workflow_checkout_sets_persist_credentials_false():
+    steps = _workflow()[0].split("uses: actions/checkout@")[1:]
+    assert len(steps) == 3
+    assert [s for s in steps if "persist-credentials: false" not in s.split("\n\n")[0]] == []
