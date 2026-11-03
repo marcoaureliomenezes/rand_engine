@@ -1,0 +1,14 @@
+schema_version = "1.4"
+
+[metadata]
+description = "Usage: a gzip CSV batch file and a file stream through the library's writers"
+
+[task]
+round = "usage"
+legs = ["pypi", "wheel"]
+
+[verifier]
+timeout_sec = 300.0
+
+[agent]
+timeout_sec = 1800.0
