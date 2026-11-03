@@ -1,6 +1,6 @@
 # Agent evals
 
-The agent eval measures whether rand-engine's shipped docs let an agent adopt and use each feature. The docs are the docstrings, `help()`, `llms.txt`, the CLI and the examples. Every release must pass the gate. The gate job of `.github/workflows/eval.yml` exits 1 on any `FAIL` line.
+The agent eval measures whether rand-engine's shipped docs let an agent adopt and use each feature. The docs are the docstrings, `help()`, `llms.txt`, the CLI and the examples. Every release must pass the gate. The gate job of `.github/workflows/eval.yml` exits 1 on any `FAIL` line, and it also fails when the `selfcheck` job is red.
 
 ## Rounds
 
@@ -15,8 +15,8 @@ Each task sets its round in `task.toml` (`[task] round`). `run.py` maps each rou
 A usage check names the layer of its failure: the failure line starts with `1`, `2` or `3`, and a `RESULT` line carries `"layer"` (`_check.result_text`). The layers run in order.
 
 1. **Artifact.** The output exists, with the asked rows, columns, nulls and values.
-2. **Provenance.** `_check.provenance` re-runs the agent's script in a scratch copy, under a recording shim. The shim records each frame rand_engine generates, by row count and per-column hash. Every column of the artifact must match a recorded column. A script that does not import rand_engine, or calls none of its generating API, fails here. The re-run times out after 300 s. The documentation task is the exception: its answer is a URL, and layer 2 checks that the URL is a link of the installed `llms.txt`.
-3. **Documented use.** The recorded spec uses the documented method and kwargs. The agent's files use no legacy name (`LEGACY`, 8 patterns). When the trial recorded tokens, the total is within `ceiling_tokens`. No web tool was used.
+2. **Provenance.** `_check.provenance` re-runs the agent's script in a scratch copy, under a recording shim. The shim records each frame rand_engine generates, by row count and per-column hash. Every column of the artifact must match a recorded column. A script that does not import rand_engine, or calls none of its generating API, fails here. The re-run times out after 300 s. Two usage tasks are exceptions and have no shim re-run. `documentation`: its answer is a URL, and layer 2 checks that the URL is a link of the installed `llms.txt`. `get-started-cli`: its scaffold is byte-equal to the packaged `cases/lake.py.txt`, and when the transcript is given, a Bash call runs `rand-engine get-started lake`.
+3. **Documented use.** The recorded spec uses the documented method and kwargs, and the agent's files use no legacy name (`LEGACY`, 8 patterns). Only the tasks that record a spec get these two checks: every usage task except `documentation` and `get-started-cli`. Every usage task: when the trial recorded tokens, the total is within `ceiling_tokens`, and no web tool was used.
 
 ## Gate (`gate.py`)
 
