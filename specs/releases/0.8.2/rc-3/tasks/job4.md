@@ -1,0 +1,11 @@
+# Job 4 — `evals/_check.py`: the three layers' shared helper (wave 2)
+
+Waits on Job 1 (D2, D3 are pinned there). Runs beside Job 3. The helper imports the library under test, so its unit test runs in the pytest interpreter with 10-row scripts: no Spark, no network, no agent. Layers 1 and 2 of Spark and the writers run only in AC11.5.
+
+| task | who | AC | `W:` | outcome |
+|---|---|---|---|---|
+| J4.T1 | sr | AC13.1, AC13.2, AC13.3, AC13.4 | `tests/integrations/test_eval_check.py` | RED: loads `_check.py` by path; scripts written under `tmp_path`. Layer 2: a script that builds the frame with `DataGenerator` and saves it passes; a numpy-made file beside a decorative `DataGenerator` call fails at `provenance`; a script that cannot re-run fails as `provenance` (never an error) and the static check supplies the message; D7's null rule (NaN against None equal). Layer 3: each of the seven legacy names of the SPEC (`ExampleSpecs`, `constraints` key, `db_checkpoint()`/`option()`, `uuid4` `length`, positional `args`, `splitable`/`sep`, `validate_with_warnings`) is caught and `RandGenerator`, `rand_engine.main`, `rand_engine.templates` and the `pk` method are not; the documented-method check; ceiling and web `tool_use` read from a transcript fixture; with no transcript env they are skipped (D3). Surfaces: each of the seven tokens is matched in a `tool_use` fixture. Every failing result line names its layer and ends with the D2 `RESULT ` line. Red today: `_check.py` does not exist |
+| J4.T2 | sr | AC13.1, AC13.2 | `evals/_check.py` | layer 1 helpers and layer 2: the static pre-check (a `rand_engine` import and a call of the documented API), then the re-run with the trial venv's python under a recording shim over `DataGenerator.get_df`, the writers' `save`, `stream_dict` and `SparkGenerator.get_df`, then the D7 comparison; `tool_events(transcript)`, the one transcript reader. Owner test: J4.T1's layer-2 and `tool_events` cases |
+| J4.T3 | jr | AC13.3, AC13.4 | `evals/_check.py` | layer 3 and the report: `LEGACY` (the seven items only), the documented-method check, the ceiling from `RAND_EVAL_TOKENS` and `task.toml`, the web `tool_use` check, the surface matcher, and the `RESULT ` writer. Owner test: J4.T1's layer-3 and surface cases |
+
+Done when: `verify:`; `tests/integrations/test_eval_check.py` passes.
