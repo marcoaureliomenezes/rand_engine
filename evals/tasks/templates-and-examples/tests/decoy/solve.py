@@ -22,3 +22,6 @@ orders = pd.DataFrame({
     "payment_method": rng.choice(["credit_card", "pix", "boleto"], 1000),
 })
 orders.to_parquet("orders.parquet")
+
+pool = [f"City {i:02d}" for i in range(50)]
+pd.DataFrame({"city": rng.choice(pool, 500)}).to_parquet("cities.parquet")

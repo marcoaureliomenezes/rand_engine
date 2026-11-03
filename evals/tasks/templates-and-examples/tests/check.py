@@ -10,6 +10,7 @@ import pandas as pd
 TABLES = {
     "customers.parquet": (200, ["customer_id", "age", "city", "total_spent", "is_premium", "registration_date"]),
     "orders.parquet": (1000, ["order_id", "customer_id", "amount", "order_timestamp", "status", "payment_method"]),
+    "cities.parquet": (500, ["city"]),
 }
 specs = []
 
@@ -22,7 +23,7 @@ def fail(layer, message):
 events = _check.tool_events(os.environ["RAND_EVAL_TRANSCRIPT"]) if "RAND_EVAL_TRANSCRIPT" in os.environ else []
 surfaces = _check.surfaces(events)
 
-# Layer 1: both artifacts with the asked rows and columns.
+# Layer 1: the three artifacts with the asked rows and columns.
 for name, (rows, columns) in TABLES.items():
     try:
         df = pd.read_parquet(name)
@@ -36,7 +37,7 @@ if (msg := _check.provenance(".", "solve.py", list(TABLES), python=sys.executabl
     fail("2", msg)
 
 # Layer 3: the recorded specs are the named RandSpecs entries, evaluated in this venv, plus no legacy names, token ceiling, no web.
-from rand_engine import RandSpecs  # noqa: E402  (rand-engine is installed in the trial venv)
+from rand_engine import RandSpecs  # noqa: E402  (rand-engine and faker are installed in the trial venv)
 
 
 def normal(spec):
@@ -46,6 +47,9 @@ def normal(spec):
 for label, entry in (("customers", RandSpecs.customers()), ("orders", RandSpecs.orders())):
     if normal(entry) not in specs:
         fail("3", f"no recorded spec equals RandSpecs.{label}() as evaluated here")
+city_pool = normal(RandSpecs.faker_pool("city", locale="en_US", pool_size=50, seed=7))
+if not any(isinstance(spec, dict) and normal(column) == city_pool for spec in specs for column in spec.values()):
+    fail("3", "no recorded column equals RandSpecs.faker_pool('city', locale='en_US', pool_size=50, seed=7) as evaluated here")
 if (hits := [h for path in Path(".").glob("*.py") for h in _check.legacy_hits(path.read_text(encoding="utf-8"))]):
     fail("3", f"legacy names in the agent's files: {hits}")
 if (msg := _check.token_ceiling(Path(__file__).parent.parent / "task.toml", os.environ)):

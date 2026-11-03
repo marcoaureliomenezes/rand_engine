@@ -1,11 +1,14 @@
 schema_version = "1.4"
 
 [metadata]
-description = "Usage: ready-made customer and order templates, two seeded parquet tables"
+description = "Usage: ready-made customer and order templates, and a Faker city pool, seeded parquet tables"
 
 [task]
 round = "usage"
 legs = ["pypi", "wheel"]
+
+[environment]
+requirements = ["faker>=28.4.1"]
 
 [verifier]
 timeout_sec = 300.0
