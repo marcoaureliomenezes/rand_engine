@@ -1,12 +1,12 @@
 {
   "schema": "release-state-v1",
   "release": "0.8.2",
-  "phase": "IMPLEMENTATION",
+  "phase": "CLOSURE",
   "defined": {
     "ts": "2026-11-03T00:20:50Z"
   },
   "implemented": {
-    "ts": "2026-11-02T04:00:42Z"
+    "ts": "2026-11-03T03:27:43Z"
   },
   "shipped": null,
   "log": [
@@ -158,6 +158,14 @@
       "candidate": "rc-3",
       "milestone": "defined",
       "text": "Candidate defined; phase IMPLEMENTATION."
+    },
+    {
+      "ts": "2026-11-03T03:27:43Z",
+      "agent": "release.py",
+      "kind": "milestone",
+      "candidate": "rc-3",
+      "milestone": "implemented",
+      "text": "Candidate implemented; phase CLOSURE."
     }
   ]
 }
