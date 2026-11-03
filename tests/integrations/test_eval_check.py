@@ -99,6 +99,16 @@ def test_agent_artifact_is_never_modified(check, tmp_path):
     assert (tmp_path / "out.csv").read_text() == "age\n999\n"
 
 
+def test_spark_parts_directory_skips_hidden_files(check, tmp_path):
+    import pandas as pd
+    out = tmp_path / "out.parquet"
+    out.mkdir()
+    pd.DataFrame({"id": [1, 2, 3]}).to_parquet(out / "part-00000.snappy.parquet", index=False)
+    (out / "_SUCCESS").write_text("")
+    (out / ".part-00000.snappy.parquet.crc").write_bytes(b"crc\x00\xff")
+    assert check.read_artifact(out).to_dict("list") == {"id": [1, 2, 3]}
+
+
 def test_jsonl_artifact_read_as_written(check, tmp_path):
     spec = '{"uid": {"method": "int_zfilled", "kwargs": {"length": 8}}}'
     body = ("from rand_engine import DataGenerator\n"
