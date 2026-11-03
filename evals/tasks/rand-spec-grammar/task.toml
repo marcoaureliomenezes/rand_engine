@@ -1,0 +1,14 @@
+schema_version = "1.4"
+
+[metadata]
+description = "Usage: repair a wrong spec from the library's construction error, then build and save a frame from it"
+
+[task]
+round = "usage"
+legs = ["pypi", "wheel"]
+
+[agent]
+timeout_sec = 900.0
+
+[verifier]
+timeout_sec = 300.0
