@@ -7,6 +7,7 @@ Exit: 1 on usage below 2 of 3, a regression against PyPI, a red canary, a canary
 error, a missing file, or a usage task without a ceiling; 0 otherwise. Calibrate exits 0 once written.
 """
 import argparse
+import collections
 import json
 import math
 import statistics
@@ -100,6 +101,15 @@ def main(argv=None):
         rows.append(f"{name} | {wheel} | {pypi} | {tok} | {cost:.2f} | {layer} | "
                     f"{', '.join(sorted(surfaces)) or '-'}")
 
+    discovery = []
+    for name, s in specs.items():
+        for leg in (s["legs"] if s["round"] == "discovery" else []):
+            pairs = [read(name, leg, n) for n in range(1, a.k + 1)]
+            got, miss = [d for d, _ in pairs if d], [m for _, m in pairs if m]
+            top = collections.Counter(d.get("surface") for d in got).most_common()
+            lead = "/".join(sorted(str(x) for x, c in top if c == top[0][1])) if top else "-"
+            discovery.append(f"discovery {leg}: adopted {sum(bool(d.get('adopted')) for d in got)} of {a.k}, "
+                             f"leading surface {lead}" + "".join(f", missing {m}" for m in miss))
     for line in fails:
         print(line)
     if a.calibrate:
@@ -107,7 +117,7 @@ def main(argv=None):
         for name, c in ceilings.items():
             print(f"ceiling {name} {c}")
     print(HEADER)
-    for line in rows:
+    for line in rows + discovery:
         print(line)
     if a.calibrate:
         return 0
