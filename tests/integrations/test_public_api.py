@@ -849,7 +849,7 @@ def test_eval_runs_claude_with_the_subprocess_env_scrub(monkeypatch, tmp_path):
 
 
 def test_eval_workflow_pins_the_scrub_cli_and_runs_under_bubblewrap():
-    text = (Path(__file__).parents[2] / ".github" / "workflows" / "eval.yml").read_text(encoding="utf-8")
+    text = _job("trials")
     assert "@anthropic-ai/claude-code@2.1.316" in text
     assert "apt-get install -y bubblewrap" in text
     lift = "sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0"
@@ -878,14 +878,6 @@ def _gate():
     block = next((b for b in _workflow()[1].values() if "name: Agent eval gate" in b), None)
     assert block is not None, "no job named 'Agent eval gate'"
     return block
-
-
-def test_eval_workflow_trials_job_pins_the_cli_and_lifts_the_sandbox_before_the_run():
-    trials = _job("trials")
-    assert "@anthropic-ai/claude-code@2.1.316" in trials
-    assert "apt-get install -y bubblewrap" in trials
-    lift = "sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0"
-    assert trials.index(lift) < trials.index("python evals/run.py")
 
 
 def test_eval_workflow_push_trigger_keeps_the_eval_paths_and_adds_the_rc_branches():
@@ -930,3 +922,40 @@ def test_eval_workflow_calibrates_before_the_verdict_step():
     calibrate = gate.index("gate.py --calibrate")
     verdict = gate.index("gate.py", calibrate + 1)
     assert calibrate < verdict
+
+
+def _steps(block):
+    return ["- name:" + t for t in block.split("\n      - name:")[1:]]
+
+
+def test_eval_workflow_verdict_step_is_the_plain_gate_call():
+    verdicts = [x for x in _steps(_gate()) if "gate.py" in x and "--calibrate" not in x]
+    assert len(verdicts) == 1
+    assert "||" not in verdicts[0]
+
+
+def test_eval_workflow_gate_fails_last_when_the_selfcheck_is_not_green():
+    steps = _steps(_gate())
+    verdict = next(i for i, x in enumerate(steps) if "gate.py" in x and "--calibrate" not in x)
+    last = steps[-1]
+    assert len(steps) - 1 > verdict
+    assert "needs.selfcheck.result != 'success'" in last
+    assert "exit 1" in last
+
+
+def test_eval_workflow_scan_step_always_runs_deletes_the_out_dir_and_fails_on_a_hit():
+    scan = next(x for x in _steps(_job("trials")) if "grep -rqF" in x)
+    assert "if: always()" in scan
+    assert 'rm -rf "$OUT"' in scan
+    assert "exit 1" in scan
+
+
+def test_eval_workflow_scan_counts_a_hit_only_for_a_non_empty_token():
+    scan = next(x for x in _steps(_job("trials")) if "grep -rqF" in x)
+    assert '-n "$CLAUDE_CODE_OAUTH_TOKEN"' in scan
+
+
+def test_eval_workflow_selfcheck_runs_against_the_built_wheel():
+    check = _job("selfcheck")
+    assert "python evals/selfcheck.py --rand-engine" in check
+    assert "dist/*.whl" in check
