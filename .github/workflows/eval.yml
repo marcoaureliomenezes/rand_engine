@@ -56,7 +56,7 @@ jobs:
       - name: Run the self-check
         env:
           TMPDIR: ${{ runner.temp }}
-        run: python evals/selfcheck.py
+        run: python evals/selfcheck.py --rand-engine "$(ls dist/*.whl)"
 
   trials:
     name: ${{ matrix.task }} on ${{ matrix.install }}
@@ -141,7 +141,7 @@ jobs:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           OUT: ${{ runner.temp }}/eval-out/${{ matrix.task }}-${{ matrix.install }}
         run: |
-          if [ -d "$OUT" ] && grep -rqF -- "$CLAUDE_CODE_OAUTH_TOKEN" "$OUT"; then
+          if [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] && [ -d "$OUT" ] && grep -rqF -- "$CLAUDE_CODE_OAUTH_TOKEN" "$OUT"; then
             rm -rf "$OUT"
             exit 1
           fi
@@ -187,3 +187,7 @@ jobs:
 
       - name: Gate verdict
         run: python evals/gate.py --results "$RUNNER_TEMP/results" --tasks evals/tasks --k "$K" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail on a red self-check
+        if: always() && needs.selfcheck.result != 'success'
+        run: exit 1
