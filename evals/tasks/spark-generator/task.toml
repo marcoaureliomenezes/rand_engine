@@ -1,7 +1,7 @@
 schema_version = "1.4"
 
 [metadata]
-description = "Usage: build a seeded Spark DataFrame from a spec on local[1] and save it as one parquet file"
+description = "Usage: build a seeded Spark DataFrame from a spec on local[1] and save it as parquet"
 
 [task]
 round = "usage"
