@@ -185,6 +185,18 @@
       "kind": "summary",
       "candidate": "rc-3",
       "text": "delivered: the agent eval gate (SPEC FR11-FR18): the usage, canary and discovery rounds, the three check layers (artifact, provenance, documented use), evals/gate.py (wheel at least 2 of 3 and no fewer passes than the PyPI leg, red canary, harness error, missing file or missing ceiling fails), the no-agent self-check job, ten usage tasks plus canary and discovery, and the calibrated token ceilings in each task.toml. Runs (AC18.4): baseline 0.8.1-vs-build Agent Eval 41486371952, calibration Agent Eval 41568757354 (wheel 3/3 on all ten), first green gated run Agent Eval 41571612052 (gate exit 0, wheel 3/3 on all ten, PyPI 0.8.1 documentation 0/3, 69 trials, 4.74 USD, 6 min 8 s). Post-calibration fixes: harness run 41567183786 (socat missing, fixed in eval.yml) and gated run 2 41570197314 (a false docs failure from the data-generator text judge, the judge deleted). Job 10 cancelled (run 1 had no task with 0 passes), Job 11 cancelled (no feature-doc bug lane); carried: setuptools-ghsa-xmj3-open-on-master (fixed on the work branch at c2a02bd, the Dependabot alert lives on master and closes at the 0.8.2 promote); backlog exits: none"
+    },
+    {
+      "ts": "2026-11-03T03:44:02Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 6cd90f92615e68d8aa2a7129beb1db57acc1f62d..3999fade34bd: 0 reviewed, 1 changed.",
+      "since": "6cd90f92615e68d8aa2a7129beb1db57acc1f62d",
+      "until": "3999fade34bd69fd5231976dd6e6b88890f71f70",
+      "reviewed": [],
+      "changed": [
+        "agent-eval"
+      ]
     }
   ]
 }
