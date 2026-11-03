@@ -748,6 +748,13 @@ def test_eval_usage_round_runs_sandboxed_without_web_tools(monkeypatch, tmp_path
     assert any(d in ("/", str(Path.home())) for d in sandbox["filesystem"]["denyRead"])
 
 
+@pytest.mark.parametrize("rnd", ["usage", "canary"])
+def test_eval_sandboxed_rounds_deny_read_glob_grep_under_home(monkeypatch, tmp_path, rnd):
+    _, calls, _ = _trial(monkeypatch, tmp_path, rnd)
+    settings = json.loads(_flag(_claude(calls)[0], "--settings"))
+    assert settings["permissions"]["deny"] == ["Read(~/**)", "Glob(~/**)", "Grep(~/**)"]
+
+
 def test_eval_discovery_round_keeps_web_tools_and_no_settings(monkeypatch, tmp_path):
     res, calls, _ = _trial(monkeypatch, tmp_path, "discovery")
     cmd = _claude(calls)[0]
