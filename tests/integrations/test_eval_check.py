@@ -10,7 +10,8 @@ Contract under test (loaded by path, no Spark, no network, no agent; the re-run'
   value_hash(values) -> str                                           (nulls hash as the empty string)
   legacy_hits(text) -> list[str]                                      (layer 3, the seven legacy items)
   documented_method(specs, method, kwargs) -> bool                    (layer 3: judges the recorded specs; True when
-      some dict spec has a column of `method` whose kwargs hold every name in `kwargs`; any other value is False)
+      some recorded spec dict has a column of `method` whose kwargs hold every name in `kwargs`; a non-dict
+      column value is skipped, never raised on). A callable spec is recorded as the dict it returns.
   token_ceiling(task_toml, env) -> None | str                         (None: within, or skipped with no env)
   tool_events(transcript) -> list[{"name", "input"}]                  (the one transcript reader)
   web_tool_uses(events) -> list[str]; surfaces(events) -> list[str]
@@ -187,9 +188,9 @@ def test_documented_method_and_kwargs(check):
     assert not check.documented_method([], "integers", {"min"})
 
 
-@pytest.mark.parametrize("value", [lambda: {"a": {"method": "integers", "kwargs": {"min": 1}}}, "text", [1], None, 3])
-def test_documented_method_never_raises_on_a_non_dict_spec(check, value):
-    assert check.documented_method([value], "integers", {"min"}) is False
+@pytest.mark.parametrize("value", ["text", [1], None, 3])
+def test_documented_method_never_raises_on_a_non_dict_column_value(check, value):
+    assert check.documented_method([{"a": value}], "integers", {"min"}) is False
 
 
 def test_recorded_specs_are_judged(check, tmp_path):
@@ -201,13 +202,13 @@ def test_recorded_specs_are_judged(check, tmp_path):
     assert not check.documented_method(specs, "floats", {"min", "max"})
 
 
-def test_callable_spec_script_does_not_raise(check, tmp_path):
+def test_callable_spec_is_judged_by_its_evaluated_dict(check, tmp_path):
     body = (f"from rand_engine import DataGenerator\nDataGenerator(lambda: {SPEC}, seed=1).size(10).get_df()"
             ".to_csv('out.csv', index=False)\n")
     specs = []
     msg = check.provenance(tmp_path, script(tmp_path, body), ["out.csv"], python=sys.executable, specs=specs)
     assert msg is None
-    assert check.documented_method(specs, "integers", {"min", "max"}) is False
+    assert check.documented_method(specs, "integers", {"min", "max"})
 
 
 def stream(*tool_uses):
