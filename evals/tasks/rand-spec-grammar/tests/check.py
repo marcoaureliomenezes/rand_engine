@@ -17,19 +17,19 @@ COLUMNS = ["id", "name", "amount", "status"]
 
 
 def verdict():
-    if not Path("out.parquet").is_file():
-        return "1", "out.parquet does not exist", ()
-    df = pd.read_parquet("out.parquet")
-    if len(df) != 1000 or list(df.columns) != COLUMNS:
-        return "1", f"out.parquet has {len(df)} rows and columns {list(df.columns)}, expected 1000 rows and {COLUMNS}", ()
-    if not Path("make.py").is_file():
-        return "2", "make.py does not exist", ()
-    specs = []
-    if msg := _check.provenance(".", "make.py", ["out.parquet"], specs=specs):
-        return "2", msg, ()
     transcript = os.environ.get("RAND_EVAL_TRANSCRIPT")
     events = _check.tool_events(transcript) if transcript else []
     seen = _check.surfaces(events)
+    if not Path("out.parquet").is_file():
+        return "1", "out.parquet does not exist", seen
+    df = pd.read_parquet("out.parquet")
+    if len(df) != 1000 or list(df.columns) != COLUMNS:
+        return "1", f"out.parquet has {len(df)} rows and columns {list(df.columns)}, expected 1000 rows and {COLUMNS}", seen
+    if not Path("make.py").is_file():
+        return "2", "make.py does not exist", seen
+    specs = []
+    if msg := _check.provenance(".", "make.py", ["out.parquet"], specs=specs):
+        return "2", msg, seen
     if not _check.documented_method(specs, "integers", ["min", "max"]):
         return "3", "the recorded spec has no `integers` column with min and max", seen
     if hits := _check.legacy_hits("\n".join(p.read_text(encoding="utf-8") for p in Path(".").glob("*.py"))):
