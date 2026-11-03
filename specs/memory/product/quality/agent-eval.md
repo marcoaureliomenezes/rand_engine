@@ -46,7 +46,7 @@ A usage check runs three layers in order; its failure line names the layer, and 
 
 ## Gate
 
-- `evals/gate.py --results <dir> --tasks evals/tasks --k <n>` prints `FAIL` lines, then a table `task | wheel | pypi | tokens | cost_usd | layer | surface`, and exits 1 on any `FAIL`.
+- `evals/gate.py --results <dir> --tasks evals/tasks --k <n>` prints `FAIL` lines, then a table `task | wheel | pypi | tokens | cost_usd | layer | surface`, then one line per discovery leg, `discovery <leg>: adopted <n> of <k>, leading surface <s>`, plus `, missing <file>` for each absent trial file, and exits 1 on any `FAIL`; the discovery line never fails the gate.
 - A usage task needs at least `k // 2 + 1` passing wheel trials (2 of 3 at the default k), and no fewer wheel passes than PyPI passes.
 - The canary needs every trial file on each leg, no harness error, and each probe shown in at least one trial; a leg missing a probe is void and its usage passes count as 0.
 - A usage task without `ceiling_tokens` fails. `--calibrate` writes `ceilings.json` with `ceil(2 × median)` of each task's passing token totals and exits 0; the gate reads only `task.toml`, so a calibrated value is copied there by hand.
@@ -58,13 +58,14 @@ A usage check runs three layers in order; its failure line names the layer, and 
 ## Runner
 
 - `python evals/run.py --task <names> --leg pypi|wheel --k 3 --rand-engine <requirement or wheel> --model <full model id> --out <dir>` uses the standard library only; `--out` must lie outside the repo.
-- Each trial installs the rand-engine under test unless the task opts out, and runs `claude -p` with no settings sources, MCP servers, slash commands or skills; the init event must list exactly the round's tools.
+- Each trial installs the rand-engine under test unless the task opts out, and runs `claude -p` with `--setting-sources ""` (no host settings file), no MCP servers, slash commands or skills; the usage and canary rounds pass their sandbox and permission denies inline with `--settings`. The init event must list exactly the round's tools.
 - The OAuth token reaches only the `claude -p` call, which runs with `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1` so the agent's subprocesses do not inherit it. A failed isolation, auth, API, rate or usage limit is a harness error: the trial records `error` and the run exits 1. A `passed: false` trial is a result.
 - Each trial writes `{task}-{leg}-{n}.json` (task, trial, leg, k, round, passed, agent exit, model, input tokens with cache reads and writes, output tokens, cost, duration, the check's output and its `RESULT` keys) and its stream-json transcript.
 
 ## CI
 
 - `.github/workflows/eval.yml` runs on push to `feature/**` or an rc `wt-rc` branch touching `evals/**` or the workflow, on every pull request to `development` or `master`, and on manual dispatch with `model` and `k` inputs. It pins the model id and the agent CLI version.
+- Every job's checkout sets `persist-credentials: false`, so no git token stays in the workspace.
 - The `Eval self-check` job runs `selfcheck.py` on the wheel built from the checkout.
 - One trial job per task and leg: the canary and every usage task on both legs, discovery on PyPI. Each installs bubblewrap and socat with the runner's unprivileged user-namespace restriction lifted, for the agent's subprocess sandbox; scans its results for the token, deleting them and failing on a hit; and uploads them as an artifact.
 - The `Agent eval gate` job needs the self-check and every trial job and always runs: it downloads every result, writes the calibrated ceilings to the job summary and an artifact, prints the gate table, exits with `gate.py`'s code, and fails when the self-check is red. Whether it is a required check is a GitHub branch-protection setting, not repo code.

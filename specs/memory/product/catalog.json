@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-03T03:31:05Z",
+  "generated_at": "2026-11-03T03:43:57Z",
   "features": [
     {
       "rank": 1,
@@ -246,7 +246,7 @@
         "ci",
         "quality"
       ],
-      "token_estimate": 1465,
+      "token_estimate": 1551,
       "depends_on": [
         "data-generator",
         "public-api",
