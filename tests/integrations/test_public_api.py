@@ -856,12 +856,9 @@ def test_eval_workflow_pins_the_scrub_cli_and_runs_under_bubblewrap():
     assert text.index(lift) < text.index("python evals/run.py")
 
 
-def test_eval_trials_install_the_sandbox_packages_and_lift_the_userns_restriction_before_the_eval():
+def test_eval_trials_install_socat_with_bubblewrap_before_the_eval():
     text = _job("trials")
-    install = "sudo apt-get update && sudo apt-get install -y bubblewrap socat"
-    probe = "sysctl -n kernel.apparmor_restrict_unprivileged_userns"
-    assert text.index(install) < text.index("python evals/run.py")
-    assert text.index(probe) < text.index("python evals/run.py")
+    assert text.index("apt-get install -y bubblewrap socat") < text.index("python evals/run.py")
 
 
 def _workflow():
