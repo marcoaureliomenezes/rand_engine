@@ -109,9 +109,9 @@ def dump():
 
 
 def value_hash(values):
-    """SHA-256 of the values as strings; None, NaN and NaT hash as the empty string, order counts."""
+    """SHA-256 of the values as strings; None, NaN and NaT hash as the empty string, sorted first: a column is a multiset, row order does not count."""
     import pandas as pd
-    text = ["" if pd.isna(v) else str(v) for v in values]
+    text = sorted("" if pd.isna(v) else str(v) for v in values)
     return hashlib.sha256(json.dumps(text).encode()).hexdigest()
 
 
