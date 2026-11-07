@@ -36,6 +36,7 @@ TARGETS = {
   "agent": "AGENTS.md",
 }
 ROOT = Path(__file__).resolve().parent.parent
+ARROW_CONF = "spark.sql.execution.arrow.pyspark.enabled"
 
 
 def run(argv):
@@ -152,6 +153,7 @@ def check_kafka(ns, out, tmp_path):
 
 def check_databricks(ns, out, tmp_path):
   assert 0 < ns["df"].count() <= 10**4
+  assert "netty" not in (tmp_path / "databricks-example.py").read_text(encoding="utf-8")
 
 
 def check_faker(ns, out, tmp_path):
@@ -164,7 +166,8 @@ CHECKS = {"test-data": check_test_data, "lake": check_lake, "kafka": check_kafka
 @pytest.mark.parametrize("slug", RUNNABLE_SLUGS)
 def test_scaffold_runs_producing_its_promise_and_only_databricks_is_a_notebook(slug, tmp_path, monkeypatch, capsys, request):
   if slug == "databricks":
-    request.getfixturevalue("spark_session")
+    spark = request.getfixturevalue("spark_session")
+    arrow_before = spark.conf.get(ARROW_CONF)
   assert run(["get-started", slug, "--out", str(tmp_path)]) == 0
   capsys.readouterr()
   text = (tmp_path / f"{slug}-example.py").read_text(encoding="utf-8")
@@ -177,8 +180,18 @@ def test_scaffold_runs_producing_its_promise_and_only_databricks_is_a_notebook(s
   monkeypatch.chdir(tmp_path)
   monkeypatch.setitem(sys.modules, "kafka", None)
   monkeypatch.setitem(sys.modules, "confluent_kafka", None)
-  ns = runpy.run_path(str(tmp_path / f"{slug}-example.py"), run_name="__main__")
+  try:
+    ns = runpy.run_path(str(tmp_path / f"{slug}-example.py"), run_name="__main__")
+  finally:
+    if slug == "databricks":
+      spark.conf.set(ARROW_CONF, arrow_before)
+  if slug == "databricks":
+    assert spark.conf.get(ARROW_CONF) == arrow_before
   CHECKS[slug](ns, capsys.readouterr().out, tmp_path)
+
+
+def test_databricks_tutorial_page_carries_no_netty_text():
+  assert "netty" not in (ROOT / "docs" / "tutorials" / "databricks.md").read_text(encoding="utf-8")
 
 
 def test_test_data_scaffold_runs_under_plain_python(tmp_path):
