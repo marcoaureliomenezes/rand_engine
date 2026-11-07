@@ -10,8 +10,6 @@ import os
 import sys
 from pathlib import Path
 
-import pandas as pd
-
 import _check
 
 TASK_TOML = Path(__file__).resolve().parents[1] / "task.toml"
