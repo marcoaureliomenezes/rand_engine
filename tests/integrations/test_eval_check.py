@@ -2,13 +2,17 @@
 
 Contract under test (loaded by path, no Spark, no network, no agent; the re-run's interpreter gets
 `rand_engine` and `evals` through the PYTHONPATH the test sets, as the runner does):
-  provenance(workdir, script, artifacts, python=sys.executable, specs=None) -> None | str   (layer 2)
+  provenance(workdir, script, artifacts, python=sys.executable) -> (None | str, record)   (layer 2)
       The re-run happens in a scratch copy of workdir without the artifacts. provenance grades the artifacts as
       delivered, reading them before the re-run, and itself writes nothing in workdir; the re-run may write
-      wherever the script's own paths point. A failure string starts "provenance". When `specs` is a list, the spec each recorded
-      `DataGenerator` got is appended to it (the choice for F6: the re-run's records feed `documented_method`).
+      wherever the script's own paths point. A failure string starts "provenance". `record` holds one
+      {"entry", "spec", "agent"} per distinct generation: `entry` is get_df, stream_dict, save or start (sqlite
+      and multi-file saves are `save`), `spec` the evaluated spec dict, `agent` True when the calling frame's file
+      lies under the scratch copy (the script or a module written beside it). An artifact column passes only
+      against output of an agent record.
       Csv and json-lines artifacts are read as written text, with no dtype or NA inference.
-  value_hash(values) -> str                                           (nulls hash as the empty string)
+  value_hash(values) -> str                                           (nulls hash as the empty string; a column's values hash as a
+      multiset, so order does not count)
   legacy_hits(text) -> list[str]                                      (layer 3, the seven legacy items)
   documented_method(specs, method, kwargs) -> bool                    (layer 3: judges the recorded specs; True when
       some recorded spec dict has a column of `method` whose kwargs hold every name in `kwargs`; a non-dict
@@ -59,10 +63,18 @@ def run_script(tmp_path, body):
     subprocess.run([sys.executable, str(script(tmp_path, body))], cwd=tmp_path, capture_output=True)
 
 
-def provenance(check, tmp_path, body, artifacts=("out.csv",), deliver=True, specs=None, **extra):
+def rerun(check, tmp_path, body, artifacts=("out.csv",), deliver=True):
     if deliver:
         run_script(tmp_path, body)
-    return check.provenance(tmp_path, script(tmp_path, body), list(artifacts), python=sys.executable, specs=specs, **extra)
+    return check.provenance(tmp_path, script(tmp_path, body), list(artifacts), python=sys.executable)
+
+
+def provenance(check, tmp_path, body, artifacts=("out.csv",), deliver=True):
+    return rerun(check, tmp_path, body, artifacts, deliver)[0]
+
+
+def agent_specs(record):
+    return [r["spec"] for r in record if r["agent"]]
 
 
 SEEDED = f"from rand_engine import DataGenerator\nDataGenerator({SPEC}, seed=1).size(10).get_df().to_csv('out.csv', index=False)\n"
@@ -148,15 +160,38 @@ STREAM_VIA_VARIABLE = (f"from rand_engine import DataGenerator\n"
 UNCALLED_WRITERS = SEEDED + "def unused(g):\n    g.write.save('x')\n    g.writeStream.start('y')\n"
 
 
+SQLITE_SAVE = f"from rand_engine import DataGenerator\nDataGenerator({SPEC}, seed=1).size(10).write.format('sqlite').option('table', 't').save('out.sqlite')\n"
+TWICE = f"from rand_engine import DataGenerator\ng = DataGenerator({SPEC}, seed=1).size(10)\ng.get_df()\ng.get_df().to_csv('out.csv', index=False)\n"
+
+
 @pytest.mark.parametrize("body, artifacts, expected", [
-    (BATCH_VIA_VARIABLE, ["out.csv"], ["save"]),
-    (STREAM_VIA_VARIABLE, [], ["start"]),
-    (UNCALLED_WRITERS, ["out.csv"], []),
-], ids=["batch-via-variable", "stream-via-variable", "never-called"])
-def test_provenance_reports_the_writer_entry_points_that_ran(check, tmp_path, body, artifacts, expected):
-    calls = []
-    assert provenance(check, tmp_path, body, artifacts, calls=calls) is None
-    assert calls == expected
+    (BATCH_VIA_VARIABLE, ["out.csv"], {"save"}),
+    (STREAM_VIA_VARIABLE, [], {"start"}),
+    (SQLITE_SAVE, [], {"save"}),
+    (TWICE, ["out.csv"], {"get_df"}),
+    (UNCALLED_WRITERS, ["out.csv"], set()),
+], ids=["batch-via-variable", "stream-start-once", "sqlite-is-save", "repeated-call-is-one-entry", "never-called"])
+def test_provenance_reports_the_deduplicated_entry_points_that_ran(check, tmp_path, body, artifacts, expected):
+    msg, record = rerun(check, tmp_path, body, artifacts)
+    assert msg is None
+    assert {r["entry"] for r in record if r["agent"]} == expected
+
+
+def stream_body(tail):
+    return f"from rand_engine import DataGenerator\nimport itertools\nrows = list(itertools.islice(DataGenerator({SPEC}, seed=1).size(10).stream_dict(1000, 1000), 2))\n{tail}"
+
+
+@pytest.mark.parametrize("body, artifacts, entry", [
+    (SEEDED, ["out.csv"], "get_df"),
+    (stream_body(""), [], "stream_dict"),
+    (f"from rand_engine import DataGenerator\nDataGenerator({SPEC}, seed=1).size(10).write.format('csv').save('out.csv')\n", ["out.csv"], "save"),
+    (SQLITE_SAVE, [], "save"),
+    (STREAM_VIA_VARIABLE, [], "start"),
+], ids=["get_df", "stream_dict", "save-csv", "save-sqlite", "start"])
+def test_each_generation_path_leaves_one_record_with_its_spec_and_entry(check, tmp_path, body, artifacts, entry):
+    msg, record = rerun(check, tmp_path, body, artifacts)
+    assert msg is None
+    assert record == [{"entry": entry, "spec": json.loads(SPEC), "agent": True}]
 
 
 def test_rerun_env_keeps_java_home(check, tmp_path, monkeypatch):
@@ -175,8 +210,43 @@ def test_numpy_file_beside_decorative_call_fails(check, tmp_path):
         f"DataGenerator({SPEC}, seed=1).size(10).get_df()\n"
         "pd.DataFrame({'age': np.arange(100, 110)}).to_csv('out.csv', index=False)\n"
     )
-    msg = provenance(check, tmp_path, body)
+    msg, record = rerun(check, tmp_path, body)
     assert msg.startswith("provenance")
+    assert record == [{"entry": "get_df", "spec": json.loads(SPEC), "agent": True}]
+
+
+def test_numpy_file_beside_a_writer_that_ran_on_other_data_fails(check, tmp_path):
+    body = (
+        "import numpy as np, pandas as pd\nfrom rand_engine import DataGenerator\n"
+        f"DataGenerator({SPEC}, seed=1).size(10).write.format('csv').save('other.csv')\n"
+        "pd.DataFrame({'age': np.arange(100, 110)}).to_csv('out.csv', index=False)\n"
+    )
+    msg, record = rerun(check, tmp_path, body)
+    assert msg.startswith("provenance")
+    assert record == [{"entry": "save", "spec": json.loads(SPEC), "agent": True}]
+
+
+def test_generation_called_from_a_module_beside_the_script_is_the_agents(check, tmp_path):
+    (tmp_path / "gen_helper.py").write_text(
+        "def make(gen):\n    return gen.size(10).get_df()\n")
+    body = f"import gen_helper\nfrom rand_engine import DataGenerator\ngen_helper.make(DataGenerator({SPEC}, seed=1)).to_csv('out.csv', index=False)\n"
+    msg, record = rerun(check, tmp_path, body)
+    assert msg is None
+    assert record == [{"entry": "get_df", "spec": json.loads(SPEC), "agent": True}]
+
+
+def test_generation_called_from_outside_the_scratch_copy_is_not_the_agents(check, tmp_path, monkeypatch):
+    lib = tmp_path / "lib"
+    lib.mkdir()
+    (lib / "gen_lib.py").write_text(
+        "def make(gen):\n    return gen.size(10).get_df()\n")
+    monkeypatch.setenv("PYTHONPATH", os.pathsep.join([str(REPO), str(lib)]))
+    work = tmp_path / "work"
+    work.mkdir()
+    body = f"import gen_lib\nfrom rand_engine import DataGenerator\ngen_lib.make(DataGenerator({SPEC}, seed=1)).to_csv('out.csv', index=False)\n"
+    msg, record = rerun(check, work, body)
+    assert msg.startswith("provenance")
+    assert record == [{"entry": "get_df", "spec": json.loads(SPEC), "agent": False}]
 
 
 def test_script_that_cannot_rerun_fails_as_provenance(check, tmp_path):
@@ -216,7 +286,7 @@ def test_absent_artifact_fails(check, tmp_path):
 
 
 def test_missing_script_fails_as_provenance(check, tmp_path):
-    assert check.provenance(tmp_path, tmp_path / "gone.py", ["out.csv"], python=sys.executable).startswith("provenance")
+    assert check.provenance(tmp_path, tmp_path / "gone.py", ["out.csv"], python=sys.executable)[0].startswith("provenance")
 
 
 def test_static_check_names_the_missing_import(check, tmp_path):
@@ -278,35 +348,32 @@ def test_documented_method_never_raises_on_a_non_dict_column_value(check, value)
 
 def test_recorded_specs_are_judged(check, tmp_path):
     body = f"from rand_engine import DataGenerator\nDataGenerator({SPEC}, seed=1).size(10).get_df().to_csv('out.csv', index=False)\n"
-    specs = []
-    msg = provenance(check, tmp_path, body, specs=specs)
+    msg, record = rerun(check, tmp_path, body)
     assert msg is None
-    assert check.documented_method(specs, "integers", {"min", "max"})
-    assert not check.documented_method(specs, "floats", {"min", "max"})
+    assert check.documented_method(agent_specs(record), "integers", {"min", "max"})
+    assert not check.documented_method(agent_specs(record), "floats", {"min", "max"})
 
 
 def test_callable_spec_is_judged_by_its_evaluated_dict(check, tmp_path):
     body = (f"from rand_engine import DataGenerator\nDataGenerator(lambda: {SPEC}, seed=1).size(10).get_df()"
             ".to_csv('out.csv', index=False)\n")
-    specs = []
-    msg = provenance(check, tmp_path, body, specs=specs)
+    msg, record = rerun(check, tmp_path, body)
     assert msg is None
-    assert check.documented_method(specs, "integers", {"min", "max"})
+    assert check.documented_method(agent_specs(record), "integers", {"min", "max"})
 
 
 def test_batch_save_records_the_spec(check, tmp_path):
     body = f"from rand_engine import DataGenerator\nDataGenerator({SPEC}, seed=1).size(10).write.format('csv').save('out.csv')\n"
-    specs = []
-    assert provenance(check, tmp_path, body, specs=specs) is None
-    assert check.documented_method(specs, "integers", {"min", "max"})
+    msg, record = rerun(check, tmp_path, body)
+    assert msg is None
+    assert check.documented_method(agent_specs(record), "integers", {"min", "max"})
 
 
 def test_stream_start_records_the_spec(check, tmp_path):
     body = (f"from rand_engine import DataGenerator\nDataGenerator({SPEC}, seed=1).size(10).writeStream.format('csv')"
             ".trigger(frequency=0.1).option('timeout', 0.3).start('out')\n")
-    specs = []
-    provenance(check, tmp_path, body, artifacts=("out",), specs=specs)
-    assert check.documented_method(specs, "integers", {"min", "max"})
+    _, record = rerun(check, tmp_path, body, artifacts=("out",))
+    assert check.documented_method(agent_specs(record), "integers", {"min", "max"})
 
 
 def stream(*tool_uses):
