@@ -85,7 +85,7 @@ FR23 and FR24 consume FR22's record, so wave 3 waits for FR22's merge.
 - A PyPI publish or a tag of 0.8.2 ("Nada publica até a 1.0 (Recommended)").
 - The library's `setuptools` pin; a `paths` filter on the PR to `master`; a `verify:` line heavier than today's; `persist-credentials` on workflows that run no agent.
 - Any `gen_*` body but `gen_uuid4`; any `rand_engine/` edit made for the eval alone.
-- `echo rand-engine …` passing AC24.2 as a launcher prefix (LOW): RULED, accepted, by the pre-mortem J7 ruling.
+- `echo rand-engine …` passing AC24.2 as a launcher prefix (LOW): RULED by the rc-3 Job 7 review, `.dadaia/reports/rand-engine/0.8.2-rc1-intake.md:175`: "The agent is not the adversary here (see the canary ruling), and byte-equality stays the source of truth."
 
 ## 4. Requirements
 
