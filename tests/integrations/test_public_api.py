@@ -886,14 +886,9 @@ def test_eval_runs_claude_with_the_subprocess_env_scrub(monkeypatch, tmp_path):
 def test_eval_workflow_pins_the_scrub_cli_and_runs_under_bubblewrap():
     text = _job("trials")
     assert "@anthropic-ai/claude-code@2.1.316" in text
-    assert "apt-get install -y bubblewrap" in text
+    assert text.index("apt-get install -y bubblewrap socat") < text.index("python evals/run.py")
     lift = "sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0"
     assert text.index(lift) < text.index("python evals/run.py")
-
-
-def test_eval_trials_install_socat_with_bubblewrap_before_the_eval():
-    text = _job("trials")
-    assert text.index("apt-get install -y bubblewrap socat") < text.index("python evals/run.py")
 
 
 def test_eval_trials_step_fails_before_the_eval_when_k_is_above_three():
