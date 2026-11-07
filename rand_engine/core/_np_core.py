@@ -1,4 +1,5 @@
 
+import binascii
 import math
 import re
 import numpy as np
@@ -134,7 +135,7 @@ class NPCore:
     b = np.frombuffer(rng.bytes(16 * size), np.uint8).reshape(size, 16).copy()
     b[:, 6] = b[:, 6] & 0x0F | 0x40
     b[:, 8] = b[:, 8] & 0x3F | 0x80
-    hexed = np.frombuffer(b.tobytes().hex().encode(), np.uint8).reshape(size, 32)
+    hexed = np.frombuffer(binascii.hexlify(b.tobytes()), np.uint8).reshape(size, 32)
     buf = np.full((size, 36), ord("-"), np.uint8)
     for (a, c), d in zip(((0, 8), (8, 12), (12, 16), (16, 20), (20, 32)), (0, 9, 14, 19, 24)): buf[:, d:d + c - a] = hexed[:, a:c]
     return fixed_text(buf)
