@@ -1021,3 +1021,15 @@ def test_non_string_cols_names_validate_and_generate(spec, columns):
 def test_output_names_equal_as_strings_but_distinct_as_keys_validate_and_generate(spec, expected):
   assert AdvancedValidator.validate(spec) == []
   assert DataGenerator(spec, seed=1).size(2).get_df().to_dict("list") == pd.DataFrame(expected).to_dict("list")
+
+
+def test_bad_replacement_and_template_error_are_reported_together():
+  integers = {"method": "integers", "kwargs": {"min": 0, "max": 9}}
+  spec = {"c": {"method": "complex_distincts",
+                "kwargs": {"pattern": "ab-ab", "replacement": "ab", "templates": [integers, {"method": "integers", "kwargs": {"max": 9}}]}}}
+  assert AdvancedValidator.validate(spec) == [
+    "❌ Column 'c': method 'complex_distincts' parameter 'replacement' must be one character, got 'ab'",
+    "❌ Column 'c.templates[1]': method 'integers' requires parameter 'min'\n   Expected type: int\n   Correct example:\n   {\n"
+    '         "method": "integers",\n         "kwargs": {\n               "min": 18,\n               "max": 65,\n'
+    '               "int_type": "int32"\n         }\n   }',
+  ]

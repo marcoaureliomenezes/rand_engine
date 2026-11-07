@@ -863,3 +863,41 @@ def test_unknown_name_with_close_match_adds_did_you_mean_line(spec, expected):
 ])
 def test_unknown_name_without_close_match_adds_no_suggestion(spec, expected):
     assert CommonValidator.validate_spark_spec(spec) == [expected]
+
+
+@pytest.mark.parametrize("validate", [AdvancedValidator.validate, CommonValidator.validate_spark_spec], ids=["numpy", "spark"])
+def test_aware_and_naive_date_bounds_are_refused_naming_the_column(validate):
+    spec = {"d": {"method": "unix_timestamps", "kwargs": {"start": "2020-01-01 +0000", "end": "2021-01-01", "date_format": "%Y-%m-%d %z"}}}
+    errors = validate(spec)
+    assert len(errors) == 1
+    assert errors[0].startswith("❌ Column 'd': method 'unix_timestamps'")
+
+
+_RAISED = (
+    "\n" + "=" * 80 + "\nDATAGENERATOR SPEC VALIDATION ERROR\n" + "=" * 80
+    + "\n\nFound 1 error(s) in specification:\n\n❌ x\n\n" + "=" * 80
+    + "\n\U0001f4da Documentation: https://marcoaureliomenezes.github.io/rand_engine/\n" + "=" * 80 + "\n"
+)
+
+
+def test_raise_validation_raises_the_spec_error_with_the_framed_message():
+    with pytest.raises(SpecValidationError) as raised:
+        CommonValidator.raise_validation(["❌ x"], "DATAGENERATOR")
+    assert str(raised.value) == _RAISED
+
+
+@pytest.mark.parametrize("wrapper, engine", [
+    (CommonValidator.validate_spark_and_raise, "SPARKGENERATOR"),
+    (AdvancedValidator.validate_and_raise, "DATAGENERATOR"),
+])
+def test_both_wrappers_raise_the_framed_message(wrapper, engine):
+    spec = {"d": {"method": "integers", "kwargs": {"min": 0, "max": 9, "foo": 1}}}
+    with pytest.raises(SpecValidationError) as raised:
+        wrapper(spec)
+    assert str(raised.value) == (
+        "\n" + "=" * 80 + f"\n{engine} SPEC VALIDATION ERROR\n" + "=" * 80
+        + "\n\nFound 1 error(s) in specification:\n\n"
+        "\u26a0\ufe0f  Column 'd': unknown parameters: 'foo'\n   Valid parameters for 'integers': 'int_type', 'max', 'min'"
+        + "\n\n" + "=" * 80
+        + "\n\U0001f4da Documentation: https://marcoaureliomenezes.github.io/rand_engine/\n" + "=" * 80 + "\n"
+    )
