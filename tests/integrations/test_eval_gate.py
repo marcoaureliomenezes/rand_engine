@@ -25,7 +25,7 @@ def write_task(tasks, name, rnd, legs, ceiling=None):
     d.mkdir(parents=True)
     limits = f"\n[limits]\nceiling_tokens = {ceiling}\n" if ceiling else ""
     legs_toml = "[" + ", ".join(f'"{leg}"' for leg in legs) + "]"
-    (d / "task.toml").write_text(f'[task]\nround = "{rnd}"\nlegs = {legs_toml}\n{limits}')
+    (d / "task.toml").write_text(f'[task]\nround = "{rnd}"\nlegs = {legs_toml}\n{limits}', encoding="utf-8")
 
 
 def write_trial(results, task, leg, n, tokens=1500, passed=True, **extra):
@@ -34,7 +34,7 @@ def write_trial(results, task, leg, n, tokens=1500, passed=True, **extra):
     if not passed:
         res.update(layer=2, surfaces=["generators"])
     res.update(extra)
-    (results / f"{task}-{leg}-{n}.json").write_text(json.dumps(res))
+    (results / f"{task}-{leg}-{n}.json").write_text(json.dumps(res), encoding="utf-8")
 
 
 @pytest.fixture
@@ -227,7 +227,7 @@ def test_a_passing_trial_with_unknown_tokens_is_not_a_pass_and_never_crashes(env
     code, out = run_gate(env, capsys)
     assert code == 1
     assert "FAIL alpha: wheel passed 0 of 3 (need 2)" in out
-    assert "alpha | 0 | 0 | - | 1.50 | - | -" in out
+    assert "alpha | 0 | 0 | tokens unknown | 1.50 | - | -" in out
 
 
 def test_calibrate_skips_passing_trials_with_unknown_tokens(env, capsys):
@@ -263,3 +263,12 @@ def test_discovery_missing_trial_file_is_reported_in_its_line_not_failed(env, ca
     code, out = run_gate(env, capsys)
     assert code == 0
     assert "discovery pypi: adopted 1 of 3, leading surface other, missing discovery-pypi-3.json" in out
+
+
+def test_a_discovery_trial_with_no_surface_counts_as_other(env, capsys):
+    tasks, results = env
+    for n, adopted in enumerate((True, False, False), 1):
+        write_trial(results, "discovery", "pypi", n, passed=None, adopted=adopted)
+    code, out = run_gate(env, capsys)
+    assert code == 0
+    assert "discovery pypi: adopted 1 of 3, leading surface other" in out
