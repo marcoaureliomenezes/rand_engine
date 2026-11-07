@@ -183,6 +183,22 @@ def test_script_that_cannot_rerun_fails_as_provenance(check, tmp_path):
     assert msg.startswith("provenance")
 
 
+def test_rerun_writing_by_absolute_path_cannot_launder_the_artifact(check, tmp_path):
+    (tmp_path / "out.csv").write_text("age\n" + "\n".join(str(i) for i in range(100, 110)) + "\n")
+    body = (
+        "from rand_engine import DataGenerator\n"
+        f"DataGenerator({SPEC}, seed=1).size(10).get_df().to_csv({str(tmp_path / 'out.csv')!r}, index=False)\n"
+    )
+    msg = provenance(check, tmp_path, body, deliver=False)
+    assert msg == "provenance: column 'age' of out.csv matches no frame rand_engine generated"
+
+
+def test_symlink_loop_artifact_fails_as_not_delivered(check, tmp_path):
+    (tmp_path / "out.csv").symlink_to("out.csv")
+    msg = provenance(check, tmp_path, SEEDED, deliver=False)
+    assert msg == "provenance: artifact out.csv was not delivered"
+
+
 def test_absent_artifact_fails(check, tmp_path):
     msg = provenance(check, tmp_path, SEEDED, deliver=False)
     assert msg.startswith("provenance") and "out.csv" in msg
