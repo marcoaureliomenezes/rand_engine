@@ -267,6 +267,18 @@ def test_dangling_link_beside_a_save_destination_does_not_crash_the_rerun(check,
     assert provenance(check, tmp_path, body) is None
 
 
+def test_artifact_resolving_outside_the_work_directory_is_refused_and_left_untouched(check, tmp_path):
+    work, outside = tmp_path / "work", tmp_path / "outside"
+    work.mkdir()
+    outside.mkdir()
+    (work / "data").symlink_to(outside)
+    body = f"from rand_engine import DataGenerator\nDataGenerator({SPEC}, seed=1).size(10).get_df().to_csv('data/out.csv', index=False)\n"
+    run_script(work, body)
+    before = (outside / "out.csv").read_bytes()
+    assert provenance(check, work, body, ["data/out.csv"], deliver=False) == "provenance: artifact data/out.csv resolves outside the work directory"
+    assert (outside / "out.csv").read_bytes() == before
+
+
 def test_script_that_cannot_rerun_fails_as_provenance(check, tmp_path):
     msg = provenance(check, tmp_path, "from rand_engine import DataGenerator\nraise SystemExit(3)\n")
     assert msg.startswith("provenance")
