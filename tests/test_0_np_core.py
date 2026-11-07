@@ -123,7 +123,6 @@ def test_gen_floats_normal(size, mean, std, decimals):
   assert abs(np.std(real_result) - std) < std * 0.5
 
 
-# Pinned from 0.8.0 (rng.choice over np.asarray(pool)), default_rng(1), size 8
 def _values(result):
   return result.to_pylist() if isinstance(result, (pa.Array, pa.ChunkedArray)) else result.tolist()
 
@@ -313,6 +312,7 @@ def test_gen_distincts_prop_various_distributions(distincts):
   assert all(item in distincts.keys() for item in _values(result))
 
 
+# Pinned from 0.8.0 (rng.choice over np.asarray(pool)), default_rng(1), size 8
 def _draw(method, pool):
   return getattr(NPCore, method)(rng=np.random.default_rng(1), size=8, distincts=pool)
 
@@ -396,7 +396,7 @@ def test_gen_unix_timestamps_and_dates_ignore_process_timezone(tz, monkeypatch):
 
 
 def test_gen_uuid4_values_are_rfc4122_version_4():
-  """AC4.5"""
+  """gen_uuid4 yields unique RFC 4122 version-4 UUID strings."""
   values = NPCore.gen_uuid4(1000, rng=np.random.default_rng(0))
   texts = values.to_pylist()
   parsed = [uuid.UUID(v) for v in texts]
