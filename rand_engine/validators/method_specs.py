@@ -285,9 +285,12 @@ def _date_bounds(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
     parsed = []
     for name in ("start", "end"):
         try:
-            parsed.append(_parse_date_bound(kwargs[name], date_format))
+            bound = _parse_date_bound(kwargs[name], date_format)
         except ValueError:
             return ((name, f"'{kwargs[name]}' does not parse under date_format '{date_format}' nor as '%Y-%m-%d'"),)
+        if bound.tzinfo is not None:
+            return ((name, f"'{kwargs[name]}' must not carry a timezone"),)
+        parsed.append(bound)
     if parsed[0] >= parsed[1]:
         return (("start/end", f"start '{kwargs['start']}' must be before end '{kwargs['end']}' (date_format '{date_format}')"),)
     return ()
