@@ -692,7 +692,8 @@ def _load_run():
     return run
 
 
-def _trial(monkeypatch, tmp_path, rnd="usage", init=None, check_out="", requirements=()):
+def _trial(monkeypatch, tmp_path, rnd="usage", init=None, check_out="", requirements=(), events=None, check_rc=0,
+           result=None):
     """Run one trial of a fixture task through `run_trial`, every subprocess faked; return (result, calls, out)."""
     import types
 
@@ -715,15 +716,16 @@ def _trial(monkeypatch, tmp_path, rnd="usage", init=None, check_out="", requirem
         out = ""
         if cmd[0] == "claude":
             tools = cmd[cmd.index("--tools") + 1].split(",") if "--tools" in cmd else DEFAULT_INIT_TOOLS
-            events = [{"type": "system", "subtype": "init", "model": "m", "permissionMode": "default",
-                       "tools": tools, **(init or {})},
-                      {"type": "result", "usage": {"input_tokens": 10, "cache_creation_input_tokens": 5,
-                                                   "cache_read_input_tokens": 20, "output_tokens": 7},
-                       "total_cost_usd": 0.5}]
-            out = "\n".join(json.dumps(e) for e in events) + "\n"
+            stream = events or [{"type": "system", "subtype": "init", "model": "m", "permissionMode": "default",
+                                 "tools": tools, **(init or {})},
+                                {"type": "result", "usage": {"input_tokens": 10, "cache_creation_input_tokens": 5,
+                                                             "cache_read_input_tokens": 20, "output_tokens": 7},
+                                 "total_cost_usd": 0.5, **(result or {})}]
+            out = "\n".join(json.dumps(e) for e in stream) + "\n"
         elif str(cmd[-1]).endswith("check.py"):
             out = check_out
-        return subprocess.CompletedProcess(cmd, 0, stdout=out, stderr="")
+        code = check_rc if str(cmd[-1]).endswith("check.py") else 0
+        return subprocess.CompletedProcess(cmd, code, stdout=out, stderr="")
 
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "placeholder")
     monkeypatch.setattr(run.subprocess, "run", fake)
@@ -823,6 +825,39 @@ def test_eval_malformed_result_line_keeps_check_output_and_records_an_error(monk
     res, _, _ = _trial(monkeypatch, tmp_path, "usage", check_out=stdout)
     assert res["check_output"] == stdout
     assert res["error"].startswith("ValueError: ")
+
+
+def test_eval_trial_whose_run_raises_after_a_passing_check_records_passed_false(monkeypatch, tmp_path):
+    res, _, _ = _trial(monkeypatch, tmp_path, "usage", check_out="RESULT {not json\n")
+    assert res["error"].startswith("ValueError: ")
+    assert res["passed"] is False
+
+
+def test_eval_trial_json_holds_the_final_message_and_the_first_failure_line(monkeypatch, tmp_path):
+    res, _, _ = _trial(monkeypatch, tmp_path, "usage", check_out="no rows written\nsecond line\n", check_rc=1,
+                       result={"result": "I wrote the file"})
+    assert res["passed"] is False
+    assert res["final_message"] == "I wrote the file"
+    assert res["first_failure"] == "no rows written"
+
+
+@pytest.mark.parametrize("key, value", [("errors", ["boom"]), ("startup_failure_reason", "no token")])
+def test_eval_stream_with_no_init_event_raises_an_error_naming_the_result_event(monkeypatch, tmp_path, key, value):
+    res, _, _ = _trial(monkeypatch, tmp_path, "usage", events=[{"type": "result", "is_error": True, key: value}])
+    assert "StopIteration" not in res["error"]
+    assert (value[0] if isinstance(value, list) else value) in res["error"]
+
+
+def test_eval_main_writes_the_trial_json_as_utf8(monkeypatch, tmp_path):
+    run = _load_run()
+    monkeypatch.setattr(run, "run_trial", lambda task, n, args: {"passed": False, "final_message": "caf\u00e9"})
+    monkeypatch.setattr(run, "REPO", tmp_path / "repo")
+    out = tmp_path / "out"
+    monkeypatch.setattr(sys, "argv", ["run.py", "--task", "t", "--k", "1", "--leg", "pypi", "--model", "m",
+                                      "--out", str(out)])
+    with pytest.raises(SystemExit):
+        run.main()
+    assert "caf\u00e9".encode("utf-8") in (out / "t-pypi-1.json").read_bytes()
 
 
 def test_eval_discovery_trial_records_passed_null(monkeypatch, tmp_path):
