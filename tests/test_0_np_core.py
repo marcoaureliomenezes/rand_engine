@@ -416,6 +416,17 @@ def test_gen_uuid4_is_arrow_text_with_the_same_values_as_before(seed, expected):
   assert result.to_pylist() == expected
 
 
+@pytest.mark.parametrize("gen", [
+  lambda: NPCore.gen_uuid4(0, rng=np.random.default_rng(0)),
+  lambda: NPCore.gen_ints_zfilled(0, 5, rng=np.random.default_rng(0)),
+])
+def test_zero_size_text_generators_return_an_empty_arrow_string_column(gen):
+  result = gen()
+  assert isinstance(result, (pa.Array, pa.ChunkedArray))
+  assert result.type == pa.string()
+  assert result.to_pylist() == []
+
+
 def test_gen_ints_and_zfilled_reach_the_inclusive_max():
   assert set(NPCore.gen_ints(1000, 0, 1, rng=RNG).tolist()) == {0, 1}
   assert set(NPCore.gen_ints_zfilled(1000, 1, rng=RNG).to_pylist()) == set("0123456789")
