@@ -59,7 +59,8 @@ def wrap_save(cls):
         calls.append("save")
         out = orig(self, path, *a, **k)
         record_spec(self.size_def.__self__)
-        record(read(str(path)))
+        if self.write_format != "sqlite":
+            record(read(str(path)))
         return out
     cls.save = save
 
