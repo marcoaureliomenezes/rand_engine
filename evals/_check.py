@@ -26,11 +26,11 @@ RERUN_ENV = ("PATH", "HOME", "TMPDIR", "TEMP", "TMP", "LANG", "SYSTEMROOT", "JAV
 
 # Runs first in the re-run interpreter: records each produced frame (rows, per-column hash) and each generator's spec.
 SHIM = '''
-import atexit, json, os
+import atexit, glob, json, os
 import pandas as pd
 import _check
 
-frames, specs, streams, calls, saves = [], [], [], [], []
+frames, specs, streams, calls = [], [], [], []
 
 def record(df):
     frames.append({"rows": len(df), "cols": {str(c): _check.value_hash(df[c].tolist()) for c in df.columns}})
@@ -39,6 +39,10 @@ def record_spec(gen):
     spec = getattr(gen, "metadata", None) if hasattr(gen, "metadata") else gen.lazy_random_spec
     spec = spec() if callable(spec) else spec
     specs.append(json.loads(json.dumps(spec, default=str)))
+
+def read(path):
+    p = path if os.path.exists(path) else next(iter(sorted(glob.glob(path + ".*"))), path)
+    return _check.read_artifact(p)
 
 def wrap_get_df(cls):
     orig = cls.get_df
@@ -55,7 +59,7 @@ def wrap_save(cls):
         calls.append("save")
         out = orig(self, path, *a, **k)
         record_spec(self.size_def.__self__)
-        saves.append(os.path.realpath(path))
+        record(read(str(path)))
         return out
     cls.save = save
 
@@ -96,7 +100,7 @@ def dump():
         if rows:
             record(pd.DataFrame(rows))
     with open(os.environ["RAND_EVAL_RECORD"], "w") as f:
-        json.dump({"frames": frames, "specs": specs, "calls": calls, "saves": saves}, f)
+        json.dump({"frames": frames, "specs": specs, "calls": calls}, f)
 '''
 
 
@@ -177,11 +181,6 @@ def provenance(workdir, script, artifacts, python=sys.executable, specs=None, ca
         if calls is not None:
             calls.extend(data["calls"])
         recorded = {(c, f["rows"], h) for f in data["frames"] for c, h in f["cols"].items()}
-        for art in artifacts:
-            dest = str(Path(scratch, art).resolve())
-            if any(dest == s or dest.startswith(s + ".") for s in data["saves"]):
-                df = read_artifact(dest)
-                recorded |= {(str(c), len(df), value_hash(df[c].tolist())) for c in df.columns}
         for art in artifacts:
             if not (workdir / art).exists():
                 return f"provenance: artifact {art} was not delivered"
