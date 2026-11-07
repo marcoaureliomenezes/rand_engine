@@ -36,7 +36,6 @@ df.printSchema()
 # DataGenerator(...).get_df() and wrap the pandas frame in spark.createDataFrame(pdf).
 # The cell below does that for 100 rows; df above stays the native one.
 # A text column's nulls are pd.NA, so Spark's Arrow option is enabled before createDataFrame.
-# On a self-managed Spark on Java 17, start the JVM with -Dio.netty.tryReflectionSetAccessible=true.
 
 from rand_engine import DataGenerator
 
