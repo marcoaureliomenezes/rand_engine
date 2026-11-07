@@ -896,6 +896,29 @@ def test_eval_trials_install_socat_with_bubblewrap_before_the_eval():
     assert text.index("apt-get install -y bubblewrap socat") < text.index("python evals/run.py")
 
 
+def test_eval_trials_step_fails_before_the_eval_when_k_is_above_three():
+    import re
+
+    text = _job("trials")
+    guard = re.search(r'"\$K" -gt 3', text)
+    assert guard, "the trials job has no guard on K above 3"
+    assert guard.start() < text.index("python evals/run.py")
+
+
+def test_eval_trials_apt_get_update_runs_before_the_install():
+    text = _job("trials")
+    assert "apt-get update" in text, "no apt-get update in the trials job"
+    assert text.index("apt-get update") < text.index("apt-get install -y bubblewrap")
+
+
+def test_eval_trials_sysctl_lift_is_guarded_by_its_key():
+    text = _job("trials")
+    key = "kernel.apparmor_restrict_unprivileged_userns"
+    guards = [text.find(g) for g in (f"sysctl -n {key}", f"/proc/sys/{key.replace('.', '/')}")]
+    assert max(guards) >= 0, "the sysctl lift has no guard on the key existing"
+    assert min(g for g in guards if g >= 0) < text.index(f"sysctl -w {key}=0")
+
+
 def _workflow():
     """Return (text, {job key: block text}, {trigger key: block text}) of the eval workflow, split by indentation."""
     import re
@@ -931,6 +954,9 @@ def test_eval_workflow_pull_request_covers_development_and_master_without_paths(
     pr = _workflow()[2]["pull_request"]
     assert "- development" in pr and "- master" in pr
     assert "paths" not in pr
+    import re
+
+    assert re.search(r"^concurrency:\n  group: .*github\.ref", _workflow()[0], re.M), "no top-level concurrency group on github.ref"
 
 
 def test_eval_workflow_gate_job_always_runs_after_selfcheck_and_trials():
