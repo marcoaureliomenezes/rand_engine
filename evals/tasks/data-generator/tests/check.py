@@ -1,4 +1,5 @@
 """Usage check, run in the trial directory: layer 1 the artifact, layer 2 provenance, layer 3 the documented features."""
+import json
 import os
 import sys
 from pathlib import Path
@@ -45,5 +46,4 @@ if (msg := _check.token_ceiling(Path(__file__).parent.parent / "task.toml", os.e
 if (web := _check.web_tool_uses(events)):
     fail("3", f"web tools used: {web}")
 
-print("PASS")
-print(f'RESULT {{"surfaces": {surfaces!r}}}'.replace("'", '"'))
+print("RESULT " + json.dumps({"layer": "pass", "surfaces": surfaces}))

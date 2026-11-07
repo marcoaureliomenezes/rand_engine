@@ -43,4 +43,4 @@ if msg := _check.token_ceiling(Path(__file__).parent.parent / "task.toml", os.en
     fail("3", msg)
 if web := _check.web_tool_uses(events):
     fail("3", f"web tools used: {web}")
-print(f"PASS {ART}\nRESULT " + json.dumps({"layer": "pass", "surfaces": surfaces}))
+print("RESULT " + json.dumps({"layer": "pass", "surfaces": surfaces}))
