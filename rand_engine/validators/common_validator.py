@@ -270,10 +270,10 @@ class CommonValidator:
     def validate_spark_and_raise(cls, spec: dict[str, dict[str, Any]]) -> None:
         errors = cls.validate_spark_spec(spec)
         if errors:
-            cls._raise(errors, "SPARKGENERATOR")
+            cls.raise_validation(errors, "SPARKGENERATOR")
 
     @staticmethod
-    def _raise(errors: list[str], engine: str) -> None:
+    def raise_validation(errors: list[str], engine: str) -> None:
         separator = "\n" + "=" * 80 + "\n"
         message = (
             f"\n{'=' * 80}\n{engine} SPEC VALIDATION ERROR\n{'=' * 80}\n\n"

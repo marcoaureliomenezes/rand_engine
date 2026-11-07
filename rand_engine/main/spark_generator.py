@@ -65,7 +65,7 @@ class SparkGenerator:
     else:
       errors = CommonValidator.validate_spark_spec(metadata)
     if errors:
-      CommonValidator._raise(errors, "SPARKGENERATOR")
+      CommonValidator.raise_validation(errors, "SPARKGENERATOR")
     
     self.spark = spark
     self.F = F

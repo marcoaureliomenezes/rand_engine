@@ -257,14 +257,13 @@ class AdvancedValidator:
         templates = kwargs.get("templates")
         if not isinstance(pattern, str) or not isinstance(replacement, str) or not isinstance(templates, list):
             return []
+        errors: list[str] = []
         if len(replacement) != 1:
-            return [
+            errors.append(
                 f"❌ Column '{col_name}': method 'complex_distincts' parameter 'replacement' "
                 f"must be one character, got {replacement!r}"
-            ]
-
-        errors: list[str] = []
-        if pattern.count(replacement) != len(templates):
+            )
+        elif pattern.count(replacement) != len(templates):
             errors.append(
                 f"⚠️  Column '{col_name}': Pattern has {pattern.count(replacement)} replacement "
                 f"occurrences\n   but {len(templates)} templates provided. They must match."
@@ -450,4 +449,4 @@ class AdvancedValidator:
     def validate_and_raise(cls, spec: dict[str, dict[str, Any]]) -> None:
         errors = cls.validate(spec)
         if errors:
-            CommonValidator._raise(errors, "DATAGENERATOR")
+            CommonValidator.raise_validation(errors, "DATAGENERATOR")

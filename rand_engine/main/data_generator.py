@@ -113,7 +113,7 @@ class DataGenerator:
       except Exception as error:
         errors.append(f"❌ Column '{column}': method '{config['method']}' cannot generate a row: {type(error).__name__}: {error}")
     if errors:
-      CommonValidator._raise(errors, "DATAGENERATOR")
+      CommonValidator.raise_validation(errors, "DATAGENERATOR")
 
 
   def _file_seam(self) -> tuple[Callable[..., pa.Schema], Callable[[int, int], pd.DataFrame]]:
