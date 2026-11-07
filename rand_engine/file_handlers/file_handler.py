@@ -208,7 +208,7 @@ class _CsvFile:
 class _JsonFile:
 
   def __init__(self, path: str, options: dict, *, append_from=None, expected_schema=None):
-    _documented("json", options, ("orient", "force_ascii", "compression"))
+    _documented("json", options, ("orient", "force_ascii", "indent", "compression"))
     if options.get("orient", "records") != "records":
       raise RandEngineError("json option 'orient' accepts only 'records'")
     self._compression = options.get("compression")
@@ -394,7 +394,7 @@ class FileHandler:
 
   @staticmethod
   def to_json(dataframe: PDDataFrame, full_path: str, write_options: dict, writer_keys: tuple = ()) -> Callable:
-    _documented("json", write_options, ("orient", "force_ascii", "compression", *writer_keys))
+    _documented("json", write_options, ("orient", "force_ascii", "indent", "compression", *writer_keys))
     options = {key: value for key, value in write_options.items() if key not in writer_keys}
     session = FileHandler.open_json(full_path, options)
     def write():

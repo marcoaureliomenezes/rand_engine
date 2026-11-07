@@ -37,7 +37,7 @@ assert len(os.listdir("out/clients_json")) == 4
 |---|---|
 | `csv` | `sep` (delimiter, default `,`); `compression`: `gzip`, `bz2`, `xz`, `zip`; `index`: only `False` (Arrow writes no index) |
 | `parquet` | `compression`: `snappy` (default), `gzip`, `zstd`, `brotli`, `lz4` |
-| `json` | `force_ascii`, `compression` (`gzip`, `bz2`, `xz`, `zip`); `orient`: only `"records"` |
+| `json` | `force_ascii`, `indent`, `compression` (`gzip`, `bz2`, `xz`, `zip`); `orient`: only `"records"` |
 | `sqlite` | `table` (required, non-empty table name); `overwrite` or `append`; no file batching or file-format options |
 | `write` (batch) | `numFiles` (default 1); `maxRowsPerBatch` (positive int; rows generated and written per batch, so memory stays bounded) |
 | `writeStream` | `timeout` in seconds (default 20) |

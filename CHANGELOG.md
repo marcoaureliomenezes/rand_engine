@@ -44,7 +44,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - `validate_with_warnings` and `validate_spark_with_warnings`.
-- The json writer no longer accepts the `indent` option and refuses it like any undocumented option: indented output is not one record per line, so no JSON-lines reader can read it.
 
 ---
 
