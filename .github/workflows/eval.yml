@@ -21,6 +21,10 @@ on:
         description: Trials per task (the job timeout fits k up to 3)
         default: '3'
 
+concurrency:
+  group: eval-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -120,8 +124,11 @@ jobs:
 
       - name: Install bubblewrap and socat for the agent's subprocess sandbox
         run: |
+          sudo apt-get update
           sudo apt-get install -y bubblewrap socat
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
 
       - name: Build the wheel
         if: matrix.install == 'wheel'
@@ -135,6 +142,7 @@ jobs:
           TASK: ${{ matrix.task }}
           INSTALL: ${{ matrix.install }}
         run: |
+          if [ "$K" -gt 3 ]; then echo "k=$K: the job timeout fits k up to 3" >&2; exit 1; fi
           if [ "$INSTALL" = wheel ]; then ENGINE=$(ls "$PWD"/dist/*.whl); else ENGINE=rand-engine; fi
           python evals/run.py --task "$TASK" --leg "$INSTALL" --k "$K" --rand-engine "$ENGINE" \
             --model "$MODEL" --out "$RUNNER_TEMP/eval-out/$TASK-$INSTALL"
