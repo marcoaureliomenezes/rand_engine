@@ -189,8 +189,9 @@ def test_no_size_fails_before_overwrite_deletes(rand_spec_with_kwargs, base_path
   path = f"{base_path_files_test}/csv/no_size/clients"
   os.makedirs(path, exist_ok=True)
   open(f"{path}/keep.csv", "w").close()
-  with pytest.raises(RandEngineError, match=r"\.size\(n\)"):
+  with pytest.raises(RandEngineError) as error:
     DataGenerator(rand_spec_with_kwargs).write.option("numFiles", 2).mode("overwrite").save(path)
+  assert str(error.value) == "No size set: call .size(n) with an int or a callable returning one."
   assert os.listdir(path) == ["keep.csv"]
 
 
