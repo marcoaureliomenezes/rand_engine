@@ -33,8 +33,8 @@ jobs:
         run: poetry install --with test --no-interaction
       - name: Run stress tests
         run: poetry run pytest -m stress --durations=20
-      # Same-runner A/B, interleaved per row: base = the commit of the highest bare M.m.p release tag.
-      # No base tree → every row absent; only exit 3 (the wrong rand_engine imported) fails on the base.
+      # Same-runner A/B, interleaved per row: base = the commit of the highest bare M.m.p release tag, checked out at ../base.
+      # No tag fails this step; speed.py without a base directory records every row absent; only exit 3 (the wrong rand_engine imported) fails on the base.
       - name: Speed benchmark
         if: ${{ !cancelled() }}
         env:

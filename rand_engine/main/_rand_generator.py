@@ -34,7 +34,7 @@ class RandGenerator:
  
   @staticmethod
   def _column(values):
-    """Return a generated column; all-str data (never empty) becomes Arrow string, Arrow input is wrapped, mixed data holding str stays object, the rest passes untouched."""
+    """Return the column as pandas holds it: Arrow input of any Arrow type is wrapped in an ArrowExtensionArray; a list or ndarray of str becomes Arrow string (an empty list does not, a unicode ndarray does); mixed values holding a str become an object Series; the rest passes untouched."""
     if isinstance(values, (pa.Array, pa.ChunkedArray)): return pd.arrays.ArrowExtensionArray(values)
     if isinstance(values, (list, np.ndarray)):
       kind = infer_dtype(values, skipna=False)
