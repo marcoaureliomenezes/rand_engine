@@ -246,8 +246,25 @@ def test_generation_called_from_outside_the_scratch_copy_is_not_the_agents(check
     work.mkdir()
     body = f"import gen_lib\nfrom rand_engine import DataGenerator\ngen_lib.make(DataGenerator({SPEC}, seed=1)).to_csv('out.csv', index=False)\n"
     msg, record = rerun(check, work, body)
-    assert msg.startswith("provenance")
+    assert msg == NO_AGENT_RECORD
     assert record == [{"entry": "get_df", "spec": json.loads(SPEC), "agent": False}]
+
+
+OWN_STREAM = f"from rand_engine import DataGenerator\nimport itertools\nstream = DataGenerator({SPEC}, seed=1).size(10).stream_dict(1000, 1000)\n"
+
+
+@pytest.mark.parametrize("consume", [
+    "import pandas as pd\npd.DataFrame(itertools.islice(stream, 5)).to_csv('out.csv', index=False)\n",
+    "import csv\nwith open('out.csv', 'w', newline='') as f:\n    w = csv.DictWriter(f, fieldnames=['age'], extrasaction='ignore')\n    w.writeheader()\n    w.writerows(itertools.islice(stream, 5))\n",
+], ids=["pandas-dataframe", "csv-dictwriter"])
+def test_agents_own_stream_dict_consumed_by_a_library_passes(check, tmp_path, consume):
+    assert provenance(check, tmp_path, OWN_STREAM + consume) is None
+
+
+def test_dangling_link_beside_a_save_destination_does_not_crash_the_rerun(check, tmp_path):
+    (tmp_path / "latest.csv").symlink_to("out.csv")
+    body = f"from rand_engine import DataGenerator\nDataGenerator({SPEC}, seed=1).size(10).write.format('csv').save('out.csv')\n"
+    assert provenance(check, tmp_path, body) is None
 
 
 def test_script_that_cannot_rerun_fails_as_provenance(check, tmp_path):
