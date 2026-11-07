@@ -172,10 +172,6 @@ def provenance(workdir, script, artifacts, python=sys.executable):
         (tmp / "shim" / "sitecustomize.py").write_text(SHIM)
         shutil.copy(__file__, tmp / "shim" / "_check.py")
         scratch = tmp / "work"
-        shutil.copytree(workdir, scratch, ignore=lambda d, names: [n for n in names if not os.path.exists(os.path.join(d, n))])
-        for art in artifacts:
-            shutil.rmtree(scratch / art, ignore_errors=True)
-            (scratch / art).unlink(missing_ok=True)
         output = tmp / "record.json"
         env = {k: os.environ[k] for k in RERUN_ENV if k in os.environ}
         env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(tmp / "shim"), os.environ.get("PYTHONPATH")]))
@@ -184,6 +180,10 @@ def provenance(workdir, script, artifacts, python=sys.executable):
         env["PYTHONDONTWRITEBYTECODE"] = "1"
         target = scratch / script.relative_to(workdir) if script.is_relative_to(workdir) else script
         try:
+            shutil.copytree(workdir, scratch, symlinks=True)
+            for art in artifacts:
+                shutil.rmtree(scratch / art, ignore_errors=True)
+                (scratch / art).unlink(missing_ok=True)
             run = subprocess.run([python, str(target)], cwd=scratch, env=env, capture_output=True, text=True, timeout=300)
         except (OSError, subprocess.TimeoutExpired) as e:
             return f"provenance: the script could not re-run: {type(e).__name__}", record
@@ -264,5 +264,4 @@ def surfaces(events):
 
 def result_text(layer, message, surfaces=()):
     """The failure line, naming its layer, then the `RESULT {json}` line; `layer` is the string "1", "2" or "3"."""
-    line = message if message.startswith(layer) else f"{layer}: {message}"
-    return f"{line}\nRESULT {json.dumps({'layer': layer, 'surfaces': list(surfaces)})}\n"
+    return f"{layer}: {message}\nRESULT {json.dumps({'layer': layer, 'surfaces': list(surfaces)})}\n"
