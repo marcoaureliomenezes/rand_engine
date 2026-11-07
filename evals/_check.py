@@ -113,11 +113,11 @@ def value_hash(values):
 
 
 def read_artifact(path):
-    """DataFrame of a csv or json-lines file as written (text, no inference), a parquet file, or a directory of parts (entries whose name starts with `_` or `.` are hidden and skipped); gzip is decompressed."""
+    """DataFrame of a csv or json-lines file as written (text, no inference), a parquet file, or a directory of parts (entries whose name starts with `_` or `.` are hidden and skipped; the parts are concatenated in content order, never name order); gzip is decompressed."""
     import pandas as pd
     path = Path(path)
     if path.is_dir():
-        return pd.concat([read_artifact(p) for p in sorted(path.iterdir()) if p.is_file() and p.name[0] not in "_."], ignore_index=True)
+        return pd.concat(sorted((read_artifact(p) for p in path.iterdir() if p.is_file() and p.name[0] not in "_."), key=lambda f: f.astype(str).values.tolist()), ignore_index=True)
     name = path.name.removesuffix(".gz")
     if name.endswith(".parquet"):
         return pd.read_parquet(path)
