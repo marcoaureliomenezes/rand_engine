@@ -319,3 +319,11 @@ def test_check_imports_without_pandas():
     done = subprocess.run([sys.executable, "-c", "import sys; sys.modules['pandas'] = None; import _check"],
                           env=env, capture_output=True, text=True)
     assert done.returncode == 0, done.stderr
+
+
+def test_sqlite_save_is_recorded_not_read_back(check, tmp_path):
+    body = ("from rand_engine import DataGenerator\n"
+            f"g = DataGenerator({SPEC}, seed=1).size(10)\n"
+            "g.write.format('sqlite').option('table', 't').save('out.sqlite')\n"
+            "g.get_df().to_csv('out.csv', index=False)\n")
+    assert provenance(check, tmp_path, body, ["out.csv"]) is None
