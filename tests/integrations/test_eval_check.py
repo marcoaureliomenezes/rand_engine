@@ -286,6 +286,13 @@ def test_absent_artifact_fails(check, tmp_path):
     assert msg.startswith("provenance") and "out.csv" in msg
 
 
+def test_hand_written_sibling_of_a_save_destination_matches_no_generated_frame(check, tmp_path):
+    body = ("import numpy as np, pandas as pd\nfrom rand_engine import DataGenerator\n"
+            "pd.DataFrame({'age': np.arange(100, 110)}).to_csv('out.a', index=False)\n"
+            f"DataGenerator({SPEC}, seed=1).size(10).write.format('csv').save('out')\n")
+    assert provenance(check, tmp_path, body, ["out.a"]) == "provenance: column 'age' of out.a matches no frame rand_engine generated"
+
+
 def test_append_mode_save_passes(check, tmp_path):
     body = f"from rand_engine import DataGenerator\nDataGenerator({SPEC}, seed=1).size(10).write.format('csv').mode('append').save('out.csv')\n"
     assert provenance(check, tmp_path, body) is None
