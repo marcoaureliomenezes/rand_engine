@@ -1,7 +1,6 @@
 import ast
 import doctest
 import importlib
-import importlib.util
 import io
 import inspect
 import json
@@ -966,16 +965,6 @@ def test_context7_json_scopes_the_indexed_folders():
   assert {"specs", "tests", "benchmarks", "evals"} <= set(config["excludeFolders"])
 
 
-def _docs_site_module():
-  """Load the documentation preparation authority without a network boundary."""
-  spec = importlib.util.spec_from_file_location("docs_site", ROOT / "scripts" / "docs_site.py")
-  assert spec is not None and spec.loader is not None
-  module = importlib.util.module_from_spec(spec)
-  sys.modules[spec.name] = module
-  spec.loader.exec_module(module)
-  return module
-
-
 def test_docs_site_preparation_works_without_tomllib_or_tomli(tmp_path):
   """Preparation needs no TOML parser: it runs from the standard library alone when `tomllib` and `tomli` cannot be imported."""
   output = tmp_path / "prepared"
@@ -1033,7 +1022,7 @@ SPEED_WORDS = re.compile(r"\bfastest\b|\bvery fast\b|\bfast\b|numpy speed|\bslow
 def test_public_texts_carry_no_unmeasured_speed_claim():
   hits = []
   for name in SPEED_SCAN:
-    prose = re.sub(r"`[^`\n]*`", "", re.sub(r"^```.*?^```", "", _text(ROOT / name), flags=re.M | re.S))
+    prose = re.sub(r"`[^`\n]*`", "", re.sub(r"^```.*?^```", lambda m: "\n" * m.group(0).count("\n"), _text(ROOT / name), flags=re.M | re.S))
     hits += [f"{name}:{n}: {line.strip()}" for n, line in enumerate(prose.splitlines(), 1) if SPEED_WORDS.search(line)]
   assert hits == []
 
@@ -1049,7 +1038,9 @@ def test_every_nav_page_but_home_has_its_own_search_description():
   assert len(pages) == 17
   descriptions = {}
   for page in pages:
-    front = re.match(r"---\n(.*?)\n---\n", (DOCS / page).read_text(encoding="utf-8"), re.S).group(1)
+    match = re.match(r"---\n(.*?)\n---\n", (DOCS / page).read_text(encoding="utf-8"), re.S)
+    assert match is not None, f"{page}: no front matter"
+    front = match.group(1)
     descriptions[page] = re.search(r"^description: (.+)$", front, re.M).group(1).strip("\"'")
   assert {page: 50 <= len(text) <= 160 for page, text in descriptions.items()} == dict.fromkeys(pages, True)
   assert len(set(descriptions.values()) | {site}) == 18
