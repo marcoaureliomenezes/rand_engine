@@ -421,7 +421,7 @@ def test_modifier_single_column_alias_uses_generated_name_for_anomaly_and_null()
   assert str(series.dtype) == "Int64"
 
 
-def test_modifier_object_nulls_are_literal_python_none():
+def test_modifier_default_text_nulls_are_pd_na_in_arrow_string():
   spec = {
     "value": {
       "method": "constant",
@@ -625,7 +625,7 @@ def test_every_generated_text_column_is_arrow():
   assert df.dtypes.to_dict() == expected
 
 
-def test_non_text_columns_keep_their_dtype():
+def test_non_text_columns_keep_dtype_and_mixed_text_is_arrow():
   spec = {
     "i": {"method": "integers", "kwargs": {"min": 0, "max": 9, "int_type": "int64"}},
     "f": {"method": "floats", "kwargs": {"min": 0, "max": 9, "decimals": 2}},
@@ -708,7 +708,7 @@ def test_zero_size_gives_empty_frame():
   assert df.shape == (0, 1)
 
 
-def test_unset_size_raises_the_literal_message_everywhere():
+def test_unset_size_stream_dict_raises_the_literal_message():
   with pytest.raises(RandEngineError) as stream_error:
     next(DataGenerator(SIZE_SPEC).stream_dict())
 
