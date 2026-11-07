@@ -65,7 +65,7 @@ def main(argv=None):
     for name, s in specs.items():
         if s["round"] != "usage":
             continue
-        raw, tokens, cost, layers, surfaces = {}, {}, 0.0, set(), set()
+        raw, tokens, cost, layers, surfaces, unknown = {}, {}, 0.0, set(), set(), False
         for leg in s["legs"]:
             raw[leg], tokens[leg] = 0, []
             for n in range(1, a.k + 1):
@@ -83,6 +83,7 @@ def main(argv=None):
                 else:
                     layers.add(data.get("layer"))
                     surfaces |= set(data.get("surfaces") or [])
+                    unknown |= bool(data.get("passed") and not data.get("error"))
 
         eff = {leg: 0 if leg in voided else raw[leg] for leg in raw}
         wheel, pypi = eff.get("wheel", 0), eff.get("pypi", 0)
@@ -97,7 +98,7 @@ def main(argv=None):
         if passes:
             ceilings[name] = math.ceil(2 * statistics.median(passes))
         layer = ", ".join(sorted(str(x) for x in layers if x is not None)) or "-"
-        tok = round(statistics.median(passes)) if passes else "-"
+        tok = round(statistics.median(passes)) if passes else ("tokens unknown" if unknown else "-")
         rows.append(f"{name} | {wheel} | {pypi} | {tok} | {cost:.2f} | {layer} | "
                     f"{', '.join(sorted(surfaces)) or '-'}")
 
@@ -106,7 +107,7 @@ def main(argv=None):
         for leg in (s["legs"] if s["round"] == "discovery" else []):
             pairs = [read(name, leg, n) for n in range(1, a.k + 1)]
             got, miss = [d for d, _ in pairs if d], [m for _, m in pairs if m]
-            top = collections.Counter(d.get("surface") for d in got).most_common()
+            top = collections.Counter(d.get("surface") or "other" for d in got).most_common()
             lead = "/".join(sorted(str(x) for x, c in top if c == top[0][1])) if top else "-"
             discovery.append(f"discovery {leg}: adopted {sum(bool(d.get('adopted')) for d in got)} of {a.k}, "
                              f"leading surface {lead}" + "".join(f", missing {m}" for m in miss))
