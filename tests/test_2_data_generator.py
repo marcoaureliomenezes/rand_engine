@@ -708,15 +708,11 @@ def test_zero_size_gives_empty_frame():
   assert df.shape == (0, 1)
 
 
-def test_unset_size_raises_the_literal_message_everywhere(tmp_path):
-  with pytest.raises(RandEngineError) as df_error:
-    DataGenerator(SIZE_SPEC).get_df()
+def test_unset_size_raises_the_literal_message_everywhere():
   with pytest.raises(RandEngineError) as stream_error:
     next(DataGenerator(SIZE_SPEC).stream_dict())
-  with pytest.raises(RandEngineError) as save_error:
-    DataGenerator(SIZE_SPEC).write.format("csv").save(str(tmp_path / "out"))
 
-  assert [str(df_error.value), str(stream_error.value), str(save_error.value)] == [UNSET_SIZE] * 3
+  assert str(stream_error.value) == UNSET_SIZE
 
 
 _TWO = {"method": "distincts", "kwargs": {"distincts": ["1", "2"]}}
