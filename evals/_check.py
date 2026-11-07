@@ -42,6 +42,8 @@ def origin(entry=None):
     while f and f.f_code.co_filename.startswith((LIB, __file__)):
         if f.f_code.co_filename.startswith(LIB):
             entry = f.f_code.co_name
+        if "tag" in f.f_locals:
+            return entry, f.f_locals["tag"]
         f = f.f_back
     return entry, f is not None and os.path.isabs(f.f_code.co_filename) and os.path.realpath(f.f_code.co_filename).startswith(ROOT)
 
@@ -52,14 +54,13 @@ def note(spec, entry=None):
         records.append(record)
 
 def hashed(df, agent):
-    frames.append({"rows": len(df), "agent": agent, "cols": {str(c): _check.value_hash(df[c].tolist()) for c in df.columns}})
+    frames.append({"agent": agent, "cols": [(str(c), len(df), _check.value_hash(df[c].tolist())) for c in df.columns]})
 
 def listing(path):
     parent = os.path.dirname(path) or "."
     if not os.path.isdir(parent):
         return {}
-    with os.scandir(parent) as entries:
-        return {e.name: (e.stat().st_mtime_ns, e.stat().st_size) for e in entries if e.name[0] != "."}
+    return {e.name: ((s := e.stat(follow_symlinks=False)).st_mtime_ns, s.st_size) for e in os.scandir(parent) if e.name[0] != "."}
 
 seam = DataGenerator._file_seam
 def file_seam(self):
@@ -93,9 +94,10 @@ def wrap_save(cls):
 def wrap_stream(cls):
     orig = cls.stream_dict
     def stream_dict(self, *a, **k):
-        rows = []
-        streams.append((rows, origin()[1]))
-        for row in orig(self, *a, **k):
+        return run(orig(self, *a, **k), origin()[1])
+    def run(gen, tag):
+        streams.append((rows := [], tag))
+        for row in gen:
             rows.append(row)
             yield row
     cls.stream_dict = stream_dict
@@ -114,8 +116,7 @@ def dump():
     if not RECORD or os.getpid() != OWNER:
         return
     for rows, agent in streams:
-        if rows:
-            hashed(pd.DataFrame(rows), agent)
+        hashed(pd.DataFrame(rows), agent)
     with open(RECORD, "w") as f:
         json.dump({"records": records, "frames": frames}, f)
 '''
@@ -145,7 +146,7 @@ def read_artifact(path):
 
 
 def agent(record, field):
-    """The `field` of every record the agent's own code generated, in record order."""
+    """The `field` of every record or frame the agent's own code generated, in order."""
     return [r[field] for r in record if r["agent"]]
 
 
@@ -174,13 +175,13 @@ def provenance(workdir, script, artifacts, python=sys.executable):
         scratch = tmp / "work"
         output = tmp / "record.json"
         env = {k: os.environ[k] for k in RERUN_ENV if k in os.environ}
-        env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(tmp / "shim"), os.environ.get("PYTHONPATH")]))
-        env["RAND_EVAL_RECORD"] = str(output)
-        env["RAND_EVAL_ROOT"] = str(scratch)
-        env["PYTHONDONTWRITEBYTECODE"] = "1"
+        env.update(PYTHONPATH=os.pathsep.join(filter(None, [str(tmp / "shim"), os.environ.get("PYTHONPATH")])),
+                   RAND_EVAL_RECORD=str(output), RAND_EVAL_ROOT=str(scratch), PYTHONDONTWRITEBYTECODE="1")
         target = scratch / script.relative_to(workdir) if script.is_relative_to(workdir) else script
         try:
             shutil.copytree(workdir, scratch, symlinks=True)
+            if bad := next((a for a in artifacts if not (scratch / a).resolve().is_relative_to(scratch.resolve())), None):
+                return f"provenance: artifact {bad} resolves outside the work directory", record
             for art in artifacts:
                 shutil.rmtree(scratch / art, ignore_errors=True)
                 (scratch / art).unlink(missing_ok=True)
@@ -193,7 +194,7 @@ def provenance(workdir, script, artifacts, python=sys.executable):
         record = data["records"]
         if not agent(record, "entry"):
             return "provenance: the re-run recorded no rand_engine generation from the agent's code", record
-        recorded = {(c, f["rows"], h) for f in data["frames"] if f["agent"] for c, h in f["cols"].items()}
+        recorded = {tuple(t) for cols in agent(data["frames"], "cols") for t in cols}
         if (bad := next(((a, c) for a, c, key in delivered if key not in recorded), None)):
             return f"provenance: column {bad[1]!r} of {bad[0]} matches no frame rand_engine generated", record
     return None, record
