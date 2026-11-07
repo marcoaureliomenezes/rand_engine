@@ -254,7 +254,7 @@ OWN_STREAM = f"from rand_engine import DataGenerator\nimport itertools\nstream =
 
 
 @pytest.mark.parametrize("consume", [
-    "import pandas as pd\npd.DataFrame(itertools.islice(stream, 5)).to_csv('out.csv', index=False)\n",
+    "import pandas as pd\npd.DataFrame(itertools.islice(stream, 5))[['age']].to_csv('out.csv', index=False)\n",
     "import csv\nwith open('out.csv', 'w', newline='') as f:\n    w = csv.DictWriter(f, fieldnames=['age'], extrasaction='ignore')\n    w.writeheader()\n    w.writerows(itertools.islice(stream, 5))\n",
 ], ids=["pandas-dataframe", "csv-dictwriter"])
 def test_agents_own_stream_dict_consumed_by_a_library_passes(check, tmp_path, consume):
