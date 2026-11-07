@@ -309,6 +309,14 @@ def test_date_bound_in_default_format_under_another_date_format_is_accepted_by_b
     assert CommonValidator.validate_spark_spec(spec) == []
 
 
+def test_timezone_aware_date_bounds_are_refused_by_both_engines():
+    """`_date_bounds` refuses an aware bound before any comparison; `unix_timestamps` is the method whose format may hold `%z`."""
+    from rand_engine.validators.advanced_validator import AdvancedValidator
+    spec = _date_spec("unix_timestamps", "2020-01-01 +0000", "2021-01-01 +0000", "%Y-%m-%d %z")
+    for errors in (AdvancedValidator.validate(spec), CommonValidator.validate_spark_spec(spec)):
+        assert errors == ["\u274c Column 'd': method 'unix_timestamps' parameter 'start' '2020-01-01 +0000' must not carry a timezone"]
+
+
 def test_unix_timestamps_format_is_not_restricted():
     spec = {"t": {"method": "unix_timestamps", "kwargs": {"start": "Jan 01 2020", "end": "Dec 31 2024", "date_format": "%b %d %Y"}}}
     assert CommonValidator.validate_spark_spec(spec) == []
