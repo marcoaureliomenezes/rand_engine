@@ -5,6 +5,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from functools import reduce
 from collections.abc import Mapping as MappingABC
+from inspect import signature
 import re
 import sys
 from types import MappingProxyType
@@ -15,7 +16,7 @@ import pandas as pd
 import pyarrow as pa
 
 from rand_engine.core._spark_core import spark_pool_column
-from rand_engine.core._np_core import DATE_DIRECTIVES, _parse_date_bound, float_decimals_supported, float_lattice_bounds, poisson_lam_supported
+from rand_engine.core._np_core import DATE_DIRECTIVES, NPCore, _parse_date_bound, float_decimals_supported, float_lattice_bounds, poisson_lam_supported
 
 
 TypeRule = type | tuple[type, ...]
@@ -210,8 +211,8 @@ def _spark_pool_problem(pool: list[Any]) -> str:
     The column is built as SparkCore.gen_distincts builds it. A typed pandas column is
     written as given (integers beyond int64 become null); an object column goes through the
     schema inference createDataFrame folds over its rows, where a raise is a refusal and a
-    text-merged column corrupts any value whose own type is not faithful as text. Object and
-    pandas string columns (kind "O") take the inference path, which needs pyspark.
+    text-merged column corrupts any value whose own type is not faithful as text. Only an
+    object column (kind "O") takes the inference path, which needs pyspark.
     """
     if any(isinstance(v, (list, tuple, dict, set)) for v in pool):
         return "holds a list, tuple or dict, which Spark writes as another value"
@@ -280,14 +281,17 @@ def _distincts_map_prop(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
     return tuple(issues)
 
 
+DEFAULT_DATE_FORMAT = signature(NPCore.gen_unix_timestamps).parameters["date_format"].default
+
+
 def _date_bounds(kwargs: Mapping[str, Any]) -> tuple[SemanticIssue, ...]:
-    date_format = kwargs.get("date_format", "%Y-%m-%d")
+    date_format = kwargs.get("date_format", DEFAULT_DATE_FORMAT)
     parsed = []
     for name in ("start", "end"):
         try:
             bound = _parse_date_bound(kwargs[name], date_format)
         except ValueError:
-            return ((name, f"'{kwargs[name]}' does not parse under date_format '{date_format}' nor as '%Y-%m-%d'"),)
+            return ((name, f"'{kwargs[name]}' does not parse under date_format '{date_format}' nor as '{DEFAULT_DATE_FORMAT}'"),)
         if bound.tzinfo is not None:
             return ((name, f"'{kwargs[name]}' must not carry a timezone"),)
         parsed.append(bound)
