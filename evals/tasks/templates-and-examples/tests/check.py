@@ -28,7 +28,6 @@ TABLES = {
     "orders.parquet": (1000, column_sets(ORDERS)),
     "cities.parquet": (500, [{"city"}]),
 }
-specs = []
 
 
 def fail(layer, message):
@@ -49,8 +48,10 @@ for name, (rows, allowed) in TABLES.items():
         fail("1", f"{name}: expected {rows} rows and one of the column sets {[sorted(s) for s in allowed]}, got {len(df)} rows and {list(df.columns)}")
 
 # Layer 2: the script's re-run regenerates every column through rand_engine.
-if (msg := _check.provenance(".", "solve.py", list(TABLES), python=sys.executable, specs=specs)):
+msg, record = _check.provenance(".", "solve.py", list(TABLES), python=sys.executable)
+if msg:
     fail("2", msg)
+specs = _check.agent(record, "spec")
 
 # Layer 3: the recorded specs are shipped template entries, evaluated in this venv, plus the city pool, no legacy names, token ceiling, no web.
 for label, entries in (("customers", CUSTOMERS), ("orders", ORDERS)):

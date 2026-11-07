@@ -1,13 +1,13 @@
 """Shared helper of the agent-eval task checks (layers 1 to 3).
 
-`provenance(workdir, script, artifacts, python, specs, calls)` -> None | "provenance: ..."; `value_hash(values)` -> str;
+`provenance(workdir, script, artifacts, python)` -> (None | "provenance: ...", record); `agent(record, field)` -> [values];
+`value_hash(values)` -> str;
 `tool_events(path)` -> [{"name", "input"}]; `web_tool_uses(events)` -> [tool names].
 Layer 3: `legacy_hits(text)` -> [names]; `documented_method(specs, method, kwargs)` -> bool;
 `token_ceiling(task_toml, env)` -> None | "ceiling: ..."; `surfaces(events)` -> [tokens];
 `result_text(layer, message, surfaces)` -> the failure line and the `RESULT {json}` line.
-Side effects: `provenance` runs `script` once as a subprocess in `workdir`.
+Side effects: `provenance` runs `script` once as a subprocess in a scratch copy of `workdir`.
 """
-import ast
 import gzip
 import hashlib
 import json
@@ -20,91 +20,104 @@ import tempfile
 import tomllib
 from pathlib import Path
 
-API_CALLS = {"DataGenerator", "SparkGenerator", "get_df", "save", "start", "stream_dict"}
 WEB_TOOLS = ("WebFetch", "WebSearch")
 RERUN_ENV = ("PATH", "HOME", "TMPDIR", "TEMP", "TMP", "LANG", "SYSTEMROOT", "JAVA_HOME")
 
-# Runs first in the re-run interpreter: records each produced frame (rows, per-column hash) and each generator's spec.
+# Runs first in the re-run interpreter: one record per distinct generation (the _file_seam hook, plus SparkGenerator.get_df),
+# then the output hashes of get_df, save and stream_dict, each tagged with whether the agent's code called it.
 SHIM = '''
-import atexit, glob, json, os
+import atexit, json, os, sys
 import pandas as pd
+from rand_engine import DataGenerator
 import _check
 
-frames, specs, streams, calls = [], [], [], []
+LIB = os.path.dirname(sys.modules["rand_engine"].__file__) + os.sep
+ROOT = os.path.realpath(os.environ["RAND_EVAL_ROOT"]) + os.sep
+records, frames, streams = [], [], []
 RECORD, OWNER = os.environ.pop("RAND_EVAL_RECORD", None), os.getpid()
 
-def record(df):
-    frames.append({"rows": len(df), "cols": {str(c): _check.value_hash(df[c].tolist()) for c in df.columns}})
+def origin(entry=None):
+    """The entry point (outermost rand_engine frame) and whether the code that called it lies under the scratch root."""
+    f = sys._getframe(1)
+    while f and f.f_code.co_filename.startswith((LIB, __file__)):
+        if f.f_code.co_filename.startswith(LIB):
+            entry = f.f_code.co_name
+        f = f.f_back
+    return entry, f is not None and os.path.isabs(f.f_code.co_filename) and os.path.realpath(f.f_code.co_filename).startswith(ROOT)
 
-def record_spec(gen):
-    spec = getattr(gen, "metadata", None) if hasattr(gen, "metadata") else gen.lazy_random_spec
-    spec = spec() if callable(spec) else spec
-    specs.append(json.loads(json.dumps(spec, default=str)))
+def note(spec, entry=None):
+    entry, agent = origin(entry)
+    record = {"entry": entry, "spec": json.loads(json.dumps(spec, default=str)), "agent": agent}
+    if record not in records:
+        records.append(record)
 
-def read(path):
-    p = path if os.path.exists(path) else next(iter(sorted(glob.glob(path + ".*"))), path)
-    return _check.read_artifact(p)
+def hashed(df, agent):
+    frames.append({"rows": len(df), "agent": agent, "cols": {str(c): _check.value_hash(df[c].tolist()) for c in df.columns}})
 
-def wrap_get_df(cls):
+def listing(path):
+    parent = os.path.dirname(path) or "."
+    if not os.path.isdir(parent):
+        return {}
+    with os.scandir(parent) as entries:
+        return {e.name: (e.stat().st_mtime_ns, e.stat().st_size) for e in entries if e.name[0] != "."}
+
+seam = DataGenerator._file_seam
+def file_seam(self):
+    pair = seam(self)
+    note(pair[0].args[0])
+    return pair
+DataGenerator._file_seam = file_seam
+
+def wrap_get_df(cls, spec=None):
     orig = cls.get_df
     def get_df(self, *a, **k):
         out = orig(self, *a, **k)
-        record_spec(self)
-        record(out.toPandas() if hasattr(out, "toPandas") else out)
+        if spec:
+            note(spec(self), "get_df")
+        hashed(out.toPandas() if hasattr(out, "toPandas") else out, origin()[1])
         return out
     cls.get_df = get_df
 
 def wrap_save(cls):
     orig = cls.save
     def save(self, path, *a, **k):
-        calls.append("save")
+        if self.write_format == "sqlite":
+            return orig(self, path, *a, **k)
+        before = listing(path)
         out = orig(self, path, *a, **k)
-        record_spec(self.size_def.__self__)
-        if self.write_format != "sqlite":
-            record(read(str(path)))
+        for name, _ in listing(path).items() - before.items():
+            hashed(_check.read_artifact(os.path.join(os.path.dirname(path), name)), origin()[1])
         return out
     cls.save = save
-
-def wrap_start(cls):
-    orig = cls.start
-    def start(self, *a, **k):
-        calls.append("start")
-        record_spec(self.size_def.__self__)
-        return orig(self, *a, **k)
-    cls.start = start
 
 def wrap_stream(cls):
     orig = cls.stream_dict
     def stream_dict(self, *a, **k):
         rows = []
-        streams.append(rows)
-        record_spec(self)
+        streams.append((rows, origin()[1]))
         for row in orig(self, *a, **k):
             rows.append(row)
             yield row
     cls.stream_dict = stream_dict
 
-from rand_engine import DataGenerator
 from rand_engine.file_handlers._writer_batch import FileBatchWriter
 wrap_get_df(DataGenerator); wrap_save(FileBatchWriter); wrap_stream(DataGenerator)
-from rand_engine.file_handlers._writer_stream import FileStreamWriter
-wrap_start(FileStreamWriter)
 try:
     from rand_engine.main.spark_generator import SparkGenerator
 except ImportError:
     pass
 else:
-    wrap_get_df(SparkGenerator)
+    wrap_get_df(SparkGenerator, lambda gen: gen.metadata)
 
 @atexit.register
 def dump():
     if not RECORD or os.getpid() != OWNER:
         return
-    for rows in streams:
+    for rows, agent in streams:
         if rows:
-            record(pd.DataFrame(rows))
+            hashed(pd.DataFrame(rows), agent)
     with open(RECORD, "w") as f:
-        json.dump({"frames": frames, "specs": specs, "calls": calls}, f)
+        json.dump({"records": records, "frames": frames}, f)
 '''
 
 
@@ -131,38 +144,27 @@ def read_artifact(path):
     return pd.read_csv(path, dtype=str, keep_default_na=False)
 
 
-def _static(script):
-    try:
-        tree = ast.parse(Path(script).read_text(encoding="utf-8"))
-    except (OSError, SyntaxError, ValueError) as e:
-        return f"provenance: cannot read {script}: {type(e).__name__}"
-    nodes = list(ast.walk(tree))
-    if not any(isinstance(n, ast.Import) and any(a.name.split(".")[0] == "rand_engine" for a in n.names)
-               or isinstance(n, ast.ImportFrom) and (n.module or "").split(".")[0] == "rand_engine" for n in nodes):
-        return "provenance: the script does not import rand_engine"
-    called = {n.func.id if isinstance(n.func, ast.Name) else getattr(n.func, "attr", "") for n in nodes if isinstance(n, ast.Call)}
-    if not called & API_CALLS:
-        return "provenance: the script imports rand_engine but calls none of its generating API"
-    return None
+def agent(record, field):
+    """The `field` of every record the agent's own code generated, in record order."""
+    return [r[field] for r in record if r["agent"]]
 
 
-def provenance(workdir, script, artifacts, python=sys.executable, specs=None, calls=None):
-    """None when every artifact column equals a column the script generated through rand_engine on a re-run, else a "provenance: ..." line.
+def provenance(workdir, script, artifacts, python=sys.executable):
+    """(None | "provenance: ...", record): None when every artifact column equals a column the agent's code generated through rand_engine on a re-run.
 
-    Every artifact is read and hashed as delivered before anything runs; the re-run happens in a scratch copy of `workdir` without the artifacts, and its record is compared with those hashes; a listed artifact the agent did not deliver fails.
-    When `specs` is a list, each generator's evaluated spec dict is appended to it; when `calls` is a list, the name ("save", "start") of each writer entry point that ran is appended.
+    Every artifact is read and hashed as delivered before anything runs; the re-run happens in a scratch copy of `workdir` without the artifacts, and its record is compared with those hashes, so the originals are only read.
+    A listed artifact the agent did not deliver fails, and so does a re-run that recorded no generation from the agent's code.
+    `record` is a list of distinct {"entry", "spec", "agent"}: the entry point that ran ("get_df", "stream_dict", "save", "start"), its evaluated spec, and whether code under the scratch copy called it.
     """
-    if (msg := _static(script)):
-        return msg
-    workdir, script = Path(workdir).resolve(), Path(script).resolve()
+    workdir, script, record = Path(workdir).resolve(), Path(script).resolve(), []
     delivered = []
     for art in artifacts:
         if not (workdir / art).exists():
-            return f"provenance: artifact {art} was not delivered"
+            return f"provenance: artifact {art} was not delivered", record
         try:
             df = read_artifact(workdir / art)
         except Exception as e:
-            return f"provenance: cannot read artifact {art}: {type(e).__name__}"
+            return f"provenance: cannot read artifact {art}: {type(e).__name__}", record
         delivered += [(art, c, (str(c), len(df), value_hash(df[c].tolist()))) for c in df.columns]
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
@@ -172,30 +174,29 @@ def provenance(workdir, script, artifacts, python=sys.executable, specs=None, ca
         scratch = tmp / "work"
         shutil.copytree(workdir, scratch, ignore=lambda d, names: [n for n in names if not os.path.exists(os.path.join(d, n))])
         for art in artifacts:
-            (shutil.rmtree if (scratch / art).is_dir() else Path.unlink)(scratch / art) if (scratch / art).exists() else None
-        record = tmp / "record.json"
+            shutil.rmtree(scratch / art, ignore_errors=True)
+            (scratch / art).unlink(missing_ok=True)
+        output = tmp / "record.json"
         env = {k: os.environ[k] for k in RERUN_ENV if k in os.environ}
         env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(tmp / "shim"), os.environ.get("PYTHONPATH")]))
-        env["RAND_EVAL_RECORD"] = str(record)
+        env["RAND_EVAL_RECORD"] = str(output)
+        env["RAND_EVAL_ROOT"] = str(scratch)
         env["PYTHONDONTWRITEBYTECODE"] = "1"
         target = scratch / script.relative_to(workdir) if script.is_relative_to(workdir) else script
         try:
             run = subprocess.run([python, str(target)], cwd=scratch, env=env, capture_output=True, text=True, timeout=300)
         except (OSError, subprocess.TimeoutExpired) as e:
-            return f"provenance: the script could not re-run: {type(e).__name__}"
+            return f"provenance: the script could not re-run: {type(e).__name__}", record
         if run.returncode != 0:
-            return f"provenance: the script exited {run.returncode} on re-run: {run.stderr.strip()[-300:]}"
-        if not record.exists():
-            return "provenance: the re-run recorded no generated frame"
-        data = json.loads(record.read_text())
-        if specs is not None:
-            specs.extend(data["specs"])
-        if calls is not None:
-            calls.extend(data["calls"])
-        recorded = {(c, f["rows"], h) for f in data["frames"] for c, h in f["cols"].items()}
+            return f"provenance: the script exited {run.returncode} on re-run: {run.stderr.strip()[-300:]}", record
+        data = json.loads(output.read_text()) if output.exists() else {"records": [], "frames": []}
+        record = data["records"]
+        if not agent(record, "entry"):
+            return "provenance: the re-run recorded no rand_engine generation from the agent's code", record
+        recorded = {(c, f["rows"], h) for f in data["frames"] if f["agent"] for c, h in f["cols"].items()}
         if (bad := next(((a, c) for a, c, key in delivered if key not in recorded), None)):
-            return f"provenance: column {bad[1]!r} of {bad[0]} matches no frame rand_engine generated"
-    return None
+            return f"provenance: column {bad[1]!r} of {bad[0]} matches no frame rand_engine generated", record
+    return None, record
 
 
 def tool_events(path):

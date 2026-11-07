@@ -7,7 +7,6 @@ import _check
 import pandas as pd
 
 COLUMNS = ["age", "salary", "salary_k"]
-specs = []
 
 
 def fail(layer, message):
@@ -31,8 +30,10 @@ if not ((df["salary"] / 1000 - df["salary_k"]).abs() < 1e-6).all():
     fail("1", "salary_k is not salary / 1000")
 
 # Layer 2: the script's re-run (same seed, same frames) regenerates every column through rand_engine.
-if (msg := _check.provenance(".", "solve.py", ["users.parquet"], python=sys.executable, specs=specs)):
+msg, record = _check.provenance(".", "solve.py", ["users.parquet"], python=sys.executable)
+if msg:
     fail("2", msg)
+specs = _check.agent(record, "spec")
 
 # Layer 3: documented features, no legacy names, token ceiling, no web.
 if not any(isinstance(c, dict) and c.get("null_rate") for spec in specs for c in spec.values()):

@@ -12,7 +12,7 @@ from pathlib import Path
 import _check
 import pandas as pd
 
-work, specs = Path.cwd(), []
+work = Path.cwd()
 env = os.environ
 
 
@@ -35,9 +35,10 @@ if (len(customers), len(orders)) != (1000, 5000) or not orders["customer_id"].is
 if not (customers["customer_id"].is_unique and orders["order_id"].is_unique):
     fail("1", "customers.customer_id or orders.order_id is not unique", surfaces)
 
-problem = _check.provenance(work, "solve.py", ["customers.parquet", "orders.parquet"], python=sys.executable, specs=specs)
+problem, record = _check.provenance(work, "solve.py", ["customers.parquet", "orders.parquet"], python=sys.executable)
 if problem:
     fail("2", problem, surfaces)
+specs = _check.agent(record, "spec")
 
 def col(spec, name, method):
     c = spec.get(name) if isinstance(spec, dict) else None

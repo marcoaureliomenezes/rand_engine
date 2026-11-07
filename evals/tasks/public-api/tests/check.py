@@ -10,7 +10,6 @@ import pandas as pd
 import rand_engine
 
 COLUMNS = ["id", "score"]
-specs = []
 
 
 def fail(layer, message):
@@ -36,7 +35,8 @@ if written != rand_engine.__version__:
     fail("1", f"version.txt holds {written!r}, expected the installed version {rand_engine.__version__!r}")
 
 # Layer 2: the script's re-run (same seed, same frames) regenerates every column through rand_engine.
-if (msg := _check.provenance(".", "solve.py", ["people.parquet"], python=sys.executable, specs=specs)):
+msg, _ = _check.provenance(".", "solve.py", ["people.parquet"], python=sys.executable)
+if msg:
     fail("2", msg)
 
 # Layer 3: only top-level rand_engine imports, no legacy names in the agent's files, token ceiling, no web.
