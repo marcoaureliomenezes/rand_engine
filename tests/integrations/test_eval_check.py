@@ -77,6 +77,7 @@ def agent_specs(record):
     return [r["spec"] for r in record if r["agent"]]
 
 
+NO_AGENT_RECORD = "provenance: the re-run recorded no rand_engine generation from the agent's code"
 SEEDED = f"from rand_engine import DataGenerator\nDataGenerator({SPEC}, seed=1).size(10).get_df().to_csv('out.csv', index=False)\n"
 
 
@@ -169,7 +170,7 @@ TWICE = f"from rand_engine import DataGenerator\ng = DataGenerator({SPEC}, seed=
     (STREAM_VIA_VARIABLE, [], {"start"}),
     (SQLITE_SAVE, [], {"save"}),
     (TWICE, ["out.csv"], {"get_df"}),
-    (UNCALLED_WRITERS, ["out.csv"], set()),
+    (UNCALLED_WRITERS, ["out.csv"], {"get_df"}),
 ], ids=["batch-via-variable", "stream-start-once", "sqlite-is-save", "repeated-call-is-one-entry", "never-called"])
 def test_provenance_reports_the_deduplicated_entry_points_that_ran(check, tmp_path, body, artifacts, expected):
     msg, record = rerun(check, tmp_path, body, artifacts)
@@ -285,18 +286,75 @@ def test_absent_artifact_fails(check, tmp_path):
     assert msg.startswith("provenance") and "out.csv" in msg
 
 
+def test_append_mode_save_passes(check, tmp_path):
+    body = f"from rand_engine import DataGenerator\nDataGenerator({SPEC}, seed=1).size(10).write.format('csv').mode('append').save('out.csv')\n"
+    assert provenance(check, tmp_path, body) is None
+
+
+def test_absent_artifact_message_is_pinned(check, tmp_path):
+    assert provenance(check, tmp_path, SEEDED, deliver=False) == "provenance: artifact out.csv was not delivered"
+
+
+def test_variable_outside_rerun_env_is_absent_from_the_rerun(check, tmp_path, monkeypatch):
+    monkeypatch.setenv("EVAL_DUMMY_VAR", "dummy-value")
+    body = SEEDED + "import os\nassert 'EVAL_DUMMY_VAR' not in os.environ, dict(os.environ)\n"
+    run_script(tmp_path, body)
+    assert provenance(check, tmp_path, body, deliver=False) is None
+
+
+def test_symlink_in_the_workdir_is_copied_as_a_link(check, tmp_path):
+    (tmp_path / "target.txt").write_text("t")
+    (tmp_path / "link.txt").symlink_to("target.txt")
+    assert provenance(check, tmp_path, SEEDED + "import os\nassert os.path.islink('link.txt')\n") is None
+
+
+def test_copy_failure_reports_as_provenance(check, tmp_path):
+    locked = tmp_path / "locked.txt"
+    locked.write_text("x")
+    locked.chmod(0)
+    try:
+        if os.access(locked, os.R_OK):
+            pytest.skip("file permissions are not enforced here")
+        msg = provenance(check, tmp_path, SEEDED)
+    finally:
+        locked.chmod(0o600)
+    assert msg.startswith("provenance")
+
+
+BOOL_SPEC = '{"flag": {"method": "booleans", "kwargs": {"true_prob": 0.5}}}'
+
+
+def test_csv_bool_column_written_by_save_passes(check, tmp_path):
+    body = f"from rand_engine import DataGenerator\nDataGenerator({BOOL_SPEC}, seed=1).size(10).write.format('csv').save('out.csv')\n"
+    assert provenance(check, tmp_path, body) is None
+
+
+def test_save_of_more_rows_than_one_batch_passes(check, tmp_path):
+    body = (f"from rand_engine import DataGenerator\n"
+            f"DataGenerator({SPEC}, seed=1).size(50).write.format('csv').option('maxRowsPerBatch', 20).save('out.csv')\n")
+    assert provenance(check, tmp_path, body) is None
+
+
+@pytest.mark.parametrize("message, line", [
+    ("2 columns differ", "2: 2 columns differ"),
+    ("provenance: no rand_engine import", "2: provenance: no rand_engine import"),
+])
+def test_failure_line_starts_with_its_layer_once(check, message, line):
+    assert check.result_text("2", message).splitlines()[0] == line
+
+
 def test_missing_script_fails_as_provenance(check, tmp_path):
     assert check.provenance(tmp_path, tmp_path / "gone.py", ["out.csv"], python=sys.executable)[0].startswith("provenance")
 
 
-def test_static_check_names_the_missing_import(check, tmp_path):
+def test_script_without_a_rand_engine_import_fails_with_the_no_generation_line(check, tmp_path):
     msg = provenance(check, tmp_path, "import pandas as pd\npd.DataFrame({'age': [1]}).to_csv('out.csv', index=False)\n")
-    assert msg == "provenance: the script does not import rand_engine"
+    assert msg == NO_AGENT_RECORD
 
 
-def test_static_check_names_the_missing_call(check, tmp_path):
+def test_script_importing_rand_engine_without_generating_fails_with_the_no_generation_line(check, tmp_path):
     msg = provenance(check, tmp_path, "import rand_engine\nopen('out.csv', 'w').write('age\\n1\\n')\n")
-    assert msg == "provenance: the script imports rand_engine but calls none of its generating API"
+    assert msg == NO_AGENT_RECORD
 
 
 def test_null_rule(check):
