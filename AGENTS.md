@@ -48,7 +48,7 @@ Production edits need the live release in `IMPLEMENTATION` and its trio at
 
 ## Key Commands
 
-verify: env POETRY_VIRTUALENVS_IN_PROJECT=false PYTHONDONTWRITEBYTECODE=1 sh -c 'export POETRY_CACHE_DIR="$(git rev-parse --path-format=absolute --git-common-dir)/../../../.dadaia/tmp/poetry-cache"; poetry install --with test --no-root --no-interaction -q && poetry run ruff check --select D rand_engine/main/data_generator.py rand_engine/main/spark_generator.py rand_engine/file_handlers/writer.py rand_engine/file_handlers/_writer_batch.py rand_engine/file_handlers/_writer_stream.py rand_engine/examples/common_rand_specs.py && poetry run python -m pytest -q -p no:cacheprovider tests/' --
+verify: env POETRY_VIRTUALENVS_CREATE=false PYTHONDONTWRITEBYTECODE=1 sh -c 'export POETRY_CACHE_DIR="$(git rev-parse --path-format=absolute --git-common-dir)/../../../.dadaia/tmp/poetry-cache" VIRTUAL_ENV="$(git rev-parse --path-format=absolute --git-common-dir)/../../../.dadaia/tmp/poetry-cache/shared-venv"; [ -x "$VIRTUAL_ENV/bin/python" ] || python3 -m venv "$VIRTUAL_ENV"; export PATH="$VIRTUAL_ENV/bin:$PATH"; poetry install --with test --no-root --no-interaction -q && ruff check --select D rand_engine/main/data_generator.py rand_engine/main/spark_generator.py rand_engine/file_handlers/writer.py rand_engine/file_handlers/_writer_batch.py rand_engine/file_handlers/_writer_stream.py rand_engine/examples/common_rand_specs.py && python -m pytest -q -p no:cacheprovider tests/' --
 tests: tests/*
 
 ```bash
