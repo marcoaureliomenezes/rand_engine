@@ -17,7 +17,7 @@ surfaces = _check.surfaces(events)
 answer = Path("answer.txt")
 if not answer.is_file():
     sys.exit(print(_check.result_text("1", "answer.txt was not written", surfaces), end="") or 1)
-url = answer.read_text(encoding="utf-8").strip()
+url = answer.read_text(encoding="utf-8", errors="ignore").strip()
 
 llms = (Path(rand_engine.__file__).parent / "llms.txt").read_text(encoding="utf-8")
 links = {m[0]: m[1] for m in re.findall(r"\]\(([^)\s]+)\)(?::\s*(.*))?", llms)}

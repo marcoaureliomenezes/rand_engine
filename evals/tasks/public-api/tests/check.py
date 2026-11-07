@@ -28,7 +28,7 @@ except Exception as e:
 if len(df) != 100 or set(df.columns) != set(COLUMNS):
     fail("1", f"expected 100 rows and columns {COLUMNS}, got {len(df)} rows and {list(df.columns)}")
 try:
-    written = Path("version.txt").read_text(encoding="utf-8").strip()
+    written = Path("version.txt").read_text(encoding="utf-8", errors="ignore").strip()
 except OSError as e:
     fail("1", f"version.txt unreadable: {type(e).__name__}")
 if written != rand_engine.__version__:
@@ -40,14 +40,14 @@ if msg:
     fail("2", msg)
 
 # Layer 3: only top-level rand_engine imports, no legacy names in the agent's files, token ceiling, no web.
-script = Path("solve.py").read_text(encoding="utf-8")
+script = Path("solve.py").read_text(encoding="utf-8", errors="ignore")
 nodes = list(ast.walk(ast.parse(script)))
 submodules = sorted(
     {a.name for n in nodes if isinstance(n, ast.Import) for a in n.names if a.name.startswith("rand_engine.")}
     | {n.module for n in nodes if isinstance(n, ast.ImportFrom) and (n.module or "").startswith("rand_engine.")})
 if submodules:
     fail("3", f"solve.py imports rand_engine submodules: {submodules}")
-if (hits := [h for p in Path(".").glob("*.py") for h in _check.legacy_hits(p.read_text(encoding="utf-8"))]):
+if (hits := [h for p in Path(".").glob("*.py") for h in _check.legacy_hits(p.read_text(encoding="utf-8", errors="ignore"))]):
     fail("3", f"legacy names in the agent's .py files: {hits}")
 if (msg := _check.token_ceiling(Path(__file__).parent.parent / "task.toml", os.environ)):
     fail("3", msg)

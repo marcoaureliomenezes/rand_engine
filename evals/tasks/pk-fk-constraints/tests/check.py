@@ -58,7 +58,7 @@ def pk_identity(spec):
     return {**PK_DEFAULTS, **spec["kwargs"]}
 
 
-legacy = [h for p in work.glob("*.py") for h in _check.legacy_hits(p.read_text(encoding="utf-8"))]
+legacy = [h for p in work.glob("*.py") for h in _check.legacy_hits(p.read_text(encoding="utf-8", errors="ignore"))]
 linked = any((pk := col(c, "customer_id", "pk")) and (fk := col(o, "customer_id", "fk"))
              and isinstance(fk.get("kwargs"), dict) and pk_identity(pk) is not None
              and pk_identity(fk["kwargs"].get("parent")) == pk_identity(pk)

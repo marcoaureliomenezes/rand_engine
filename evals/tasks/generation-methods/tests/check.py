@@ -37,7 +37,7 @@ specs = _check.agent(record, "spec")
 if not any(isinstance(c, dict) and c.get("method") == "zipf" and isinstance(c.get("kwargs"), dict) and c["kwargs"].get("a") == 1.5
            for spec in specs if isinstance(spec, dict) for c in spec.values()):
     fail("3", "the recorded spec holds no zipf column with kwargs a=1.5")
-if hits := [h for p in Path(".").glob("*.py") for h in _check.legacy_hits(p.read_text(encoding="utf-8"))]:
+if hits := [h for p in Path(".").glob("*.py") for h in _check.legacy_hits(p.read_text(encoding="utf-8", errors="ignore"))]:
     fail("3", f"legacy syntax: {sorted(set(hits))}")
 if msg := _check.token_ceiling(Path(__file__).parent.parent / "task.toml", os.environ):
     fail("3", msg)

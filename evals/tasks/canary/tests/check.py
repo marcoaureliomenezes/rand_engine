@@ -12,7 +12,7 @@ PROBES = {"import": "import rand_engine", "pip": "pip --version", "network": "ur
 def result(name):
     """The probe file's last-line `exit=` and its text, or (None, "") when absent."""
     f = Path(f"{name}.txt")
-    text = f.read_text(encoding="utf-8") if f.exists() else ""
+    text = f.read_text(encoding="utf-8", errors="ignore") if f.exists() else ""
     lines = text.splitlines()
     return (lines[-1] if lines and lines[-1].startswith("exit=") else None), text
 

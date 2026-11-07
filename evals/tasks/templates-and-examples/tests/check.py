@@ -60,7 +60,7 @@ for label, entries in (("customers", CUSTOMERS), ("orders", ORDERS)):
 city_pool = normal(RandSpecs.faker_pool("city", locale="en_US", pool_size=50, seed=7))
 if not any(isinstance(spec, dict) and normal(column) == city_pool for spec in specs for column in spec.values()):
     fail("3", "no recorded column equals RandSpecs.faker_pool('city', locale='en_US', pool_size=50, seed=7) as evaluated here")
-if (hits := [h for path in Path(".").glob("*.py") for h in _check.legacy_hits(path.read_text(encoding="utf-8"))]):
+if (hits := [h for path in Path(".").glob("*.py") for h in _check.legacy_hits(path.read_text(encoding="utf-8", errors="ignore"))]):
     fail("3", f"legacy names in the agent's files: {hits}")
 if (msg := _check.token_ceiling(Path(__file__).parent.parent / "task.toml", os.environ)):
     fail("3", msg)

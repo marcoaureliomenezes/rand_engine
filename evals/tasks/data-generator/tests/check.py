@@ -39,7 +39,7 @@ specs = _check.agent(record, "spec")
 # Layer 3: documented features, no legacy names, token ceiling, no web.
 if not any(isinstance(c, dict) and c.get("null_rate") for spec in specs for c in spec.values()):
     fail("3", "the recorded spec has no column with null_rate")
-if (hits := [h for p in Path(".").glob("*.py") for h in _check.legacy_hits(p.read_text(encoding="utf-8"))]):
+if (hits := [h for p in Path(".").glob("*.py") for h in _check.legacy_hits(p.read_text(encoding="utf-8", errors="ignore"))]):
     fail("3", f"legacy names: {sorted(set(hits))}")
 if (msg := _check.token_ceiling(Path(__file__).parent.parent / "task.toml", os.environ)):
     fail("3", msg)
