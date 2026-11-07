@@ -21,7 +21,7 @@
 
 ### Answered by inspection (main thread)
 
-- Eval shim REBUILD: one hook at `DataGenerator._resolve_size` (`rand_engine/main/data_generator.py:232`) plus `SparkGenerator.get_df`; no library source edit; net lines of `evals/_check.py` ≤ 0.
+- Eval shim REBUILD: no library source edit; net lines of `evals/_check.py` ≤ 0; where the record is taken is the PLAN's.
 - Spark eval task: `pyspark>=4`, since `docs/compatibility.md:19-20` pairs Spark 4.x with Python 3.12, which `eval.yml` runs. Only the task's `setuptools` pin goes. The library pin (`pyproject.toml:52`) stays: it closes `setuptools-ghsa-xmj3-open-on-master` at the `master` merge.
 - PR to `master`: a concurrency group only. A `paths` filter stays forbidden (rc-3 FR16): a skipped workflow leaves a required check pending.
 - N5 is true: one docstring line at `rand_engine/validators/method_specs.py:213-214`. N13 folds by parametrizing the inference option; both partitions stay and no assert is removed.
@@ -32,7 +32,7 @@
 
 - The `verify:` lines change only after the operator rules on FR19's measured costs.
 - Two tests are deleted on the operator's order (AC21.6, AC23.5).
-- A `master` merge starts `auto_tag_publish_master.yml`. Its PyPI publish waits for the operator's `production` approval, and the tag runs only after the publish. "Nada publica até a 1.0" holds when that approval is not given at 0.8.2's merge.
+- The `master` merge starts `auto_tag_publish_master.yml`. 0.8.2 has no tag, and `check_tag` skips only when the tag exists, so `publish_pypi` waits on the `production` environment. Per "Nada publica até a 1.0 (Recommended)", the operator rejects that deployment. No tag is created, since `create_tag` needs the publish.
 
 ## Bug window review
 
@@ -51,7 +51,7 @@ Prior candidate: rc-3, with two resolved bugs. One bug is open: `setuptools-ghsa
   - two out-params carry the result (`:145`);
   - any frame counts, so a decorative `DataGenerator` call beside numpy-written data passes (`generation-methods` check `:36-37`, `data-generator` `:38`).
 - An errored eval trial keeps `passed: true` (`evals/run.py:149,155`), and its record has no final message. The task checks print the pass line three ways.
-- The `verify:` lines (`AGENTS.md:51-53`) build a ~0.66 GB virtualenv per worktree path. On 2026-10-20, 70 orphans (43 GB) filled the disk. The local stack (pandas 2.2.3, pyspark 3.5.8) differs from most CI legs (pandas 3.1.0, pyspark 4.3.0).
+- The `verify:` line (`AGENTS.md:51`) builds a ~0.66 GB virtualenv per worktree path; `verify-stage:` and `verify-task:` (`:52-53`) copy it, read by nothing. On 2026-10-20, 70 orphans (43 GB) filled the disk. The local stack (pandas 2.2.3, pyspark 3.5.8) differs from most CI legs (pandas 3.1.0, pyspark 4.3.0).
 - The validators restate the date default, leak a raw `TypeError`, hide template errors behind an early return, and are reached through a private `_raise`.
 - The test Spark session carries Java 17 options that no Java 17 run needs, and the databricks starter leaves an Arrow conf on the shared session, so Spark tests depend on order.
 - Docstrings, CHANGELOG lines and test names say more or less than the code.
@@ -85,14 +85,16 @@ FR23 and FR24 consume FR22's record, so wave 3 waits for FR22's merge.
 - A PyPI publish or a tag of 0.8.2 ("Nada publica até a 1.0 (Recommended)").
 - The library's `setuptools` pin; a `paths` filter on the PR to `master`; a `verify:` line heavier than today's; `persist-credentials` on workflows that run no agent.
 - Any `gen_*` body but `gen_uuid4`; any `rand_engine/` edit made for the eval alone.
+- `echo rand-engine …` passing AC24.2 as a launcher prefix (LOW): RULED, accepted, by the pre-mortem J7 ruling.
 
 ## 4. Requirements
 
 ### FR19 — One shared verify environment, measured before the ruling (`shared-verify-venv`)
 
 - AC19.1 (no test; a measurement report with its sources): 3 cold and 3 warm wall-clock runs of the current `verify:` line and of the shared-environment line. Cold means no environment exists; warm means it exists. The report names the pandas and pyspark pairing the shared environment pins, against the CI legs.
-- AC19.2 (no test; the operator's ruling): the three `verify:` lines (`AGENTS.md:51-53`) change only after the operator rules on AC19.1's numbers, and never to a line heavier per run than today's, cold against cold and warm against warm. Without the ruling they stay.
+- AC19.2 (no test; the operator's ruling): the `verify:` line (`AGENTS.md:51`) changes only after the operator rules on AC19.1's numbers, and never to a line heavier per run than today's, cold against cold and warm against warm. Without the ruling it stays.
 - AC19.3 (no test; read back): after the change, a `verify:` run in a second worktree creates no new virtualenv.
+- AC19.4 (no test; a text deletion no program reads): the dead `verify-stage:` and `verify-task:` lines (`AGENTS.md:52-53`) are deleted. Only `verify:` is read, so this is not a gate change.
 
 ### FR20 — Dead Java 17 options and the leaked Arrow conf (`spark-java17-options-dead`)
 
@@ -115,12 +117,15 @@ FR23 and FR24 consume FR22's record, so wave 3 waits for FR22's merge.
   - `method_specs.py:213-214` says only object columns reach the inference path (N5).
 - AC21.4 (unit): `tests/test_9_cli.py:172-176` parametrizes (slug, expectation) with no slug branch. The fixture writes at `tests/integrations/test_eval_gate.py:28,37` use UTF-8.
 - AC21.5 (unit, `tests/test_3_spark_generator.py`): N13. The text-with-none case (`:739`) and its `future.infer_string` twin (`:780-784`) become one test parametrized over the option. Both partitions run; no assert is removed.
-- AC21.6 (unit; a deletion on the operator's order "Confirmo, apagar os 2 (Recommended)"): `tests/test_2_data_generator.py:713-719` keeps only its `stream_dict` case, which still asserts the full literal message. The `get_df` and `save` cases stay covered by `tests/test_2_data_generator_fails.py:179-182` and `tests/test_5_files_write_batch.py:188-194`, which match `.size(n)`. The message has one source, `resolve_size`.
+- AC21.6 (unit; a deletion on the operator's order "Confirmo, apagar os 2 (Recommended)"): first, the unset-size asserts at `tests/test_2_data_generator_fails.py:179-182` (`get_df`) and `tests/test_5_files_write_batch.py:188-194` (`save`) are tightened from `.size(n)` to the full message literal. Then `tests/test_2_data_generator.py:713-719` keeps only its `stream_dict` case, which still asserts the full literal. The message has one source, `resolve_size`.
 
 ### FR22 — Eval provenance: one record per generation (`eval-harness-hygiene` items 10-20)
 
 - AC22.1 (integration, `tests/integrations/test_eval_check.py`): a numpy-written artifact beside a decorative `DataGenerator` call fails layer 2 (`provenance`). The same artifact written by the agent script's own rand-engine call passes.
-- AC22.2 (integration, same file): each generation is recorded once, where its size is resolved, with its spec, its entry point, and whether the calling frame is the agent script's. `provenance` returns that one record and takes no out-param.
+- AC22.2 (integration, same file): one provenance record per generation, with no out-params. Every `DataGenerator` path records once (`get_df`, `stream_dict`, `write…save` sqlite included, `writeStream…start`), and so does `SparkGenerator.get_df`. The record holds the spec, the entry point and whether the calling frame is the agent script's. `calls`:
+  - the entry points form a deduplicated set;
+  - sqlite maps to `save`;
+  - the `save` read-back stays only if a test shows that written text differs from the generated frame.
 - AC22.3 (integration, same file): layer 2 matches the graded artifact only to output that an entry point called by the agent script returned or wrote, and the record names that entry point. A writer that ran on other data does not make a numpy-written file pass.
 - AC22.4 (integration, same file):
   - an append-mode `write.save` artifact passes;
@@ -148,18 +153,23 @@ FR23 and FR24 consume FR22's record, so wave 3 waits for FR22's merge.
 ### FR24 — Eval task checks (`eval-task-checks`)
 
 - AC24.1 (integration, `tests/integrations/test_eval_tasks.py`): every usage `check.py` prints one pass-line shape carrying `layer` and `surfaces`, and fails through one `fail(layer, message)` signature.
-- AC24.2 (integration, same file): `get-started-cli` accepts a command only when its command word is `rand-engine`, read quote-aware, with a path-qualified `rand-engine` counted by its last path component. `echo rand-engine …` fails, and so does a missing transcript.
+- AC24.2 (unit, over each form below; integration, same file): `get-started-cli` splits each command quote-aware and accepts only:
+  - the console-script basename `rand-engine`, with or without a launcher prefix;
+  - `python -m rand_engine`;
+  - `python -c` code calling the CLI `main`.
+
+  The slug is the first positional after `get-started`. A missing transcript fails.
 - AC24.3 (integration, same file): `pk-fk-constraints` compares the pk parent after filling the pk defaults (`rand_engine/core/_keys.py:61`), not as text.
 - AC24.4 (integration, same file): the eight checks of the backlog item (7) read agent-written files ignoring undecodable bytes. Files the harness writes stay strict.
 - AC24.5 (E2E, the no-agent self-check job): a decoy that writes numpy data beside a decorative `DataGenerator` call fails at layer 2.
-- AC24.6 (integration, same file; E2E, the eval run): `spark-generator/task.toml` requires `pyspark>=4` and no `setuptools`. The unused pandas import of `spark-generator/tests/check.py:13` is gone.
+- AC24.6 (integration, same file; E2E, the eval run): `spark-generator/task.toml` requires `pyspark>=4` and no `setuptools`. The unused pandas import of `spark-generator/tests/check.py:13` is gone. The spark selfcheck runs on pyspark 4 in the eval workflow on the rc's `wt-rc` push, before the rc merges.
 
 ### FR25 — Validator leftovers (`validator-leftovers`)
 
 - AC25.1 (no test; a sweep): `method_specs.py:284,290` take the engine's default `date_format` (`_np_core.py:231,239`). In `method_specs.py`, `'%Y-%m-%d'` remains only in the doc examples (`:465,:479`).
 - AC25.2 (unit, `tests/test_1_*`): a `start` and `end` where one is timezone-aware and the other naive return a validation message naming the column, never a `TypeError`.
 - AC25.3 (unit, same files): a spec with a bad replacement and template errors reports all of them in one validation result (`advanced_validator.py:260-263`).
-- AC25.4 (unit, same files; a sweep): `CommonValidator` exposes one public raiser. `DataGenerator` and `SparkGenerator` call it, nothing outside the validators calls `_raise`, and every message and exception class is unchanged.
+- AC25.4 (unit, same files; a sweep): `CommonValidator` exposes one public raiser. `DataGenerator` and `SparkGenerator` call it, nothing outside the validators calls `_raise`, and every message and exception class is unchanged. No exported name is added: `rand_engine.__all__` stays three names.
 
 ### FR26 — `gen_uuid4` and the zero-row partition (`text-perf-follow-ups` items 2-3)
 
@@ -210,7 +220,7 @@ FR23 and FR24 consume FR22's record, so wave 3 waits for FR22's merge.
 - `_docs_site_module` and its import (`test_docs.py:968-972,4`) → AC21.2.
 - The separate socat test (`test_public_api.py:859-861`) → AC23.5.
 - The `get_df` and `save` cases of `test_2_data_generator.py:713-719` → AC21.6.
-- The per-path virtualenv of the three `verify:` lines, only if the operator rules for the change → FR19.
+- The per-path virtualenv of the `verify:` line, only if the operator rules for the change → FR19. The dead `verify-stage:` and `verify-task:` lines → AC19.4.
 
 ## 5. Constraints and risks
 
@@ -227,4 +237,4 @@ FR23 and FR24 consume FR22's record, so wave 3 waits for FR22's merge.
 
 - None blocks approval.
   - FR19's ruling is due before its change merges, not before this approval.
-  - For awareness (AC21.6): after the deletion, the `get_df` and `save` unset-size cases are matched by `.size(n)`, not by the full literal; the literal stays pinned through `stream_dict`, from the one source `resolve_size`.
+  - AC21.6 tightens the `get_df` and `save` unset-size asserts to the full literal before the deletion, so no precision is lost.
