@@ -231,7 +231,7 @@ def test_static_check_names_the_missing_call(check, tmp_path):
 
 def test_null_rule(check):
     assert check.value_hash([None, "a"]) == check.value_hash([float("nan"), "a"]) == check.value_hash(["", "a"])
-    assert check.value_hash([1, 2]) != check.value_hash([2, 1])
+    assert check.value_hash([1, 2]) == check.value_hash([2, 1])
 
 
 @pytest.mark.parametrize("text, name", [
