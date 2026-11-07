@@ -128,10 +128,12 @@ def run_trial(task, n, args):
                 events.append(json.loads(line))
             except ValueError:  # a timeout can cut the last line
                 pass
-        init = next(e for e in events if e.get("subtype") == "init")
-        assert_isolated(init, "default", ROUNDS[rnd]["tools"])
-        res["model"] = init["model"]
         done = next((e for e in events if e.get("type") == "result"), {})
+        init = next((e for e in events if e.get("subtype") == "init"), None)
+        if init is None:
+            raise RuntimeError(f"no init event: {done.get('errors') or done.get('startup_failure_reason')}")
+        assert_isolated(init, "default", ROUNDS[rnd]["tools"])
+        res["model"], res["final_message"] = init["model"], done.get("result")
         if done.get("is_error"):
             raise RuntimeError(f"agent run failed: {str(done.get('result'))[:300]}")
         u = done.get("usage")  # no result event (a timeout): tokens and cost are unknown, null
@@ -146,9 +148,10 @@ def run_trial(task, n, args):
             check = subprocess.run([str(py), str(task_dir / "tests" / "check.py")], cwd=cwd, env=check_env,
                                    stdin=subprocess.DEVNULL, capture_output=True, text=True,
                                    timeout=cfg["verifier"]["timeout_sec"])
-            res["passed"] = check.returncode == 0
             res["check_output"] = check.stdout
             res.update({k: v for k, v in check_result(check.stdout).items() if k not in res})
+            res["passed"] = check.returncode == 0
+            res["first_failure"] = None if res["passed"] else check.stdout.partition("\n")[0]
         except subprocess.TimeoutExpired:
             res["check_output"] = "timeout"
     except Exception as e:
@@ -179,7 +182,8 @@ def main():
     for task in args.task:
         for n in range(1, args.k + 1):
             res = run_trial(task, n, args)
-            (out / f"{task}-{args.leg}-{n}.json").write_text(json.dumps(res, indent=2))
+            (out / f"{task}-{args.leg}-{n}.json").write_text(json.dumps(res, indent=2, ensure_ascii=False),
+                                                             encoding="utf-8")
             print(f"{task} trial {n}: passed={res['passed']} error={res.get('error')}")
             errors += "error" in res
     sys.exit(1 if errors else 0)
