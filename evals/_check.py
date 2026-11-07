@@ -146,13 +146,21 @@ def _static(script):
 def provenance(workdir, script, artifacts, python=sys.executable, specs=None, calls=None):
     """None when every artifact column equals a column the script generated through rand_engine on a re-run, else a "provenance: ..." line.
 
-    The re-run happens in a scratch copy of `workdir` without the artifacts, so the originals are only read.
-    A listed artifact the agent did not deliver fails.
+    Every artifact is read and hashed as delivered before anything runs; the re-run happens in a scratch copy of `workdir` without the artifacts, and its record is compared with those hashes; a listed artifact the agent did not deliver fails.
     When `specs` is a list, each generator's evaluated spec dict is appended to it; when `calls` is a list, the name ("save", "start") of each writer entry point that ran is appended.
     """
     if (msg := _static(script)):
         return msg
     workdir, script = Path(workdir).resolve(), Path(script).resolve()
+    delivered = []
+    for art in artifacts:
+        if not (workdir / art).exists():
+            return f"provenance: artifact {art} was not delivered"
+        try:
+            df = read_artifact(workdir / art)
+        except Exception as e:
+            return f"provenance: cannot read artifact {art}: {type(e).__name__}"
+        delivered += [(art, c, (str(c), len(df), value_hash(df[c].tolist()))) for c in df.columns]
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         (tmp / "shim").mkdir()
@@ -182,16 +190,8 @@ def provenance(workdir, script, artifacts, python=sys.executable, specs=None, ca
         if calls is not None:
             calls.extend(data["calls"])
         recorded = {(c, f["rows"], h) for f in data["frames"] for c, h in f["cols"].items()}
-        for art in artifacts:
-            if not (workdir / art).exists():
-                return f"provenance: artifact {art} was not delivered"
-            try:
-                df = read_artifact(workdir / art)
-            except Exception as e:
-                return f"provenance: cannot read artifact {art}: {type(e).__name__}"
-            for col in df.columns:
-                if (str(col), len(df), value_hash(df[col].tolist())) not in recorded:
-                    return f"provenance: column {col!r} of {art} matches no frame rand_engine generated"
+        if (bad := next(((a, c) for a, c, key in delivered if key not in recorded), None)):
+            return f"provenance: column {bad[1]!r} of {bad[0]} matches no frame rand_engine generated"
     return None
 
 
