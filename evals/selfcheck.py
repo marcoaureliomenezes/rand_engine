@@ -26,6 +26,8 @@ def trial(task_dir, cfg, rand_engine, variant):
                        timeout=cfg["agent"]["timeout_sec"])
         check_env = {k: v for k, v in env.items() if not k.startswith("RAND_EVAL_")}
         check_env["PYTHONPATH"] = str(HERE)
+        if (transcript := task_dir / "tests" / variant / "transcript.jsonl").is_file():
+            check_env["RAND_EVAL_TRANSCRIPT"] = str(transcript)
         p = subprocess.run([str(py), str(task_dir / "tests" / "check.py")], cwd=cwd, env=check_env,
                            stdin=subprocess.DEVNULL, capture_output=True, text=True,
                            timeout=cfg["verifier"]["timeout_sec"])
