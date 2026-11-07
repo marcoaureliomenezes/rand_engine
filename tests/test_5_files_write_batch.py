@@ -252,7 +252,7 @@ def test_csv_mixed_type_column_raises_naming_it(tmp_path):
 @pytest.mark.parametrize("format_type,accepted", [
   ("csv", "index, sep, compression, numFiles"),
   ("parquet", "compression, numFiles"),
-  ("json", "orient, force_ascii, indent, compression, numFiles"),
+  ("json", "orient, force_ascii, compression, numFiles"),
 ])
 def test_undocumented_option_raises_naming_it_and_accepted(rand_spec_with_kwargs, tmp_path, format_type, accepted):
   with pytest.raises(RandEngineError, match=f"'engine'.*accepted: {accepted}$"):
@@ -262,9 +262,23 @@ def test_undocumented_option_raises_naming_it_and_accepted(rand_spec_with_kwargs
 def test_json_documented_options_apply(tmp_path):
   path = str(tmp_path / "f.json.gz")
   frame = pd.DataFrame({"s": ["é"]})
-  FileHandler.to_json(lambda: frame, path, {"orient": "records", "force_ascii": False, "indent": 2, "compression": "gzip"})()
+  FileHandler.to_json(lambda: frame, path, {"orient": "records", "force_ascii": False, "compression": "gzip"})()
   with gzip.open(path, "rt", encoding="utf-8") as f:
-    assert f.read() == '\n  {\n    "s":"é"\n  }\n\n'
+    assert f.read() == '{"s":"é"}\n'
+
+
+def test_json_indent_raises_before_writing_through_the_writer(rand_spec_with_kwargs, tmp_path):
+  path = tmp_path / "f.json"
+  with pytest.raises(RandEngineError, match="'indent'.*accepted: orient, force_ascii, compression, numFiles$"):
+    DataGenerator(rand_spec_with_kwargs).size(2).write.format("json").option("indent", 2).save(str(path))
+  assert not path.exists()
+
+
+def test_json_indent_raises_before_writing_through_to_json(tmp_path):
+  path = tmp_path / "f.json"
+  with pytest.raises(RandEngineError, match="'indent'.*accepted: orient, force_ascii, compression$"):
+    FileHandler.to_json(lambda: FRAME, str(path), {"indent": 2})
+  assert not path.exists()
 
 
 def test_csv_undocumented_compression_raises(tmp_path):
