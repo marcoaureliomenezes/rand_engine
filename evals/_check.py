@@ -167,7 +167,7 @@ def provenance(workdir, script, artifacts, python=sys.executable, specs=None, ca
         (tmp / "shim" / "sitecustomize.py").write_text(SHIM)
         shutil.copy(__file__, tmp / "shim" / "_check.py")
         scratch = tmp / "work"
-        shutil.copytree(workdir, scratch)
+        shutil.copytree(workdir, scratch, ignore=lambda d, names: [n for n in names if not os.path.exists(os.path.join(d, n))])
         for art in artifacts:
             (shutil.rmtree if (scratch / art).is_dir() else Path.unlink)(scratch / art) if (scratch / art).exists() else None
         record = tmp / "record.json"
