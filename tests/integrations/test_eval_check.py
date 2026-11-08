@@ -200,6 +200,16 @@ def test_symlink_loop_artifact_fails_as_not_delivered(check, tmp_path):
     assert msg == "provenance: artifact out.csv was not delivered"
 
 
+def test_dangling_link_that_is_not_an_artifact_is_skipped(check, tmp_path):
+    (tmp_path / "stale.csv").symlink_to("missing.csv")
+    assert provenance(check, tmp_path, SEEDED) is None
+
+
+def test_self_loop_that_is_not_an_artifact_is_skipped(check, tmp_path):
+    (tmp_path / "loop").symlink_to("loop")
+    assert provenance(check, tmp_path, SEEDED) is None
+
+
 def test_absent_artifact_fails(check, tmp_path):
     msg = provenance(check, tmp_path, SEEDED, deliver=False)
     assert msg.startswith("provenance") and "out.csv" in msg
