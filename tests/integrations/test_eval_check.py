@@ -3,8 +3,9 @@
 Contract under test (loaded by path, no Spark, no network, no agent; the re-run's interpreter gets
 `rand_engine` and `evals` through the PYTHONPATH the test sets, as the runner does):
   provenance(workdir, script, artifacts, python=sys.executable, specs=None) -> None | str   (layer 2)
-      The re-run happens in a scratch copy of workdir without the artifacts; the agent's artifacts are never
-      modified. A failure string starts "provenance". When `specs` is a list, the spec each recorded
+      The re-run happens in a scratch copy of workdir without the artifacts. provenance grades the artifacts as
+      delivered, reading them before the re-run, and itself writes nothing in workdir; the re-run may write
+      wherever the script's own paths point. A failure string starts "provenance". When `specs` is a list, the spec each recorded
       `DataGenerator` got is appended to it (the choice for F6: the re-run's records feed `documented_method`).
       Csv and json-lines artifacts are read as written text, with no dtype or NA inference.
   value_hash(values) -> str                                           (nulls hash as the empty string)
