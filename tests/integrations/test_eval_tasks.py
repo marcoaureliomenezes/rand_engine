@@ -1,4 +1,5 @@
-"""Eval coverage guard: the usage task folders under evals/tasks equal the catalog's non-quality slugs."""
+"""Eval task contract: the usage task folders under evals/tasks equal the catalog's non-quality slugs, and the task checks' behaviour pinned here
+(the pk-fk parent comparison, reads of agent-written files, the get-started-cli command matcher and its layer 2)."""
 import ast
 import json
 import os
@@ -77,7 +78,9 @@ CUSTOMER_PK = '{"method": "pk", "kwargs": {"start": 1}}'
 
 
 def run_pk_fk_check(tmp_path, parent):
-    solve = (PK_FK / "tests/solution/solve.py").read_text(encoding="utf-8").replace("customer_pk = " + CUSTOMER_PK, f"customer_pk = {CUSTOMER_PK}\nfk_parent = {parent}").replace('"parent": customer_pk', '"parent": fk_parent')
+    reference = (PK_FK / "tests/solution/solve.py").read_text(encoding="utf-8")
+    solve = reference.replace("customer_pk = " + CUSTOMER_PK, f"customer_pk = {CUSTOMER_PK}\nfk_parent = {parent}").replace('"parent": customer_pk', '"parent": fk_parent')
+    assert solve.count("fk_parent") == 2 and solve != reference, "the reference solve no longer holds the text the parent swap replaces"
     (tmp_path / "solve.py").write_text(solve, encoding="utf-8")
     env = {k: v for k, v in os.environ.items() if k != "RAND_EVAL_TRANSCRIPT"}
     env["PYTHONPATH"] = os.pathsep.join([str(ROOT), str(ROOT / "evals")])
@@ -96,8 +99,8 @@ def test_pk_fk_check_accepts_a_parent_equal_to_the_pk_after_its_defaults(tmp_pat
 
 
 def test_pk_fk_check_refuses_a_parent_that_is_another_pk(tmp_path):
-    run = run_pk_fk_check(tmp_path, '{"method": "pk", "kwargs": {"start": 2}}')
-    assert run.returncode == 1 and '"layer": "pass"' not in run.stdout, run.stdout + run.stderr
+    run = run_pk_fk_check(tmp_path, '{"method": "pk", "kwargs": {"start": 1, "style": "permuted", "domain": 1000, "key": 7}}')
+    assert run.returncode == 1 and '"layer": "3"' in run.stdout and '"layer": "pass"' not in run.stdout, run.stdout + run.stderr
 
 
 def run_check(cwd, *paths):
@@ -107,10 +110,10 @@ def run_check(cwd, *paths):
 
 
 def reference_trial(slug, tmp_path):
-    """The directory a correct agent leaves for `slug`; returns the env and a runner of one script in it."""
+    """The directory a correct agent leaves for `slug`; returns a runner of the task's check in it."""
     env, run = run_check(tmp_path)
     if slug == "canary":
-        commands = [f"python -c 'import rand_engine' > import.txt", "pip --version > pip.txt", "python urlopen > network.txt"]
+        commands = ["python -c 'import rand_engine' > import.txt", "pip --version > pip.txt", "python urlopen > network.txt"]
         events = [{"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Bash", "input": {"command": c}}]}} for c in commands]
         (tmp_path / "transcript.jsonl").write_text("\n".join(map(json.dumps, events)), encoding="utf-8")
         env["RAND_EVAL_TRANSCRIPT"] = str(tmp_path / "transcript.jsonl")
@@ -119,7 +122,7 @@ def reference_trial(slug, tmp_path):
     else:
         shutil.copy(ROOT / "evals/tasks" / slug / "tests/solution/solve.py", tmp_path / "solve.py")
         subprocess.run([sys.executable, "solve.py"], cwd=tmp_path, env=env, check=True)
-    return env, lambda: subprocess.run([sys.executable, str(ROOT / "evals/tasks" / slug / "tests/check.py")], cwd=tmp_path, env=env, capture_output=True, text=True)
+    return lambda: subprocess.run([sys.executable, str(ROOT / "evals/tasks" / slug / "tests/check.py")], cwd=tmp_path, env=env, capture_output=True, text=True)
 
 
 def taint(path):
@@ -135,10 +138,10 @@ def taint(path):
     ("public-api", "version.txt"), ("public-api", "solve.py"), ("public-api", "extra.py"),
 ])
 def test_agent_written_reads_survive_an_undecodable_byte(tmp_path, slug, written):
-    _, check = reference_trial(slug, tmp_path)
+    check = reference_trial(slug, tmp_path)
     taint(tmp_path / written)
     run = check()
-    assert "UnicodeDecodeError" not in run.stderr and run.returncode == 0, run.stdout + run.stderr
+    assert "UnicodeDecodeError" not in run.stderr and run.returncode == 0 and ("probe:network" if slug == "canary" else '"layer": "pass"') in run.stdout, run.stdout + run.stderr
 
 
 def test_harness_written_llms_read_stays_strict(tmp_path):
@@ -210,15 +213,10 @@ def test_get_started_matcher_refuses_other_commands(matcher, command):
 
 
 def test_get_started_check_without_a_transcript_fails_layer_2(tmp_path):
-    import os
-    import shutil
-    import subprocess
-    import sys
-
     (tmp_path / "starter").mkdir()
     shutil.copy(ROOT / "rand_engine/cases/lake.py.txt", tmp_path / "starter/lake-example.py")
     env = {k: v for k, v in os.environ.items() if k != "RAND_EVAL_TRANSCRIPT"}
     env["PYTHONPATH"] = os.pathsep.join([str(ROOT), str(ROOT / "evals")])
     run = subprocess.run([sys.executable, str(GET_STARTED_CHECK)], cwd=tmp_path, env=env, capture_output=True, text=True)
     assert run.returncode == 1, run.stdout + run.stderr
-    assert '"layer": "2"' in run.stdout or "'layer': '2'" in run.stdout, run.stdout
+    assert '"layer": "2"' in run.stdout, run.stdout
