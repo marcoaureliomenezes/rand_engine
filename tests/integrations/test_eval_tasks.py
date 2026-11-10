@@ -182,6 +182,13 @@ PYTHON_C = '"import sys; from rand_engine.cli import main; sys.exit(main())"'
     "python -m rand_engine get-started lake",
     f"python -c {PYTHON_C} get-started lake --out starter",
     "cd /tmp && rand-engine get-started lake",
+    "rand-engine get-started lake; ls starter",
+    "rand-engine get-started lake&&ls",
+    "rand-engine get-started lake|tail -1",
+    "cd x;rand-engine get-started lake",
+    "rand-engine get-started --help && rand-engine get-started lake",
+    "rand-engine get-started lake\ncat <<'EOF'\nit's the starter\nEOF",
+    'python -c "from rand_engine import cli; cli.main()" get-started lake',
 ])
 def test_get_started_matcher_accepts_the_package_cli_forms(matcher, command):
     assert matcher(command) is True, command
@@ -196,6 +203,7 @@ def test_get_started_matcher_accepts_the_package_cli_forms(matcher, command):
     f"python -c {PYTHON_C} lake",
     'python -c "print(1)" get-started lake',
     "cat lake.py.txt",
+    'python -c "import rand_engine.cli" get-started lake',
 ])
 def test_get_started_matcher_refuses_other_commands(matcher, command):
     assert matcher(command) is False, command
