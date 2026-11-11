@@ -369,3 +369,10 @@ def test_child_python_process_outliving_the_script_does_not_overwrite_the_record
     body = ("import subprocess, sys\n" + SEEDED +
             "subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(1)'])\n")
     assert provenance(check, tmp_path, body) is None
+
+
+@pytest.mark.skipif(not hasattr(os, "fork"), reason="os.fork exists on POSIX only")
+def test_forked_child_leaving_through_the_interpreter_does_not_overwrite_the_record(check, tmp_path):
+    body = ("import os, sys, time\n"
+            "if os.fork() == 0:\n    time.sleep(1)\n    sys.exit(0)\n" + SEEDED)
+    assert provenance(check, tmp_path, body) is None
