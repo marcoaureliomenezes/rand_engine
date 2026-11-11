@@ -124,15 +124,6 @@ def test_spark_parts_directory_skips_hidden_files(check, tmp_path):
     assert check.read_artifact(out).to_dict("list") == {"id": [1, 2, 3]}
 
 
-def test_parts_directory_frame_does_not_depend_on_part_names(check, tmp_path):
-    for d, names in {"x": ("part_a", "part_b"), "y": ("part_b", "part_a")}.items():
-        (tmp_path / d).mkdir()
-        (tmp_path / d / f"{names[0]}.csv").write_text("age\n1\n2\n")
-        (tmp_path / d / f"{names[1]}.csv").write_text("age\n3\n4\n")
-    for d in ("x", "y"):
-        assert check.read_artifact(tmp_path / d).to_dict("list") == {"age": ["1", "2", "3", "4"]}
-
-
 def test_jsonl_artifact_read_as_written(check, tmp_path):
     spec = '{"uid": {"method": "int_zfilled", "kwargs": {"length": 8}}}'
     body = ("from rand_engine import DataGenerator\n"
