@@ -310,6 +310,12 @@ def test_self_loop_that_is_not_an_artifact_passes_provenance(check, tmp_path):
     assert provenance(check, tmp_path, SEEDED) is None
 
 
+def test_two_directory_links_to_the_work_dir_pass_provenance(check, tmp_path):
+    (tmp_path / "a").symlink_to(".")
+    (tmp_path / "b").symlink_to(".")
+    assert provenance(check, tmp_path, SEEDED) is None
+
+
 def test_absent_artifact_fails(check, tmp_path):
     msg = provenance(check, tmp_path, SEEDED, deliver=False)
     assert msg.startswith("provenance") and "out.csv" in msg
