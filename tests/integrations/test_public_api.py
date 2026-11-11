@@ -692,9 +692,9 @@ def _load_run():
     return run
 
 
-def _trial(monkeypatch, tmp_path, rnd="usage", init=None, check_out="", requirements=(), events=None, check_rc=0,
-           result=None):
-    """Run one trial of a fixture task through `run_trial`, every subprocess faked; return (result, calls, out)."""
+def _prepare(monkeypatch, tmp_path, rnd="usage", init=None, check_out="", requirements=(), events=None, check_rc=0,
+             result=None):
+    """Build a fixture task with every subprocess faked; return (run module, args, calls, out)."""
     import types
 
     run = _load_run()
@@ -733,6 +733,12 @@ def _trial(monkeypatch, tmp_path, rnd="usage", init=None, check_out="", requirem
     (tmp_path / "w").mkdir()
     out = tmp_path / "out"
     args = types.SimpleNamespace(rand_engine="rand-engine", model="m", leg="pypi", k=3, out=out)
+    return run, args, calls, out
+
+
+def _trial(monkeypatch, tmp_path, *a, **kw):
+    """Run one trial of a fixture task through `run_trial`; return (result, calls, out)."""
+    run, args, calls, out = _prepare(monkeypatch, tmp_path, *a, **kw)
     return run.run_trial("t", 2, args), calls, out
 
 
@@ -852,18 +858,17 @@ def test_eval_stream_with_no_result_event_raises_an_error_naming_the_missing_res
     assert res["error"] == "RuntimeError: no result event in the agent stream"
 
 
-@pytest.mark.parametrize("key, value", [("errors", ["boom"]), ("startup_failure_reason", "no token")])
-def test_eval_stream_with_no_init_event_raises_an_error_naming_the_result_event(monkeypatch, tmp_path, key, value):
+@pytest.mark.parametrize("key, value, literal", [("errors", ["boom"], "boom"),
+                                                  ("startup_failure_reason", "no token", "no token")])
+def test_eval_stream_with_no_init_event_raises_an_error_naming_the_result_event(monkeypatch, tmp_path, key, value,
+                                                                                literal):
     res, _, _ = _trial(monkeypatch, tmp_path, "usage", events=[{"type": "result", "is_error": True, key: value}])
     assert "StopIteration" not in res["error"]
-    assert (value[0] if isinstance(value, list) else value) in res["error"]
+    assert literal in res["error"]
 
 
 def test_eval_main_writes_the_trial_json_as_utf8(monkeypatch, tmp_path):
-    run = _load_run()
-    monkeypatch.setattr(run, "run_trial", lambda task, n, args: {"passed": False, "final_message": "caf\u00e9"})
-    monkeypatch.setattr(run, "REPO", tmp_path / "repo")
-    out = tmp_path / "out"
+    run, _, _, out = _prepare(monkeypatch, tmp_path, result={"result": "caf\u00e9"})
     monkeypatch.setattr(sys, "argv", ["run.py", "--task", "t", "--k", "1", "--leg", "pypi", "--model", "m",
                                       "--out", str(out)])
     with pytest.raises(SystemExit):
@@ -903,12 +908,10 @@ def test_eval_workflow_pins_the_scrub_cli_and_runs_under_bubblewrap():
 
 
 def test_eval_trials_step_fails_before_the_eval_when_k_is_above_three():
-    import re
-
     text = _job("trials")
-    guard = re.search(r'"\$K" -gt 3', text)
-    assert guard, "the trials job has no guard on K above 3"
-    assert guard.start() < text.index("python evals/run.py")
+    guard = 'if [ "$K" -gt 3 ] || ! [ "$K" -ge 1 ] 2>/dev/null; then'
+    assert guard in text, "the trials job lacks the fail-closed guard on K"
+    assert text.index(guard) < text.index("python evals/run.py")
 
 
 @pytest.mark.parametrize("k, exit_code", [("3", 0), ("4", 1), ("abc", 1), ("", 1), ("2.5", 1)])
@@ -971,7 +974,8 @@ def test_eval_workflow_pull_request_covers_development_and_master_without_paths(
     assert "paths" not in pr
     import re
 
-    assert re.search(r"^concurrency:\n  group: .*github\.ref", _workflow()[0], re.M), "no top-level concurrency group on github.ref"
+    assert re.search(r"^concurrency:\n  group: .*github\.ref.*\n  cancel-in-progress: true$", _workflow()[0], re.M), (
+        "no top-level concurrency group on github.ref that cancels in progress")
 
 
 def test_eval_workflow_gate_job_always_runs_after_selfcheck_and_trials():
