@@ -31,6 +31,7 @@ import pandas as pd
 import _check
 
 frames, specs, streams, calls = [], [], [], []
+RECORD = os.environ.pop("RAND_EVAL_RECORD", None)
 
 def record(df):
     frames.append({"rows": len(df), "cols": {str(c): _check.value_hash(df[c].tolist()) for c in df.columns}})
@@ -97,10 +98,12 @@ else:
 
 @atexit.register
 def dump():
+    if not RECORD:
+        return
     for rows in streams:
         if rows:
             record(pd.DataFrame(rows))
-    with open(os.environ["RAND_EVAL_RECORD"], "w") as f:
+    with open(RECORD, "w") as f:
         json.dump({"frames": frames, "specs": specs, "calls": calls}, f)
 '''
 
