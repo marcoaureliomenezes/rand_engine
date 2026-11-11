@@ -103,7 +103,7 @@ def test_unseeded_script_fails(check, tmp_path):
     assert provenance(check, tmp_path, body, deliver=False).startswith("provenance")
 
 
-def test_agent_artifact_is_never_modified(check, tmp_path):
+def test_provenance_leaves_the_delivered_artifact_as_it_was(check, tmp_path):
     run_script(tmp_path, SEEDED)
     before = (tmp_path / "out.csv").read_bytes()
     assert provenance(check, tmp_path, SEEDED, deliver=False) is None
@@ -300,12 +300,12 @@ def test_symlink_loop_artifact_fails_as_not_delivered(check, tmp_path):
     assert msg == "provenance: artifact out.csv was not delivered"
 
 
-def test_dangling_link_that_is_not_an_artifact_is_skipped(check, tmp_path):
+def test_dangling_link_that_is_not_an_artifact_passes_provenance(check, tmp_path):
     (tmp_path / "stale.csv").symlink_to("missing.csv")
     assert provenance(check, tmp_path, SEEDED) is None
 
 
-def test_self_loop_that_is_not_an_artifact_is_skipped(check, tmp_path):
+def test_self_loop_that_is_not_an_artifact_passes_provenance(check, tmp_path):
     (tmp_path / "loop").symlink_to("loop")
     assert provenance(check, tmp_path, SEEDED) is None
 
