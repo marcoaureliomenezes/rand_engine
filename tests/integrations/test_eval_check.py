@@ -363,3 +363,9 @@ def test_sqlite_save_is_recorded_not_read_back(check, tmp_path):
             "g.write.format('sqlite').option('table', 't').save('out.sqlite')\n"
             "g.get_df().to_csv('out.csv', index=False)\n")
     assert provenance(check, tmp_path, body, ["out.csv"]) is None
+
+
+def test_child_python_process_outliving_the_script_does_not_overwrite_the_record(check, tmp_path):
+    body = ("import subprocess, sys\n" + SEEDED +
+            "subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(1)'])\n")
+    assert provenance(check, tmp_path, body) is None
