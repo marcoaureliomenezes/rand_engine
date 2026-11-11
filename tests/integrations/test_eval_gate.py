@@ -272,3 +272,24 @@ def test_a_discovery_trial_with_no_surface_counts_as_other(env, capsys):
     code, out = run_gate(env, capsys)
     assert code == 0
     assert "discovery pypi: adopted 1 of 3, leading surface other" in out
+
+
+def test_calibrate_with_a_missing_results_directory_names_it_and_exits_1_writing_nothing(env, capsys, tmp_path):
+    tasks, _ = env
+    gone = tmp_path / "no-results"
+    code, out = run_gate((tasks, gone), capsys, "--calibrate")
+    assert code == 1
+    assert f"FAIL results: no such directory {gone}" in out
+    assert not gone.exists()
+
+
+def test_a_passing_trial_with_a_harness_error_is_neither_a_pass_nor_unknown_tokens(env, capsys):
+    tasks, results = env
+    for n in (1, 2, 3):
+        write_trial(results, "alpha", "wheel", n, error="RuntimeError: boom")
+    code, out = run_gate(env, capsys, "--calibrate")
+    assert code == 0
+    assert "FAIL alpha: wheel trial 2 harness error: RuntimeError: boom" in out
+    assert "FAIL alpha: wheel passed 0 of 3 (need 2)" in out
+    assert json.loads((results / "ceilings.json").read_text()) == {"alpha": 3000}
+    assert "alpha | 0 | 3 | 1500 | 1.50 | - | -" in out
