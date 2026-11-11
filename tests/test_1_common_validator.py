@@ -275,7 +275,6 @@ def test_validated_spec_without_kwargs_generates(spark_session, spark_functions)
 @pytest.mark.parametrize("fmt", ["%b %d %Y", "%Y-%m-%d %%"])
 def test_dates_format_outside_supported_directives_is_refused_by_both_engines(fmt):
     """AC14.1: one check site; the message names the supported set."""
-    from rand_engine.validators.advanced_validator import AdvancedValidator
     spec = {"d": {"method": "dates", "kwargs": {"start": "Jan 01 2020", "end": "Dec 31 2024", "date_format": fmt}}}
     for errors in (AdvancedValidator.validate(spec), CommonValidator.validate_spark_spec(spec)):
         assert len(errors) == 1
@@ -295,7 +294,6 @@ def _date_spec(method, start, end, fmt="%d/%m/%Y"):
 ], ids=["start-unparseable", "end-unparseable", "start-equals-end", "start-after-end"])
 def test_unparseable_or_unordered_date_bounds_are_refused_by_both_engines(method, start, end, refusal):
     """The bound parse of `_parse_date_bound` (format, then `%Y-%m-%d`) and start < end decide on both engines."""
-    from rand_engine.validators.advanced_validator import AdvancedValidator
     spec = _date_spec(method, start, end)
     for errors in (AdvancedValidator.validate(spec), CommonValidator.validate_spark_spec(spec)):
         assert errors == [f"\u274c Column 'd': method '{method}' {refusal}"]
@@ -303,15 +301,12 @@ def test_unparseable_or_unordered_date_bounds_are_refused_by_both_engines(method
 
 @pytest.mark.parametrize("method", ["dates", "unix_timestamps"])
 def test_date_bound_in_default_format_under_another_date_format_is_accepted_by_both_engines(method):
-    from rand_engine.validators.advanced_validator import AdvancedValidator
     spec = _date_spec(method, "2020-01-01", "2021-01-01")
     assert AdvancedValidator.validate(spec) == []
     assert CommonValidator.validate_spark_spec(spec) == []
 
 
-def test_timezone_aware_date_bounds_are_refused_by_both_engines():
-    """`_date_bounds` refuses an aware bound before any comparison; `unix_timestamps` is the method whose format may hold `%z`."""
-    from rand_engine.validators.advanced_validator import AdvancedValidator
+def test_two_aware_bounds_are_refused_at_the_start_by_both_engines():
     spec = _date_spec("unix_timestamps", "2020-01-01 +0000", "2021-01-01 +0000", "%Y-%m-%d %z")
     for errors in (AdvancedValidator.validate(spec), CommonValidator.validate_spark_spec(spec)):
         assert errors == ["\u274c Column 'd': method 'unix_timestamps' parameter 'start' '2020-01-01 +0000' must not carry a timezone"]
@@ -684,8 +679,6 @@ def test_poisson_lambda_ceiling_is_one_million_and_refusal_names_lam():
     ({"min": 0, "max": 255, "int_type": "uint8"}, [78, 204, 64, 34, 16, 250], "uint8"),
 ])
 def test_integer_range_equal_and_ordered_domains_validate_and_generate(kwargs, expected, dtype):
-    from rand_engine.validators.advanced_validator import AdvancedValidator
-
     spec = {"value": {"method": "integers", "kwargs": kwargs}}
 
     assert AdvancedValidator.validate(spec) == []
@@ -695,8 +688,6 @@ def test_integer_range_equal_and_ordered_domains_validate_and_generate(kwargs, e
 
 
 def test_integer_range_inverted_domain_is_collected_before_generation():
-    from rand_engine.validators.advanced_validator import AdvancedValidator
-
     spec = {
         "value": {
             "method": "integers",
@@ -865,25 +856,30 @@ def test_unknown_name_without_close_match_adds_no_suggestion(spec, expected):
     assert CommonValidator.validate_spark_spec(spec) == [expected]
 
 
+@pytest.mark.parametrize("start, end, expected", [
+    ("2020-01-01 +0000", "2021-01-01", "\u274c Column 'd': method 'unix_timestamps' parameter 'start' '2020-01-01 +0000' must not carry a timezone"),
+    ("2020-01-01", "2021-01-01 +0000", "\u274c Column 'd': method 'unix_timestamps' parameter 'end' '2021-01-01 +0000' must not carry a timezone"),
+], ids=["aware-start", "aware-end"])
 @pytest.mark.parametrize("validate", [AdvancedValidator.validate, CommonValidator.validate_spark_spec], ids=["numpy", "spark"])
-def test_aware_and_naive_date_bounds_are_refused_naming_the_column(validate):
-    spec = {"d": {"method": "unix_timestamps", "kwargs": {"start": "2020-01-01 +0000", "end": "2021-01-01", "date_format": "%Y-%m-%d %z"}}}
+def test_aware_and_naive_date_bounds_are_refused_naming_the_column(validate, start, end, expected):
+    spec = {"d": {"method": "unix_timestamps", "kwargs": {"start": start, "end": end, "date_format": "%Y-%m-%d %z"}}}
     errors = validate(spec)
     assert len(errors) == 1
-    assert errors[0].startswith("❌ Column 'd': method 'unix_timestamps'")
+    assert errors == [expected]
 
 
-_RAISED = (
-    "\n" + "=" * 80 + "\nDATAGENERATOR SPEC VALIDATION ERROR\n" + "=" * 80
-    + "\n\nFound 1 error(s) in specification:\n\n❌ x\n\n" + "=" * 80
-    + "\n\U0001f4da Documentation: https://marcoaureliomenezes.github.io/rand_engine/\n" + "=" * 80 + "\n"
-)
+def _framed(engine, body):
+    return (
+        "\n" + "=" * 80 + f"\n{engine} SPEC VALIDATION ERROR\n" + "=" * 80
+        + f"\n\nFound 1 error(s) in specification:\n\n{body}\n\n" + "=" * 80
+        + "\n\U0001f4da Documentation: https://marcoaureliomenezes.github.io/rand_engine/\n" + "=" * 80 + "\n"
+    )
 
 
 def test_raise_validation_raises_the_spec_error_with_the_framed_message():
     with pytest.raises(SpecValidationError) as raised:
-        CommonValidator.raise_validation(["❌ x"], "DATAGENERATOR")
-    assert str(raised.value) == _RAISED
+        CommonValidator.raise_validation(["\u274c x"], "DATAGENERATOR")
+    assert str(raised.value) == _framed("DATAGENERATOR", "\u274c x")
 
 
 @pytest.mark.parametrize("wrapper, engine", [
@@ -894,10 +890,4 @@ def test_both_wrappers_raise_the_framed_message(wrapper, engine):
     spec = {"d": {"method": "integers", "kwargs": {"min": 0, "max": 9, "foo": 1}}}
     with pytest.raises(SpecValidationError) as raised:
         wrapper(spec)
-    assert str(raised.value) == (
-        "\n" + "=" * 80 + f"\n{engine} SPEC VALIDATION ERROR\n" + "=" * 80
-        + "\n\nFound 1 error(s) in specification:\n\n"
-        "\u26a0\ufe0f  Column 'd': unknown parameters: 'foo'\n   Valid parameters for 'integers': 'int_type', 'max', 'min'"
-        + "\n\n" + "=" * 80
-        + "\n\U0001f4da Documentation: https://marcoaureliomenezes.github.io/rand_engine/\n" + "=" * 80 + "\n"
-    )
+    assert str(raised.value) == _framed(engine, "\u26a0\ufe0f  Column 'd': unknown parameters: 'foo'\n   Valid parameters for 'integers': 'int_type', 'max', 'min'")
