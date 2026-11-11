@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-11T03:46:44Z",
+  "generated_at": "2026-11-11T04:29:58Z",
   "features": [
     {
       "rank": 1,
@@ -278,7 +278,7 @@
         "ci",
         "regression"
       ],
-      "token_estimate": 783,
+      "token_estimate": 813,
       "depends_on": [
         "documentation"
       ],

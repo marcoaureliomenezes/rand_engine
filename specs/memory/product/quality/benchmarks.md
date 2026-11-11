@@ -20,7 +20,7 @@ sources:
 
 ## Measurement
 
-- Base and head run in separate long-lived worker processes on the same CI runner. For every comparable row, the coordinator alternates three requests per side and compares their medians.
+- Base and head run in separate long-lived worker processes on the same CI runner. For every comparable row, the coordinator alternates three requests per side and judges each side by its quickest sample, since runner noise only adds time; a row exceeds its limit only when every head sample is slow.
 - Untimed method-only passes record core time and peak memory after all timed rows. Throughput is reported as rows per microsecond.
 - The comparison base is the commit of the highest bare `M.m.p` release tag, the latest closed release, never a mid-release commit or a release candidate; the job summary names that tag and its commit, and a repository without such a tag fails the job. A row absent from the base, or a base failure, is reported, while a head failure is fatal.
 
