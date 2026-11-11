@@ -14,7 +14,7 @@ sources:
 
 - `SparkGenerator(spark, F, spec).size(n).get_df()` builds a Spark DataFrame; PySpark is supplied by the caller and is not a runtime dependency.
 - CI runs the Spark tests on PySpark 3.5 with Python 3.11 and on PySpark 4.x with Python 3.12 to 3.14, on Linux and macOS; on Windows they run with Python 3.11 and skip with Python 3.12 or later.
-- `get_df()` resolves the size through the decider `DataGenerator` uses: unset, or not a non-negative integer, it raises `RandEngineError` before any Spark work ([[data-generator]]).
+- `.size(n)` takes a non-negative integer or a callable returning one, called once per `get_df`. `get_df()` resolves it through the decider `DataGenerator` uses: unset, or not a non-negative integer, it raises `RandEngineError` before any Spark work ([[data-generator]]); a size of 0 gives an empty frame.
 - Construction validates the spec only; unlike `DataGenerator`, it generates no row to check it.
 - Generation starts from `spark.range(size)`, adds one column per spec entry and drops technical source-index columns. A user column named `id` or like an internal helper remains in the declared schema and order.
 

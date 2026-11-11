@@ -33,12 +33,12 @@ assert df.columns == ["user_id", "age", "is_active", "signup"]
 
 ## API
 
-<!-- derived-from: spark-generator sha256:74f84215e13e -->
+<!-- derived-from: spark-generator sha256:c7ce7555b0bc -->
 
 | Call | Does |
 |---|---|
 | `SparkGenerator(spark, F, spec)` | validates the spec at once (`SpecValidationError`) |
-| `.size(n)` | rows to generate |
+| `.size(n)` | rows to generate: a non-negative integer, or a callable returning one, called once per `get_df` |
 | `.get_df()` | a Spark DataFrame; the `spark.range` `id` column is dropped unless the spec names `id` |
 
 `seed` applies to `pk` and `fk` only; ordinary Spark methods remain unseeded. There is no
@@ -46,8 +46,8 @@ assert df.columns == ["user_id", "age", "is_active", "signup"]
 
 ## Methods
 
-<!-- derived-from: spark-generator sha256:74f84215e13e -->
-<!-- derived-from: generation-methods sha256:79e2694810ad -->
+<!-- derived-from: spark-generator sha256:c7ce7555b0bc -->
+<!-- derived-from: generation-methods sha256:882f79034f7d -->
 
 The table records validation's current outcome for every RandSpec method. `yes` means Spark produces
 the column; `refused` means use `DataGenerator`.
@@ -152,6 +152,6 @@ else:
 
 ## Writing
 
-<!-- derived-from: spark-generator sha256:74f84215e13e -->
+<!-- derived-from: spark-generator sha256:c7ce7555b0bc -->
 
 Use Spark's own `df.write`; rand-engine does not own Spark writing.

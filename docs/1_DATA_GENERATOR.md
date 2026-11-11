@@ -53,7 +53,7 @@ assert not gen.get_df().equals(gen.get_df())
 
 ## Methods
 
-<!-- derived-from: generation-methods sha256:79e2694810ad -->
+<!-- derived-from: generation-methods sha256:882f79034f7d -->
 
 Each column is `{"method": <name>, "kwargs": {...}}`. Bounds of `integers` are inclusive. A method that generates text gives a `string[pyarrow]` column (`pd.ArrowDtype(pa.string())`) whose nulls are `pd.NA`; numeric, boolean and datetime columns keep their pandas dtype. An embedded transformer's output dtype is pandas' inference of what the transformer returns.
 
@@ -88,6 +88,7 @@ methods require `cols`; the global optional modifiers are documented separately 
 string drawn at whole-second resolution in UTC; its `date_format` may use only the directives
 `%Y %m %d %H %M %S %f` (`%f` renders `000000`). Any other directive fails validation on both
 engines, naming the supported set. A bound that does not parse under `date_format` is read as `%Y-%m-%d`.
+A bound that carries a timezone (for example `date_format` `%Y-%m-%d %z`) fails validation, naming the column.
 
 ```python
 from rand_engine.validators.exceptions import SpecValidationError
@@ -267,7 +268,7 @@ assert df["name"].dtype == pd.Series([str.upper("ana")]).dtype  # a transformer'
 
 ## Validation
 
-<!-- derived-from: rand-spec-grammar sha256:72aea8a9acc7 -->
+<!-- derived-from: rand-spec-grammar sha256:c7ad622db474 -->
 
 An invalid spec raises `SpecValidationError` (a `RandEngineError`) on construction, listing every
 error with a corrected example; a misspelled method, kwarg or column key adds a `Did you mean '<name>'?` line.

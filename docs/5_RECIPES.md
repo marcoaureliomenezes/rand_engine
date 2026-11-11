@@ -7,7 +7,7 @@ Short, runnable patterns. Every `python` block runs in CI, in order, in one name
 
 ## Faker pools
 
-<!-- derived-from: generation-methods sha256:79e2694810ad -->
+<!-- derived-from: generation-methods sha256:882f79034f7d -->
 <!-- derived-from: templates-and-examples sha256:fa66c7f7252b -->
 
 In one CI run (three samples, medians; [comparison](comparison.md)), Faker took 0.769 s for 100,000 dicts against rand-engine's 0.159 s; `RandSpecs.faker_pool` draws a pool once and returns a `distincts` spec.
@@ -131,7 +131,7 @@ for record in events.stream_dict(min_throughput=10, max_throughput=50):
 
 ## Parquet lake
 
-<!-- derived-from: writers-and-streaming sha256:2f037389d8e2 -->
+<!-- derived-from: writers-and-streaming sha256:a1bf2326d735 -->
 
 One folder per partition value, several files each.
 

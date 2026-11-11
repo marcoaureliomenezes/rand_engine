@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-03T03:43:57Z",
+  "generated_at": "2026-11-11T03:46:44Z",
   "features": [
     {
       "rank": 1,
@@ -102,12 +102,12 @@
         "distributions",
         "modifiers"
       ],
-      "token_estimate": 1442,
+      "token_estimate": 1473,
       "depends_on": [
+        "rand-spec-grammar",
         "data-generator",
         "spark-generator",
-        "pk-fk-constraints",
-        "rand-spec-grammar"
+        "pk-fk-constraints"
       ],
       "sources": [
         "rand_engine/core/**",
@@ -128,7 +128,7 @@
         "pyspark",
         "generator"
       ],
-      "token_estimate": 760,
+      "token_estimate": 788,
       "depends_on": [
         "data-generator",
         "rand-spec-grammar",
@@ -155,7 +155,7 @@
         "agent-skill",
         "readme"
       ],
-      "token_estimate": 1307,
+      "token_estimate": 1319,
       "depends_on": [
         "public-api",
         "writers-and-streaming",
@@ -224,7 +224,7 @@
         "parquet",
         "sqlite"
       ],
-      "token_estimate": 992,
+      "token_estimate": 1008,
       "depends_on": [
         "data-generator"
       ],
@@ -246,7 +246,7 @@
         "ci",
         "quality"
       ],
-      "token_estimate": 1551,
+      "token_estimate": 1906,
       "depends_on": [
         "data-generator",
         "public-api",
@@ -331,7 +331,7 @@
         "grammar",
         "validation"
       ],
-      "token_estimate": 1103,
+      "token_estimate": 1118,
       "depends_on": [
         "pk-fk-constraints",
         "generation-methods",
