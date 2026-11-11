@@ -213,31 +213,32 @@ class TestSparkGeneratorAllTypes:
             assert isinstance(row["date_col"], str)
 
 
-@pytest.mark.parametrize("method,start,end,date_format,low,high", [
-    ("unix_timestamps", "2020-01-01", "2021-01-01", "%d/%m/%Y", 1577836800, 1609459200),
-    ("dates", "2020-01-01", "2021-01-01", "%d/%m/%Y", 1577836800, 1609459200),
-    ("unix_timestamps", "0999-12-31", "1000-06-30", "%d/%m/%Y", -30610310400, -30594672000),
-    ("dates", "0999-12-31", "1000-06-30", "%d/%m/%Y", -30610310400, -30594672000),
-    ("unix_timestamps", "0999-12-31", "1000-06-30", "%Y-%m-%d", -30610310400, -30594672000),
-    ("dates", "0999-12-31", "1000-06-30", "%Y-%m-%d", -30610310400, -30594672000),
-    ("unix_timestamps", "2020-01-01 UTC", "2021-01-01 UTC", "%Y-%m-%d %Z", 1577836800, 1609459200),
-    ("unix_timestamps", "2020-01-01", "2021-01-01", "%m/%d", 1577836800, 1609459200),
-    ("unix_timestamps", "1950-01-01", "2050-01-01", "%d/%m/%y", -631152000, 2524608000),
-    ("dates", "2020-01-01", "2020-01-02", "%H:%M", -2208988800, -2208902400),
-])
-def test_spark_date_bounds_generate_within_the_numpy_bounds(spark_session, spark_functions, method, start, end, date_format, low, high):
-    """Spark and NumPy generate inside the literal epoch span their date bounds denote, in any date_format."""
-    from datetime import datetime, timedelta
+def _epoch_seconds(value, date_format):
+    return int(value)
 
+
+def _formatted_seconds(value, date_format):
+    return (datetime.datetime.strptime(value, date_format) - datetime.datetime(1970, 1, 1)) // datetime.timedelta(seconds=1)
+
+
+@pytest.mark.parametrize("method,start,end,date_format,low,high,decode", [
+    ("unix_timestamps", "2020-01-01", "2021-01-01", "%d/%m/%Y", 1577836800, 1609459200, _epoch_seconds),
+    ("dates", "2020-01-01", "2021-01-01", "%d/%m/%Y", 1577836800, 1609459200, _formatted_seconds),
+    ("unix_timestamps", "0999-12-31", "1000-06-30", "%d/%m/%Y", -30610310400, -30594672000, _epoch_seconds),
+    ("dates", "0999-12-31", "1000-06-30", "%d/%m/%Y", -30610310400, -30594672000, _formatted_seconds),
+    ("unix_timestamps", "0999-12-31", "1000-06-30", "%Y-%m-%d", -30610310400, -30594672000, _epoch_seconds),
+    ("dates", "0999-12-31", "1000-06-30", "%Y-%m-%d", -30610310400, -30594672000, _formatted_seconds),
+    ("unix_timestamps", "2020-01-01 UTC", "2021-01-01 UTC", "%Y-%m-%d %Z", 1577836800, 1609459200, _epoch_seconds),
+    ("unix_timestamps", "2020-01-01", "2021-01-01", "%m/%d", 1577836800, 1609459200, _epoch_seconds),
+    ("unix_timestamps", "1950-01-01", "2050-01-01", "%d/%m/%y", -631152000, 2524608000, _epoch_seconds),
+    ("dates", "2020-01-01", "2020-01-02", "%H:%M", -2208988800, -2208902400, _formatted_seconds),
+])
+def test_spark_date_bounds_generate_within_the_numpy_bounds(spark_session, spark_functions, method, start, end, date_format, low, high, decode):
+    """Spark and NumPy generate inside the literal epoch span their date bounds denote, in any date_format."""
     spec = {"d": {"method": method, "kwargs": {"start": start, "end": end, "date_format": date_format}}}
 
-    def seconds(value):
-        if method == "unix_timestamps":
-            return int(value)
-        return (datetime.strptime(value, date_format) - datetime(1970, 1, 1)) // timedelta(seconds=1)
-
-    expected = [seconds(v) for v in DataGenerator(spec, seed=1).size(200).get_df()["d"]]
-    actual = [seconds(r["d"]) for r in SparkGenerator(spark_session, spark_functions, spec).size(200).get_df().collect()]
+    expected = [decode(v, date_format) for v in DataGenerator(spec, seed=1).size(200).get_df()["d"]]
+    actual = [decode(r["d"], date_format) for r in SparkGenerator(spark_session, spark_functions, spec).size(200).get_df().collect()]
 
     assert len(actual) == 200 and len(set(actual)) > 1
     assert all(low <= v < high for v in expected) and all(low <= v < high for v in actual)
@@ -749,12 +750,11 @@ def _pool_column(spark_session, spark_functions, pool, name="c"):
 
 
 @pytest.mark.parametrize("pool, dtype, expected", [
-    (["x", "y", None], "string", {"'x'", "'y'", "None"}),
     ([1, 2.5], "double", {"1.0", "2.5"}),
     ([1, "x"], "string", {"'1'", "'x'"}),
     ([True, "x"], "string", {"'true'", "'x'"}),
     (["x", 1, 2.5], "string", {"'x'", "'1'", "'2.5'"}),
-], ids=["text-with-none", "int-and-float", "int-and-text", "bool-and-text", "text-then-numbers"])
+], ids=["int-and-float", "int-and-text", "bool-and-text", "text-then-numbers"])
 def test_spark_generates_mixed_type_pools_as_on_0_8_1(spark_session, spark_functions, pool, dtype, expected):
     """The pools the docs name; repr tells 1 from 1.0 and '1' from 1, dtypes is Spark's own type."""
     dtypes, values = _pool_column(spark_session, spark_functions, pool)
@@ -790,8 +790,9 @@ def test_spark_refuses_unwritable_pool_at_construction_naming_the_column(spark_s
         SparkGenerator(spark_session, spark_functions, spec)
 
 
-def test_spark_text_pool_keeps_none_as_null_under_string_inference(spark_session, spark_functions):
-    with pd.option_context("future.infer_string", True):
+@pytest.mark.parametrize("infer_string", [False, True], ids=["infer-string-off", "infer-string-on"])
+def test_spark_text_pool_keeps_none_as_null_with_and_without_string_inference(spark_session, spark_functions, infer_string):
+    with pd.option_context("future.infer_string", infer_string):
         dtypes, values = _pool_column(spark_session, spark_functions, ["x", "y", None])
     assert dtypes == [("c", "string")]
     assert values == {"'x'", "'y'", "None"}
