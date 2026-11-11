@@ -826,7 +826,7 @@ def test_eval_check_result_cannot_overwrite_runner_keys(monkeypatch, tmp_path):
     assert (res["passed"], res["check_output"], res["layer"]) == (True, stdout, 2)
 
 
-def test_eval_malformed_result_line_keeps_check_output_and_records_an_error(monkeypatch, tmp_path):
+def test_eval_malformed_result_line_keeps_check_output_records_an_error_and_marks_not_passed(monkeypatch, tmp_path):
     stdout = "why it failed\nRESULT {not json\n"
     res, _, _ = _trial(monkeypatch, tmp_path, "usage", check_out=stdout)
     assert res["check_output"] == stdout
@@ -963,7 +963,7 @@ def test_eval_workflow_push_trigger_keeps_the_eval_paths_and_adds_the_rc_branche
     assert push.index("branches:") < push.index("paths:")
 
 
-def test_eval_workflow_pull_request_covers_development_and_master_without_paths():
+def test_eval_workflow_pull_request_covers_development_and_master_without_paths_and_cancels_superseded_runs():
     pr = _workflow()[2]["pull_request"]
     assert "- development" in pr and "- master" in pr
     assert "paths" not in pr

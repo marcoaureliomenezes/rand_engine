@@ -219,7 +219,7 @@ def test_calibrate_prints_the_fail_lines_and_still_exits_0(env, capsys):
     assert json.loads((results / "ceilings.json").read_text()) == {"alpha": 3000, "beta": 3000}
 
 
-def test_a_passing_trial_with_unknown_tokens_is_not_a_pass_and_never_crashes(env, capsys):
+def test_a_passing_trial_with_unknown_tokens_fails_the_gate_and_prints_tokens_unknown(env, capsys):
     tasks, results = env
     for leg in ("pypi", "wheel"):
         for n in (1, 2, 3):
