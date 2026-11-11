@@ -163,41 +163,43 @@ def check_faker(ns, out, tmp_path):
 CHECKS = {"test-data": check_test_data, "lake": check_lake, "kafka": check_kafka, "databricks": check_databricks, "faker": check_faker}
 
 
-@pytest.mark.parametrize(
-  ("slug", "expectation"),
-  [
-    ("test-data", "plain"),
-    ("lake", "unchecked"),
-    ("kafka", "unchecked"),
-    ("databricks", "notebook"),
-    ("faker", "unchecked"),
-  ],
-  ids=RUNNABLE_SLUGS,
-)
-def test_scaffold_runs_producing_its_promise_and_only_databricks_is_a_notebook(slug, expectation, tmp_path, monkeypatch, capsys, request):
-  notebook = expectation == "notebook"
-  if notebook:
-    spark = request.getfixturevalue("spark_session")
-    arrow_before = spark.conf.get(ARROW_CONF)
+@pytest.fixture
+def spark_guard(request):
+  if not request.param:
+    yield
+    return
+  spark = request.getfixturevalue("spark_session")
+  before = spark.conf.get(ARROW_CONF)
+  try:
+    yield
+  finally:
+    spark.conf.set(ARROW_CONF, before)
+  assert spark.conf.get(ARROW_CONF) == before
+
+
+NOTEBOOK_ROWS = [
+  ("test-data", "plain", False),
+  ("lake", "notebook", False),
+  ("kafka", "notebook", False),
+  ("databricks", "notebook", True),
+  ("faker", "notebook", False),
+]
+
+
+@pytest.mark.parametrize(("slug", "expectation", "spark_guard"), NOTEBOOK_ROWS, indirect=["spark_guard"], ids=[r[0] for r in NOTEBOOK_ROWS])
+def test_starter_runs_producing_its_promise_with_its_notebook_expectation(slug, expectation, spark_guard, tmp_path, monkeypatch, capsys):
   assert run(["get-started", slug, "--out", str(tmp_path)]) == 0
   capsys.readouterr()
-  text = (tmp_path / f"{slug}-example.py").read_text(encoding="utf-8")
-  lines = text.splitlines()
-  if notebook:
+  lines = (tmp_path / f"{slug}-example.py").read_text(encoding="utf-8").splitlines()
+  if expectation == "notebook":
     assert lines[0] == "# Databricks notebook source"
     assert "# COMMAND ----------" in lines
-  if expectation == "plain":
+  else:
     assert not [l for l in lines if l.startswith(("# Databricks notebook source", "# COMMAND ----------", "# MAGIC"))]
   monkeypatch.chdir(tmp_path)
   monkeypatch.setitem(sys.modules, "kafka", None)
   monkeypatch.setitem(sys.modules, "confluent_kafka", None)
-  try:
-    ns = runpy.run_path(str(tmp_path / f"{slug}-example.py"), run_name="__main__")
-  finally:
-    if notebook:
-      spark.conf.set(ARROW_CONF, arrow_before)
-  if notebook:
-    assert spark.conf.get(ARROW_CONF) == arrow_before
+  ns = runpy.run_path(str(tmp_path / f"{slug}-example.py"), run_name="__main__")
   CHECKS[slug](ns, capsys.readouterr().out, tmp_path)
 
 
