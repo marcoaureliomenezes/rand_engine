@@ -82,26 +82,6 @@ class TestSparkGeneratorBasic:
 
         assert generator.size(np.int64(3)).get_df().count() == 3
 
-    LATE_PARENT_SPEC = {"parent_id": {"method": "fk", "kwargs": {
-        "parent": {"method": "pk", "kwargs": {"start": 1}},
-        "parent_size": 10,
-        "born_before": {"parent_start": 10, "parent_rate": 1, "child_start": 0, "child_rate": 1},
-    }}}
-
-    def test_get_df_callable_size_refuses_a_child_with_no_eligible_parent(self, spark_session, spark_functions):
-        generator = SparkGenerator(spark_session, spark_functions, self.LATE_PARENT_SPEC).size(lambda: 5)
-
-        with pytest.raises(RandEngineError) as error:
-            generator.get_df()
-
-        assert str(error.value) == "fk column 'parent_id' has a child with no eligible parent"
-
-    def test_get_df_callable_zero_size_skips_the_eligibility_check(self, spark_session, spark_functions):
-        dataframe = SparkGenerator(spark_session, spark_functions, self.LATE_PARENT_SPEC).size(lambda: 0).get_df()
-
-        assert dataframe.count() == 0
-        assert dataframe.columns == ["parent_id"]
-
     def test_get_df_simple(self, spark_session, spark_functions, spark_metadata_simple):
         """Test get_df() with simple metadata."""
         generator = SparkGenerator(spark_session, spark_functions, spark_metadata_simple)
@@ -668,26 +648,39 @@ def test_spark_key_zero_size_keeps_the_requested_schema(spark_session, spark_fun
     assert dataframe.count() == 0
 
 
-def test_spark_zero_eligible_foreign_key_raises_the_declared_driver_error(spark_session, spark_functions):
-    """A known empty eligibility range fails with its FK column before executor wrapping."""
-    spec = {
-        "parent_id": {
-            "method": "fk",
-            "kwargs": {
-                "parent": {"method": "pk", "kwargs": {"start": 1}},
-                "parent_size": 3,
-                "born_before": {
-                    "parent_start": 10,
-                    "parent_rate": 1,
-                    "child_start": 0,
-                    "child_rate": 1,
-                },
+LATE_PARENT_SPEC = {
+    "parent_id": {
+        "method": "fk",
+        "kwargs": {
+            "parent": {"method": "pk", "kwargs": {"start": 1}},
+            "parent_size": 3,
+            "born_before": {
+                "parent_start": 10,
+                "parent_rate": 1,
+                "child_start": 0,
+                "child_rate": 1,
             },
         },
-    }
+    },
+}
 
-    with pytest.raises(RandEngineError, match="parent_id"):
-        SparkGenerator(spark_session, spark_functions, spec, seed=123).size(1).get_df()
+
+@pytest.mark.parametrize("make", [lambda v: v, lambda v: (lambda: v)], ids=["int", "callable"])
+def test_spark_zero_eligible_foreign_key_raises_the_declared_driver_error(spark_session, spark_functions, make):
+    """A known empty eligibility range fails with its FK column before executor wrapping."""
+    generator = SparkGenerator(spark_session, spark_functions, LATE_PARENT_SPEC, seed=123).size(make(1))
+
+    with pytest.raises(RandEngineError) as error:
+        generator.get_df()
+
+    assert str(error.value) == "fk column 'parent_id' has a child with no eligible parent"
+
+
+def test_spark_zero_callable_size_skips_the_eligibility_check(spark_session, spark_functions):
+    dataframe = SparkGenerator(spark_session, spark_functions, LATE_PARENT_SPEC, seed=123).size(lambda: 0).get_df()
+
+    assert dataframe.count() == 0
+    assert dataframe.columns == ["parent_id"]
 
 
 def test_spark_seed_only_extends_key_generation(spark_session, spark_functions):
