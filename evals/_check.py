@@ -181,9 +181,9 @@ def provenance(workdir, script, artifacts, python=sys.executable):
         try:
             shutil.copytree(workdir, scratch, symlinks=True)
             for p in scratch.rglob("*"):
-                if p.is_symlink() and os.path.isabs(t := os.readlink(p)) and Path(t).is_relative_to(workdir):
+                if p.is_symlink() and (real := Path(os.path.realpath(workdir / p.relative_to(scratch)))).is_relative_to(workdir):
                     p.unlink()
-                    p.symlink_to(scratch / Path(t).relative_to(workdir))
+                    p.symlink_to(scratch / real.relative_to(workdir))
             if bad := next((a for a in artifacts if not (scratch / a).resolve().is_relative_to(scratch.resolve())), None):
                 return f"provenance: artifact {bad} resolves outside the work directory", record
             for art in artifacts:
