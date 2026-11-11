@@ -13,7 +13,7 @@ Contract under test (loaded by path, no Spark, no network, no agent; the re-run'
       Csv and json-lines artifacts are read as written text, with no dtype or NA inference.
   value_hash(values) -> str                                           (nulls hash as the empty string; a column's values hash as a
       multiset, so order does not count)
-  legacy_hits(text) -> list[str]                                      (layer 3, the seven legacy items)
+  legacy_hits(text) -> list[str]                                      (layer 3, the eight legacy items)
   documented_method(specs, method, kwargs) -> bool                    (layer 3: judges the recorded specs; True when
       some recorded spec dict has a column of `method` whose kwargs hold every name in `kwargs`; a non-dict
       column value is skipped, never raised on). A callable spec is recorded as the dict it returns.
@@ -158,16 +158,16 @@ TWICE = f"from rand_engine import DataGenerator\ng = DataGenerator({SPEC}, seed=
 
 
 @pytest.mark.parametrize("body, artifacts, expected", [
-    (BATCH_VIA_VARIABLE, ["out.csv"], {"save"}),
-    (STREAM_VIA_VARIABLE, [], {"start"}),
-    (SQLITE_SAVE, [], {"save"}),
-    (TWICE, ["out.csv"], {"get_df"}),
-    (UNCALLED_WRITERS, ["out.csv"], {"get_df"}),
+    (BATCH_VIA_VARIABLE, ["out.csv"], ["save"]),
+    (STREAM_VIA_VARIABLE, [], ["start"]),
+    (SQLITE_SAVE, [], ["save"]),
+    (TWICE, ["out.csv"], ["get_df"]),
+    (UNCALLED_WRITERS, ["out.csv"], ["get_df"]),
 ], ids=["batch-via-variable", "stream-start-once", "sqlite-is-save", "repeated-call-is-one-entry", "never-called"])
 def test_provenance_reports_the_deduplicated_entry_points_that_ran(check, tmp_path, body, artifacts, expected):
     msg, record = rerun(check, tmp_path, body, artifacts)
     assert msg is None
-    assert {r["entry"] for r in record if r["agent"]} == expected
+    assert [r["entry"] for r in record if r["agent"]] == expected
 
 
 def stream_body(tail):
@@ -299,8 +299,8 @@ def test_rerun_writing_through_an_absolute_link_inside_the_work_directory_leaves
 
 
 def test_script_that_cannot_rerun_fails_as_provenance(check, tmp_path):
-    msg = provenance(check, tmp_path, "from rand_engine import DataGenerator\nraise SystemExit(3)\n")
-    assert msg.startswith("provenance")
+    body = "from rand_engine import DataGenerator\nimport sys\nprint('boom', file=sys.stderr)\nraise SystemExit(3)\n"
+    assert provenance(check, tmp_path, body, []) == "provenance: the script exited 3 on re-run: boom"
 
 
 def test_rerun_writing_by_absolute_path_cannot_launder_the_artifact(check, tmp_path):
