@@ -831,11 +831,6 @@ def test_eval_malformed_result_line_keeps_check_output_and_records_an_error(monk
     res, _, _ = _trial(monkeypatch, tmp_path, "usage", check_out=stdout)
     assert res["check_output"] == stdout
     assert res["error"].startswith("ValueError: ")
-
-
-def test_eval_trial_whose_run_raises_after_a_passing_check_records_passed_false(monkeypatch, tmp_path):
-    res, _, _ = _trial(monkeypatch, tmp_path, "usage", check_out="RESULT {not json\n")
-    assert res["error"].startswith("ValueError: ")
     assert res["passed"] is False
 
 
