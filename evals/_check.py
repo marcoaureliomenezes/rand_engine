@@ -31,7 +31,7 @@ import pandas as pd
 import _check
 
 frames, specs, streams, calls = [], [], [], []
-RECORD = os.environ.pop("RAND_EVAL_RECORD", None)
+RECORD, OWNER = os.environ.pop("RAND_EVAL_RECORD", None), os.getpid()
 
 def record(df):
     frames.append({"rows": len(df), "cols": {str(c): _check.value_hash(df[c].tolist()) for c in df.columns}})
@@ -98,7 +98,7 @@ else:
 
 @atexit.register
 def dump():
-    if not RECORD:
+    if not RECORD or os.getpid() != OWNER:
         return
     for rows in streams:
         if rows:
