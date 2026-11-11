@@ -271,7 +271,9 @@ def render(report, absent, error):
 
 
 def run(head, base, sizes, out, error=None):
-  """Coordinate the A/B rows, write benchmarks.json + BENCHMARKS.md, exit 3 on a foreign base tree, 1 over LIMIT."""
+  """Coordinate the A/B rows, write benchmarks.json + BENCHMARKS.md, exit 3 on a foreign base tree, 1 over LIMIT.
+
+Each side of a row is judged by its quickest sample: runner noise only adds time, so the ratio exceeds LIMIT only when every head sample is slow."""
   def ask_head(req):
     reply = head.ask(req)
     if reply is None or "error" in reply:
@@ -304,9 +306,9 @@ def run(head, base, sizes, out, error=None):
       else: times["base"].append(reply["s"])
     r = {("sink" if row in SINKS else "method"): row, "rows": n}
     if "modifier" in req: r["modifier"] = req["modifier"]
-    r[field(r)] = statistics.median(times["head"])
+    r[field(r)] = min(times["head"])
     r["rows_per_us"] = n / (statistics.mean(times["head"]) * 1e6)
-    if base_ok: r["base_" + field(r)] = statistics.median(times["base"])
+    if base_ok: r["base_" + field(r)] = min(times["base"])
     records.append(r)
   for r in records:  # extras after the last timed row, so they never skew a timed call's history
     if "method" in r and "modifier" not in r:
