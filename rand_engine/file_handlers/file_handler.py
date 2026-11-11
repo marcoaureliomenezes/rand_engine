@@ -47,6 +47,13 @@ _INPUT_OPENERS = {
 }
 
 
+_ACCEPTED = {
+  "csv": ("index", "sep", "compression"),
+  "json": ("orient", "force_ascii", "compression"),
+  "parquet": ("compression",),
+}
+
+
 def _documented(format: str, write_options: dict, accepted: tuple) -> None:
   for key in write_options:
     if key not in accepted:
@@ -122,7 +129,7 @@ def _require_same_schema(current: pa.Schema | None, table: pa.Table) -> pa.Schem
 class _CsvFile:
 
   def __init__(self, path: str, options: dict, *, append_from=None, expected_schema=None):
-    _documented("csv", options, ("index", "sep", "compression"))
+    _documented("csv", options, _ACCEPTED["csv"])
     if options.get("index", False) is not False:
       raise RandEngineError("csv option 'index' accepts only False")
     self._compression = options.get("compression")
@@ -208,7 +215,7 @@ class _CsvFile:
 class _JsonFile:
 
   def __init__(self, path: str, options: dict, *, append_from=None, expected_schema=None):
-    _documented("json", options, ("orient", "force_ascii", "compression"))
+    _documented("json", options, _ACCEPTED["json"])
     if options.get("orient", "records") != "records":
       raise RandEngineError("json option 'orient' accepts only 'records'")
     self._compression = options.get("compression")
@@ -290,7 +297,7 @@ class _JsonFile:
 class _ParquetFile:
 
   def __init__(self, path: str, options: dict, *, append_from=None, expected_schema=None):
-    _documented("parquet", options, ("compression",))
+    _documented("parquet", options, _ACCEPTED["parquet"])
     self._path = path
     self._append_from = append_from
     self._compression = options.get("compression", "snappy")
@@ -368,6 +375,15 @@ class _ParquetFile:
     self._close_writer()
 
 
+def _to_file(format: str, opener: Callable, dataframe: Callable, full_path: str, write_options: dict, writer_keys: tuple) -> Callable:
+  _documented(format, write_options, (*_ACCEPTED[format], *writer_keys))
+  session = opener(full_path, {key: value for key, value in write_options.items() if key not in writer_keys})
+  def write():
+    with session:
+      session.write(dataframe())
+  return write
+
+
 class FileHandler:
 
   @staticmethod
@@ -384,33 +400,15 @@ class FileHandler:
 
   @staticmethod
   def to_csv(dataframe: PDDataFrame, full_path: str, write_options: dict, writer_keys: tuple = ()) -> Callable:
-    _documented("csv", write_options, ("index", "sep", "compression", *writer_keys))
-    options = {key: value for key, value in write_options.items() if key not in writer_keys}
-    session = FileHandler.open_csv(full_path, options)
-    def write():
-      with session:
-        session.write(dataframe())
-    return write
+    return _to_file("csv", FileHandler.open_csv, dataframe, full_path, write_options, writer_keys)
 
   @staticmethod
   def to_json(dataframe: PDDataFrame, full_path: str, write_options: dict, writer_keys: tuple = ()) -> Callable:
-    _documented("json", write_options, ("orient", "force_ascii", "compression", *writer_keys))
-    options = {key: value for key, value in write_options.items() if key not in writer_keys}
-    session = FileHandler.open_json(full_path, options)
-    def write():
-      with session:
-        session.write(dataframe())
-    return write
+    return _to_file("json", FileHandler.open_json, dataframe, full_path, write_options, writer_keys)
 
   @staticmethod
   def to_parquet(dataframe: PDDataFrame, full_path: str, write_options: dict, writer_keys: tuple = ()) -> Callable:
-    _documented("parquet", write_options, ("compression", *writer_keys))
-    options = {key: value for key, value in write_options.items() if key not in writer_keys}
-    session = FileHandler.open_parquet(full_path, options)
-    def write():
-      with session:
-        session.write(dataframe())
-    return write
+    return _to_file("parquet", FileHandler.open_parquet, dataframe, full_path, write_options, writer_keys)
 
   @staticmethod
   def handle_path(path: str, format: str, write_options: dict) -> tuple:
