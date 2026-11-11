@@ -11,7 +11,7 @@ class RandEngineError(Exception):
 
     Raised directly for size faults, an fk column with no eligible parent, a
     modifier column that a global transformer dropped, anomaly values that
-    cannot keep the dtype an embedded transformer left, a global transformer
+    cannot keep the dtype the column's transformers (embedded or global) left, a global transformer
     that changes the row count, an empty schema that cannot be derived, the pk
     index and sequence guards, ``RandSpecs.faker_pool``, and the writers. A
     failure in the generation step (the method call, the conversion, the
@@ -50,11 +50,12 @@ class SpecValidationError(RandEngineError):
 
 
 class ColumnGenerationError(RandEngineError):
-    """A column's generator method failed while its values were built.
+    """A column's generation step failed: the method call, the conversion or the multi-column unpack.
 
-    Raised by ``DataGenerator`` when a column's method raises during
-    generation, after the spec passed validation. The message names the
-    column and the original error, which is chained as ``__cause__``.
+    Raised by ``DataGenerator`` when a column's method call, its conversion of
+    the values, or the unpack of a multi-column result raises during generation,
+    after the spec passed validation. The message names the column and the
+    original error, which is chained as ``__cause__``.
 
     Examples
     --------

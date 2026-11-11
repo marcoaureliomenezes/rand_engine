@@ -115,8 +115,9 @@ class SparkGenerator:
 
     Parameters
     ----------
-    size : int
-        Rows built by ``get_df``.
+    size : int or callable
+        Rows built by ``get_df``: a non-negative integer, or a callable returning one. A callable
+        is called once per ``get_df`` call.
 
     Returns
     -------
@@ -147,7 +148,7 @@ class SparkGenerator:
     Raises
     ------
     RandEngineError
-        If ``size`` was not set.
+        If ``size`` is unset, or is not a non-negative integer (a callable's return value is judged).
 
     Examples
     --------
