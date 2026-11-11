@@ -170,32 +170,34 @@ def test_parse_reply_treats_unparseable_or_unechoed_lines_as_death(line, reply):
 
 
 class Fake:
-  """An in-process worker: logs every request, answers s = 1.0 (head 1.2, 1.2, 3.0 per row), extras {core_s, peak_mib}."""
+  """An in-process worker: logs every request, answers s from bases (base) or heads (head), extras {core_s, peak_mib}."""
 
-  def __init__(self, name, log, keys=("integers",), fail=None, returncode=None, heads=(1.2, 1.2, 3.0)):
-    self.name, self.log, self.keys, self.fail, self.returncode, self.heads = name, log, keys, fail or {}, returncode, heads
+  def __init__(self, name, log, keys=("integers",), fail=None, returncode=None, heads=(1.2, 1.2, 3.0), bases=(1.0, 1.0, 1.0)):
+    self.name, self.log, self.keys, self.fail, self.returncode, self.heads, self.bases = name, log, keys, fail or {}, returncode, heads, bases
 
   def ask(self, req):
     if "modifier" not in req: self.log.append((self.name, req))
     if (len(self.log), self.name) in self.fail: return self.fail[(len(self.log), self.name)]
     if "extra" in req: return {**req, "core_s": 0.5, "peak_mib": 2.0}
-    return {**req, "s": 1.0 if self.name == "B" else self.heads[sum(n == "H" and r == req for n, r in self.log) % 3]}
+    side, times = ("B", self.bases) if self.name == "B" else ("H", self.heads)
+    return {**req, "s": times[sum(n == side and r == req for n, r in self.log) % 3]}
 
   def reason(self):
     return "MemoryError: boom"
 
 
-@pytest.mark.parametrize("heads, failure", [
-  ((1.0, 1.5, 1.5), None),
-  ((1.4, 1.5, 1.6), "over 1.3x base: [('integers', 10)]"),
+@pytest.mark.parametrize("bases, heads, failure", [
+  ((1.0, 1.0, 1.0), (1.0, 1.5, 1.5), None),
+  ((1.0, 1.0, 1.0), (1.4, 1.5, 1.6), "over 1.3x base: [('integers', 10)]"),
+  ((1.0, 3.0, 3.0), (1.4, 1.5, 1.6), "over 1.3x base: [('integers', 10)]"),
 ])
-def test_run_judges_a_row_by_its_quickest_head_sample_so_only_a_uniformly_slow_head_fails(tmp_path, monkeypatch, heads, failure):
+def test_run_judges_a_row_by_its_quickest_head_sample_so_only_a_uniformly_slow_head_fails(tmp_path, monkeypatch, bases, heads, failure):
   log = []
   monkeypatch.setattr("benchmarks.speed.SINKS", ())
   monkeypatch.setattr("benchmarks.speed.MODIFIERS", {})
-  if failure is None: ab(log, Fake("B", log), Fake("H", log, heads=heads), out=tmp_path)
+  if failure is None: ab(log, Fake("B", log, bases=bases), Fake("H", log, heads=heads), out=tmp_path)
   else:
-    with pytest.raises(SystemExit) as e: ab(log, Fake("B", log), Fake("H", log, heads=heads), out=tmp_path)
+    with pytest.raises(SystemExit) as e: ab(log, Fake("B", log, bases=bases), Fake("H", log, heads=heads), out=tmp_path)
     assert e.value.code == failure
 
 
