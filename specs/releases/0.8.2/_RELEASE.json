@@ -1,7 +1,7 @@
 {
   "schema": "release-state-v1",
   "release": "0.8.2",
-  "phase": "CLOSURE",
+  "phase": "DEFINITION",
   "defined": {
     "ts": "2026-11-07T14:03:12Z"
   },
@@ -286,6 +286,12 @@
       "kind": "summary",
       "candidate": "rc-4",
       "text": "delivered: rc-4 SPEC FR19-FR29. FR19: the verify: line installs into one shared virtualenv under the workspace poetry cache, adopted on the operator's ruling \"Adopt the shared line (Recommended)\" after the J1.T1 measurement (.dadaia/reports/rand-engine/2026-11-07T144051Z-dd-sw-engineer-sr-j1t1-verify-measurement.md: 3 cold and 3 warm runs of each line, medians cold 139.8 s current vs 129.0 s shared and warm 149.5 s vs 95.3 s, all 13 runs green at 1671 passed, a second tree created no virtualenv, the shared env pins pandas 2.2.3 / pyspark 3.5.8 against CI's pandas 3.1.0 / pyspark 4.3.0 on Python 3.12+), and the dead verify-stage and verify-task lines are deleted. FR20: the Spark test session sets no Java 17 option and the databricks starter's test restores the Arrow conf. FR21: test and docstring hygiene. FR22: the eval provenance REBUILD, one record per generation and layer 2 matching only output the agent's code called for, evals/_check.py +90/-89 over rc-4 (git diff --numstat 27a65ba...HEAD at 62ce435), net +1 line against the AC22.6 bound of 0. FR23: honest trial records (passed false on error, final_message, first_failure, UTF-8) and eval.yml guards (concurrency group, k guard, apt-get update, guarded sysctl). FR24: one RESULT pass line, a shell-aware get-started-cli match with a required transcript, the spark task on pyspark>=4. FR25: timezone-aware date bounds refused, a bad replacement reported with the template errors, one public raise_validation. FR26: gen_uuid4 hex step by binascii.hexlify, byte-identical per seed, size-0 uuid4 and int_zfilled pinned. AC26.2: Benchmarks run 42954318116 on wt/0.8.2/rc-4/wt-rc at the pre-sync head b9603bd (d64ff80 after the sync onto 27a65ba) against base tag 0.8.1 at 46ce1b1, 03:40:37Z-03:54:42Z, uuid4 1M base 0.084 s head 0.071 s (ratio 0.84, peak 83.9 MiB), uuid4 10M base 1.055 s head 0.887 s (ratio 0.84, peak 839.2 MiB), both within the 1.3 limit. The run's red on distincts 1M (0.008 s to 0.011 s, ratio 1.40, distincts 10M 0.94) was bug speed-gate-fails-on-runner-noise (HIGH, the gate judged each row by the median of three samples), fixed on feature by cd775e9 before this merge: each side is now judged by its quickest sample. The confirming Benchmarks run follows the rc merge on feature. FR27: error texts and CHANGELOG lines. FR28: SparkGenerator's callable size documented and tested. FR29: the closure memory pass, the benchmarks atom included, and the CHANGELOG 0.8.2 entries. Bug fixed in the rc: eval-provenance-copy-loops-on-directory-links (8ca6930, pinned by 09ab567); carried: text-perf-follow-ups item (1), dates with time directives, is 0.9.0's, re-judged after native-datetime-output, setuptools-ghsa-xmj3-open-on-master stays open until the 0.8.2 master merge, and AC22.6's one-line deletion in evals/_check.py is routed to the next candidate (intake row 143); backlog exits: spark-java17-options-dead, test-docstring-hygiene, text-perf-follow-ups, shared-verify-venv, eval-harness-hygiene, eval-task-checks, error-text-accuracy, validator-leftovers and spark-callable-size, all delivered"
+    },
+    {
+      "ts": "2026-11-11T15:00:55Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.8.2 (stacked on the closed prior candidate)"
     }
   ]
 }
