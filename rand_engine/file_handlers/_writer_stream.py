@@ -79,7 +79,7 @@ class FileStreamWriter(FileWriter):
     Raises
     ------
     RandEngineError
-        If ``size`` was not set.
+        If ``size`` is unset, or is not a non-negative integer (a callable's return value is judged).
 
     Examples
     --------

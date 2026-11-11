@@ -50,7 +50,7 @@ class SpecValidationError(RandEngineError):
 
 
 class ColumnGenerationError(RandEngineError):
-    """A column's generation step failed: the method call, the conversion or the multi-column unpack.
+    """A column's generation step failed.
 
     Raised by ``DataGenerator`` when a column's method call, its conversion of
     the values, or the unpack of a multi-column result raises during generation,

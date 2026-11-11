@@ -361,7 +361,7 @@ class FileBatchWriter(FileWriter):
     Raises
     ------
     RandEngineError
-        If ``size`` was not set, or ``numFiles`` or ``maxRowsPerBatch`` is not a positive integer.
+        If ``size`` is unset, or is not a non-negative integer (a callable's return value is judged), or ``numFiles`` or ``maxRowsPerBatch`` is not a positive integer.
 
     Examples
     --------
