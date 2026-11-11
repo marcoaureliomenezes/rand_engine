@@ -250,14 +250,17 @@ def test_csv_mixed_type_column_raises_naming_it(tmp_path):
     FileHandler.to_csv(lambda: frame, str(tmp_path / "f.csv"), {})()
 
 
-@pytest.mark.parametrize("format_type,accepted", [
-  ("csv", "index, sep, compression, numFiles"),
-  ("parquet", "compression, numFiles"),
-  ("json", "orient, force_ascii, compression, numFiles"),
+@pytest.mark.parametrize("format_type,key,accepted", [
+  ("csv", "engine", "index, sep, compression, numFiles"),
+  ("parquet", "engine", "compression, numFiles"),
+  ("json", "engine", "orient, force_ascii, compression, numFiles"),
+  ("json", "indent", "orient, force_ascii, compression, numFiles"),
 ])
-def test_undocumented_option_raises_naming_it_and_accepted(rand_spec_with_kwargs, tmp_path, format_type, accepted):
-  with pytest.raises(RandEngineError, match=f"^{format_type} option 'engine' is not documented; accepted: {accepted}$"):
-    DataGenerator(rand_spec_with_kwargs).size(2).write.format(format_type).option("engine", "x").save(str(tmp_path / "f"))
+def test_undocumented_option_raises_naming_it_and_accepted(rand_spec_with_kwargs, tmp_path, format_type, key, accepted):
+  path = tmp_path / "f.json"
+  with pytest.raises(RandEngineError, match=f"^{format_type} option '{key}' is not documented; accepted: {accepted}$"):
+    DataGenerator(rand_spec_with_kwargs).size(2).write.format(format_type).option(key, 2).save(str(path))
+  assert not path.exists()
 
 
 @pytest.mark.parametrize("format_type,accepted", [
@@ -278,17 +281,13 @@ def test_json_documented_options_apply(tmp_path):
     assert f.read() == '{"s":"é"}\n'
 
 
-def test_json_indent_raises_before_writing_through_the_writer(rand_spec_with_kwargs, tmp_path):
+@pytest.mark.parametrize("key,accepted", [
+  ("indent", "orient, force_ascii, compression"),
+])
+def test_to_json_undocumented_option_raises_before_writing(tmp_path, key, accepted):
   path = tmp_path / "f.json"
-  with pytest.raises(RandEngineError, match="'indent'.*accepted: orient, force_ascii, compression, numFiles$"):
-    DataGenerator(rand_spec_with_kwargs).size(2).write.format("json").option("indent", 2).save(str(path))
-  assert not path.exists()
-
-
-def test_json_indent_raises_before_writing_through_to_json(tmp_path):
-  path = tmp_path / "f.json"
-  with pytest.raises(RandEngineError, match="'indent'.*accepted: orient, force_ascii, compression$"):
-    FileHandler.to_json(lambda: FRAME, str(path), {"indent": 2})
+  with pytest.raises(RandEngineError, match=f"^json option '{key}' is not documented; accepted: {accepted}$"):
+    FileHandler.to_json(lambda: FRAME, str(path), {key: 2})
   assert not path.exists()
 
 
