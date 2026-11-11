@@ -172,17 +172,31 @@ def test_parse_reply_treats_unparseable_or_unechoed_lines_as_death(line, reply):
 class Fake:
   """An in-process worker: logs every request, answers s = 1.0 (head 1.2, 1.2, 3.0 per row), extras {core_s, peak_mib}."""
 
-  def __init__(self, name, log, keys=("integers",), fail=None, returncode=None):
-    self.name, self.log, self.keys, self.fail, self.returncode = name, log, keys, fail or {}, returncode
+  def __init__(self, name, log, keys=("integers",), fail=None, returncode=None, heads=(1.2, 1.2, 3.0)):
+    self.name, self.log, self.keys, self.fail, self.returncode, self.heads = name, log, keys, fail or {}, returncode, heads
 
   def ask(self, req):
     if "modifier" not in req: self.log.append((self.name, req))
     if (len(self.log), self.name) in self.fail: return self.fail[(len(self.log), self.name)]
     if "extra" in req: return {**req, "core_s": 0.5, "peak_mib": 2.0}
-    return {**req, "s": 1.0 if self.name == "B" else [1.2, 1.2, 3.0][sum(n == "H" and r == req for n, r in self.log) % 3]}
+    return {**req, "s": 1.0 if self.name == "B" else self.heads[sum(n == "H" and r == req for n, r in self.log) % 3]}
 
   def reason(self):
     return "MemoryError: boom"
+
+
+@pytest.mark.parametrize("heads, failure", [
+  ((1.0, 1.5, 1.5), None),
+  ((1.4, 1.5, 1.6), "over 1.3x base: [('integers', 10)]"),
+])
+def test_run_judges_a_row_by_its_quickest_head_sample_so_only_a_uniformly_slow_head_fails(tmp_path, monkeypatch, heads, failure):
+  log = []
+  monkeypatch.setattr("benchmarks.speed.SINKS", ())
+  monkeypatch.setattr("benchmarks.speed.MODIFIERS", {})
+  if failure is None: ab(log, Fake("B", log), Fake("H", log, heads=heads), out=tmp_path)
+  else:
+    with pytest.raises(SystemExit) as e: ab(log, Fake("B", log), Fake("H", log, heads=heads), out=tmp_path)
+    assert e.value.code == failure
 
 
 def ab(log, base=None, head=None, error=None, out=None, sizes=(10,)):
