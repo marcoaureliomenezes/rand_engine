@@ -37,7 +37,7 @@ records, frames, streams = [], [], []
 RECORD, OWNER = os.environ.pop("RAND_EVAL_RECORD", None), os.getpid()
 
 def origin(entry=None):
-    """The entry point (outermost rand_engine frame) and whether the code that called it lies under the scratch root."""
+    """The entry point (outermost rand_engine frame) and whether the code that called it lies under the scratch root; the nearest frame with a local named `tag` supplies that flag instead."""
     f = sys._getframe(1)
     while f and f.f_code.co_filename.startswith((LIB, __file__)):
         if f.f_code.co_filename.startswith(LIB):
@@ -130,11 +130,11 @@ def value_hash(values):
 
 
 def read_artifact(path):
-    """DataFrame of a csv or json-lines file as written (text, no inference), a parquet file, or a directory of parts (entries whose name starts with `_` or `.` are hidden and skipped; the parts are concatenated in content order, never name order); gzip is decompressed."""
+    """DataFrame of a csv or json-lines file as written (text, no inference), a parquet file, or a directory of parts (entries whose name starts with `_` or `.` are hidden and skipped); gzip is decompressed."""
     import pandas as pd
     path = Path(path)
     if path.is_dir():
-        return pd.concat(sorted((read_artifact(p) for p in path.iterdir() if p.is_file() and p.name[0] not in "_."), key=lambda f: f.astype(str).values.tolist()), ignore_index=True)
+        return pd.concat([read_artifact(p) for p in path.iterdir() if p.is_file() and p.name[0] not in "_."], ignore_index=True)
     name = path.name.removesuffix(".gz")
     if name.endswith(".parquet"):
         return pd.read_parquet(path)
@@ -154,11 +154,11 @@ def provenance(workdir, script, artifacts, python=sys.executable):
     """(None | "provenance: ...", record): None when every artifact column equals a column the agent's code generated through rand_engine on a re-run.
 
     Every artifact is read and hashed as delivered before anything runs; the re-run happens in a scratch copy of `workdir` without the artifacts, and its record is compared with those hashes, so the originals are only read.
-    A listed artifact the agent did not deliver fails, and so does a re-run that recorded no generation from the agent's code.
+    A listed artifact the agent did not deliver or that resolves outside `workdir` fails, and so does a re-run that recorded no generation from the agent's code.
     `record` is a list of distinct {"entry", "spec", "agent"}: the entry point that ran ("get_df", "stream_dict", "save", "start"), its evaluated spec, and whether code under the scratch copy called it.
     """
-    workdir, script, record = Path(workdir).resolve(), Path(script).resolve(), []
-    delivered = []
+    real = lambda p: Path(os.path.realpath(p))
+    workdir, script, record, delivered = real(workdir), real(script), [], []
     for art in artifacts:
         if not (workdir / art).exists():
             return f"provenance: artifact {art} was not delivered", record
@@ -172,8 +172,7 @@ def provenance(workdir, script, artifacts, python=sys.executable):
         (tmp / "shim").mkdir()
         (tmp / "shim" / "sitecustomize.py").write_text(SHIM)
         shutil.copy(__file__, tmp / "shim" / "_check.py")
-        scratch = tmp / "work"
-        output = tmp / "record.json"
+        scratch, output = tmp / "work", tmp / "record.json"
         env = {k: os.environ[k] for k in RERUN_ENV if k in os.environ}
         env.update(PYTHONPATH=os.pathsep.join(filter(None, [str(tmp / "shim"), os.environ.get("PYTHONPATH")])),
                    RAND_EVAL_RECORD=str(output), RAND_EVAL_ROOT=str(scratch), PYTHONDONTWRITEBYTECODE="1")
@@ -181,21 +180,22 @@ def provenance(workdir, script, artifacts, python=sys.executable):
         try:
             shutil.copytree(workdir, scratch, symlinks=True)
             for p in scratch.rglob("*"):
-                if p.is_symlink() and (real := Path(os.path.realpath(workdir / p.relative_to(scratch)))).is_relative_to(workdir):
+                if p.is_symlink() and (dest := real(workdir / p.relative_to(scratch))).is_relative_to(workdir):
                     p.unlink()
-                    p.symlink_to(scratch / real.relative_to(workdir))
-            if bad := next((a for a in artifacts if not (scratch / a).resolve().is_relative_to(scratch.resolve())), None):
+                    p.symlink_to(scratch / dest.relative_to(workdir))
+            if bad := next((a for a in artifacts if not real(scratch / a).is_relative_to(real(scratch))), None):
                 return f"provenance: artifact {bad} resolves outside the work directory", record
             for art in artifacts:
                 shutil.rmtree(scratch / art, ignore_errors=True)
                 (scratch / art).unlink(missing_ok=True)
             run = subprocess.run([python, str(target)], cwd=scratch, env=env, capture_output=True, text=True, timeout=300)
+        except shutil.Error as e:
+            return f"provenance: the copy of the work directory failed on {Path(e.args[0][0][0]).relative_to(workdir)}", record
         except (OSError, subprocess.TimeoutExpired) as e:
             return f"provenance: the script could not re-run: {type(e).__name__}", record
         if run.returncode != 0:
             return f"provenance: the script exited {run.returncode} on re-run: {run.stderr.strip()[-300:]}", record
-        data = json.loads(output.read_text()) if output.exists() else {"records": [], "frames": []}
-        record = data["records"]
+        record = (data := json.loads(output.read_text()) if output.exists() else {"records": [], "frames": []})["records"]
         if not agent(record, "entry"):
             return "provenance: the re-run recorded no rand_engine generation from the agent's code", record
         recorded = {tuple(t) for cols in agent(data["frames"], "cols") for t in cols}
