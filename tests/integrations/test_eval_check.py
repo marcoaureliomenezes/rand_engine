@@ -280,22 +280,31 @@ def test_artifact_resolving_outside_the_work_directory_is_refused_and_left_untou
     assert (outside / "out.csv").read_bytes() == before
 
 
-def test_artifact_reached_through_an_absolute_link_inside_the_work_directory_passes(check, tmp_path):
-    (tmp_path / "real").mkdir()
-    (tmp_path / "data").symlink_to(tmp_path / "real")
-    body = f"from rand_engine import DataGenerator\nDataGenerator({SPEC}, seed=1).size(10).get_df().to_csv('data/out.csv', index=False)\n"
-    assert provenance(check, tmp_path, body, ["data/out.csv"]) is None
+def linked_work(tmp_path, spelling):
+    """A work dir whose `data` is an absolute link to its own `real` dir, spelled directly or through an alias of its parent."""
+    work = tmp_path / "work"
+    (work / "real").mkdir(parents=True)
+    (tmp_path / "alias").symlink_to(tmp_path)
+    (work / "data").symlink_to((work if spelling == "direct" else tmp_path / "alias" / "work") / "real")
+    return work
 
 
-def test_rerun_writing_through_an_absolute_link_inside_the_work_directory_leaves_the_original_untouched(check, tmp_path):
-    (tmp_path / "real").mkdir()
-    (tmp_path / "data").symlink_to(tmp_path / "real")
-    gen = f"from rand_engine import DataGenerator\nDataGenerator({SPEC}, seed=1).size(10).get_df().to_csv('data/out.csv', index=False)\n"
-    run_script(tmp_path, gen)
-    before = (tmp_path / "real" / "out.csv").read_bytes()
-    assert provenance(check, tmp_path, gen + "open('data/note.txt', 'w').write('x')\n", ["data/out.csv"], deliver=False) is None
-    assert sorted(p.name for p in (tmp_path / "real").iterdir()) == ["out.csv"]
-    assert (tmp_path / "real" / "out.csv").read_bytes() == before
+GEN = f"from rand_engine import DataGenerator\nDataGenerator({SPEC}, seed=1).size(10).get_df().to_csv('data/out.csv', index=False)\n"
+
+
+@pytest.mark.parametrize("spelling", ["direct", "alias"])
+def test_artifact_reached_through_an_absolute_link_inside_the_work_directory_passes(check, tmp_path, spelling):
+    assert provenance(check, linked_work(tmp_path, spelling), GEN, ["data/out.csv"]) is None
+
+
+@pytest.mark.parametrize("spelling", ["direct", "alias"])
+def test_rerun_writing_through_an_absolute_link_inside_the_work_directory_leaves_the_original_untouched(check, tmp_path, spelling):
+    work = linked_work(tmp_path, spelling)
+    run_script(work, GEN)
+    before = (work / "real" / "out.csv").read_bytes()
+    assert provenance(check, work, GEN + "open('data/note.txt', 'w').write('x')\n", ["data/out.csv"], deliver=False) is None
+    assert sorted(p.name for p in (work / "real").iterdir()) == ["out.csv"]
+    assert (work / "real" / "out.csv").read_bytes() == before
 
 
 def test_script_that_cannot_rerun_fails_as_provenance(check, tmp_path):
