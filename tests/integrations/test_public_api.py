@@ -841,6 +841,17 @@ def test_eval_trial_json_holds_the_final_message_and_the_first_failure_line(monk
     assert res["first_failure"] == "no rows written"
 
 
+def test_eval_failing_check_with_a_malformed_result_line_keeps_its_first_failure(monkeypatch, tmp_path):
+    res, _, _ = _trial(monkeypatch, tmp_path, "usage", check_out="why it failed\nRESULT {not json\n", check_rc=1)
+    assert res["first_failure"] == "why it failed"
+    assert res["error"].startswith("ValueError: ")
+
+
+def test_eval_stream_with_no_result_event_raises_an_error_naming_the_missing_result_event(monkeypatch, tmp_path):
+    res, _, _ = _trial(monkeypatch, tmp_path, "usage", events=[{"type": "assistant"}])
+    assert res["error"] == "RuntimeError: no result event in the agent stream"
+
+
 @pytest.mark.parametrize("key, value", [("errors", ["boom"]), ("startup_failure_reason", "no token")])
 def test_eval_stream_with_no_init_event_raises_an_error_naming_the_result_event(monkeypatch, tmp_path, key, value):
     res, _, _ = _trial(monkeypatch, tmp_path, "usage", events=[{"type": "result", "is_error": True, key: value}])
