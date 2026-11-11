@@ -88,6 +88,7 @@ methods require `cols`; the global optional modifiers are documented separately 
 string drawn at whole-second resolution in UTC; its `date_format` may use only the directives
 `%Y %m %d %H %M %S %f` (`%f` renders `000000`). Any other directive fails validation on both
 engines, naming the supported set. A bound that does not parse under `date_format` is read as `%Y-%m-%d`.
+
 A bound that carries a timezone (for example `date_format` `%Y-%m-%d %z`) fails validation, naming the column.
 
 ```python
