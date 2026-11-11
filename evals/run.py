@@ -131,6 +131,8 @@ def run_trial(task, n, args):
         done = next((e for e in events if e.get("type") == "result"), {})
         init = next((e for e in events if e.get("subtype") == "init"), None)
         if init is None:
+            if not done:
+                raise RuntimeError("no result event in the agent stream")
             raise RuntimeError(f"no init event: {done.get('errors') or done.get('startup_failure_reason')}")
         assert_isolated(init, "default", ROUNDS[rnd]["tools"])
         res["model"], res["final_message"] = init["model"], done.get("result")
@@ -149,9 +151,9 @@ def run_trial(task, n, args):
                                    stdin=subprocess.DEVNULL, capture_output=True, text=True,
                                    timeout=cfg["verifier"]["timeout_sec"])
             res["check_output"] = check.stdout
+            res["first_failure"] = None if check.returncode == 0 else check.stdout.partition("\n")[0]
             res.update({k: v for k, v in check_result(check.stdout).items() if k not in res})
             res["passed"] = check.returncode == 0
-            res["first_failure"] = None if res["passed"] else check.stdout.partition("\n")[0]
         except subprocess.TimeoutExpired:
             res["check_output"] = "timeout"
     except Exception as e:
