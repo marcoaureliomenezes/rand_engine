@@ -29,7 +29,7 @@ def verdict():
     msg, record = _check.provenance(".", "make.py", ["out.parquet"])
     if msg:
         return "2", msg, seen
-    specs = _check.agent(record, "spec")
+    specs = _check.generated(record, "spec")
     if not _check.documented_method(specs, "integers", ["min", "max"]):
         return "3", "the recorded spec has no `integers` column with min and max", seen
     if hits := _check.legacy_hits("\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in Path(".").glob("*.py"))):

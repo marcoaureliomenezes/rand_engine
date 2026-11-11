@@ -26,7 +26,7 @@ def run(events):
     msg, record = _check.provenance(".", SCRIPT, [BATCH])
     if msg:
         return "2", msg
-    specs, calls = _check.agent(record, "spec"), _check.agent(record, "entry")
+    specs, calls = _check.generated(record, "spec"), _check.generated(record, "entry")
     if not _check.documented_method(specs, "integers", ["min", "max"]):
         return "3", "the recorded spec has no integers column with min and max"
     if not {"save", "start"} <= set(calls):

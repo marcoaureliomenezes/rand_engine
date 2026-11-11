@@ -41,7 +41,7 @@ if not (customers["customer_id"].is_unique and orders["order_id"].is_unique):
 problem, record = _check.provenance(work, "solve.py", ["customers.parquet", "orders.parquet"], python=sys.executable)
 if problem:
     fail("2", problem)
-specs = _check.agent(record, "spec")
+specs = _check.generated(record, "spec")
 
 def col(spec, name, method):
     c = spec.get(name) if isinstance(spec, dict) else None

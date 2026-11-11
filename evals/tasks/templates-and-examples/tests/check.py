@@ -51,7 +51,7 @@ for name, (rows, allowed) in TABLES.items():
 msg, record = _check.provenance(".", "solve.py", list(TABLES), python=sys.executable)
 if msg:
     fail("2", msg)
-specs = _check.agent(record, "spec")
+specs = _check.generated(record, "spec")
 
 # Layer 3: the recorded specs are shipped template entries, evaluated in this venv, plus the city pool, no legacy names, token ceiling, no web.
 for label, entries in (("customers", CUSTOMERS), ("orders", ORDERS)):

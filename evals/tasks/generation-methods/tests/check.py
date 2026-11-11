@@ -32,7 +32,7 @@ if not ok:
 msg, record = _check.provenance(".", "solve.py", [ART], python=sys.executable)
 if msg:
     fail("2", msg)
-specs = _check.agent(record, "spec")
+specs = _check.generated(record, "spec")
 
 if not any(isinstance(c, dict) and c.get("method") == "zipf" and isinstance(c.get("kwargs"), dict) and c["kwargs"].get("a") == 1.5
            for spec in specs if isinstance(spec, dict) for c in spec.values()):

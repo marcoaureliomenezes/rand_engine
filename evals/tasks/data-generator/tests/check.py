@@ -34,7 +34,7 @@ if not ((df["salary"] / 1000 - df["salary_k"]).abs() < 1e-6).all():
 msg, record = _check.provenance(".", "solve.py", ["users.parquet"], python=sys.executable)
 if msg:
     fail("2", msg)
-specs = _check.agent(record, "spec")
+specs = _check.generated(record, "spec")
 
 # Layer 3: documented features, no legacy names, token ceiling, no web.
 if not any(isinstance(c, dict) and c.get("null_rate") for spec in specs for c in spec.values()):
