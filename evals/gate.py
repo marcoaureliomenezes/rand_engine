@@ -79,14 +79,15 @@ def main(argv=None):
                 cost += data.get("cost_usd") or 0
                 if data.get("error"):
                     fails.append(f"FAIL {name}: {leg} trial {n} harness error: {data['error']}")
+                ok = bool(data.get("passed")) and not data.get("error")
                 known = data.get("input_tokens") is not None and data.get("output_tokens") is not None
-                if data.get("passed") and not data.get("error") and known:
+                if ok and known:
                     raw[leg] += 1
                     tokens[leg].append(data["input_tokens"] + data["output_tokens"])
                 else:
                     layers.add(data.get("layer"))
                     surfaces |= set(data.get("surfaces") or [])
-                    unknown |= bool(data.get("passed") and not data.get("error"))
+                    unknown |= ok
 
         eff = {leg: 0 if leg in voided else raw[leg] for leg in raw}
         wheel, pypi = eff.get("wheel", 0), eff.get("pypi", 0)
