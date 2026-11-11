@@ -151,12 +151,17 @@ def test_stream_writes_through_pyarrow(rand_spec_with_kwargs, tmp_path, format_t
   assert len(frame) == 3 and list(frame.columns) == list(rand_spec_with_kwargs)
 
 
-def test_undocumented_option_fails_before_overwrite_deletes(rand_spec_with_kwargs, tmp_path):
+@pytest.mark.parametrize("format_type,accepted", [
+  ("csv", "index, sep, compression, timeout"),
+  ("json", "orient, force_ascii, compression, timeout"),
+  ("parquet", "compression, timeout"),
+])
+def test_undocumented_option_fails_before_overwrite_deletes(rand_spec_with_kwargs, tmp_path, format_type, accepted):
   path = str(tmp_path / "clients")
   os.makedirs(path)
   open(f"{path}/keep.csv", "w").close()
-  with pytest.raises(RandEngineError, match="'engine'.*accepted: index, sep, compression, timeout$"):
-    DataGenerator(rand_spec_with_kwargs).size(2).writeStream.option("engine", "x").mode("overwrite").start(path)
+  with pytest.raises(RandEngineError, match=f"^{format_type} option 'engine' is not documented; accepted: {accepted}$"):
+    DataGenerator(rand_spec_with_kwargs).size(2).writeStream.format(format_type).option("engine", "x").mode("overwrite").start(path)
   assert os.listdir(path) == ["keep.csv"]
 
 

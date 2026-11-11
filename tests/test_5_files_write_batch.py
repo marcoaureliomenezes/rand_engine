@@ -256,8 +256,18 @@ def test_csv_mixed_type_column_raises_naming_it(tmp_path):
   ("json", "orient, force_ascii, compression, numFiles"),
 ])
 def test_undocumented_option_raises_naming_it_and_accepted(rand_spec_with_kwargs, tmp_path, format_type, accepted):
-  with pytest.raises(RandEngineError, match=f"'engine'.*accepted: {accepted}$"):
+  with pytest.raises(RandEngineError, match=f"^{format_type} option 'engine' is not documented; accepted: {accepted}$"):
     DataGenerator(rand_spec_with_kwargs).size(2).write.format(format_type).option("engine", "x").save(str(tmp_path / "f"))
+
+
+@pytest.mark.parametrize("format_type,accepted", [
+  ("csv", "index, sep, compression"),
+  ("json", "orient, force_ascii, compression"),
+  ("parquet", "compression"),
+])
+def test_open_session_undocumented_option_raises_with_accepted_list(tmp_path, format_type, accepted):
+  with pytest.raises(RandEngineError, match=f"^{format_type} option 'engine' is not documented; accepted: {accepted}$"):
+    getattr(FileHandler, f"open_{format_type}")(str(tmp_path / "f"), {"engine": "x"})
 
 
 def test_json_documented_options_apply(tmp_path):
