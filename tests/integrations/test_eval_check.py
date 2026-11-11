@@ -400,7 +400,7 @@ def test_copy_failure_reports_as_provenance(check, tmp_path):
         msg = provenance(check, tmp_path, SEEDED)
     finally:
         locked.chmod(0o600)
-    assert msg.startswith("provenance")
+    assert msg == "provenance: the copy of the work directory failed on locked.txt"
 
 
 BOOL_SPEC = '{"flag": {"method": "booleans", "kwargs": {"true_prob": 0.5}}}'
