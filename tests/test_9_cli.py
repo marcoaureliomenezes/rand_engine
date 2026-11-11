@@ -16,6 +16,7 @@ except ModuleNotFoundError:
 import pytest
 
 from rand_engine.cli import CASES
+from tests.conftest import ARROW_CONF
 
 RUNNABLE_SLUGS = ["test-data", "lake", "kafka", "databricks", "faker"]
 ALL_SLUGS = [*RUNNABLE_SLUGS, "agent"]
@@ -36,7 +37,6 @@ TARGETS = {
   "agent": "AGENTS.md",
 }
 ROOT = Path(__file__).resolve().parent.parent
-ARROW_CONF = "spark.sql.execution.arrow.pyspark.enabled"
 
 
 def run(argv):
@@ -166,15 +166,9 @@ CHECKS = {"test-data": check_test_data, "lake": check_lake, "kafka": check_kafka
 @pytest.fixture
 def spark_guard(request):
   if not request.param:
-    yield
+    yield None
     return
-  spark = request.getfixturevalue("spark_session")
-  before = spark.conf.get(ARROW_CONF)
-  try:
-    yield
-  finally:
-    spark.conf.set(ARROW_CONF, before)
-  assert spark.conf.get(ARROW_CONF) == before
+  yield request.getfixturevalue("arrow_conf_restored")
 
 
 NOTEBOOK_ROWS = [
@@ -200,6 +194,8 @@ def test_starter_runs_producing_its_promise_with_its_notebook_expectation(slug, 
   monkeypatch.setitem(sys.modules, "kafka", None)
   monkeypatch.setitem(sys.modules, "confluent_kafka", None)
   ns = runpy.run_path(str(tmp_path / f"{slug}-example.py"), run_name="__main__")
+  if spark_guard is not None:
+    assert spark_guard.conf.get(ARROW_CONF) == "true"
   CHECKS[slug](ns, capsys.readouterr().out, tmp_path)
 
 

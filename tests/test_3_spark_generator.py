@@ -14,6 +14,7 @@ from rand_engine import DataGenerator
 from rand_engine.main.spark_generator import SparkGenerator
 from rand_engine.validators.advanced_validator import AdvancedValidator
 from rand_engine.validators.exceptions import RandEngineError, SpecValidationError
+from tests.conftest import ARROW_CONF
 
 
 class TestSparkGeneratorBasic:
@@ -693,18 +694,15 @@ def test_spark_seed_only_extends_key_generation(spark_session, spark_functions):
     assert values.between(18, 80).all()
 
 
-ARROW_CONF = "spark.sql.execution.arrow.pyspark.enabled"
 NULLED_TEXT_SPEC = {
     "name": {"method": "distincts", "kwargs": {"distincts": ["a", "b"]}, "null_rate": 0.5},
 }
 
 
 @pytest.fixture
-def arrow_conf(spark_session):
-    """Toggle Spark's Arrow option for one test and restore it."""
-    old = spark_session.conf.get(ARROW_CONF, "false")
-    yield lambda on: spark_session.conf.set(ARROW_CONF, "true" if on else "false")
-    spark_session.conf.set(ARROW_CONF, old)
+def arrow_conf(arrow_conf_restored):
+    """Toggle Spark's Arrow option for one test; the restore is conftest's."""
+    yield lambda on: arrow_conf_restored.conf.set(ARROW_CONF, "true" if on else "false")
 
 
 def test_spark_arrow_on_converts_pd_na_text_to_sql_nulls(spark_session, arrow_conf):

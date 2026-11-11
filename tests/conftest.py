@@ -23,6 +23,16 @@ pytest_plugins = [
 # "tests.fixtures.f1_data_generator_specs_right",
 # "tests.fixtures.f3_integrations",
 
+ARROW_CONF = "spark.sql.execution.arrow.pyspark.enabled"
+
+
+@pytest.fixture
+def arrow_conf_restored(spark_session):
+    """The shared Spark session, its Arrow option restored to the value found on entry."""
+    before = spark_session.conf.get(ARROW_CONF, "false")
+    yield spark_session
+    spark_session.conf.set(ARROW_CONF, before)
+
 
 def natural_datetime_unit():
     """Unit (`ns`, `us`) the installed pandas gives a naive Python datetime."""
