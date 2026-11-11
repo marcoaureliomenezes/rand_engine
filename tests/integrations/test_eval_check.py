@@ -25,6 +25,7 @@ Contract under test (loaded by path, no Spark, no network, no agent; the re-run'
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -310,7 +311,19 @@ def test_self_loop_that_is_not_an_artifact_passes_provenance(check, tmp_path):
     assert provenance(check, tmp_path, SEEDED) is None
 
 
-def test_two_directory_links_to_the_work_dir_pass_provenance(check, tmp_path):
+def test_two_directory_links_to_the_work_dir_pass_provenance(check, tmp_path, monkeypatch):
+    real, copied = shutil.copytree, []
+
+    def bounded(src, dst, *rest, **kw):
+        if rest:
+            return real(src, dst, *rest, **kw)
+        def count(s, d, **k):
+            copied.append(s)
+            assert len(copied) < 100, "the copy follows directory links"
+            return shutil.copy2(s, d, **k)
+        return real(src, dst, copy_function=count, **kw)
+
+    monkeypatch.setattr(shutil, "copytree", bounded)
     (tmp_path / "a").symlink_to(".")
     (tmp_path / "b").symlink_to(".")
     assert provenance(check, tmp_path, SEEDED) is None
