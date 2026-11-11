@@ -911,6 +911,15 @@ def test_eval_trials_step_fails_before_the_eval_when_k_is_above_three():
     assert guard.start() < text.index("python evals/run.py")
 
 
+@pytest.mark.parametrize("k, exit_code", [("3", 0), ("4", 1), ("abc", 1), ("", 1), ("2.5", 1)])
+def test_eval_trials_k_guard_fails_closed_on_anything_but_an_integer_up_to_three(k, exit_code):
+    guard = next(
+        line.strip() for line in _job("trials").splitlines() if line.strip().startswith('if [ "$K"')
+    )
+    run = subprocess.run(["bash", "-c", guard], env={**os.environ, "K": k}, capture_output=True, text=True)
+    assert run.returncode == exit_code, run.stderr
+
+
 def test_eval_trials_apt_get_update_runs_before_the_install():
     text = _job("trials")
     assert "apt-get update" in text, "no apt-get update in the trials job"
