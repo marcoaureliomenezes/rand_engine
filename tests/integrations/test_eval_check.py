@@ -280,6 +280,13 @@ def test_artifact_resolving_outside_the_work_directory_is_refused_and_left_untou
     assert (outside / "out.csv").read_bytes() == before
 
 
+def test_artifact_reached_through_an_absolute_link_inside_the_work_directory_passes(check, tmp_path):
+    (tmp_path / "real").mkdir()
+    (tmp_path / "data").symlink_to(tmp_path / "real")
+    body = f"from rand_engine import DataGenerator\nDataGenerator({SPEC}, seed=1).size(10).get_df().to_csv('data/out.csv', index=False)\n"
+    assert provenance(check, tmp_path, body, ["data/out.csv"]) is None
+
+
 def test_script_that_cannot_rerun_fails_as_provenance(check, tmp_path):
     msg = provenance(check, tmp_path, "from rand_engine import DataGenerator\nraise SystemExit(3)\n")
     assert msg.startswith("provenance")
