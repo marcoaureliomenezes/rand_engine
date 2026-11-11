@@ -678,7 +678,7 @@ def test_spark_zero_eligible_foreign_key_raises_the_declared_driver_error(spark_
     assert str(error.value) == "fk column 'parent_id' has a child with no eligible parent"
 
 
-def test_spark_zero_callable_size_skips_the_eligibility_check(spark_session, spark_functions):
+def test_spark_zero_callable_size_yields_an_empty_frame_keeping_the_fk_column(spark_session, spark_functions):
     dataframe = SparkGenerator(spark_session, spark_functions, LATE_PARENT_SPEC, seed=123).size(lambda: 0).get_df()
 
     assert dataframe.count() == 0
