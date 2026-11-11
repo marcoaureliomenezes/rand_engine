@@ -26,6 +26,9 @@ def main(argv=None):
     ap.add_argument("--k", type=int, required=True)
     ap.add_argument("--calibrate", action="store_true")
     a = ap.parse_args(argv)
+    if not a.results.is_dir():
+        print(f"FAIL results: no such directory {a.results}")
+        return 1
 
     specs = {}
     for f in sorted(a.tasks.glob("*/task.toml")):
