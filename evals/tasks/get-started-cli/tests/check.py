@@ -4,6 +4,7 @@ Layer 1: `starter/lake-example.py` exists. Layer 2: it is byte-equal to the pack
 the required transcript shows a Bash call of the package CLI's `get-started lake`, options in any order. Layer 3: no web
 tool, within the ceiling.
 """
+import itertools
 import os
 import shlex
 import sys
@@ -17,27 +18,35 @@ SCAFFOLD = Path("starter") / "lake-example.py"
 
 
 def ran_get_started_lake(command):
-    """True when the command runs the package CLI's `get-started` with `lake` as its first positional.
+    """True when a command of the line runs the package CLI's `get-started` with `lake` as its first positional.
 
-    The CLI is `rand-engine` by basename, `-m rand_engine`, or `-c` code importing `rand_engine.cli`; `--out` takes a value.
+    Commands end at a shell control operator or a newline; the line is lexed lazily, so a lexing error after a match
+    does not undo it. The CLI is `rand-engine` by basename, `-m rand_engine`, or `-c` code calling `main` of `rand_engine`;
+    `--out` takes a value.
     """
+    lexer = shlex.shlex(command.replace("\n", " ; "), posix=True, punctuation_chars=True)
+    lexer.whitespace_split = True
+    tokens = []
     try:
-        tokens = shlex.split(command)
+        for tok in itertools.chain(lexer, [";"]):
+            if not set(tok) <= set(lexer.punctuation_chars):
+                tokens.append(tok)
+                continue
+            for i, name in enumerate(tokens):
+                prev = tokens[i - 1] if i else ""
+                if name == "get-started" and (os.path.basename(prev) == "rand-engine" or tokens[i - 2:i - 1] == ["-m"] and prev == "rand_engine"
+                                              or tokens[i - 2:i - 1] == ["-c"] and "rand_engine" in prev and "main(" in prev):
+                    rest = iter(tokens[i + 1:])
+                    for arg in rest:
+                        if arg == "--out":
+                            next(rest, None)
+                        elif not arg.startswith("-"):
+                            if arg == "lake":
+                                return True
+                            break
+            tokens = []
     except ValueError:
-        return False
-    for i, tok in enumerate(tokens):
-        if tok != "get-started" or i == 0:
-            continue
-        prev = tokens[i - 1]
-        if not (os.path.basename(prev) == "rand-engine" or (prev == "rand_engine" and tokens[i - 2:i - 1] == ["-m"])
-                or (tokens[i - 2:i - 1] == ["-c"] and "rand_engine.cli" in prev)):
-            continue
-        rest = iter(tokens[i + 1:])
-        for arg in rest:
-            if arg == "--out":
-                next(rest, None)
-            elif not arg.startswith("-"):
-                return arg == "lake"
+        pass
     return False
 
 
