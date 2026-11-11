@@ -274,6 +274,7 @@ class CommonValidator:
 
     @staticmethod
     def raise_validation(errors: list[str], engine: str) -> None:
+        """Raise SpecValidationError framing `errors` under the `engine` heading; never returns."""
         separator = "\n" + "=" * 80 + "\n"
         message = (
             f"\n{'=' * 80}\n{engine} SPEC VALIDATION ERROR\n{'=' * 80}\n\n"
