@@ -180,12 +180,15 @@ def provenance(workdir, script, artifacts, python=sys.executable):
         target = scratch / script.relative_to(workdir) if script.is_relative_to(workdir) else script
         try:
             shutil.copytree(workdir, scratch, symlinks=True)
+            for p in scratch.rglob("*"):
+                if p.is_symlink() and os.path.isabs(t := os.readlink(p)) and Path(t).is_relative_to(workdir):
+                    p.unlink()
+                    p.symlink_to(scratch / Path(t).relative_to(workdir))
+            if bad := next((a for a in artifacts if not (scratch / a).resolve().is_relative_to(scratch.resolve())), None):
+                return f"provenance: artifact {bad} resolves outside the work directory", record
             for art in artifacts:
-                real = (workdir / art).resolve()
-                if not real.is_relative_to(workdir):
-                    return f"provenance: artifact {art} resolves outside the work directory", record
-                shutil.rmtree(scratch / real.relative_to(workdir), ignore_errors=True)
-                (scratch / real.relative_to(workdir)).unlink(missing_ok=True)
+                shutil.rmtree(scratch / art, ignore_errors=True)
+                (scratch / art).unlink(missing_ok=True)
             run = subprocess.run([python, str(target)], cwd=scratch, env=env, capture_output=True, text=True, timeout=300)
         except (OSError, subprocess.TimeoutExpired) as e:
             return f"provenance: the script could not re-run: {type(e).__name__}", record
