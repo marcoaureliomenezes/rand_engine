@@ -226,6 +226,29 @@
       "candidate": "rc-4",
       "milestone": "implemented",
       "text": "Candidate implemented; phase CLOSURE."
+    },
+    {
+      "ts": "2026-11-11T03:47:05Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 37498ebaafbcb2661aca78051fec2ee49e920255..cf023d0be836: 5 reviewed, 6 changed.",
+      "since": "37498ebaafbcb2661aca78051fec2ee49e920255",
+      "until": "cf023d0be836e9210baa5aa03632b4a91afef7d1",
+      "reviewed": [
+        "public-api",
+        "data-generator",
+        "get-started-cli",
+        "benchmarks",
+        "pk-fk-constraints"
+      ],
+      "changed": [
+        "agent-eval",
+        "spark-generator",
+        "writers-and-streaming",
+        "rand-spec-grammar",
+        "generation-methods",
+        "documentation"
+      ]
     }
   ]
 }
