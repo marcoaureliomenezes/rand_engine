@@ -64,6 +64,12 @@ def assert_isolated(init, mode, tools):
         raise RuntimeError(f"isolation violated: {leaks}")
 
 
+def seed_cwd(task_dir, cwd):
+    """`cwd`, created when absent and filled with `task_dir/environment` when it exists."""
+    shutil.copytree(task_dir / "environment", cwd, dirs_exist_ok=True) if (task_dir / "environment").is_dir() else cwd.mkdir(exist_ok=True)
+    return cwd
+
+
 def prepare_trial(task_dir, cfg, work, rand_engine):
     """The trial venv with the rand-engine requirement and the task's `[environment] requirements`
     pip-installed, then the task's `environment/` as the agent's cwd; returns (env, python, cwd)."""
@@ -71,16 +77,10 @@ def prepare_trial(task_dir, cfg, work, rand_engine):
     env = trial_env(venv)
     subprocess.run([sys.executable, "-m", "venv", str(venv)], check=True, env=env)
     py = venv / "bin" / "python"
-    envcfg = cfg.get("environment", {})
-    pkgs = ([rand_engine] if envcfg.get("install_rand_engine", True) else []) + list(envcfg.get("requirements", []))
+    pkgs = ([rand_engine] if cfg.get("environment", {}).get("install_rand_engine", True) else []) + list(cfg.get("environment", {}).get("requirements", []))
     if pkgs:
-        subprocess.run([str(py), "-m", "pip", "install", "-q", *pkgs],
-                       check=True, stdin=subprocess.DEVNULL, env=env)
-    if (task_dir / "environment").is_dir():
-        shutil.copytree(task_dir / "environment", cwd)
-    else:
-        cwd.mkdir()
-    return env, py, cwd
+        subprocess.run([str(py), "-m", "pip", "install", "-q", *pkgs], check=True, stdin=subprocess.DEVNULL, env=env)
+    return env, py, seed_cwd(task_dir, cwd)
 
 
 def check_result(stdout):
