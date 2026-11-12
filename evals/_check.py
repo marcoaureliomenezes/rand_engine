@@ -195,7 +195,8 @@ def provenance(workdir, script, artifacts, python=sys.executable):
             return f"provenance: the script could not re-run: {type(e).__name__}", generations
         if run.returncode != 0:
             return f"provenance: the script exited {run.returncode} on re-run: {run.stderr.strip()[-300:]}", generations
-        generations = (data := json.loads(output.read_text()) if output.exists() else {"records": [], "frames": []})["records"]
+        data = json.loads(output.read_text()) if output.exists() else {"records": [], "frames": []}
+        generations = data["records"]
         if not generated(generations, "entry"):
             return "provenance: the re-run recorded no rand_engine generation from the agent's code", generations
         recorded = {tuple(t) for cols in generated(data["frames"], "cols") for t in cols}
