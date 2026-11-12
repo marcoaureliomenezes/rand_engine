@@ -1041,6 +1041,8 @@ def test_every_nav_page_but_home_has_its_own_search_description():
     match = re.match(r"---\n(.*?)\n---\n", (DOCS / page).read_text(encoding="utf-8"), re.S)
     assert match is not None, f"{page}: no front matter"
     front = match.group(1)
-    descriptions[page] = re.search(r"^description: (.+)$", front, re.M).group(1).strip("\"'")
+    description = re.search(r"^description: (.+)$", front, re.M)
+    assert description is not None, f"{page}: no description line in front matter"
+    descriptions[page] = description.group(1).strip("\"'")
   assert {page: 50 <= len(text) <= 160 for page, text in descriptions.items()} == dict.fromkeys(pages, True)
   assert len(set(descriptions.values()) | {site}) == 18
