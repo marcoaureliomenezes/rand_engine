@@ -4,7 +4,6 @@ Layer 1: customers.parquet (1000 rows) and orders.parquet (5000 rows), exact col
 Layer 2: solve.py re-runs and rand_engine generated every column. Layer 3: the recorded orders customer_id is an fk whose
 parent is the customers customer_id pk dict and parent_size is the customer rows; no legacy syntax, no web tool, within the ceiling.
 """
-import inspect
 import json
 import os
 import sys
@@ -13,7 +12,7 @@ from pathlib import Path
 import _check
 import pandas as pd
 
-from rand_engine.core._keys import Keys
+from rand_engine import DataGenerator
 
 work = Path.cwd()
 env = os.environ
@@ -48,14 +47,14 @@ def col(spec, name, method):
     return c if isinstance(c, dict) and c.get("method") == method else None
 
 
-PK_DEFAULTS = {k: p.default for k, p in inspect.signature(Keys._pk_at).parameters.items() if p.default is not p.empty}
-
-
 def pk_identity(spec):
-    """A pk spec's kwargs with the _pk_at defaults filled; None for any other spec."""
-    if not isinstance(spec, dict) or spec.get("method") != "pk" or not isinstance(spec.get("kwargs"), dict):
+    """The first rows a pk spec generates, through the public DataGenerator; None for any other spec or one that cannot generate."""
+    if not isinstance(spec, dict) or spec.get("method") != "pk":
         return None
-    return {**PK_DEFAULTS, **spec["kwargs"]}
+    try:
+        return DataGenerator({"k": spec}, seed=0).size(len(customers)).get_df()["k"].tolist()
+    except Exception:
+        return None
 
 
 legacy = [h for p in work.glob("*.py") for h in _check.legacy_hits(p.read_text(encoding="utf-8", errors="ignore"))]
