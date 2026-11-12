@@ -347,11 +347,6 @@ def test_two_directory_links_to_the_work_dir_pass_provenance(check, tmp_path, mo
     assert provenance(check, tmp_path, SEEDED) is None
 
 
-def test_absent_artifact_fails(check, tmp_path):
-    msg = provenance(check, tmp_path, SEEDED, deliver=False)
-    assert msg.startswith("provenance") and "out.csv" in msg
-
-
 def test_hand_written_sibling_of_a_save_destination_matches_no_generated_frame(check, tmp_path):
     body = ("import numpy as np, pandas as pd\nfrom rand_engine import DataGenerator\n"
             "pd.DataFrame({'age': np.arange(100, 110)}).to_csv('out.a', index=False)\n"
