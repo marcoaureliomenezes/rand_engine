@@ -106,7 +106,7 @@ def test_pk_fk_check_refuses_a_parent_that_is_another_pk(tmp_path):
 
 
 def reference_trial(slug, tmp_path):
-    """The directory a correct agent leaves for `slug`; returns a runner of the task's check in it."""
+    """The directory a correct agent leaves for `slug`; returns a runner of the task's check in it; the transcript rule is restated here."""
     env = child_env()
     if slug == "canary":
         commands = ["python -c 'import rand_engine' > import.txt", "pip --version > pip.txt", "python urlopen > network.txt"]
@@ -116,8 +116,7 @@ def reference_trial(slug, tmp_path):
         for name, text in {"import": "exit=0\n", "pip": "exit=0\n", "network": "NET_FAIL\nexit=1\n"}.items():
             (tmp_path / f"{name}.txt").write_text(text, encoding="utf-8")
     else:
-        if (seed := ROOT / "evals/tasks" / slug / "environment").is_dir():
-            shutil.copytree(seed, tmp_path, dirs_exist_ok=True)
+        run.seed_cwd(ROOT / "evals/tasks" / slug, tmp_path)
         shutil.copy(ROOT / "evals/tasks" / slug / "tests/solution/solve.py", tmp_path / "solve.py")
         subprocess.run([sys.executable, "solve.py"], cwd=tmp_path, env=env, check=True)
         transcript = ROOT / "evals/tasks" / slug / "tests/solution/transcript.jsonl"
