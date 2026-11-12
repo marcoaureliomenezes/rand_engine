@@ -150,10 +150,11 @@ def run_trial(task, n, args):
             check = subprocess.run([str(py), str(task_dir / "tests" / "check.py")], cwd=cwd, env=check_env,
                                    stdin=subprocess.DEVNULL, capture_output=True, text=True,
                                    timeout=cfg["verifier"]["timeout_sec"])
+            passed = check.returncode == 0
             res["check_output"] = check.stdout
-            res["first_failure"] = None if check.returncode == 0 else check.stdout.partition("\n")[0]
+            res["first_failure"] = None if passed else check.stdout.partition("\n")[0]
             res.update({k: v for k, v in check_result(check.stdout).items() if k not in res})
-            res["passed"] = check.returncode == 0
+            res["passed"] = passed
         except subprocess.TimeoutExpired:
             res["check_output"] = "timeout"
     except Exception as e:
