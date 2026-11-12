@@ -26,6 +26,7 @@ ROOT = Path(__file__).parents[1]
 DOCS = ROOT / "docs"
 REPO_BLOB = "https://github.com/marcoaureliomenezes/rand_engine/blob/"
 GITFLOW = re.search(r"^gitflow: (.*)$", (ROOT / "specs" / "constitution.md").read_text(encoding="utf-8"), re.M)
+assert GITFLOW is not None, "specs/constitution.md: no gitflow line"
 PRINCIPAL = json.loads(GITFLOW.group(1))["principal"]
 LINK = re.compile(r"\]\(([^)\s]+)\)")
 FENCE = re.compile(r"^```((?:python|py)[^\n]*)\n(.*?)^```", re.M | re.S)
@@ -271,6 +272,7 @@ def documented_specs(name, tmp_path, monkeypatch):
 def test_skill_front_matter_names_the_skill_and_says_when_to_use_it():
   """SKILL.md opens with `---` front matter holding `name: rand-engine` and a description naming its triggers."""
   head = re.match(r"---\n(.*?)\n---\n", SKILL.read_text(encoding="utf-8"), re.S)
+  assert head is not None, "SKILL.md: no front matter"
   fields = dict(re.findall(r"^(\w+):\s*(.+)$", head.group(1), re.M))
   assert fields["name"] == "rand-engine"
   assert "synthetic data" in fields["description"] and "RandSpec" in fields["description"]
@@ -815,6 +817,7 @@ def test_reference_navigation_exposes_the_main_writer_and_error_destinations():
   nav = (ROOT / "mkdocs.yml").read_text(encoding="utf-8")
   assert [path for path in ("reference.md", "3_WRITING_FILES.md", "errors.md") if path not in nav] == []
   reference = re.search(r"^  - Reference:\n((?:^      - .+\n)+)", nav, re.M)
+  assert reference is not None, "mkdocs.yml: no Reference nav block"
   children = re.findall(r"^      - (.*): (.*)$", reference.group(1), re.M)
   assert children == [
     ("Main API", "reference.md"),
@@ -877,6 +880,7 @@ def _changelog():
   assert match is not None, "CHANGELOG.md: no 0.8.0 section"
   section = match.group(1)
   added, fixed = (re.search(rf"^### {h}\n(.*?)(?=^###|\Z)", section, re.M | re.S) for h in ("Added", "Fixed"))
+  assert added is not None, "CHANGELOG.md: 0.8.0 section has no ### Added"
   assert fixed is not None
   assert 'pip install "rand-engine[faker]"' in added.group(1)
 
