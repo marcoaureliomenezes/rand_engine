@@ -312,6 +312,17 @@ def test_two_aware_bounds_are_refused_at_the_start_by_both_engines():
         assert errors == ["\u274c Column 'd': method 'unix_timestamps' parameter 'start' '2020-01-01 +0000' must not carry a timezone"]
 
 
+@pytest.mark.parametrize("start, end, expected", [
+    ("2020-01-01 +0000", "2021-01-01", "\u274c Column 'd': method 'unix_timestamps' parameter 'start' '2020-01-01 +0000' must not carry a timezone"),
+    ("2020-01-01", "2021-01-01 +0000", "\u274c Column 'd': method 'unix_timestamps' parameter 'end' '2021-01-01 +0000' must not carry a timezone"),
+], ids=["aware-start", "aware-end"])
+@pytest.mark.parametrize("validate", [AdvancedValidator.validate, CommonValidator.validate_spark_spec], ids=["numpy", "spark"])
+def test_one_aware_bound_is_refused_naming_the_column_on_both_engines(validate, start, end, expected):
+    errors = validate(_date_spec("unix_timestamps", start, end, "%Y-%m-%d %z"))
+    assert len(errors) == 1
+    assert errors == [expected]
+
+
 def test_unix_timestamps_format_is_not_restricted():
     spec = {"t": {"method": "unix_timestamps", "kwargs": {"start": "Jan 01 2020", "end": "Dec 31 2024", "date_format": "%b %d %Y"}}}
     assert CommonValidator.validate_spark_spec(spec) == []
@@ -853,18 +864,6 @@ def test_unknown_name_with_close_match_adds_did_you_mean_line(spec, expected):
 ])
 def test_unknown_name_without_close_match_adds_no_suggestion(spec, expected):
     assert CommonValidator.validate_spark_spec(spec) == [expected]
-
-
-@pytest.mark.parametrize("start, end, expected", [
-    ("2020-01-01 +0000", "2021-01-01", "\u274c Column 'd': method 'unix_timestamps' parameter 'start' '2020-01-01 +0000' must not carry a timezone"),
-    ("2020-01-01", "2021-01-01 +0000", "\u274c Column 'd': method 'unix_timestamps' parameter 'end' '2021-01-01 +0000' must not carry a timezone"),
-], ids=["aware-start", "aware-end"])
-@pytest.mark.parametrize("validate", [AdvancedValidator.validate, CommonValidator.validate_spark_spec], ids=["numpy", "spark"])
-def test_aware_and_naive_date_bounds_are_refused_naming_the_column(validate, start, end, expected):
-    spec = {"d": {"method": "unix_timestamps", "kwargs": {"start": start, "end": end, "date_format": "%Y-%m-%d %z"}}}
-    errors = validate(spec)
-    assert len(errors) == 1
-    assert errors == [expected]
 
 
 def _framed(engine, body):

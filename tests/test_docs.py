@@ -590,7 +590,7 @@ def test_writing_doc_inventory_matches_the_accepted_writer_options():
   assert set(rows) == files | {"sqlite", "write (batch)", "writeStream"}
   assert "sep" in rows["csv"] and {"gzip", "bz2", "xz", "zip"} <= set(re.findall(r"`(gzip|bz2|xz|zip)`", rows["csv"]))
   assert {"compression", "snappy", "gzip", "zstd", "brotli", "lz4"} <= set(re.findall(r"`(\w+)`", rows["parquet"]))
-  assert {"force_ascii", "orient"} <= {name for name in ("force_ascii", "indent", "orient") if name in rows["json"]}
+  assert {"force_ascii", "orient"} <= {name for name in ("force_ascii", "orient") if name in rows["json"]}
   assert "indent" not in rows["json"]
   assert {"gzip", "bz2", "xz", "zip"} <= set(re.findall(r"`(gzip|bz2|xz|zip)`", rows["json"]))
   assert "numFiles" in rows["write (batch)"] and "maxRowsPerBatch" in rows["write (batch)"]
