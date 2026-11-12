@@ -29,10 +29,10 @@ except Exception:
 if not ok:
     fail("1", f"{ART} lacks the columns product_id and views only, 5,000 rows, sequential product_id and heavy-tailed positive views")
 
-msg, record = _check.provenance(".", "solve.py", [ART], python=sys.executable)
+msg, generations = _check.provenance(".", "solve.py", [ART], python=sys.executable)
 if msg:
     fail("2", msg)
-specs = _check.generated(record, "spec")
+specs = _check.generated(generations, "spec")
 
 if not any(isinstance(c, dict) and c.get("method") == "zipf" and isinstance(c.get("kwargs"), dict) and c["kwargs"].get("a") == 1.5
            for spec in specs if isinstance(spec, dict) for c in spec.values()):

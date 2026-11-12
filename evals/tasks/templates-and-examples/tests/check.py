@@ -48,10 +48,10 @@ for name, (rows, allowed) in TABLES.items():
         fail("1", f"{name}: expected {rows} rows and one of the column sets {[sorted(s) for s in allowed]}, got {len(df)} rows and {list(df.columns)}")
 
 # Layer 2: the script's re-run regenerates every column through rand_engine.
-msg, record = _check.provenance(".", "solve.py", list(TABLES), python=sys.executable)
+msg, generations = _check.provenance(".", "solve.py", list(TABLES), python=sys.executable)
 if msg:
     fail("2", msg)
-specs = _check.generated(record, "spec")
+specs = _check.generated(generations, "spec")
 
 # Layer 3: the recorded specs are shipped template entries, evaluated in this venv, plus the city pool, no legacy names, token ceiling, no web.
 for label, entries in (("customers", CUSTOMERS), ("orders", ORDERS)):

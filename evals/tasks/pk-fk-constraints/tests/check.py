@@ -37,10 +37,10 @@ if (len(customers), len(orders)) != (1000, 5000) or not orders["customer_id"].is
 if not (customers["customer_id"].is_unique and orders["order_id"].is_unique):
     fail("1", "customers.customer_id or orders.order_id is not unique")
 
-problem, record = _check.provenance(work, "solve.py", ["customers.parquet", "orders.parquet"], python=sys.executable)
+problem, generations = _check.provenance(work, "solve.py", ["customers.parquet", "orders.parquet"], python=sys.executable)
 if problem:
     fail("2", problem)
-specs = _check.generated(record, "spec")
+specs = _check.generated(generations, "spec")
 
 def col(spec, name, method):
     c = spec.get(name) if isinstance(spec, dict) else None

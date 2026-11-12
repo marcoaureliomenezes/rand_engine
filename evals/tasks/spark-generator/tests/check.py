@@ -34,10 +34,10 @@ def verdict():
         return "1", f"cannot read {ARTIFACT} as a parquet file or a directory of parts: {type(e).__name__}{harness_hint(transcript)}", seen
     if len(df) != 1000 or list(df.columns) != ["order_id", "order_ref"]:
         return "1", f"{ARTIFACT} has {len(df)} rows and columns {list(df.columns)}", seen
-    msg, record = _check.provenance(".", "make.py", [ARTIFACT])
+    msg, generations = _check.provenance(".", "make.py", [ARTIFACT])
     if msg:
         return "2", msg, seen
-    specs = _check.generated(record, "spec")
+    specs = _check.generated(generations, "spec")
     if not _check.documented_method(specs, "pk", ["format"]):
         return "3", "the recorded spec has no pk column with a format", seen
     hits = {name for p in Path(".").glob("*.py") for name in _check.legacy_hits(p.read_text(encoding="utf-8", errors="ignore"))}

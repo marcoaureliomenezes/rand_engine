@@ -26,10 +26,10 @@ def verdict():
         return "1", f"out.parquet has {len(df)} rows and columns {list(df.columns)}, expected 1000 rows and {COLUMNS}", seen
     if not Path("make.py").is_file():
         return "2", "make.py does not exist", seen
-    msg, record = _check.provenance(".", "make.py", ["out.parquet"])
+    msg, generations = _check.provenance(".", "make.py", ["out.parquet"])
     if msg:
         return "2", msg, seen
-    specs = _check.generated(record, "spec")
+    specs = _check.generated(generations, "spec")
     if not _check.documented_method(specs, "integers", ["min", "max"]):
         return "3", "the recorded spec has no `integers` column with min and max", seen
     if hits := _check.legacy_hits("\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in Path(".").glob("*.py"))):

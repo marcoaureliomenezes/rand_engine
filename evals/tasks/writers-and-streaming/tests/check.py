@@ -23,10 +23,10 @@ def run(events):
         return "1", f"{BATCH} has columns {list(batch.columns)} and {len(batch)} rows, not {COLS} and 1000"
     if stream is None or list(stream.columns) != COLS:
         return "1", f"{SINK} holds no part file with the columns {COLS}"
-    msg, record = _check.provenance(".", SCRIPT, [BATCH])
+    msg, generations = _check.provenance(".", SCRIPT, [BATCH])
     if msg:
         return "2", msg
-    specs, calls = _check.generated(record, "spec"), _check.generated(record, "entry")
+    specs, calls = _check.generated(generations, "spec"), _check.generated(generations, "entry")
     if not _check.documented_method(specs, "integers", ["min", "max"]):
         return "3", "the recorded spec has no integers column with min and max"
     if not {"save", "start"} <= set(calls):
