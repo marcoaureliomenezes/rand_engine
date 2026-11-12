@@ -177,7 +177,7 @@ def test_valid_spec_should_not_raise():
 
 
 def test_no_size_raises_library_error(rand_spec_with_kwargs):
-  """Intent: CONTRACT — writer-size-not-from-generator: no size is a library error naming .size(n)."""
+  """No size set raises RandEngineError naming .size(n)."""
   with pytest.raises(RandEngineError) as error:
     DataGenerator(rand_spec_with_kwargs).get_df()
   assert str(error.value) == "No size set: call .size(n) with an int or a callable returning one."

@@ -199,7 +199,7 @@ def test_complex_distincts_ip_address(rand_spec_all_methods, size):
 
 
 def test_checkpoint_surface_is_gone():
-  """AC5.3: no db_checkpoint, no option."""
+  """DataGenerator exposes no db_checkpoint and no option attribute."""
   g = DataGenerator({"id": {"method": "pk"}})
   assert not hasattr(g, "db_checkpoint")
   assert not hasattr(g, "option")
@@ -212,7 +212,7 @@ def every_np_method(rand_spec_all_methods):
 
 
 def test_generator_leaves_global_numpy_state_untouched(every_np_method, tmp_path):
-  """AC4.1: construct, get_df, one stream_dict microbatch, one batch write."""
+  """Construction, get_df, one stream_dict microbatch and one batch write leave numpy's global RNG state unchanged."""
   before = pickle.dumps(np.random.get_state())
   gen = DataGenerator(every_np_method, seed=1).size(10)
   gen.get_df()
@@ -222,7 +222,7 @@ def test_generator_leaves_global_numpy_state_untouched(every_np_method, tmp_path
 
 
 def test_same_seed_generators_return_identical_frames(every_np_method):
-  """AC4.2: uuid4 included; one generator's rng advances across batches."""
+  """Same seed gives identical frames, uuid4 included; a second get_df on one generator differs."""
   gen = DataGenerator(every_np_method, seed=5).size(200)
   one = gen.get_df()
   assert one.equals(DataGenerator(every_np_method, seed=5).size(200).get_df())
@@ -231,7 +231,7 @@ def test_same_seed_generators_return_identical_frames(every_np_method):
 
 
 def test_another_generator_running_in_between_does_not_change_a(every_np_method):
-  """AC4.3"""
+  """Another generator running in between does not change a seeded generator's output."""
   expected = DataGenerator(every_np_method, seed=5).size(200).get_df()
   a = DataGenerator(every_np_method, seed=5).size(200)
   DataGenerator(every_np_method, seed=6).size(200).get_df()
@@ -562,7 +562,7 @@ def test_modifier_anomaly_refuses_values_that_cannot_preserve_the_series_dtype(
   assert isinstance(caught, RandEngineError)
 
 
-# FR13 goldens: seed 42, 10**3 rows, UTC run. A deliberate output change rewrites its line here, the commit body saying why.
+# Golden seeded outputs: seed 42, 10**3 rows, UTC run. A deliberate output change rewrites its line here, the commit body saying why.
 GOLDEN_SHA256 = {
   "integers": "953f31ff97cb998eb78ce3b16215f99bfda4fbf2628b856cd5755e97d80b195a",
   "int_zfilled": "56c7e77935c45862e81c70fc019572f234e2c2faca802353b7bfc31aebdd4128",

@@ -447,7 +447,7 @@ def test_gen_ints_and_zfilled_reach_the_inclusive_max():
   ("%Y-%m-%d %H:%M:%S", "1969-12-31 23:00:00", "1970-01-01 01:00:00"),
 ])
 def test_gen_dates_equals_per_row_utc_strftime(fmt, start, end):
-  """AC14.1: same strings as the per-row UTC strftime, for each documented date_format."""
+  """gen_dates equals the per-row UTC strftime of its unix timestamps, for each documented date_format."""
   from datetime import datetime, timedelta, timezone
   ts = NPCore.gen_unix_timestamps(10**4, start, end, fmt, rng=np.random.default_rng(7))
   expected = [(datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(seconds=int(t))).strftime(fmt) for t in ts]

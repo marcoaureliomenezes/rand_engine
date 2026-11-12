@@ -363,7 +363,7 @@ def test_valid_spec_complex_distincts():
     {},
 ])
 def test_constraints_key_is_refused_naming_pk_and_fk(constraints):
-    """AC5.1: the checkpoint left in 0.7.0; an old `constraints` spec fails pointing at pk/fk."""
+    """A spec with a `constraints` key is refused, the message naming pk and fk, as its one issue."""
     spec = {"user_id": {"method": "pk"}, "constraints": constraints}
     with pytest.raises(SpecValidationError, match=r"(?s)'constraints'.*\bpk\b.*\bfk\b"):
         DataGenerator(spec)
@@ -378,7 +378,7 @@ def test_constraints_key_is_refused_naming_pk_and_fk(constraints):
     ({"method": "distincts_map", "cols": ["device", "os"]}, "requires parameter 'distincts'"),
 ])
 def test_spec_the_engine_cannot_run_is_rejected(config, message):
-    """validator-engine-schema-drift: no spec validates that DataGenerator then fails to generate."""
+    """A spec the engine cannot run is refused at construction, the message naming the cause."""
     with pytest.raises(SpecValidationError, match=message):
         DataGenerator({"c": config})
 
@@ -416,7 +416,7 @@ def test_validated_spec_without_kwargs_generates():
     ({"method": "pk", "kwargs": {}, "transformers": [lambda x: x]}, r"transformers"),
 ])
 def test_pk_spec_is_refused(column, match):
-    """AC1.7: every unbuildable or non-unique pk spec fails before generation."""
+    """An unbuildable or non-unique pk spec raises SpecValidationError at construction, before generation."""
     with pytest.raises(SpecValidationError, match=match):
         DataGenerator({"id": column})
 
@@ -448,7 +448,6 @@ FK_PARENT = {"method": "pk", "kwargs": {"style": "permuted", "domain": 100}}
   ({"parent": {"method": "pk", "kwargs": {}, "x": 1, 7: 1}, "parent_size": 10}, r"takes only 'method' and 'kwargs', not \['7', 'x'\]"),
 ])
 def test_fk_spec_is_refused(kwargs, match):
-  """AC2.6."""
   with pytest.raises(SpecValidationError, match=match):
     AdvancedValidator.validate_and_raise({"pid": {"method": "fk", "kwargs": kwargs}})
 
@@ -854,7 +853,7 @@ def _float_span_spec(bound):
 
 
 def test_float_span_overflowing_float64_is_refused_at_construction():
-    """floats-span-overflow-validates: max - min is inf in float64."""
+    """max - min overflows to inf in float64: refused by validate and by construction."""
     spec = _float_span_spec(1e308)
     assert len(AdvancedValidator.validate(spec)) == 1
     with pytest.raises(SpecValidationError):
@@ -862,7 +861,7 @@ def test_float_span_overflowing_float64_is_refused_at_construction():
 
 
 def test_float_int_bound_beyond_float64_is_one_issue():
-    """floats-span-overflow-validates: int bound 10**400 is one issue, not OverflowError."""
+    """An int bound of 10**400 is one validation issue, not an OverflowError."""
     spec = {"v": {"method": "floats", "kwargs": {"min": 0, "max": 10**400, "decimals": 0}}}
     assert len(AdvancedValidator.validate(spec)) == 1
     with pytest.raises(SpecValidationError):

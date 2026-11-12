@@ -266,7 +266,7 @@ def test_spark_catalog_admits_valid_key_columns():
 
 
 def test_validated_spec_without_kwargs_generates(spark_session, spark_functions):
-    """The validator's own uuid4 example (no kwargs) validates and generates (validator-engine-schema-drift)."""
+    """A uuid4 spec with no kwargs validates and generates its rows on Spark."""
     from rand_engine.main.spark_generator import SparkGenerator
     df = SparkGenerator(spark_session, spark_functions, {"id": {"method": "uuid4"}}).size(3).get_df()
     assert df.count() == 3
@@ -274,7 +274,7 @@ def test_validated_spec_without_kwargs_generates(spark_session, spark_functions)
 
 @pytest.mark.parametrize("fmt", ["%b %d %Y", "%Y-%m-%d %%"])
 def test_dates_format_outside_supported_directives_is_refused_by_both_engines(fmt):
-    """AC14.1: one check site; the message names the supported set."""
+    """Each engine's validator refuses an unsupported date_format with one issue naming the supported set."""
     spec = {"d": {"method": "dates", "kwargs": {"start": "Jan 01 2020", "end": "Dec 31 2024", "date_format": fmt}}}
     for errors in (AdvancedValidator.validate(spec), CommonValidator.validate_spark_spec(spec)):
         assert len(errors) == 1
@@ -707,7 +707,7 @@ def test_integer_range_inverted_domain_is_collected_before_generation():
 
 
 class TestSparkExactDomainRefusals:
-    """AC8.3/AC8.4/AC8.8: unsupported exact domains are collected issues, never raw ValueError."""
+    """Unsupported exact domains on Spark are collected as validation issues, never a raw ValueError."""
 
     @staticmethod
     def _validate(method, **kwargs):
@@ -759,13 +759,12 @@ class TestSparkExactDomainRefusals:
 
 
 def test_spark_float_span_overflowing_float64_is_refused():
-    """floats-span-overflow-validates: max - min is inf in float64."""
     spec = {"v": {"method": "floats", "kwargs": {"min": -1e308, "max": 1e308, "decimals": 0}}}
     assert len(CommonValidator.validate_spark_spec(spec)) == 1
 
 
 def test_spark_float_int_bound_beyond_float64_is_one_issue():
-    """floats-span-overflow-validates: int bound 10**400 is one issue, not OverflowError."""
+    """An int bound of 10**400 is one validation issue, not an OverflowError."""
     spec = {"v": {"method": "floats", "kwargs": {"min": 0, "max": 10**400, "decimals": 0}}}
     assert len(CommonValidator.validate_spark_spec(spec)) == 1
 

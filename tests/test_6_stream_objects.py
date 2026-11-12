@@ -29,14 +29,14 @@ def test_pandas_df_kwargs(df_size, rand_spec_with_args):
 
 @pytest.mark.parametrize("size", [3, lambda: 3])
 def test_create_stream_dict(size, rand_spec_with_args):
-  """Intent: CONTRACT — writer-size-not-from-generator: stream_dict resolves int and callable size."""
+  """stream_dict resolves an int size and a callable size."""
   stream = DataGenerator(rand_spec_with_args).size(size).stream_dict(min_throughput=1000, max_throughput=1000)
   records = list(islice(stream, 3))
   assert [set(r) for r in records] == [set(rand_spec_with_args) | {"timestamp_created"}] * 3
 
 
 def test_stream_dict_normalizes_missing_values_to_none():
-  """Intent: AC3.4 — stream records expose Python None and preserve ordinary values."""
+  """Stream records expose Python None for missing values and keep ordinary values."""
   def with_missing_values(frame):
     return pd.DataFrame(
       {

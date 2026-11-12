@@ -1,4 +1,4 @@
-"""Intent: CONTRACT — writer-size-not-from-generator (generator size, int or callable read once per save and split across numFiles files; no size fails before overwrite deletes anything); writer-options-consumed-by-use (a reused writer keeps numFiles); writer-state-shared-across-chains (each .write access is a fresh writer)."""
+"""Batch writer: a generator size (int or callable) is read once per save and split across numFiles files; no size fails before an overwrite deletes anything; an abandoned chain does not leak into the next write."""
 import pytest
 import gc
 import os
@@ -195,7 +195,7 @@ def test_no_size_fails_before_overwrite_deletes(rand_spec_with_kwargs, base_path
   assert os.listdir(path) == ["keep.csv"]
 
 
-# AC14.2 — csv and parquet through pyarrow; documented options only.
+# csv and parquet through pyarrow; documented options only.
 
 FRAME = pd.DataFrame({
   "b": [True, False], "f": [1.0, 2.5], "g": [1.0, 2.0], "s": ["x", "é"],
