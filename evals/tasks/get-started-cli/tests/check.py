@@ -40,7 +40,9 @@ def ran_get_started_lake(command):
 
     Each line is lexed on its own; the tokens read before a lexing error are judged as its last command. The CLI is
     `rand-engine` by basename, `-m rand_engine`, or `-c` code calling `main` of `rand_engine`; `--out` takes a value.
-    Ceilings: a quoted word cannot span lines, and a redirection before the subcommand ends the command.
+    Ceilings: a quoted word cannot span lines; a quoted word that starts with `#` is read as a comment, so the rest of its
+    line is dropped; a redirection before the subcommand ends the command; a heredoc body line that reads like a call is
+    judged as a command.
     """
     for tokens in (t for line in command.splitlines() for t in commands(line)):
         for i, name in enumerate(tokens):
@@ -68,7 +70,7 @@ def verdict():
     if SCAFFOLD.read_bytes() != packaged:
         return "2", f"{SCAFFOLD} is not byte-equal to the packaged cases/lake.py.txt", seen
     if not any(e["name"] == "Bash" and ran_get_started_lake(e["input"].get("command", ""))
-                              for e in events):
+               for e in events):
         return "2", "the transcript shows no Bash call of the package CLI's get-started lake", seen
     if web := _check.web_tool_uses(events):
         return "3", f"web tools used: {web}", seen
