@@ -4,7 +4,7 @@ Inputs: `--results DIR` (`{task}-{leg}-{n}.json`), `--tasks DIR` (`<task>/task.t
 `--calibrate` also writes `<results>/ceilings.json`.
 Output: `FAIL ...` lines, then (with `--calibrate`) a `ceiling <task> <n>` line per ceiling, then the usage table, on stdout.
 Exit: 1 on usage below 2 of 3, a regression against PyPI, a red canary, a canary or usage harness
-error, a missing file, or a usage task without a ceiling; 0 otherwise. Calibrate exits 0 once written.
+error, a missing results directory, a missing file, or a usage task without a ceiling; 0 otherwise. Calibrate exits 0 once written.
 """
 import argparse
 import collections
