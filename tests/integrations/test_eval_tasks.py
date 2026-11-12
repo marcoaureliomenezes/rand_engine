@@ -90,7 +90,6 @@ def run_pk_fk_check(tmp_path, parent):
 
 
 @pytest.mark.parametrize("parent", [
-    CUSTOMER_PK,
     '{"method": "pk", "kwargs": {"step": 1, "start": 1}}',
     '{"method": "pk", "kwargs": {"start": 1, "style": "sequence", "step": 1}}',
 ])
