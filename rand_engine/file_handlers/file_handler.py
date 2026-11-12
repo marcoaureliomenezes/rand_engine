@@ -375,9 +375,9 @@ class _ParquetFile:
     self._close_writer()
 
 
-def _to_file(format: str, opener: Callable, dataframe: Callable, full_path: str, write_options: dict, writer_keys: tuple) -> Callable:
+def _to_file(format: str, dataframe: Callable, full_path: str, write_options: dict, writer_keys: tuple) -> Callable:
   _documented(format, write_options, (*_ACCEPTED[format], *writer_keys))
-  session = opener(full_path, {key: value for key, value in write_options.items() if key not in writer_keys})
+  session = getattr(FileHandler, f"open_{format}")(full_path, {key: value for key, value in write_options.items() if key not in writer_keys})
   def write():
     with session:
       session.write(dataframe())
@@ -400,15 +400,15 @@ class FileHandler:
 
   @staticmethod
   def to_csv(dataframe: PDDataFrame, full_path: str, write_options: dict, writer_keys: tuple = ()) -> Callable:
-    return _to_file("csv", FileHandler.open_csv, dataframe, full_path, write_options, writer_keys)
+    return _to_file("csv", dataframe, full_path, write_options, writer_keys)
 
   @staticmethod
   def to_json(dataframe: PDDataFrame, full_path: str, write_options: dict, writer_keys: tuple = ()) -> Callable:
-    return _to_file("json", FileHandler.open_json, dataframe, full_path, write_options, writer_keys)
+    return _to_file("json", dataframe, full_path, write_options, writer_keys)
 
   @staticmethod
   def to_parquet(dataframe: PDDataFrame, full_path: str, write_options: dict, writer_keys: tuple = ()) -> Callable:
-    return _to_file("parquet", FileHandler.open_parquet, dataframe, full_path, write_options, writer_keys)
+    return _to_file("parquet", dataframe, full_path, write_options, writer_keys)
 
   @staticmethod
   def handle_path(path: str, format: str, write_options: dict) -> tuple:
