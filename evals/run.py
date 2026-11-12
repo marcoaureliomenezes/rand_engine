@@ -66,7 +66,9 @@ def assert_isolated(init, mode, tools):
 
 def seed_cwd(task_dir, cwd):
     """`cwd`, created when absent and filled with `task_dir/environment` when it exists."""
-    shutil.copytree(task_dir / "environment", cwd, dirs_exist_ok=True) if (task_dir / "environment").is_dir() else cwd.mkdir(exist_ok=True)
+    if (task_dir / "environment").is_dir():
+        shutil.copytree(task_dir / "environment", cwd, dirs_exist_ok=True)
+    cwd.mkdir(exist_ok=True)
     return cwd
 
 
@@ -77,7 +79,8 @@ def prepare_trial(task_dir, cfg, work, rand_engine):
     env = trial_env(venv)
     subprocess.run([sys.executable, "-m", "venv", str(venv)], check=True, env=env)
     py = venv / "bin" / "python"
-    pkgs = ([rand_engine] if cfg.get("environment", {}).get("install_rand_engine", True) else []) + list(cfg.get("environment", {}).get("requirements", []))
+    envcfg = cfg.get("environment", {})
+    pkgs = ([rand_engine] if envcfg.get("install_rand_engine", True) else []) + list(envcfg.get("requirements", []))
     if pkgs:
         subprocess.run([str(py), "-m", "pip", "install", "-q", *pkgs], check=True, stdin=subprocess.DEVNULL, env=env)
     return env, py, seed_cwd(task_dir, cwd)
@@ -150,11 +153,9 @@ def run_trial(task, n, args):
             check = subprocess.run([str(py), str(task_dir / "tests" / "check.py")], cwd=cwd, env=check_env,
                                    stdin=subprocess.DEVNULL, capture_output=True, text=True,
                                    timeout=cfg["verifier"]["timeout_sec"])
-            passed = check.returncode == 0
-            res["check_output"] = check.stdout
-            res["first_failure"] = None if passed else check.stdout.partition("\n")[0]
+            res.update(check_output=check.stdout, first_failure=None if check.returncode == 0 else check.stdout.partition("\n")[0])
             res.update({k: v for k, v in check_result(check.stdout).items() if k not in res})
-            res["passed"] = passed
+            res["passed"] = res["first_failure"] is None
         except subprocess.TimeoutExpired:
             res["check_output"] = "timeout"
     except Exception as e:
