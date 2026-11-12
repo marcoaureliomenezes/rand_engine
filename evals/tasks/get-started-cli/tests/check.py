@@ -42,7 +42,7 @@ def ran_get_started_lake(command):
     `rand-engine` by basename, `-m rand_engine`, or `-c` code calling `main` of `rand_engine`; `--out` takes a value.
     Ceilings: a quoted word cannot span lines; a quoted word that starts with `#` is read as a comment, so the rest of its
     line is dropped; a redirection before the subcommand ends the command; a heredoc body line that reads like a call is
-    judged as a command.
+    judged as a command; a `get-started` call continued by a backslash onto the next line before `lake` is refused.
     """
     for tokens in (t for line in command.splitlines() for t in commands(line)):
         for i, name in enumerate(tokens):
