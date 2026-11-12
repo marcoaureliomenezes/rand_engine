@@ -61,7 +61,8 @@ def pythonpath(monkeypatch):
 
 def run_script(tmp_path, body):
     """Deliver the artifacts the way a trial does: the agent's own run, in the workdir."""
-    subprocess.run([sys.executable, str(script(tmp_path, body))], cwd=tmp_path, capture_output=True)
+    subprocess.run([sys.executable, str(script(tmp_path, body))], cwd=tmp_path, capture_output=True,
+                   env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
 
 
 def rerun(check, tmp_path, body, artifacts=("out.csv",), deliver=True):
