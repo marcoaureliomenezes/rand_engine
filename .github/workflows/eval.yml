@@ -142,7 +142,7 @@ jobs:
           TASK: ${{ matrix.task }}
           INSTALL: ${{ matrix.install }}
         run: |
-          if [ "$K" -gt 3 ] || ! [ "$K" -ge 1 ] 2>/dev/null; then echo "k=$K: the job timeout fits k up to 3" >&2; exit 1; fi
+          if [ "$K" -gt 3 ] 2>/dev/null || ! [ "$K" -ge 1 ] 2>/dev/null; then echo "k=$K: k must be an integer from 1 to 3 (the job timeout fits k up to 3)" >&2; exit 1; fi
           if [ "$INSTALL" = wheel ]; then ENGINE=$(ls "$PWD"/dist/*.whl); else ENGINE=rand-engine; fi
           python evals/run.py --task "$TASK" --leg "$INSTALL" --k "$K" --rand-engine "$ENGINE" \
             --model "$MODEL" --out "$RUNNER_TEMP/eval-out/$TASK-$INSTALL"
