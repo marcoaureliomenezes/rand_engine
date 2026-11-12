@@ -145,7 +145,7 @@ def passed(*surfaces):
     ("get-started-cli", [], passed("get-started")), ("rand-spec-grammar", [], passed()),
     ("spark-generator", [], passed()), ("writers-and-streaming", [], passed()),
 ])
-def test_agent_written_reads_survive_an_undecodable_byte(tmp_path, slug, written, expected):
+def test_each_reference_trial_passes_past_an_undecodable_agent_written_byte(tmp_path, slug, written, expected):
     check = reference_trial(slug, tmp_path)
     for name in written:
         taint(tmp_path / name)
