@@ -1,4 +1,4 @@
-"""Intent: CONTRACT — writer-options-consumed-by-use (timeout/trigger read with defaults, never consumed); writer-state-shared-across-chains (each .writeStream access is a fresh writer); writer-size-not-from-generator (callable generator size reaches the stream; no size fails before overwrite deletes anything)."""
+"""Stream writer: a callable generator size is re-read per microbatch; timeout and trigger take their defaults, an abandoned chain's options do not leak; each .writeStream access is a fresh writer; no size fails before an overwrite deletes anything."""
 import ntpath
 import os
 import pandas as pd
