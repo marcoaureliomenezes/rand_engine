@@ -210,6 +210,13 @@ def test_gen_uuid4_uniqueness():
   assert len(unique_uuids) == size  # All should be unique
 
 
+def test_gen_uuid4_zero_size_is_an_empty_arrow_string_array():
+  result = NPCore.gen_uuid4(0, rng=np.random.default_rng(0))
+  assert isinstance(result, pa.Array)
+  assert result.type == pa.string()
+  assert result.to_pylist() == []
+
+
 # Tests for gen_booleans
 def test_gen_booleans_default_probability(default_size):
   """Test boolean generation with default 50% probability."""
@@ -266,6 +273,13 @@ def test_gen_ints_zfilled_padding():
     # Should be valid integers when converted
     int_val = int(item)
     assert 0 <= int_val <= 10**length - 1
+
+
+def test_gen_ints_zfilled_zero_size_is_an_empty_arrow_string_array():
+  result = NPCore.gen_ints_zfilled(0, 5, rng=np.random.default_rng(0))
+  assert isinstance(result, pa.Array)
+  assert result.type == pa.string()
+  assert result.to_pylist() == []
 
 
 # Tests for gen_distincts_prop
@@ -414,17 +428,6 @@ def test_gen_uuid4_is_arrow_text_with_the_same_values_as_before(seed, expected):
   assert isinstance(result, (pa.Array, pa.ChunkedArray))
   assert result.type == pa.string()
   assert result.to_pylist() == expected
-
-
-@pytest.mark.parametrize("gen", [
-  lambda: NPCore.gen_uuid4(0, rng=np.random.default_rng(0)),
-  lambda: NPCore.gen_ints_zfilled(0, 5, rng=np.random.default_rng(0)),
-])
-def test_zero_size_text_generators_return_an_empty_arrow_string_column(gen):
-  result = gen()
-  assert isinstance(result, (pa.Array, pa.ChunkedArray))
-  assert result.type == pa.string()
-  assert result.to_pylist() == []
 
 
 def test_gen_ints_and_zfilled_reach_the_inclusive_max():
