@@ -702,7 +702,7 @@ NULLED_TEXT_SPEC = {
 @pytest.fixture
 def arrow_conf(arrow_conf_restored):
     """Toggle Spark's Arrow option for one test; the restore is conftest's."""
-    yield lambda on: arrow_conf_restored.conf.set(ARROW_CONF, "true" if on else "false")
+    return lambda on: arrow_conf_restored.conf.set(ARROW_CONF, "true" if on else "false")
 
 
 def test_spark_arrow_on_converts_pd_na_text_to_sql_nulls(spark_session, arrow_conf):

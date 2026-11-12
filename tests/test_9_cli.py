@@ -166,9 +166,8 @@ CHECKS = {"test-data": check_test_data, "lake": check_lake, "kafka": check_kafka
 @pytest.fixture
 def spark_guard(request):
   if not request.param:
-    yield None
-    return
-  yield request.getfixturevalue("arrow_conf_restored")
+    return None
+  return request.getfixturevalue("arrow_conf_restored")
 
 
 NOTEBOOK_ROWS = [

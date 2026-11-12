@@ -191,7 +191,7 @@ class Fake:
   ((1.0, 1.0, 1.0), (1.4, 1.5, 1.6), "over 1.3x base: [('integers', 10)]"),
   ((1.0, 3.0, 3.0), (1.4, 1.5, 1.6), "over 1.3x base: [('integers', 10)]"),
 ])
-def test_run_judges_a_row_by_its_quickest_head_sample_so_only_a_uniformly_slow_head_fails(tmp_path, monkeypatch, bases, heads, failure):
+def test_run_judges_a_row_by_its_quickest_base_and_head_samples(tmp_path, monkeypatch, bases, heads, failure):
   log = []
   monkeypatch.setattr("benchmarks.speed.SINKS", ())
   monkeypatch.setattr("benchmarks.speed.MODIFIERS", {})
