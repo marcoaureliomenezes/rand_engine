@@ -904,19 +904,21 @@ def test_eval_workflow_pins_the_scrub_cli_and_runs_under_bubblewrap():
 
 def test_eval_trials_step_fails_before_the_eval_when_k_is_above_three():
     text = _job("trials")
-    guard = 'if [ "$K" -gt 3 ] || ! [ "$K" -ge 1 ] 2>/dev/null; then'
+    guard = 'if [ "$K" -gt 3 ] 2>/dev/null || ! [ "$K" -ge 1 ] 2>/dev/null; then'
     assert guard in text, "the trials job lacks the fail-closed guard on K"
     assert text.index(guard) < text.index("python evals/run.py")
 
 
 @pytest.mark.skipif(os.name != "posix", reason="the trials job runs on ubuntu; bash is not the POSIX shell on Windows")
-@pytest.mark.parametrize("k, exit_code", [("3", 0), ("4", 1), ("abc", 1), ("", 1), ("2.5", 1)])
-def test_eval_trials_k_guard_fails_closed_on_anything_but_an_integer_up_to_three(k, exit_code):
+@pytest.mark.parametrize("k, exit_code", [("3", 0), ("4", 1), ("0", 1), ("-1", 1), ("abc", 1), ("", 1), ("2.5", 1)])
+def test_eval_trials_k_guard_accepts_only_an_integer_from_one_to_three(k, exit_code):
     guard = next(
         line.strip() for line in _job("trials").splitlines() if line.strip().startswith('if [ "$K"')
     )
     run = subprocess.run(["bash", "-c", guard], env={**os.environ, "K": k}, capture_output=True, text=True)
     assert run.returncode == exit_code, run.stderr
+    message = f"k={k}: k must be an integer from 1 to 3 (the job timeout fits k up to 3)\n"
+    assert run.stderr == ("" if exit_code == 0 else message)
 
 
 def test_eval_trials_apt_get_update_runs_before_the_install():
