@@ -177,6 +177,7 @@ PYTHON_C = '"import sys; from rand_engine.cli import main; sys.exit(main())"'
     "rand-engine get-started lake",
     ".venv/bin/rand-engine get-started lake --out starter",
     "rand-engine get-started --out starter lake",
+    "rand-engine get-started --out=starter lake",
     "uvx rand-engine get-started lake",
     "uv run rand-engine get-started lake",
     "poetry run rand-engine get-started lake",
