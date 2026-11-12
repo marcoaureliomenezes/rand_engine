@@ -9,7 +9,7 @@ Contract under test (loaded by path, no Spark, no network, no agent; the re-run'
       {"entry", "spec", "agent"} per distinct generation: `entry` is get_df, stream_dict, save or start (sqlite
       and multi-file saves are `save`), `spec` the evaluated spec dict, `agent` True when the calling frame's file
       lies under the scratch copy (the script or a module written beside it). An artifact column passes only
-      against output of an agent generations.
+      against the generations an agent's code recorded.
       Csv and json-lines artifacts are read as written text, with no dtype or NA inference.
   value_hash(values) -> str                                           (nulls hash as the empty string; a column's values hash as a
       multiset, so order does not count)
