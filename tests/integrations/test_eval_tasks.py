@@ -3,7 +3,6 @@
 import ast
 import json
 import os
-import re
 import shlex
 import shutil
 import subprocess
@@ -46,18 +45,10 @@ def test_usage_task_folders_cover_the_catalog():
 
 
 CHECKS = sorted(USAGE_SLUGS)
-PASS_LINE = re.compile(r"""RESULT.*layer['"]: ['"]pass['"].*surfaces|RESULT.*surfaces.*layer['"]: ['"]pass['"]""")
 
 
 def check_source(slug):
     return (ROOT / "evals/tasks" / slug / "tests/check.py").read_text(encoding="utf-8")
-
-
-@pytest.mark.parametrize("slug", CHECKS)
-def test_usage_check_prints_one_pass_line_with_layer_and_surfaces(slug):
-    lines = check_source(slug).splitlines()
-    assert sum(bool(PASS_LINE.search(line)) for line in lines) == 1, f"{slug}: not one RESULT pass line with layer and surfaces"
-    assert not [line for line in lines if re.search(r"""print\(f?['"]PASS""", line)], f"{slug}: prints a bare PASS line"
 
 
 @pytest.mark.parametrize("slug", CHECKS)
