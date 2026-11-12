@@ -770,6 +770,7 @@ class TestSparkExactDomainRefusals:
 
 
 def test_spark_float_span_overflowing_float64_is_refused():
+    """max - min is inf in float64"""
     spec = {"v": {"method": "floats", "kwargs": {"min": -1e308, "max": 1e308, "decimals": 0}}}
     assert len(CommonValidator.validate_spark_spec(spec)) == 1
 

@@ -332,7 +332,7 @@ def test_two_fk_columns_with_identical_kwargs_differ():
 
 @pytest.mark.parametrize("skew, head", [(0, [267, 786, 227, 987, 287, 297]), (1.2, [927, 6, 6, 46, 580, 6]), (1.0, [1, 427, 657, 992, 566, 392])])
 def test_fk_matches_the_prototype_parent_index(skew, head):
-  """Pins from proto/core.py (cell_hash, index, zipf_index) + proto/feistel.py, seed crc32(key_seed/column/canonical kwargs)."""
+  """Pins from the reference parent index (cell_hash, index, zipf_index) and feistel, seed crc32(key_seed/column/canonical kwargs)."""
   parent = {"method": "pk", "kwargs": {"start": 0}}
   assert Keys.gen_fk(6, parent=parent, parent_size=1000, skew=skew, key_seed=5, column="c").tolist() == head
 
@@ -415,7 +415,7 @@ def test_stream_dict_keys_continue_across_microbatches():
 
 
 def test_write_stream_keys_continue_across_microbatches(tmp_path, monkeypatch):
-  """writeStream ten 100-row files, read back, carry the keys of one 1000-row get_df."""
+  """writeStream into 10 files carries ids 1..1000 and the parent_id of one 1000-row get_df"""
   _fake_clock(monkeypatch)
   path = tmp_path / "stream"
   DataGenerator(KEYS, seed=7).size(100).writeStream.format("parquet").option("timeout", 9.5).trigger(1).start(str(path))
