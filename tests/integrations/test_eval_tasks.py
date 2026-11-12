@@ -13,6 +13,9 @@ from pathlib import Path
 
 import pytest
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "evals"))
+from run import check_result  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[2]
 USAGE_SLUGS = {
     "data-generator", "documentation", "generation-methods", "get-started-cli", "pk-fk-constraints",
@@ -43,7 +46,6 @@ def test_usage_task_folders_cover_the_catalog():
 
 
 CHECKS = sorted(USAGE_SLUGS)
-PASS_RESULT = '"layer": "pass"'
 PASS_LINE = re.compile(r"""RESULT.*layer['"]: ['"]pass['"].*surfaces|RESULT.*surfaces.*layer['"]: ['"]pass['"]""")
 
 
@@ -122,8 +124,13 @@ def reference_trial(slug, tmp_path):
         for name, text in {"import": "exit=0\n", "pip": "exit=0\n", "network": "NET_FAIL\nexit=1\n"}.items():
             (tmp_path / f"{name}.txt").write_text(text, encoding="utf-8")
     else:
+        if (seed := ROOT / "evals/tasks" / slug / "environment").is_dir():
+            shutil.copytree(seed, tmp_path, dirs_exist_ok=True)
         shutil.copy(ROOT / "evals/tasks" / slug / "tests/solution/solve.py", tmp_path / "solve.py")
         subprocess.run([sys.executable, "solve.py"], cwd=tmp_path, env=env, check=True)
+        transcript = ROOT / "evals/tasks" / slug / "tests/solution/transcript.jsonl"
+        if transcript.is_file():
+            env["RAND_EVAL_TRANSCRIPT"] = str(transcript)
     return lambda: subprocess.run([sys.executable, str(ROOT / "evals/tasks" / slug / "tests/check.py")], cwd=tmp_path, env=env, capture_output=True, text=True)
 
 
@@ -134,18 +141,25 @@ def taint(path):
         path.write_bytes((path.read_bytes() if path.exists() else b"") + b"\xff")
 
 
+def passed(*surfaces):
+    return {"layer": "pass", "surfaces": list(surfaces)}
+
+
 @pytest.mark.parametrize("slug, written, expected", [
-    ("documentation", ["answer.txt"], PASS_RESULT), ("canary", ["import.txt"], "probe:network"),
-    ("data-generator", ["extra.py"], PASS_RESULT), ("generation-methods", ["extra.py"], PASS_RESULT),
-    ("pk-fk-constraints", ["extra.py"], PASS_RESULT), ("templates-and-examples", ["extra.py"], PASS_RESULT),
-    ("public-api", ["version.txt", "solve.py", "extra.py"], PASS_RESULT),
+    ("documentation", ["answer.txt"], passed()), ("canary", ["import.txt"], "probe:network"),
+    ("data-generator", ["extra.py"], passed()), ("generation-methods", ["extra.py"], passed()),
+    ("pk-fk-constraints", ["extra.py"], passed()), ("templates-and-examples", ["extra.py"], passed()),
+    ("public-api", ["version.txt", "solve.py", "extra.py"], passed()),
+    ("get-started-cli", [], passed("get-started")), ("rand-spec-grammar", [], passed()),
+    ("spark-generator", [], passed()), ("writers-and-streaming", [], passed()),
 ])
 def test_agent_written_reads_survive_an_undecodable_byte(tmp_path, slug, written, expected):
     check = reference_trial(slug, tmp_path)
     for name in written:
         taint(tmp_path / name)
     run = check()
-    assert "UnicodeDecodeError" not in run.stderr and run.returncode == 0 and expected in run.stdout, run.stdout + run.stderr
+    judged = expected in run.stdout if isinstance(expected, str) else check_result(run.stdout) == expected
+    assert "UnicodeDecodeError" not in run.stderr and run.returncode == 0 and judged, run.stdout + run.stderr
 
 
 def test_harness_written_llms_read_stays_strict(tmp_path):
