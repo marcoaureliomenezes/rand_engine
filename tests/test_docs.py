@@ -162,7 +162,11 @@ def test_tutorial_no_run_fences_are_only_case_includes():
 def test_getting_started_maps_each_packaged_scaffold():
   """Getting started puts each CLI scaffold's command, file, run command, prerequisite, outcome and guide in one map."""
   rows = _table_rows(DOCS / "getting-started.md", ("Use case", "Command", "File", "Run", "Prerequisite", "Outcome", "Guide"))
-  by_slug = {re.search(r"`([^`]+)`", row[0]).group(1): row for row in rows}
+  by_slug = {}
+  for row in rows:
+    slug = re.search(r"`([^`]+)`", row[0])
+    assert slug is not None, f"getting-started.md: no backticked slug in row {row[0]!r}"
+    by_slug[slug.group(1)] = row
   cases = runnable_cases()
   assert set(cases) == RUNNABLE_SLUGS
   assert set(by_slug) == set(cases)
@@ -576,7 +580,9 @@ def test_writing_doc_runs_row_batches_and_append(tmp_path, monkeypatch, relative
 def _writer_option_table() -> dict[str, str]:
   """The writing guide's format and writer option rows."""
   text = _text(DOCS / "3_WRITING_FILES.md")
-  table = re.search(r"^\| Format \| Options \|\n\|[-| ]+\n((?:\|.*\n)+)", text, re.M).group(1)
+  match = re.search(r"^\| Format \| Options \|\n\|[-| ]+\n((?:\|.*\n)+)", text, re.M)
+  assert match is not None, "3_WRITING_FILES.md: no Format | Options table"
+  table = match.group(1)
   return {cells[0].replace("`", ""): cells[1] for row in table.splitlines()
           for cells in [[cell.strip() for cell in row.strip("|").split("|")]]}
 
@@ -867,7 +873,9 @@ def _changelog():
   assert [rest for v, rest in headers if v == "0.8.0"] == [" - 2026-10-18"]
   assert [v for v, rest in headers if v != "0.8.0" and not re.fullmatch(rf" - {ISO}", rest)] == []
   assert "## [0.7.0] - 2026-10-14" in text
-  section = re.search(r"^## \[0\.8\.0\] - 2026-10-18\n(.*?)(?=^## \[)", text, re.M | re.S).group(1)
+  match = re.search(r"^## \[0\.8\.0\] - 2026-10-18\n(.*?)(?=^## \[)", text, re.M | re.S)
+  assert match is not None, "CHANGELOG.md: no 0.8.0 section"
+  section = match.group(1)
   added, fixed = (re.search(rf"^### {h}\n(.*?)(?=^###|\Z)", section, re.M | re.S) for h in ("Added", "Fixed"))
   assert fixed is not None
   assert 'pip install "rand-engine[faker]"' in added.group(1)
@@ -1007,8 +1015,12 @@ def test_compatibility_docs_state_the_supported_bounds():
 def test_docs_workflow_deploys_pages_from_master_only():
   """The deploy job's gate and the whole workflow name master as the only deploying branch."""
   text = _text(ROOT / ".github" / "workflows" / "docs.yml")
-  deploy = re.search(r"^  deploy:\n(?:    .*\n|\n)*", text, re.M).group(0)
-  gate = re.search(r"^    if: (.*)$", deploy, re.M).group(1)
+  match = re.search(r"^  deploy:\n(?:    .*\n|\n)*", text, re.M)
+  assert match is not None, "docs.yml: no deploy job"
+  deploy = match.group(0)
+  match = re.search(r"^    if: (.*)$", deploy, re.M)
+  assert match is not None, "docs.yml: deploy job has no if gate"
+  gate = match.group(1)
   assert gate == "github.event_name == 'push' && github.ref == 'refs/heads/master'"
   assert set(re.findall(r"refs/heads/[\w./-]+", text)) == {"refs/heads/master"}
 
@@ -1033,7 +1045,9 @@ def nav_pages() -> list[str]:
 
 
 def test_every_nav_page_but_home_has_its_own_search_description():
-  site = re.search(r"^site_description: (.+)$", (ROOT / "mkdocs.yml").read_text(encoding="utf-8"), re.M).group(1)
+  match = re.search(r"^site_description: (.+)$", (ROOT / "mkdocs.yml").read_text(encoding="utf-8"), re.M)
+  assert match is not None, "mkdocs.yml: no site_description line"
+  site = match.group(1)
   pages = nav_pages()
   assert len(pages) == 17
   descriptions = {}
