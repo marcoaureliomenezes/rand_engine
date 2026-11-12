@@ -1,6 +1,7 @@
 """Eval task contract: the usage task folders under evals/tasks equal the catalog's non-quality slugs, and the task checks' behaviour pinned here
 (the pk-fk parent comparison, reads of agent-written files, the get-started-cli command matcher and its layer 2)."""
 import ast
+import importlib.util
 import json
 import os
 import shlex
@@ -12,10 +13,11 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "evals"))
-from run import check_result  # noqa: E402
-
 ROOT = Path(__file__).resolve().parents[2]
+spec = importlib.util.spec_from_file_location("eval_run", ROOT / "evals" / "run.py")
+run = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(run)
+check_result = run.check_result
 USAGE_SLUGS = {
     "data-generator", "documentation", "generation-methods", "get-started-cli", "pk-fk-constraints",
     "public-api", "rand-spec-grammar", "spark-generator", "templates-and-examples", "writers-and-streaming",
