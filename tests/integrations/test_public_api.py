@@ -909,6 +909,7 @@ def test_eval_trials_step_fails_before_the_eval_when_k_is_above_three():
     assert text.index(guard) < text.index("python evals/run.py")
 
 
+@pytest.mark.skipif(os.name != "posix", reason="the trials job runs on ubuntu; bash is not the POSIX shell on Windows")
 @pytest.mark.parametrize("k, exit_code", [("3", 0), ("4", 1), ("abc", 1), ("", 1), ("2.5", 1)])
 def test_eval_trials_k_guard_fails_closed_on_anything_but_an_integer_up_to_three(k, exit_code):
     guard = next(
