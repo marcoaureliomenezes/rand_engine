@@ -1,6 +1,6 @@
 # PLAN — Release: 0.8.2, candidate 6
 
-**Status:** Draft
+**Status:** Approved
 **Release ID:** 0.8.2
 **Owner:** dd-sw-engineer-sr
 **SPEC:** `rc-6/SPEC.md` (0a72a09)
