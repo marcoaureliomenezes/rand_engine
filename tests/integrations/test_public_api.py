@@ -855,8 +855,8 @@ def test_eval_stream_with_no_result_event_raises_an_error_naming_the_missing_res
 
 @pytest.mark.parametrize("key, value, literal", [("errors", ["boom"], "boom"),
                                                   ("startup_failure_reason", "no token", "no token")])
-def test_eval_stream_with_no_init_event_raises_an_error_naming_the_result_event(monkeypatch, tmp_path, key, value,
-                                                                                literal):
+def test_eval_stream_with_no_init_event_raises_an_error_carrying_the_result_reason_and_no_stop_iteration(
+        monkeypatch, tmp_path, key, value, literal):
     res, _, _ = _trial(monkeypatch, tmp_path, "usage", events=[{"type": "result", "is_error": True, key: value}])
     assert "StopIteration" not in res["error"]
     assert literal in res["error"]
