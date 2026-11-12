@@ -106,7 +106,7 @@ def test_pk_fk_check_refuses_a_parent_that_is_another_pk(tmp_path):
 
 
 def reference_trial(slug, tmp_path):
-    """The directory a correct agent leaves for `slug`; returns a runner of the task's check in it; the transcript rule is restated here."""
+    """The directory a correct agent leaves for `slug`; returns a runner of the task's check in it; the transcript rule is restated from `evals/selfcheck.py`."""
     env = child_env()
     if slug == "canary":
         commands = ["python -c 'import rand_engine' > import.txt", "pip --version > pip.txt", "python urlopen > network.txt"]
