@@ -844,8 +844,12 @@ def _text(path: Path) -> str:
 
 def _readme_landing():
   text = _text(README)
-  title = re.search(r"^# .*$", text, re.M).end()
-  pitch = re.search(r"^(?!\s*$)(?!#)(?!\[?!\[).+$", text[title:], re.M).start() + title
+  title_match = re.search(r"^# .*$", text, re.M)
+  assert title_match is not None, "README.md: no '# ' title line"
+  title = title_match.end()
+  pitch_match = re.search(r"^(?!\s*$)(?!#)(?!\[?!\[).+$", text[title:], re.M)
+  assert pitch_match is not None, "README.md: no pitch line after the title"
+  pitch = pitch_match.start() + title
   at = lambda pattern: (m.start() if (m := re.search(pattern, text, re.M | re.I)) else -1)
   order = [("pitch", pitch), ("badges", at(r"img\.shields\.io")), ("install", at(r"^## .*install")),
            ("30-second example", at(r"^## .*30")), ("when to use it", at(r"^## .*when to use")),
