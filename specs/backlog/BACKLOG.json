@@ -255,6 +255,24 @@
       "relates": [
         "native-datetime-output"
       ]
+    },
+    {
+      "id": "writer-format-opener-one-decider",
+      "title": "Each write format maps to its file session in one place",
+      "opened": "2026-11-13",
+      "status": "idea",
+      "description": "Lines are repos/rand-engine at 7c73d13. Three deciders map a write format to the code that writes it: rand_engine/file_handlers/file_handler.py:380 (_to_file picks the session by getattr(FileHandler, f\"open_{format}\")), rand_engine/file_handlers/_writer_batch.py:299-306 (_open_session keeps its own csv/json/parquet dict to FileHandler.open_* and its own unsupported-format refusal), and rand_engine/file_handlers/writer.py:35-39 (__map_methods keeps a csv/parquet/json dict to FileHandler.to_*). One decider maps a format to its session and the other paths consult it; the unsupported-format refusal has one home; every writer's output is unchanged and the touched code shrinks (row 189).",
+      "provenance": "operator ruling on the main thread's rc-6 closure intake drain, 2026-11-13 (AskUserQuestion, verbatim): \"Ratify both (Recommended)\", recorded as \"entries test-hygiene-3 (rows 191, 192, 193, 195, 196, 197, 198, 199, 200) and writer-format-opener-one-decider (row 189) become rc-7's scope\"; source intake report .dadaia/reports/rand-engine/0.8.2-rc4-intake.md, section \"Operator ruling, 2026-11-13 (AskUserQuestion) \u2014 rc-7 drain\", checked against feature/0.8.2 at 7c73d13; intake row 189 (rc-6 drain lane review 2026-11-12T105251Z, INFO, verbatim): \"format\u2192opener decider also at _writer_batch.py:299-306, writer.py:35-39 (rc-6 as-is); out of rc-6 scope.\"",
+      "relates": []
+    },
+    {
+      "id": "test-hygiene-3",
+      "title": "Tests are named for every row they hold, pin one expectation per case, and cite only units the tree holds",
+      "opened": "2026-11-13",
+      "status": "idea",
+      "description": "Lines are repos/rand-engine at 7c73d13. (1) tests/integrations/test_public_api.py:905: the guard-pin test is named for K above three, while it pins both bounds; its name states both (row 191). (2) test_public_api.py:913: the K-guard parametrize has no ids, so K=\"\" shows as [-1], easy to confuse with K=\"-1\"; each row carries an id (row 192). (3) test_public_api.py:920-921: a conditional picks the expected stderr; the accept row is its own case and each case pins one literal stderr (row 193). (4) Six one-row parametrizes become plain cases: tests/test_0_np_core.py:642,658, tests/test_1_common_validator.py:749, tests/test_2_data_generator.py:151,165,182 (row 195). (5) tests/test_8_consistency.py:335,342: the docstrings name index, zipf_index and \"proto zipf_index\", units the repo does not hold; each states its pins without them (row 196). (6) tests/test_docs.py:88,340: a bare assert match is not None carries a message naming the page or section it searched (row 197). (7) tests/integrations/test_eval_tasks.py:17-20: the module-level spec and run (evals/run.py) leak as module globals and run is shadowed by local CompletedProcess names (:99, :104, :151); the module and each result have distinct names and spec does not stay global (row 198). (8) test_eval_tasks.py:147: the test name claims an undecodable byte for all 11 rows, while 4 rows (:144-145) taint nothing; its name covers every row, or the untainted rows are their own case (row 199). (9) tests/integrations/test_eval_check.py:196-200: the .pyc-set assert goes red only on a tree with no prior rand_engine bytecode; the case fails whenever a rerun writes bytecode, whatever the tree held before (row 200).",
+      "provenance": "operator ruling on the main thread's rc-6 closure intake drain, 2026-11-13 (AskUserQuestion, verbatim): \"Ratify both (Recommended)\", recorded as \"entries test-hygiene-3 (rows 191, 192, 193, 195, 196, 197, 198, 199, 200) and writer-format-opener-one-decider (row 189) become rc-7's scope\"; source intake report .dadaia/reports/rand-engine/0.8.2-rc4-intake.md, section \"Operator ruling, 2026-11-13 (AskUserQuestion) \u2014 rc-7 drain\", checked against feature/0.8.2 at 7c73d13; intake rows 191, 192, 193 (rc6-job4 review, LOW), 195 (rc6-job2 review, LOW), 196 (rc6-job3 review, LOW), 197 (rc6-job3 re-review, LOW), 198, 199, 200 (rc6-job6 review, LOW)",
+      "relates": []
     }
   ]
 }
