@@ -65,7 +65,7 @@ A usage check runs three layers in order. A failure prints one line starting wit
 
 ## CI
 
-- `.github/workflows/eval.yml` runs on push to `feature/**` or an rc `wt-rc` branch touching `evals/**` or the workflow, on every pull request to `development` or `master`, and on manual dispatch with `model` and `k` inputs. It pins the model id and the agent CLI version; one concurrency group per ref cancels the run in progress, and a trial job fails unless `k` is an integer from 1 to 3, the most its timeout fits.
+- `.github/workflows/eval.yml` runs on push to `feature/**` or an rc `wt-rc` branch touching `evals/**` or the workflow, on every pull request to `development` or `master`, and on manual dispatch with `model` and `k` inputs. It pins the model id and the agent CLI version; one concurrency group per ref cancels the run in progress, and a trial job fails before its trials unless `k` is an integer from 1 to 3, the most its timeout fits, with one line naming both bounds.
 - Every job's checkout sets `persist-credentials: false`, so no git token stays in the workspace.
 - The `Eval self-check` job runs `selfcheck.py` on the wheel built from the checkout.
 - One trial job per task and leg: the canary and every usage task on both legs, discovery on PyPI. Each refreshes the package index and installs bubblewrap and socat, lifting the runner's unprivileged user-namespace restriction where that setting exists, for the agent's subprocess sandbox; scans its results for the token, deleting them and failing on a hit; and uploads them as an artifact.
