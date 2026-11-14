@@ -398,6 +398,18 @@
       "candidate": "rc-7",
       "milestone": "implemented",
       "text": "Candidate implemented; phase CLOSURE."
+    },
+    {
+      "ts": "2026-11-14T05:24:29Z",
+      "agent": "release.py memory",
+      "kind": "memory",
+      "text": "Memory reconciled over 9974eeca4ab8128f727d5fef49edb64eb1a0c13b..8c1c9d83f2cc: 0 reviewed, 1 changed.",
+      "since": "9974eeca4ab8128f727d5fef49edb64eb1a0c13b",
+      "until": "8c1c9d83f2cc39671a03f25adda06473dd7f08d0",
+      "reviewed": [],
+      "changed": [
+        "writers-and-streaming"
+      ]
     }
   ]
 }
