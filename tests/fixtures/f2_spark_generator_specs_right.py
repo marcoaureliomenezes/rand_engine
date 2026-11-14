@@ -112,8 +112,6 @@ def large_spark_df(spark_session):
 def spark_metadata_simple():
     """
     Simple metadata for basic Spark generation tests.
-    
-    Uses CommonRandSpecs.customers() as base and simplifies it.
     """
     return {
         "id": dict(method="integers", kwargs=dict(min=1, max=100)),
@@ -126,10 +124,7 @@ def spark_metadata_simple():
 def spark_metadata_complex():
     """
     Complex metadata for advanced Spark generation tests.
-    
-    Uses rand_engine.examples.spark_examples for reference patterns.
     """
-    # Use a modified version of CommonRandSpecs.employees() for testing
     return {
         "user_id": dict(method="uuid4", kwargs={}),
         "age": dict(method="integers", kwargs=dict(min=18, max=80)),
@@ -147,7 +142,6 @@ def spark_metadata_all_types():
     Metadata covering all SparkCore generation methods.
     
     Useful for comprehensive integration tests.
-    Based on rand_engine.examples.spark_examples patterns.
     """
     return {
         # Numeric
