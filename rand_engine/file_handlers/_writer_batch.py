@@ -347,7 +347,10 @@ class FileBatchWriter(FileWriter):
         If ``size`` is unset, or is not a non-negative integer (a callable's return value is judged), or ``numFiles`` or ``maxRowsPerBatch`` is not a positive integer.
         If the format is not ``"csv"``, ``"json"``, ``"parquet"`` or ``"sqlite"``, an option is not documented for it, or an option value is refused (csv ``index``, ``sep`` or ``compression``; json ``orient`` or ``compression``; parquet ``compression``).
         For SQLite: a ``table`` option that is missing or not a non-empty string, any other option, a mode other than ``overwrite`` or ``append``, an append whose schema differs from the table, or a write that fails.
+        For SQLite: a column label that is not a unique NUL-free string, an integer outside signed 64 bits, a value of a type SQLite cannot store, or an append that does not create its database file (for example ``:memory:``).
         If a csv or parquet column mixes types; or, appending, a parquet schema differs from the file's, a ``numFiles`` destination is not a directory, or a zip output does not hold exactly one file.
+        If, with ``maxRowsPerBatch``, two batches of one file differ in schema, or a json batch's column mixes types (its schema is indeterminate).
+        If a csv, json or parquet file has no rows and nothing to append to, its schema is indeterminate.
 
     Examples
     --------
