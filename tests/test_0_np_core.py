@@ -639,10 +639,8 @@ def test_uniform_float_lattice_supports_signed_decimals():
   assert values.tolist() == [100.0] * 100
 
 
-@pytest.mark.parametrize(("value", "decimals"), [
-  (1e308, -308),
-])
-def test_uniform_float_lattice_converts_finite_singletons_at_extreme_scales(value, decimals):
+def test_uniform_float_lattice_converts_finite_singletons_at_extreme_scales():
+  value, decimals = 1e308, -308
   try:
     actual = NPCore.gen_floats(
       size=1, min=value, max=value, decimals=decimals,
@@ -655,10 +653,8 @@ def test_uniform_float_lattice_converts_finite_singletons_at_extreme_scales(valu
   assert actual.tolist() == [value]
 
 
-@pytest.mark.parametrize(("value", "decimals"), [
-  (1e308, -308),
-])
-def test_uniform_float_lattice_preserves_negative_extreme_decimals_without_context_or_global_changes(value, decimals):
+def test_uniform_float_lattice_preserves_negative_extreme_decimals_without_context_or_global_changes():
+  value, decimals = 1e308, -308
   digit_limit = sys.get_int_max_str_digits()
   with localcontext() as context:
     context.prec = 2

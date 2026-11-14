@@ -148,11 +148,11 @@ def test_create_df_with_all_methods(rand_spec_all_methods, size):
   assert df_data["tier"].isin(["gold", "silver", "bronze"]).all()
 
 
-@pytest.mark.parametrize("size", [10**2])
-def test_create_df_with_multiple_transformers(rand_spec_with_transformers, size):
+def test_create_df_with_multiple_transformers(rand_spec_with_transformers):
   """
   Test that multiple transformers on same column are applied in sequence.
   """
+  size = 10**2
   df_data = DataGenerator(rand_spec_with_transformers).size(size).get_df()
   
   # Price has 2 transformers: multiply by 1.1, then round
@@ -162,11 +162,11 @@ def test_create_df_with_multiple_transformers(rand_spec_with_transformers, size)
   assert df_data["price"].max() <= 110.0
 
 
-@pytest.mark.parametrize("size", [10**2])
-def test_correlated_columns_distinct_map(rand_spec_with_related_columns, size):
+def test_correlated_columns_distinct_map(rand_spec_with_related_columns):
   """
   Test distincts_map creates valid parent-child relationships.
   """
+  size = 10**2
   df_data = DataGenerator(rand_spec_with_related_columns).size(size).get_df()
   
   # Check device_type and os_type correlation
@@ -179,11 +179,11 @@ def test_correlated_columns_distinct_map(rand_spec_with_related_columns, size):
       assert os in ["linux", "windows", "macos"]
 
 
-@pytest.mark.parametrize("size", [10**2])
-def test_complex_distincts_ip_address(rand_spec_all_methods, size):
+def test_complex_distincts_ip_address(rand_spec_all_methods):
   """
   Test complex_distincts generates valid IP addresses.
   """
+  size = 10**2
   df_data = DataGenerator(rand_spec_all_methods).size(size).get_df()
   
   # Validate IP format: x.x.x.x

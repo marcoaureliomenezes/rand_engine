@@ -746,8 +746,8 @@ class TestSparkExactDomainRefusals:
         assert self._validate("integers", min=-2**53, max=-1) == []
         assert self._validate("integers", min=0, max=2**53 - 2) == []
 
-    @pytest.mark.parametrize("length", [16])
-    def test_int_zfilled_length_above_15_is_one_collected_error(self, length):
+    def test_int_zfilled_length_above_15_is_one_collected_error(self):
+        length = 16
         errors = self._validate("int_zfilled", length=length)
         assert len(errors) == 1
         assert "Column 'c'" in errors[0]
