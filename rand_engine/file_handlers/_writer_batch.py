@@ -240,14 +240,6 @@ class FileBatchWriter(FileWriter):
           self._sqlite_create(database, table, columns, types)
         self._sqlite_insert(database, table, columns, rows)
         database.commit()
-      except RandEngineError:
-        if database is not None:
-          database.rollback()
-        raise
-      except sqlite3.Error as error:
-        if database is not None:
-          database.rollback()
-        raise RandEngineError(f"sqlite write failed: {error}") from error
       finally:
         if database is not None:
           database.close()
@@ -278,9 +270,6 @@ class FileBatchWriter(FileWriter):
         self._sqlite_create(database, table, columns, types)
         self._sqlite_insert(database, table, columns, rows)
         database.commit()
-      except sqlite3.Error as error:
-        database.rollback()
-        raise RandEngineError(f"sqlite write failed: {error}") from error
       finally:
         database.close()
       os.replace(staging, destination)
@@ -371,7 +360,10 @@ class FileBatchWriter(FileWriter):
     10
     """
     if self.write_format == "sqlite":
-      self._save_sqlite(path)
+      try:
+        self._save_sqlite(path)
+      except sqlite3.Error as error:
+        raise RandEngineError(f"sqlite write failed: {error}") from error
       return
 
     write_options = dict(self.write_options)
