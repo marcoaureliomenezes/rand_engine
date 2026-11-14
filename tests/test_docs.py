@@ -85,7 +85,7 @@ def _table_rows(path: Path, headers: tuple[str, ...]) -> list[list[str]]:
   """Return cells from a documentation table with this exact semantic header."""
   heading = "| " + " | ".join(headers) + " |"
   match = re.search(rf"^{re.escape(heading)}\n\|[-| ]+\n((?:\|.*\n)+)", _text(path), re.M)
-  assert match is not None
+  assert match is not None, f"{path.name}: no table with header {heading}"
   return [[cell.strip() for cell in row.strip("|").split("|")] for row in match.group(1).splitlines()]
 
 
@@ -337,7 +337,7 @@ def test_spark_method_inventory_matches_live_validation():
       _text(DOCS / "2_SPARK_GENERATOR.md"),
       re.M,
   )
-  assert match is not None
+  assert match is not None, "2_SPARK_GENERATOR.md: no Method | Spark table"
   table = match.group(1)
   rows = {
       method: cells[-1]
@@ -885,7 +885,7 @@ def _changelog():
   section = match.group(1)
   added, fixed = (re.search(rf"^### {h}\n(.*?)(?=^###|\Z)", section, re.M | re.S) for h in ("Added", "Fixed"))
   assert added is not None, "CHANGELOG.md: 0.8.0 section has no ### Added"
-  assert fixed is not None
+  assert fixed is not None, "CHANGELOG.md: 0.8.0 section has no ### Fixed"
   assert 'pip install "rand-engine[faker]"' in added.group(1)
 
 
