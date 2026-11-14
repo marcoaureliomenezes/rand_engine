@@ -332,14 +332,14 @@ def test_two_fk_columns_with_identical_kwargs_differ():
 
 @pytest.mark.parametrize("skew, head", [(0, [267, 786, 227, 987, 287, 297]), (1.2, [927, 6, 6, 46, 580, 6]), (1.0, [1, 427, 657, 992, 566, 392])])
 def test_fk_matches_the_prototype_parent_index(skew, head):
-  """Pins from the reference parent index (cell_hash, index, zipf_index) and feistel, seed crc32(key_seed/column/canonical kwargs)."""
+  """Pins the gen_fk heads by seed: the parent index, the feistel permutation and the seed crc32(key_seed/column/canonical kwargs)."""
   parent = {"method": "pk", "kwargs": {"start": 0}}
   assert Keys.gen_fk(6, parent=parent, parent_size=1000, skew=skew, key_seed=5, column="c").tolist() == head
 
 
 @pytest.mark.parametrize("n, rank", [(1, 0), (2, 1), (10, 9)])
 def test_zipf_rank_at_the_top_uniform_stays_inside_the_domain(n, rank):
-  """u = 1 - 2**-53 lands on n unclamped and would hang the Feistel cycle-walk; literals from proto zipf_index."""
+  """Pins the top-of-domain rank literal: at u = 1 - 2**-53 the rank stays inside [0, n), since n unclamped would hang the Feistel cycle-walk."""
   assert Keys._zipf_rank(np.array([2**53 - 1], dtype=np.int64), n, 1.2).tolist() == [rank]
 
 
