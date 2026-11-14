@@ -14,10 +14,17 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location("eval_run", ROOT / "evals" / "run.py")
-run = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(run)
-check_result = run.check_result
+
+
+def _load_eval_run():
+    spec = importlib.util.spec_from_file_location("eval_run", ROOT / "evals" / "run.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+eval_run = _load_eval_run()
+check_result = eval_run.check_result
 USAGE_SLUGS = {
     "data-generator", "documentation", "generation-methods", "get-started-cli", "pk-fk-constraints",
     "public-api", "rand-spec-grammar", "spark-generator", "templates-and-examples", "writers-and-streaming",
@@ -96,13 +103,13 @@ def run_pk_fk_check(tmp_path, parent):
     '{"method": "pk", "kwargs": {"start": 1, "style": "sequence", "step": 1}}',
 ])
 def test_pk_fk_check_accepts_a_parent_equal_to_the_pk_after_its_defaults(tmp_path, parent):
-    run = run_pk_fk_check(tmp_path, parent)
-    assert run.returncode == 0 and '"layer": "pass"' in run.stdout, run.stdout + run.stderr
+    result = run_pk_fk_check(tmp_path, parent)
+    assert result.returncode == 0 and '"layer": "pass"' in result.stdout, result.stdout + result.stderr
 
 
 def test_pk_fk_check_refuses_a_parent_that_is_another_pk(tmp_path):
-    run = run_pk_fk_check(tmp_path, '{"method": "pk", "kwargs": {"start": 1, "style": "permuted", "domain": 1000, "key": 7}}')
-    assert run.returncode == 1 and '"layer": "3"' in run.stdout and '"layer": "pass"' not in run.stdout, run.stdout + run.stderr
+    result = run_pk_fk_check(tmp_path, '{"method": "pk", "kwargs": {"start": 1, "style": "permuted", "domain": 1000, "key": 7}}')
+    assert result.returncode == 1 and '"layer": "3"' in result.stdout and '"layer": "pass"' not in result.stdout, result.stdout + result.stderr
 
 
 def reference_trial(slug, tmp_path):
@@ -116,7 +123,7 @@ def reference_trial(slug, tmp_path):
         for name, text in {"import": "exit=0\n", "pip": "exit=0\n", "network": "NET_FAIL\nexit=1\n"}.items():
             (tmp_path / f"{name}.txt").write_text(text, encoding="utf-8")
     else:
-        run.seed_cwd(ROOT / "evals/tasks" / slug, tmp_path)
+        eval_run.seed_cwd(ROOT / "evals/tasks" / slug, tmp_path)
         shutil.copy(ROOT / "evals/tasks" / slug / "tests/solution/solve.py", tmp_path / "solve.py")
         subprocess.run([sys.executable, "solve.py"], cwd=tmp_path, env=env, check=True)
         transcript = ROOT / "evals/tasks" / slug / "tests/solution/transcript.jsonl"
@@ -144,13 +151,13 @@ def passed(*surfaces):
     ("get-started-cli", [], passed("get-started")), ("rand-spec-grammar", [], passed()),
     ("spark-generator", [], passed()), ("writers-and-streaming", [], passed()),
 ])
-def test_each_reference_trial_passes_past_an_undecodable_agent_written_byte(tmp_path, slug, written, expected):
+def test_each_reference_trial_passes_its_check_and_an_undecodable_agent_written_byte_does_not_crash_it(tmp_path, slug, written, expected):
     check = reference_trial(slug, tmp_path)
     for name in written:
         taint(tmp_path / name)
-    run = check()
-    judged = expected in run.stdout if isinstance(expected, str) else check_result(run.stdout) == expected
-    assert "UnicodeDecodeError" not in run.stderr and run.returncode == 0 and judged, run.stdout + run.stderr
+    result = check()
+    judged = expected in result.stdout if isinstance(expected, str) else check_result(result.stdout) == expected
+    assert "UnicodeDecodeError" not in result.stderr and result.returncode == 0 and judged, result.stdout + result.stderr
 
 
 def test_harness_written_llms_read_stays_strict(tmp_path):
@@ -231,6 +238,6 @@ def test_get_started_matcher_refuses_other_commands(matcher, command):
 def test_get_started_check_without_a_transcript_fails_layer_2(tmp_path):
     (tmp_path / "starter").mkdir()
     shutil.copy(ROOT / "rand_engine/cases/lake.py.txt", tmp_path / "starter/lake-example.py")
-    run = subprocess.run([sys.executable, str(GET_STARTED_CHECK)], cwd=tmp_path, env=child_env(), capture_output=True, text=True)
-    assert run.returncode == 1, run.stdout + run.stderr
-    assert '"layer": "2"' in run.stdout, run.stdout
+    result = subprocess.run([sys.executable, str(GET_STARTED_CHECK)], cwd=tmp_path, env=child_env(), capture_output=True, text=True)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert '"layer": "2"' in result.stdout, result.stdout
