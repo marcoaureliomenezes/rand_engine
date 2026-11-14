@@ -1,6 +1,6 @@
 # SPEC — Release: 0.8.2, candidate 8 (the rc-7 closure drain: test hygiene 4, the writer Raises sections)
 
-**Status:** Draft
+**Status:** Approved
 **Release ID:** 0.8.2
 **Owner:** dd-product-engineer
 **Opened:** 2026-11-14
