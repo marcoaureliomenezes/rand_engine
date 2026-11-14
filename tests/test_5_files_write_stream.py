@@ -166,6 +166,13 @@ def test_undocumented_option_fails_before_overwrite_deletes(rand_spec_with_kwarg
   assert os.listdir(path) == ["keep.csv"]
 
 
+def test_unsupported_stream_format_raises_naming_it_and_writes_nothing(rand_spec_with_kwargs, tmp_path):
+  path = tmp_path / "out"
+  with pytest.raises(RandEngineError, match=r"^unsupported write format 'xml'$"):
+    DataGenerator(rand_spec_with_kwargs).size(2).writeStream.format("xml").option("timeout", 0).trigger(0).start(str(path))
+  assert not path.exists()
+
+
 def test_trigger_frequency_is_annotated_float():
   assert typing.get_type_hints(FileStreamWriter.trigger)["frequency"] is float
 

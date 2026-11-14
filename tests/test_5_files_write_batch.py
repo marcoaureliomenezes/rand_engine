@@ -273,6 +273,26 @@ def test_open_session_undocumented_option_raises_with_accepted_list(tmp_path, fo
     getattr(FileHandler, f"open_{format_type}")(str(tmp_path / "f"), {"engine": "x"})
 
 
+UNSUPPORTED_FORMAT = r"^unsupported write format 'xml'$"
+
+
+def test_save_unsupported_format_raises_naming_it_and_writes_nothing(rand_spec_with_kwargs, tmp_path):
+  path = tmp_path / "f.xml"
+  with pytest.raises(RandEngineError, match=UNSUPPORTED_FORMAT):
+    DataGenerator(rand_spec_with_kwargs).size(2).write.format("xml").save(str(path))
+  assert not path.exists()
+
+
+def test_open_session_unsupported_format_raises_naming_it(tmp_path):
+  with pytest.raises(RandEngineError, match=UNSUPPORTED_FORMAT):
+    FileHandler.open_session("xml", str(tmp_path / "f.xml"), {}, append_from=None, expected_schema=None)
+
+
+def test_to_file_unsupported_format_raises_naming_it(tmp_path):
+  with pytest.raises(RandEngineError, match=UNSUPPORTED_FORMAT):
+    FileHandler.to_file("xml", lambda: FRAME, str(tmp_path / "f.xml"), {})
+
+
 def test_json_documented_options_apply(tmp_path):
   path = str(tmp_path / "f.json.gz")
   frame = pd.DataFrame({"s": ["é"]})
