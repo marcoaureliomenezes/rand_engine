@@ -14,7 +14,6 @@ import pytest
 from rand_engine.main._rand_generator import RandGenerator
 from rand_engine.main.data_generator import DataGenerator
 from rand_engine.main.spark_generator import SparkGenerator
-from rand_engine.validators.common_validator import CommonValidator
 from rand_engine.validators.advanced_validator import AdvancedValidator
 from rand_engine.validators.exceptions import SpecValidationError
 from rand_engine.validators.method_specs import METHOD_CATALOG, NUMPY, SPARK

@@ -1,4 +1,3 @@
-import random
 import pytest
 from rand_engine.templates.web_server_logs import WebServerLogs
 

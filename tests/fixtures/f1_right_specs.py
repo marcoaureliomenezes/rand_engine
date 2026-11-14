@@ -1,6 +1,5 @@
 import pytest
-import faker
-from datetime import datetime as dt, timedelta
+from datetime import datetime as dt
 
 
 @pytest.fixture(scope="function")

@@ -591,8 +591,6 @@ def _writer_option_table() -> dict[str, str]:
 
 def test_writing_doc_inventory_matches_the_accepted_writer_options():
   """The writer guide lists every accepted format option, including defaults and codecs."""
-  from rand_engine import DataGenerator
-
   rows = _writer_option_table()
   from rand_engine.file_handlers.file_handler import _SESSIONS
   files = set(_SESSIONS)

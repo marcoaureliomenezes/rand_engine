@@ -3,7 +3,6 @@ import pickle
 import numpy as np
 import pandas as pd
 import pyarrow as pa
-import time
 import pytest
 from rand_engine.main.data_generator import DataGenerator
 from rand_engine.validators.exceptions import RandEngineError, SpecValidationError

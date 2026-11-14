@@ -7,8 +7,6 @@ import sqlite3
 import datetime as dt
 import numpy as np
 import glob
-import time
-import threading
 import weakref
 import gzip, bz2, lzma, zipfile
 from contextlib import closing, contextmanager

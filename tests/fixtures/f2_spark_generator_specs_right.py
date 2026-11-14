@@ -115,7 +115,6 @@ def spark_metadata_simple():
     
     Uses CommonRandSpecs.customers() as base and simplifies it.
     """
-    from rand_engine.examples import CommonRandSpecs
     return {
         "id": dict(method="integers", kwargs=dict(min=1, max=100)),
         "name": dict(method="distincts", kwargs=dict(distincts=["Alice", "Bob", "Charlie", "Diana"])),
@@ -130,7 +129,6 @@ def spark_metadata_complex():
     
     Uses rand_engine.examples.spark_examples for reference patterns.
     """
-    from rand_engine.examples import CommonRandSpecs
     # Use a modified version of CommonRandSpecs.employees() for testing
     return {
         "user_id": dict(method="uuid4", kwargs={}),
@@ -151,7 +149,6 @@ def spark_metadata_all_types():
     Useful for comprehensive integration tests.
     Based on rand_engine.examples.spark_examples patterns.
     """
-    from rand_engine.examples import CommonRandSpecs
     return {
         # Numeric
         "int_col": dict(method="integers", kwargs=dict(min=0, max=1000)),
