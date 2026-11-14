@@ -14,6 +14,7 @@ import gzip, bz2, lzma, zipfile
 from contextlib import closing, contextmanager
 import pyarrow.parquet as pq
 from rand_engine.file_handlers.file_handler import FileHandler
+from rand_engine.file_handlers._writer_batch import FileBatchWriter
 
 from rand_engine.main.data_generator import DataGenerator
 from rand_engine.validators.exceptions import RandEngineError
@@ -1009,16 +1010,43 @@ def test_sqlite_overwrite_write_failure_keeps_prior_database_and_removes_staging
   assert not list(tmp_path.glob(".atomic-write.sqlite.*.staging"))
 
 
-def test_sqlite_overwrite_onto_a_non_database_file_raises_the_library_error_and_leaves_it_untouched(tmp_path):
+@pytest.mark.parametrize("mode", ["overwrite", "append"])
+def test_sqlite_save_onto_a_non_database_file_raises_the_library_error_and_leaves_it_untouched(tmp_path, mode):
   path = tmp_path / "not-a-database.sqlite"
   path.write_bytes(b"this is not a sqlite database, only text padding" * 4)
   before = path.read_bytes()
 
-  with pytest.raises(RandEngineError, match=r"^sqlite write failed: "):
-    DataGenerator(SQLITE_SPEC).size(2).write.format("sqlite").option("table", "target").save(str(path))
+  with pytest.raises(RandEngineError, match=r"^sqlite write failed: file is not a database$"):
+    DataGenerator(SQLITE_SPEC).size(2).write.format("sqlite").mode(mode).option("table", "target").save(str(path))
 
   assert path.read_bytes() == before
   assert sorted(p.name for p in tmp_path.iterdir()) == ["not-a-database.sqlite"]
+
+
+@pytest.mark.parametrize("mode", ["overwrite", "append"])
+def test_sqlite_save_onto_a_directory_raises_the_library_error(tmp_path, mode):
+  path = tmp_path / "directory.sqlite"
+  path.mkdir()
+
+  with pytest.raises(RandEngineError, match=r"^sqlite write failed: unable to open database file$"):
+    DataGenerator(SQLITE_SPEC).size(2).write.format("sqlite").mode(mode).option("table", "target").save(str(path))
+
+  assert sorted(p.name for p in tmp_path.iterdir()) == ["directory.sqlite"]
+
+
+def test_sqlite_append_insert_failure_leaves_no_new_table(tmp_path, monkeypatch):
+  path = tmp_path / "append-created-table.sqlite"
+  with closing(sqlite3.connect(path)) as database, database:
+    database.execute('CREATE TABLE "other" (value INTEGER)')
+
+  def fail(*_args):
+    raise sqlite3.OperationalError("injected insert failure")
+
+  monkeypatch.setattr(FileBatchWriter, "_sqlite_insert", fail)
+  with pytest.raises(RandEngineError, match=r"^sqlite write failed: injected insert failure$"):
+    DataGenerator(SQLITE_SPEC).size(2).write.format("sqlite").mode("append").option("table", "fresh").save(str(path))
+
+  assert _sqlite_tables(path) == [("other",)]
 
 
 def test_sqlite_append_creates_then_requires_the_existing_ordered_schema(tmp_path):
