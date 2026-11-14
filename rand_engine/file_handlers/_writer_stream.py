@@ -80,6 +80,8 @@ class FileStreamWriter(FileWriter):
     ------
     RandEngineError
         If ``size`` is unset, or is not a non-negative integer (a callable's return value is judged).
+        If the format is ``"sqlite"`` (batch only) or is not ``"csv"``, ``"json"`` or ``"parquet"``, an option is not documented for it (``numFiles`` and ``maxRowsPerBatch`` are batch options), or an option value is refused (csv ``index``, ``sep`` or ``compression``; json ``orient`` or ``compression``; parquet ``compression``).
+        If a csv or parquet column mixes types.
 
     Examples
     --------
