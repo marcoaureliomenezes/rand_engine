@@ -296,14 +296,8 @@ class FileBatchWriter(FileWriter):
     append_from: Path | None = None,
     expected_schema: pa.Schema | None = None,
   ):
-    factory = {
-      "csv": FileHandler.open_csv,
-      "json": FileHandler.open_json,
-      "parquet": FileHandler.open_parquet,
-    }.get(self.write_format)
-    if factory is None:
-      raise RandEngineError(f"unsupported write format '{self.write_format}'")
-    return factory(
+    return FileHandler.open_session(
+      self.write_format,
       str(path),
       options,
       append_from=str(append_from) if append_from is not None else None,
@@ -391,8 +385,8 @@ class FileBatchWriter(FileWriter):
     destination = Path(stem if num_files > 1 else f"{stem}.{extension}")
     parent = destination.parent
     file_sizes = self._file_sizes(total, num_files)
-    self.writer_method[self.write_format](
-      lambda: None, str(destination), write_options, ("numFiles",)
+    FileHandler.to_file(
+      self.write_format, lambda: None, str(destination), write_options, ("numFiles",)
     )
 
     parent.mkdir(parents=True, exist_ok=True)

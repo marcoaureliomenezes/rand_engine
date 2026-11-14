@@ -47,13 +47,6 @@ _INPUT_OPENERS = {
 }
 
 
-_ACCEPTED = {
-  "csv": ("index", "sep", "compression"),
-  "json": ("orient", "force_ascii", "compression"),
-  "parquet": ("compression",),
-}
-
-
 def _documented(format: str, write_options: dict, accepted: tuple) -> None:
   for key in write_options:
     if key not in accepted:
@@ -127,9 +120,10 @@ def _require_same_schema(current: pa.Schema | None, table: pa.Table) -> pa.Schem
 
 
 class _CsvFile:
+  ACCEPTED = ("index", "sep", "compression")
 
   def __init__(self, path: str, options: dict, *, append_from=None, expected_schema=None):
-    _documented("csv", options, _ACCEPTED["csv"])
+    _documented("csv", options, self.ACCEPTED)
     if options.get("index", False) is not False:
       raise RandEngineError("csv option 'index' accepts only False")
     self._compression = options.get("compression")
@@ -213,9 +207,10 @@ class _CsvFile:
 
 
 class _JsonFile:
+  ACCEPTED = ("orient", "force_ascii", "compression")
 
   def __init__(self, path: str, options: dict, *, append_from=None, expected_schema=None):
-    _documented("json", options, _ACCEPTED["json"])
+    _documented("json", options, self.ACCEPTED)
     if options.get("orient", "records") != "records":
       raise RandEngineError("json option 'orient' accepts only 'records'")
     self._compression = options.get("compression")
@@ -295,9 +290,10 @@ class _JsonFile:
 
 
 class _ParquetFile:
+  ACCEPTED = ("compression",)
 
   def __init__(self, path: str, options: dict, *, append_from=None, expected_schema=None):
-    _documented("parquet", options, _ACCEPTED["parquet"])
+    _documented("parquet", options, self.ACCEPTED)
     self._path = path
     self._append_from = append_from
     self._compression = options.get("compression", "snappy")
@@ -375,40 +371,29 @@ class _ParquetFile:
     self._close_writer()
 
 
-def _to_file(format: str, dataframe: Callable, full_path: str, write_options: dict, writer_keys: tuple) -> Callable:
-  _documented(format, write_options, (*_ACCEPTED[format], *writer_keys))
-  session = getattr(FileHandler, f"open_{format}")(full_path, {key: value for key, value in write_options.items() if key not in writer_keys})
-  def write():
-    with session:
-      session.write(dataframe())
-  return write
+_SESSIONS = {"csv": _CsvFile, "json": _JsonFile, "parquet": _ParquetFile}
+
+
+def _session(format: str):
+  if format not in _SESSIONS:
+    raise RandEngineError(f"unsupported write format '{format}'")
+  return _SESSIONS[format]
 
 
 class FileHandler:
 
   @staticmethod
-  def open_csv(path: str, options: dict, *, append_from=None, expected_schema=None):
-    return _CsvFile(path, dict(options), append_from=append_from, expected_schema=expected_schema)
+  def open_session(format: str, path: str, options: dict, *, append_from=None, expected_schema=None):
+    return _session(format)(path, dict(options), append_from=append_from, expected_schema=expected_schema)
 
   @staticmethod
-  def open_json(path: str, options: dict, *, append_from=None, expected_schema=None):
-    return _JsonFile(path, dict(options), append_from=append_from, expected_schema=expected_schema)
-
-  @staticmethod
-  def open_parquet(path: str, options: dict, *, append_from=None, expected_schema=None):
-    return _ParquetFile(path, dict(options), append_from=append_from, expected_schema=expected_schema)
-
-  @staticmethod
-  def to_csv(dataframe: PDDataFrame, full_path: str, write_options: dict, writer_keys: tuple = ()) -> Callable:
-    return _to_file("csv", dataframe, full_path, write_options, writer_keys)
-
-  @staticmethod
-  def to_json(dataframe: PDDataFrame, full_path: str, write_options: dict, writer_keys: tuple = ()) -> Callable:
-    return _to_file("json", dataframe, full_path, write_options, writer_keys)
-
-  @staticmethod
-  def to_parquet(dataframe: PDDataFrame, full_path: str, write_options: dict, writer_keys: tuple = ()) -> Callable:
-    return _to_file("parquet", dataframe, full_path, write_options, writer_keys)
+  def to_file(format: str, dataframe: Callable, full_path: str, write_options: dict, writer_keys: tuple = ()) -> Callable:
+    _documented(format, write_options, (*_session(format).ACCEPTED, *writer_keys))
+    session = FileHandler.open_session(format, full_path, {key: value for key, value in write_options.items() if key not in writer_keys})
+    def write():
+      with session:
+        session.write(dataframe())
+    return write
 
   @staticmethod
   def handle_path(path: str, format: str, write_options: dict) -> tuple:

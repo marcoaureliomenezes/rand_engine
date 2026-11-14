@@ -60,7 +60,7 @@ class FileStreamWriter(FileWriter):
       yield os.path.join(path, f"part-{uuid.uuid4()}.{ext}")
 
   def __writer(self, dataframe, file_gen, write_options):
-    return self.writer_method[self.write_format](dataframe, next(file_gen), write_options, ("timeout",))
+    return FileHandler.to_file(self.write_format, dataframe, next(file_gen), write_options, ("timeout",))
 
 
   def start(self, path):

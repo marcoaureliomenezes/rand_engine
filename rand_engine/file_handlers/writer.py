@@ -1,6 +1,5 @@
 """Settings shared by the batch and stream file writers: format, mode and options."""
 from typing import Any, Callable
-from rand_engine.file_handlers.file_handler import FileHandler
 
 class FileWriter:
   """
@@ -27,17 +26,7 @@ class FileWriter:
     self.write_format = "csv"
     self.write_mode = "overwrite"
     self.write_options = {}
-    self.writer_method = self._FileWriter__map_methods()
 
-  
-  def __map_methods(self):
-    """Map file formats to their corresponding FileHandler methods."""
-    return {
-      "csv": FileHandler.to_csv,
-      "parquet": FileHandler.to_parquet,
-      "json": FileHandler.to_json
-    }
-  
 
   def mode(self, write_mode: str) -> Callable:
     """
