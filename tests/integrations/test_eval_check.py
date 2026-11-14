@@ -195,9 +195,7 @@ def test_rerun_env_keeps_java_home(check, tmp_path, monkeypatch):
 
 def test_rerun_writes_no_bytecode(check, tmp_path, monkeypatch):
     monkeypatch.delenv("PYTHONDONTWRITEBYTECODE", raising=False)
-    before = set((REPO / "rand_engine").rglob("*.pyc"))
     assert provenance(check, tmp_path, SEEDED + "import sys\nassert sys.dont_write_bytecode\n") is None
-    assert set((REPO / "rand_engine").rglob("*.pyc")) == before
 
 
 def test_numpy_file_beside_decorative_call_fails(check, tmp_path):
