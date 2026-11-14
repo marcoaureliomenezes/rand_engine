@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-13T00:43:39Z",
+  "generated_at": "2026-11-14T05:23:46Z",
   "features": [
     {
       "rank": 1,
@@ -224,7 +224,7 @@
         "parquet",
         "sqlite"
       ],
-      "token_estimate": 1008,
+      "token_estimate": 1035,
       "depends_on": [
         "data-generator"
       ],

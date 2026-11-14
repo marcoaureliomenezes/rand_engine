@@ -12,6 +12,7 @@ sources:
 
 - Built-in sinks are local or mounted CSV, JSON-lines and Parquet files plus an output-only SQLite batch table. Callers forward DataFrames or records to every other sink ([[data-generator]]).
 - Both writers expose `format`, `mode`, `option` and `options`; an unsupported or malformed option raises `RandEngineError` before any output is touched.
+- An unsupported write format raises `RandEngineError: unsupported write format '<format>'` on `save` and on `start`, before anything is written.
 
 ## Batch writer
 
