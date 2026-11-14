@@ -14,10 +14,6 @@ GATE = Path(__file__).resolve().parents[2] / "evals" / "gate.py"
 PROBES = "probe:import\nprobe:pip\nprobe:network"
 
 
-def load_gate():
-    return load_by_path("eval_gate", GATE)
-
-
 def write_task(tasks, name, rnd, legs, ceiling=None):
     d = tasks / name
     d.mkdir(parents=True)
@@ -54,7 +50,7 @@ def env(tmp_path):
 
 def run_gate(env, capsys, *flags):
     tasks, results = env
-    code = load_gate().main(["--results", str(results), "--tasks", str(tasks), "--k", "3", *flags])
+    code = load_by_path("eval_gate", GATE).main(["--results", str(results), "--tasks", str(tasks), "--k", "3", *flags])
     return code, capsys.readouterr().out.splitlines()
 
 
