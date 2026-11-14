@@ -1009,6 +1009,18 @@ def test_sqlite_overwrite_write_failure_keeps_prior_database_and_removes_staging
   assert not list(tmp_path.glob(".atomic-write.sqlite.*.staging"))
 
 
+def test_sqlite_overwrite_onto_a_non_database_file_raises_the_library_error_and_leaves_it_untouched(tmp_path):
+  path = tmp_path / "not-a-database.sqlite"
+  path.write_bytes(b"this is not a sqlite database, only text padding" * 4)
+  before = path.read_bytes()
+
+  with pytest.raises(RandEngineError, match=r"^sqlite write failed: "):
+    DataGenerator(SQLITE_SPEC).size(2).write.format("sqlite").option("table", "target").save(str(path))
+
+  assert path.read_bytes() == before
+  assert sorted(p.name for p in tmp_path.iterdir()) == ["not-a-database.sqlite"]
+
+
 def test_sqlite_append_creates_then_requires_the_existing_ordered_schema(tmp_path):
   path = tmp_path / "append.sqlite"
   writer = DataGenerator(SQLITE_SPEC).size(2).write.format("sqlite").option("table", "events")
