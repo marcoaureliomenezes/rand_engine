@@ -16,12 +16,7 @@ from tests.conftest import load_by_path
 
 ROOT = Path(__file__).resolve().parents[2]
 
-
-def _load_eval_run():
-    return load_by_path("eval_run", ROOT / "evals" / "run.py")
-
-
-eval_run = _load_eval_run()
+eval_run = load_by_path("eval_run", ROOT / "evals" / "run.py")
 check_result = eval_run.check_result
 USAGE_SLUGS = {
     "data-generator", "documentation", "generation-methods", "get-started-cli", "pk-fk-constraints",
