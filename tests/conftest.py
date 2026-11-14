@@ -9,6 +9,7 @@ IMPORTANT - Spark Testing Compatibility:
 - For CI/CD: run Spark tests on Windows with a Python below 3.12
 - Linux/macOS: All Python versions supported
 """
+import importlib.util
 import warnings
 from datetime import datetime
 
@@ -37,6 +38,14 @@ def arrow_conf_restored(spark_session):
 def natural_datetime_unit():
     """Unit (`ns`, `us`) the installed pandas gives a naive Python datetime."""
     return pd.Series([datetime(2026, 1, 1)]).dt.unit
+
+
+def load_by_path(name, path):
+    """Return the module `name`, executed from the file at `path` and not registered in `sys.modules`."""
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def pytest_configure(config):

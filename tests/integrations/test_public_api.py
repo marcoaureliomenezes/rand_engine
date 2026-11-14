@@ -17,6 +17,8 @@ from zipfile import ZipFile
 
 import pytest
 
+from tests.conftest import load_by_path
+
 
 class TestPublicAPI:
     """Test that only public API is accessible from rand_engine package."""
@@ -684,12 +686,7 @@ DEFAULT_INIT_TOOLS = [
 
 
 def _load_run():
-    import importlib.util
-
-    spec = importlib.util.spec_from_file_location("eval_run", Path(__file__).parents[2] / "evals" / "run.py")
-    run = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(run)
-    return run
+    return load_by_path("eval_run", Path(__file__).parents[2] / "evals" / "run.py")
 
 
 def _prepare(monkeypatch, tmp_path, rnd="usage", init=None, check_out="", requirements=(), events=None, check_rc=0,
@@ -917,9 +914,7 @@ def _k_guard_run(k):
 
 
 @pytest.mark.skipif(os.name != "posix", reason="the trials job runs on ubuntu; bash is not the POSIX shell on Windows")
-@pytest.mark.parametrize(
-    "k", ["4", "0", "-1", "abc", "", "2.5"], ids=["k4", "k0", "k-1", "kabc", "kempty", "k2.5"],
-)
+@pytest.mark.parametrize("k", ["4", "0", "-1", "abc", "", "2.5"], ids=["k4", "k0", "k-1", "kabc", "kempty", "k2.5"])
 def test_eval_trials_k_guard_refuses_an_integer_outside_one_to_three(k):
     run = _k_guard_run(k)
     assert run.returncode == 1, run.stderr

@@ -3,21 +3,19 @@
 CLI under test: `main(["--results", DIR, "--tasks", DIR, "--k", "3"])` returns the exit code and prints
 its messages and the table to stdout; `--calibrate` writes `<results>/ceilings.json`.
 """
-import importlib.util
 import json
 from pathlib import Path
 
 import pytest
+
+from tests.conftest import load_by_path
 
 GATE = Path(__file__).resolve().parents[2] / "evals" / "gate.py"
 PROBES = "probe:import\nprobe:pip\nprobe:network"
 
 
 def load_gate():
-    spec = importlib.util.spec_from_file_location("eval_gate", GATE)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
+    return load_by_path("eval_gate", GATE)
 
 
 def write_task(tasks, name, rnd, legs, ceiling=None):

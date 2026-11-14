@@ -22,7 +22,6 @@ Contract under test (loaded by path, no Spark, no network, no agent; the re-run'
   web_tool_uses(events) -> list[str]; surfaces(events) -> list[str]
   result_text(layer, message, surfaces=()) -> str                     (failure line, then the `RESULT {json}` line)
 """
-import importlib.util
 import json
 import os
 import shutil
@@ -32,6 +31,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.conftest import load_by_path
+
 CHECK = Path(__file__).resolve().parents[2] / "evals" / "_check.py"
 SPEC = '{"age": {"method": "integers", "kwargs": {"min": 18, "max": 80}}}'
 TOKENS = ["llms.txt", "help(", "get-started", "cases/", "examples/", "method_specs", "SpecValidationError"]
@@ -40,10 +41,7 @@ TOKENS = ["llms.txt", "help(", "get-started", "cases/", "examples/", "method_spe
 @pytest.fixture(scope="module")
 def check():
     assert CHECK.is_file(), f"{CHECK} does not exist"
-    spec = importlib.util.spec_from_file_location("eval_check", CHECK)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
+    return load_by_path("eval_check", CHECK)
 
 
 def script(tmp_path, body):

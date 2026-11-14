@@ -1,7 +1,6 @@
 """Eval task contract: the usage task folders under evals/tasks equal the catalog's non-quality slugs, and the task checks' behaviour pinned here
 (the pk-fk parent comparison, reads of agent-written files, the get-started-cli command matcher and its layer 2)."""
 import ast
-import importlib.util
 import json
 import os
 import shlex
@@ -13,14 +12,13 @@ from pathlib import Path
 
 import pytest
 
+from tests.conftest import load_by_path
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
 def _load_eval_run():
-    spec = importlib.util.spec_from_file_location("eval_run", ROOT / "evals" / "run.py")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    return load_by_path("eval_run", ROOT / "evals" / "run.py")
 
 
 eval_run = _load_eval_run()
