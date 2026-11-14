@@ -255,6 +255,24 @@
       "relates": [
         "native-datetime-output"
       ]
+    },
+    {
+      "id": "writer-raises-docstrings",
+      "title": "The batch save and stream start docstrings name the unsupported-format refusal",
+      "opened": "2026-11-14",
+      "status": "idea",
+      "description": "Lines are repos/rand-engine at 2d2af6d. FileBatchWriter.save (rand_engine/file_handlers/_writer_batch.py:355-358) and FileStreamWriter.start (rand_engine/file_handlers/_writer_stream.py:79-82) can raise the RandEngineError \"unsupported write format '<format>'\" (rand_engine/file_handlers/file_handler.py:378-379), and neither Raises section names it. Each Raises section names that refusal beside the size and option refusals it already lists; no behaviour changes (row 215).",
+      "provenance": "operator ruling on the main thread's rc-7 closure intake drain, 2026-11-14 (AskUserQuestion, verbatim): \"Ratificar as duas (Recommended)\", recorded as \"entries test-hygiene-4 (rows 204, 205, 206, 208, 209, 211, 213, 214) and writer-raises-docstrings (row 215) become rc-8's scope\"; source intake report .dadaia/reports/rand-engine/0.8.2-rc4-intake.md, section \"Operator ruling, 2026-11-14 (AskUserQuestion) \u2014 rc-8 drain\", checked against feature/0.8.2 at 2d2af6d; intake row 215 (rc7-job5 review, LOW, verbatim): \"rand_engine/file_handlers/_writer_batch.py:355-358, _writer_stream.py:79-82 the save/start Raises sections omit the unsupported-format RandEngineError\"",
+      "relates": []
+    },
+    {
+      "id": "test-hygiene-4",
+      "title": "Tests are named for units the tree holds, expect one literal per platform case, and load scripts through one loader",
+      "opened": "2026-11-14",
+      "status": "idea",
+      "description": "Lines are repos/rand-engine at 2d2af6d. (1) tests/test_8_consistency.py:63: test_pk_permuted_matches_the_prototype_feistel names a prototype the repo does not hold; its name states what it pins without it (row 204). (2) tests/test_5_files_write_batch.py:304: test_to_json_undocumented_option_raises_before_writing names FileHandler.to_json, which the tree no longer holds; its name states the json writer's refusal without it (row 214). (3) tests/integrations/test_public_api.py:920-922: the K-guard parametrize spans three lines; it is one line (row 205). (4) tests/test_benchmarks.py:326: the expected returncode is chosen by an os.name conditional (-9 if os.name != \"nt\" else 1); each platform's case pins its own literal (row 206). (5) tests/test_8_consistency.py:335: the docstring says the case pins the feistel permutation, while the skew=0 row (:333) never reaches _feistel (rand_engine/core/_keys.py:122-125); the docstring states what every row pins (row 208). (6) tests/test_8_consistency.py:342: the clause \"n unclamped would hang the Feistel cycle-walk\" states a reason the body does not run; the docstring states only what the case pins (row 209). (7) The load-by-path block (spec_from_file_location, module_from_spec, exec_module, return) is repeated in tests/integrations/test_eval_tasks.py:19-23, test_public_api.py:686-692, test_eval_check.py:43-46 and test_eval_gate.py:16-20; one loader serves the four sites (row 211). (8) tests/test_docs.py:594: from rand_engine import DataGenerator is unused in its test; it is gone (row 213). Every assert keeps its strength; no case is removed.",
+      "provenance": "operator ruling on the main thread's rc-7 closure intake drain, 2026-11-14 (AskUserQuestion, verbatim): \"Ratificar as duas (Recommended)\", recorded as \"entries test-hygiene-4 (rows 204, 205, 206, 208, 209, 211, 213, 214) and writer-raises-docstrings (row 215) become rc-8's scope\"; source intake report .dadaia/reports/rand-engine/0.8.2-rc4-intake.md, section \"Operator ruling, 2026-11-14 (AskUserQuestion) \u2014 rc-8 drain\", checked against feature/0.8.2 at 2d2af6d; intake rows 204 (rc7-job2 hand-back, LOW), 205 (rc7-job1 review, INFO), 206 (rc7-job1 review, LOW), 208, 209 (rc7-job2 review, LOW, INFO), 211 (rc7-job4 review, INFO), 213, 214 (rc7-job5 review, LOW)",
+      "relates": []
     }
   ]
 }
