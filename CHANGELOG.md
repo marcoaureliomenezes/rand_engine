@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On Windows, a drive-relative stream target (for example `C:out`) is written under that drive's current directory, not at the drive root.
 - `SparkGenerator` refuses at construction, naming the column, a `distincts` or `distincts_prop` pool that Spark cannot write unchanged, instead of failing at `get_df` or writing corrupt values. Refused: container values (lists, tuples, dicts, sets); a pool with no value Spark can infer a type from; kinds Spark cannot merge in order, such as `[1, True]` and `[1, 2.5, 'x']`; a date, timestamp or binary value beside text, which used to be written as Java object strings; an integer outside int64 in a numeric pool, which used to be written as null. Pools that Spark writes faithfully stay accepted, such as `['x', None]`, `[1, 2.5]`, `[1, 'x']` and `[True, 'x']`.
 - On pandas 3, a `None` in a `SparkGenerator` text pool is written as null, not the text `'NaN'`.
+- An unsupported write format, for example `write.format("xml")`, raises `RandEngineError` (`unsupported write format '<format>'`) on `save` and `start`, before anything is written, instead of a raw `KeyError`.
 
 ### Changed
 
