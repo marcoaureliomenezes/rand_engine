@@ -302,7 +302,7 @@ def test_json_documented_options_apply(tmp_path):
     assert f.read() == '{"s":"é"}\n'
 
 
-def test_to_json_undocumented_option_raises_before_writing(tmp_path):
+def test_json_undocumented_option_raises_before_writing(tmp_path):
   path = tmp_path / "f.json"
   with pytest.raises(RandEngineError, match="^json option 'indent' is not documented; accepted: orient, force_ascii, compression$"):
     FileHandler.to_file("json", lambda: FRAME, str(path), {"indent": 2})

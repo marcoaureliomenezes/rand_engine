@@ -60,7 +60,7 @@ def test_pk_permuted_is_unique_inside_the_domain_and_not_monotone():
 @pytest.mark.parametrize("domain, key, head", [
   (10**5, 7, [82034, 95789, 91538, 47114, 29996, 52242]),
   (2000, 3, [482, 1695, 1486, 1257, 722, 1526])])
-def test_pk_permuted_matches_the_prototype_feistel(domain, key, head):
+def test_pk_permuted_heads_are_pinned_by_domain_and_key(domain, key, head):
   assert _pk({"style": "permuted", "domain": domain, "key": key}, 6).tolist() == head
 
 
@@ -331,15 +331,15 @@ def test_two_fk_columns_with_identical_kwargs_differ():
 
 
 @pytest.mark.parametrize("skew, head", [(0, [267, 786, 227, 987, 287, 297]), (1.2, [927, 6, 6, 46, 580, 6]), (1.0, [1, 427, 657, 992, 566, 392])])
-def test_fk_matches_the_prototype_parent_index(skew, head):
-  """Pins the gen_fk heads by seed: the parent index, the feistel permutation and the seed crc32(key_seed/column/canonical kwargs)."""
+def test_fk_heads_are_pinned_by_seed_and_skew(skew, head):
+  """Pins the gen_fk heads by seed and skew: the parent index and the seed crc32(key_seed/column/canonical kwargs)."""
   parent = {"method": "pk", "kwargs": {"start": 0}}
   assert Keys.gen_fk(6, parent=parent, parent_size=1000, skew=skew, key_seed=5, column="c").tolist() == head
 
 
 @pytest.mark.parametrize("n, rank", [(1, 0), (2, 1), (10, 9)])
 def test_zipf_rank_at_the_top_uniform_stays_inside_the_domain(n, rank):
-  """Pins the top-of-domain rank literal: at u = 1 - 2**-53 the rank stays inside [0, n), since n unclamped would hang the Feistel cycle-walk."""
+  """Pins the top-of-domain rank literal: at u = 1 - 2**-53 the rank stays inside [0, n)."""
   assert Keys._zipf_rank(np.array([2**53 - 1], dtype=np.int64), n, 1.2).tolist() == [rank]
 
 
