@@ -208,7 +208,7 @@ FRAME = pd.DataFrame({
 ])
 def test_parquet_reads_back_equal(tmp_path, compression, codec):
   path = str(tmp_path / "f.parquet")
-  FileHandler.to_parquet(lambda: FRAME.set_axis([7, 9]), path, {"compression": compression})()
+  FileHandler.to_file("parquet", lambda: FRAME.set_axis([7, 9]), path, {"compression": compression})()
   pd.testing.assert_frame_equal(pd.read_parquet(path), FRAME)  # index dropped, values and dtypes kept
   assert pq.ParquetFile(path).metadata.row_group(0).column(0).compression == codec
 
@@ -216,7 +216,7 @@ def test_parquet_reads_back_equal(tmp_path, compression, codec):
 def test_csv_divergences_from_pandas(tmp_path):
   path = str(tmp_path / "f.csv")
   frame = FRAME.astype({"t": "datetime64[ns]"})
-  FileHandler.to_csv(lambda: frame, path, {"index": False})()
+  FileHandler.to_file("csv", lambda: frame, path, {"index": False})()
   with open(path, encoding="utf-8") as f:
     assert f.read() == (
       '"b","f","g","s","t"\n'
@@ -239,7 +239,7 @@ def _zip_member(path, mode):
 def test_csv_every_compression_reads_back(tmp_path, compression, opener):
   path = str(tmp_path / f"f.csv.{compression}")
   frame = FRAME.astype({"t": "datetime64[ns]"})
-  FileHandler.to_csv(lambda: frame, path, {"compression": compression, "sep": ";"})()
+  FileHandler.to_file("csv", lambda: frame, path, {"compression": compression, "sep": ";"})()
   with opener(path, "rb") as f:
     assert f.read().decode().splitlines()[1] == 'true;1;1;"x";2024-01-01 00:00:00.000000000'
 
@@ -247,7 +247,7 @@ def test_csv_every_compression_reads_back(tmp_path, compression, opener):
 def test_csv_mixed_type_column_raises_naming_it(tmp_path):
   frame = pd.DataFrame({"ok": [1, 2], "mixed": [1, "a"]})
   with pytest.raises(RandEngineError, match="'mixed'"):
-    FileHandler.to_csv(lambda: frame, str(tmp_path / "f.csv"), {})()
+    FileHandler.to_file("csv", lambda: frame, str(tmp_path / "f.csv"), {})()
 
 
 @pytest.mark.parametrize("format_type,key,accepted", [
@@ -270,7 +270,7 @@ def test_undocumented_option_raises_naming_it_and_accepted(rand_spec_with_kwargs
 ])
 def test_open_session_undocumented_option_raises_with_accepted_list(tmp_path, format_type, accepted):
   with pytest.raises(RandEngineError, match=f"^{format_type} option 'engine' is not documented; accepted: {accepted}$"):
-    getattr(FileHandler, f"open_{format_type}")(str(tmp_path / "f"), {"engine": "x"})
+    FileHandler.open_session(format_type, str(tmp_path / "f"), {"engine": "x"})
 
 
 UNSUPPORTED_FORMAT = r"^unsupported write format 'xml'$"
@@ -296,7 +296,7 @@ def test_to_file_unsupported_format_raises_naming_it(tmp_path):
 def test_json_documented_options_apply(tmp_path):
   path = str(tmp_path / "f.json.gz")
   frame = pd.DataFrame({"s": ["é"]})
-  FileHandler.to_json(lambda: frame, path, {"orient": "records", "force_ascii": False, "compression": "gzip"})()
+  FileHandler.to_file("json", lambda: frame, path, {"orient": "records", "force_ascii": False, "compression": "gzip"})()
   with gzip.open(path, "rt", encoding="utf-8") as f:
     assert f.read() == '{"s":"é"}\n'
 
@@ -304,36 +304,36 @@ def test_json_documented_options_apply(tmp_path):
 def test_to_json_undocumented_option_raises_before_writing(tmp_path):
   path = tmp_path / "f.json"
   with pytest.raises(RandEngineError, match="^json option 'indent' is not documented; accepted: orient, force_ascii, compression$"):
-    FileHandler.to_json(lambda: FRAME, str(path), {"indent": 2})
+    FileHandler.to_file("json", lambda: FRAME, str(path), {"indent": 2})
   assert not path.exists()
 
 
 def test_csv_undocumented_compression_raises(tmp_path):
   with pytest.raises(RandEngineError, match="'zstd'.*accepted: gzip, bz2, xz, zip$"):
-    FileHandler.to_csv(lambda: FRAME, str(tmp_path / "f.csv"), {"compression": "zstd"})
+    FileHandler.to_file("csv", lambda: FRAME, str(tmp_path / "f.csv"), {"compression": "zstd"})
 
 
 def test_json_orient_other_than_records_raises(tmp_path):
   with pytest.raises(RandEngineError, match="'orient' accepts only 'records'"):
-    FileHandler.to_json(lambda: FRAME, str(tmp_path / "f.json"), {"orient": "split"})
+    FileHandler.to_file("json", lambda: FRAME, str(tmp_path / "f.json"), {"orient": "split"})
 
 
 def test_parquet_default_codec_is_snappy(tmp_path):
   path = str(tmp_path / "f.parquet")
-  FileHandler.to_parquet(lambda: FRAME, path, {})()
+  FileHandler.to_file("parquet", lambda: FRAME, path, {})()
   assert pq.ParquetFile(path).metadata.row_group(0).column(0).compression == "SNAPPY"
 
 
 def test_csv_zip_member_is_deflated(tmp_path):
   path = str(tmp_path / "f.csv.zip")
-  FileHandler.to_csv(lambda: FRAME, path, {"compression": "zip"})()
+  FileHandler.to_file("csv", lambda: FRAME, path, {"compression": "zip"})()
   with zipfile.ZipFile(path) as archive:
     assert archive.getinfo("f.csv").compress_type == zipfile.ZIP_DEFLATED
 
 
 def test_csv_index_other_than_false_raises(tmp_path):
   with pytest.raises(RandEngineError, match="'index' accepts only False"):
-    FileHandler.to_csv(lambda: FRAME, str(tmp_path / "f.csv"), {"index": True})
+    FileHandler.to_file("csv", lambda: FRAME, str(tmp_path / "f.csv"), {"index": True})
 
 
 def test_csv_tz_aware_in_pandas_form_nat_empty_with_lf_lines(tmp_path):
@@ -342,7 +342,7 @@ def test_csv_tz_aware_in_pandas_form_nat_empty_with_lf_lines(tmp_path):
     "utc": pd.to_datetime(["2024-01-01 00:00:00", None], utc=True),
     "local": pd.to_datetime(["2024-01-01 09:00:00", "2024-01-02 03:04:05"]).tz_localize("America/Sao_Paulo"),
   })
-  FileHandler.to_csv(lambda: frame, path, {})()
+  FileHandler.to_file("csv", lambda: frame, path, {})()
   with open(path, "rb") as f:
     assert f.read() == b'"utc","local"\n"2024-01-01 00:00:00+00:00","2024-01-01 09:00:00-03:00"\n,"2024-01-02 03:04:05-03:00"\n'
 
@@ -350,7 +350,7 @@ def test_csv_tz_aware_in_pandas_form_nat_empty_with_lf_lines(tmp_path):
 def test_parquet_tz_aware_round_trip_keeps_dtype(tmp_path):
   path = str(tmp_path / "f.parquet")
   frame = pd.DataFrame({"t": pd.to_datetime(["2024-01-01 09:00:00", None]).tz_localize("America/Sao_Paulo").astype("datetime64[ns, America/Sao_Paulo]")})
-  FileHandler.to_parquet(lambda: frame, path, {})()
+  FileHandler.to_file("parquet", lambda: frame, path, {})()
   back = pd.read_parquet(path)
   pd.testing.assert_frame_equal(back, frame)
   assert str(back["t"].dtype) == "datetime64[ns, America/Sao_Paulo]"
@@ -358,7 +358,7 @@ def test_parquet_tz_aware_round_trip_keeps_dtype(tmp_path):
 
 def test_csv_one_column_null_is_blank_line_lost_on_read_back(tmp_path):
   path = str(tmp_path / "f.csv")
-  FileHandler.to_csv(lambda: pd.DataFrame({"s": ["x", None, "y"]}), path, {})()
+  FileHandler.to_file("csv", lambda: pd.DataFrame({"s": ["x", None, "y"]}), path, {})()
   with open(path, "rb") as f:
     assert f.read() == b'"s"\n"x"\n\n"y"\n'
   assert pd.read_csv(path)["s"].tolist() == ["x", "y"]
@@ -375,7 +375,7 @@ def test_undocumented_option_fails_before_overwrite_deletes(rand_spec_with_kwarg
 
 def test_csv_all_midnight_written_in_full(tmp_path):
   path = str(tmp_path / "f.csv")
-  FileHandler.to_csv(lambda: pd.DataFrame({"midnight": pd.to_datetime(["2020-01-01"]).astype("datetime64[ns]")}), path, {})()
+  FileHandler.to_file("csv", lambda: pd.DataFrame({"midnight": pd.to_datetime(["2020-01-01"]).astype("datetime64[ns]")}), path, {})()
   with open(path, "rb") as f:
     assert f.read() == b'"midnight"\n2020-01-01 00:00:00.000000000\n'
 

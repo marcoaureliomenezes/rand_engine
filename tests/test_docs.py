@@ -594,7 +594,8 @@ def test_writing_doc_inventory_matches_the_accepted_writer_options():
   from rand_engine import DataGenerator
 
   rows = _writer_option_table()
-  files = set(DataGenerator({"value": {"method": "integers", "kwargs": {"min": 0, "max": 1}}}).size(0).write.writer_method)
+  from rand_engine.file_handlers.file_handler import _SESSIONS
+  files = set(_SESSIONS)
   assert set(rows) == files | {"sqlite", "write (batch)", "writeStream"}
   assert "sep" in rows["csv"] and {"gzip", "bz2", "xz", "zip"} <= set(re.findall(r"`(gzip|bz2|xz|zip)`", rows["csv"]))
   assert {"compression", "snappy", "gzip", "zstd", "brotli", "lz4"} <= set(re.findall(r"`(\w+)`", rows["parquet"]))
