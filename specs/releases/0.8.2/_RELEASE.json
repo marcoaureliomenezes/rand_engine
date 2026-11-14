@@ -1,7 +1,7 @@
 {
   "schema": "release-state-v1",
   "release": "0.8.2",
-  "phase": "CLOSURE",
+  "phase": "DEFINITION",
   "defined": {
     "ts": "2026-11-12T22:57:04Z"
   },
@@ -376,6 +376,12 @@
       "kind": "summary",
       "candidate": "rc-6",
       "text": "delivered: rc-6 SPEC FR39-FR44, except AC43.6. FR39: _to_file derives its opener from the format (a46645f), every output, option list and message unchanged. AC39.2: git diff --numstat 0a0ecd8..HEAD of rand_engine/file_handlers/file_handler.py is 5 added, 5 deleted, net 0, the only rand_engine/ file changed, ruled met by the main thread at net 0 (each line a one-for-one substitution), not met as written (\"deletes more lines than it adds\"). FR40: library test hygiene 2. AC40.3 ruled met by inspection, each refusal row asserts on f.{format_type}, with a ceiling of its revert check: save refuses through a probe call before staging (_writer_batch.py:392-394), so no single mutation reaches assert not path.exists(). AC40.5: Job 3 was extended after its first verdict (2026-11-12T231139Z, MEDIUM, sweep rule) to give the _readme_landing .end()/.start() reads at tests/test_docs.py:847-848 the same named not-None assert (4b361eb), re-reviewed APPROVED 2026-11-12T231622Z. AC40.9: the three sweeps print 0 hits. FR41: eval harness hygiene 3. FR42: the K guard exits 1 on a K outside the integers 1 to 3 with one stderr line naming both bounds. FR43: eval test hygiene 2. AC43.2 and AC44.3: evals/run.py is 195 lines at 70e7668 and 197 at HEAD, numstat 12 added, 10 deleted, net +2, against PLAN.md:21 and :62's net-zero bound (SPEC AC43.2 \"nets zero lines\"), amended by the main thread after the Job 5 REJECT (verdict 2026-11-12T233351Z, HIGH: J5.T1 grew run.py) as the cost of one named unit seed_cwd (def, docstring, two blank lines), re-reviewed APPROVED 2026-11-12T234150Z. J6.T8 (4b9b5d3, 0018b91) makes reference_trial call run.seed_cwd in place of its own seed copy: tests/integrations/test_eval_tasks.py 766caa1..0018b91 is 2 added, 3 deleted, net -1. Job 5 + Job 6 combined on run.py and reference_trial: net +1. Job 6 was REJECTED 2026-11-12T235351Z (HIGH: reference_trial's docstring did not name evals/selfcheck.py as the transcript rule's source) and APPROVED 2026-11-12T235710Z after 0018b91. AC43.5 ran on the operator's order \"Delete :93 duplicate (Recommended)\" (56aa598). AC42.3: the POSIX skipif stands on the operator's order \"Confirm the skip (Recommended)\". AC43.6 not delivered, by main-thread ruling: a bare {\"method\": \"pk\"} parent is refused at layer 1 (its 0-based fk values reference no customer) before pk_identity runs, so no row on this fixture pins the comparison, and the permuted-parent refusal row pins pk_identity (a constant-returning mutation turns it red). FR44: the closure memory pass (agent-eval changed, writers-and-streaming reviewed), AC44.2 no CHANGELOG.md entry (0 lines changed). No bug was registered or resolved in rc-6; carried: setuptools-ghsa-xmj3-open-on-master stays open until the 0.8.2 master merge; backlog exits: to-file-opener-from-format, library-test-hygiene-2, eval-harness-hygiene-3 delivered, eval-test-hygiene-2 delivered without item 6 (AC43.6, a ceiling of the fixture)"
+    },
+    {
+      "ts": "2026-11-14T04:48:43Z",
+      "agent": "release.py new",
+      "kind": "note",
+      "text": "Candidate born on 0.8.2 (stacked on the closed prior candidate)"
     }
   ]
 }
